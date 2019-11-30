@@ -138,9 +138,22 @@ object Sql {
 
   sealed trait Predicate[-A]
   object Predicate {
-    final case class Equals[A](right: A) extends Predicate[A]
+    final case class Equal[A](right: A) extends Predicate[A]
+    final case class NoEqual[A](right: A) extends Predicate[A]
+    final case class GreaterThan[A](right: A) extends Predicate[A]
+    final case class LessThan[A](right: A) extends Predicate[A]
+    final case class GreaterThanOrEqual[A](right: A) extends Predicate[A]
+    final case class LessThanOrEqual[A](right: A) extends Predicate[A]
     case object IsNull extends Predicate[Any]
     case object IsNotNull extends Predicate[Any]
+    case object IsTrue extends Predicate[Boolean]
+    case object IsNotTrue extends Predicate[Boolean]
+    case object IsFalse extends Predicate[Boolean]
+    case object IsNotFalse extends Predicate[Boolean]
+    final case class Between[A](lower: A, upper: A) extends Predicate[A]
+    final case class In[A](right: Set[A]) extends Predicate[A]
+    final case class NotIn[A](right: Set[A]) extends Predicate[A]
+    final case class Like(right: String) extends Predicate[String]
   }
 }
 
