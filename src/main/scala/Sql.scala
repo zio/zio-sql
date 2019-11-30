@@ -99,9 +99,15 @@ object Sql {
   sealed trait BinaryOp[A]
   object BinaryOp {
     case object AddInt extends BinaryOp[Int]
+    case object SubInt extends BinaryOp[Int]
     case object MultInt extends BinaryOp[Int]
+    case object DivInt extends BinaryOp[Int]
+    case object ModInt extends BinaryOp[Int]
     case object AddLong extends BinaryOp[Long]
+    case object SubLong extends BinaryOp[Long]
     case object MultLong extends BinaryOp[Long]
+    case object DivLong extends BinaryOp[Long]
+    case object ModLong extends BinaryOp[Long]
     case object StringConcat extends BinaryOp[String]
   }
 
