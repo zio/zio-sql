@@ -140,9 +140,11 @@ object Sql {
     final case class And[A](left: Where[A], right: Where[A]) extends Where[A]
     final case class Or[A](left: Where[A], right: Where[A]) extends Where[A]
     final case class Relation[A, B](expr: Expr[A, B], predicate: Predicate[B]) extends Where[A]
+    final case class Existence(predicate: ExistencePredicate) extends Where[Any]
   }
 
   sealed trait Predicate[-A]
+  sealed trait ExistencePredicate extends Predicate[Any]
   object Predicate {
     final case class Equal[A](right: A) extends Predicate[A]
     final case class NoEqual[A](right: A) extends Predicate[A]
@@ -157,9 +159,15 @@ object Sql {
     case object IsFalse extends Predicate[Boolean]
     case object IsNotFalse extends Predicate[Boolean]
     final case class Between[A](lower: A, upper: A) extends Predicate[A]
-    final case class In[A](right: Set[A]) extends Predicate[A]
-    final case class NotIn[A](right: Set[A]) extends Predicate[A]
     final case class Like(right: String) extends Predicate[String]
+    
+    final case class In[A](right: Set[A]) extends Predicate[A] //could be applied to a subquery result
+    final case class NotIn[A](right: Set[A]) extends Predicate[A] //could be applied to a subquery result
+    
+    final case class Exists(read: Read[_]) extends ExistencePredicate
+    final case class NotExists(read: Read[_]) extends ExistencePredicate
+    
+    //TODO Any, All
   }
 }
 
