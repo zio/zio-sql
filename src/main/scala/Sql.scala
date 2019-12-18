@@ -3,7 +3,7 @@ package zio.sql
 trait Sql {
   type ColumnName = String
   type TableName
-  final case class ColumnSchema[A](value: A)
+  sealed case class ColumnSchema[A](value: A)
 
   sealed trait ColumnSet {
     type ColumnsRepr[T]
@@ -23,7 +23,7 @@ trait Sql {
 
       override protected def mkColumns[T](table: Table[T]): ColumnsRepr[T] = ()
     }
-    final case class Cons[A, B <: ColumnSet](head: Column[A], tail: B) extends ColumnSet { self =>     
+    sealed case class Cons[A, B <: ColumnSet](head: Column[A], tail: B) extends ColumnSet { self =>     
       type ColumnsRepr[T] = (Expr[T, A], tail.ColumnsRepr[T])
 
       override def :*: [C](head: Column[C]): C :*: A :*: B = Cons(head, self)
@@ -41,7 +41,7 @@ trait Sql {
 
     val columnSet = int("age") :*: string("name") :*: Empty
 
-    lazy val table: Table[Int :*: String :*: Empty] = ???
+    def table: Table[Int :*: String :*: Empty] = ???
 
     val age :*: name :*: _ = columnSet.columns(table)
   }
@@ -72,9 +72,9 @@ trait Sql {
     }
   }
 
-  final case class FunctionName(name: String)
+  sealed case class FunctionName(name: String)
 
-  final case class Column[A: SqlType](name: String) {
+  sealed case class Column[A: SqlType](name: String) {
     def typeTag: TypeTag[A] = implicitly[SqlType[A]].typeTag
   }
   object Column {
@@ -87,7 +87,7 @@ trait Sql {
     def apply[B](f: Table[A] => Column[B]): Expr[A, B] = Expr.Source(self, f(self))
   }
   object Table {
-    final case class Source[A](name: TableName, columnSchema: ColumnSchema[A]) extends Table[A]
+    sealed case class Source[A](name: TableName, columnSchema: ColumnSchema[A]) extends Table[A]
   }
 
   /**
@@ -104,12 +104,12 @@ trait Sql {
    */
   sealed trait Read[+A]
   object Read {
-    final case class Select[A, B](
+    sealed case class Select[A, B](
       selection: Selection[A, B], table: Table[A], where: Expr[A, Boolean]) extends Read[B]
     
-    final case class Union[B](left: Read[B], right: Read[B], distinct: Boolean) extends Read[B]
+    sealed case class Union[B](left: Read[B], right: Read[B], distinct: Boolean) extends Read[B]
 
-    final case class Literal[B: SqlType](values: Iterable[B]) extends Read[B]
+    sealed case class Literal[B: SqlType](values: Iterable[B]) extends Read[B]
   }
 
   /**
@@ -117,11 +117,11 @@ trait Sql {
    */
   sealed trait Selection[-A, +B]
   object Selection {
-    final case class Identity[A]() extends Selection[A, A]
-    final case class Constant[A: SqlType](value: A) extends Selection[Any, A]
-    final case class Concat[A, L, R](left: Selection[A, L], right: Selection[A, R]) 
+    sealed case class Identity[A]() extends Selection[A, A]
+    sealed case class Constant[A: SqlType](value: A) extends Selection[Any, A]
+    sealed case class Concat[A, L, R](left: Selection[A, L], right: Selection[A, R]) 
       extends Selection[A, (L, R)]
-    final case class Computed[A, B](expr: Expr[A, B], name: Option[ColumnName]) extends 
+    sealed case class Computed[A, B](expr: Expr[A, B], name: Option[ColumnName]) extends 
       Selection[A, B]
   }
 
@@ -148,16 +148,16 @@ trait Sql {
    */
   sealed trait Expr[-A, +B]
   object Expr {
-    final case class Source[A, B](table: Table[A], column: Column[B]) extends Expr[A, B]
-    final case class Binary[A, B](left: Expr[A, B], right: Expr[A, B], op: BinaryOp[B]) extends Expr[A, B]
-    final case class In[A, B](value: Expr[A, B], set: Read[B]) extends Expr[A, Boolean]
-    final case class Literal[B: SqlType](value: B) extends Expr[Any, B]
-    final case class FunctionCall[A, B, C](value: Expr[A, B], function: FunctionDef[B, C])
+    sealed case class Source[A, B](table: Table[A], column: Column[B]) extends Expr[A, B]
+    sealed case class Binary[A, B](left: Expr[A, B], right: Expr[A, B], op: BinaryOp[B]) extends Expr[A, B]
+    sealed case class In[A, B](value: Expr[A, B], set: Read[B]) extends Expr[A, Boolean]
+    sealed case class Literal[B: SqlType](value: B) extends Expr[Any, B]
+    sealed case class FunctionCall[A, B, C](value: Expr[A, B], function: FunctionDef[B, C])
       extends Expr[A, C]
     // a IN ("foo", "bar")
   }
 
-  final case class FunctionDef[-A, +B](name: FunctionName)
+  sealed case class FunctionDef[-A, +B](name: FunctionName)
 }
 
 /*
@@ -170,26 +170,26 @@ select(age * 2 ~ name ~ username)
 sealed trait Predicate[-A]
   // sealed trait ExistencePredicate extends Predicate[Any]
   // object Predicate {
-  //   final case class Equal[A](right: A) extends Predicate[A]
-  //   final case class NoEqual[A](right: A) extends Predicate[A]
-  //   final case class GreaterThan[A](right: A) extends Predicate[A]
-  //   final case class LessThan[A](right: A) extends Predicate[A]
-  //   final case class GreaterThanOrEqual[A](right: A) extends Predicate[A]
-  //   final case class LessThanOrEqual[A](right: A) extends Predicate[A]
+  //   sealed case class Equal[A](right: A) extends Predicate[A]
+  //   sealed case class NoEqual[A](right: A) extends Predicate[A]
+  //   sealed case class GreaterThan[A](right: A) extends Predicate[A]
+  //   sealed case class LessThan[A](right: A) extends Predicate[A]
+  //   sealed case class GreaterThanOrEqual[A](right: A) extends Predicate[A]
+  //   sealed case class LessThanOrEqual[A](right: A) extends Predicate[A]
   //   case object IsNull extends Predicate[Any]
   //   case object IsNotNull extends Predicate[Any]
   //   case object IsTrue extends Predicate[Boolean]
   //   case object IsNotTrue extends Predicate[Boolean]
   //   case object IsFalse extends Predicate[Boolean]
   //   case object IsNotFalse extends Predicate[Boolean]
-  //   final case class Between[A](lower: A, upper: A) extends Predicate[A]
-  //   final case class Like(right: String) extends Predicate[String]
+  //   sealed case class Between[A](lower: A, upper: A) extends Predicate[A]
+  //   sealed case class Like(right: String) extends Predicate[String]
     
-  //   final case class In[A](right: Set[A]) extends Predicate[A] //could be applied to a subquery result
-  //   final case class NotIn[A](right: Set[A]) extends Predicate[A] //could be applied to a subquery result
+  //   sealed case class In[A](right: Set[A]) extends Predicate[A] //could be applied to a subquery result
+  //   sealed case class NotIn[A](right: Set[A]) extends Predicate[A] //could be applied to a subquery result
     
-  //   final case class Exists(read: Read[_]) extends ExistencePredicate
-  //   final case class NotExists(read: Read[_]) extends ExistencePredicate
+  //   sealed case class Exists(read: Read[_]) extends ExistencePredicate
+  //   sealed case class NotExists(read: Read[_]) extends ExistencePredicate
     
   //   //TODO Any, All
   // }
