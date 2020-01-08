@@ -104,7 +104,7 @@ trait Sql {
    */
   sealed trait Read[+A]
   object Read {
-    sealed case class Select[A, B](
+    sealed case class Select[A, B <: SelectionSet[A]](
       selection: Selection[A, B], table: Table.Aux[A], where: Expr[A, Boolean]) extends Read[B]
     
     sealed case class Union[B](left: Read[B], right: Read[B], distinct: Boolean) extends Read[B]
@@ -115,14 +115,75 @@ trait Sql {
   /**
    * A columnar selection of `B` from a source `A`, modeled as `A => B`.
    */
-  sealed trait Selection[-A, +B]
+  sealed case class Selection[-A, +B <: SelectionSet[A]](value: B)
   object Selection {
-    sealed case class Identity[A]() extends Selection[A, A]
-    sealed case class Constant[A: TypeTag](value: A) extends Selection[Any, A]
-    sealed case class Concat[A, L, R](left: Selection[A, L], right: Selection[A, R]) 
-      extends Selection[A, (L, R)]
-    sealed case class Computed[A, B](expr: Expr[A, B], name: Option[ColumnName]) extends 
-      Selection[A, B]
+    import SelectionSet.{ Empty, Cons }
+    import ColumnSelection._
+
+    val empty: Selection[Any, Empty] = Selection(Empty)
+
+    def constantOption[A: TypeTag](value: A, option: Option[ColumnName]): Selection[Any, Cons[Any, A, Empty]] = 
+      Selection(Cons(Constant(value, option), Empty))
+
+    def constant[A: TypeTag](value: A): Selection[Any, Cons[Any, A, Empty]] = constantOption(value, None)
+
+    def constantAs[A: TypeTag](value: A, name: ColumnName): Selection[Any, Cons[Any, A, Empty]] = constantOption(value, Some(name))
+
+    def computedOption[A, B](expr: Expr[A, B], name: Option[ColumnName]): Selection[A, Cons[A, B, Empty]] =
+      Selection(Cons(Computed(expr, name), Empty))
+
+    def computed[A, B](expr: Expr[A, B]): Selection[A, Cons[A, B, Empty]] =
+      computedOption(expr, None)
+
+    def computedAs[A, B](expr: Expr[A, B], name: ColumnName): Selection[A, Cons[A, B, Empty]] =
+      computedOption(expr, Some(name))
+  }
+  
+  sealed trait ColumnSelection[-A, +B]
+  object ColumnSelection {
+    sealed case class Constant[A: TypeTag](value: A, name: Option[ColumnName]) extends ColumnSelection[Any, A]
+    sealed case class Computed[A, B](expr: Expr[A, B], name: Option[ColumnName]) extends ColumnSelection[A, B]
+  }
+
+  sealed trait SelectionSet[-Source] {
+    type SelectionsRepr[T]
+
+    def :*: [Source1 <: Source, A](head: ColumnSelection[Source1, A]): SelectionSet[Source1]
+
+    def selectionsUntyped: List[ColumnSelection[Source, _]]
+
+    //protected def mkSelections[T]: SelectionsRepr[T]
+  }
+  object SelectionSet {
+    type Empty = Empty.type
+
+    case object Empty extends SelectionSet[Any] {
+      type SelectionsRepr[_] = Unit
+
+      override def :*: [Source1 <: Any, A](head: ColumnSelection[Source1, A]) = Cons(head, Empty)
+
+      override def selectionsUntyped: List[ColumnSelection[Any, _]] = Nil
+
+      //override protected def mkSelections[T]: SelectionsRepr[T] = ()
+    }
+    sealed case class Cons[Source, A, B <: SelectionSet[Source]](head: ColumnSelection[Source, A], tail: B) extends SelectionSet[Source] { self =>     
+      type SelectionsRepr[T] = (Expr[T, A], tail.SelectionsRepr[T])
+
+      override def :*: [Source1 <: Source, C](head: ColumnSelection[Source1, C]) = Cons(head, self)
+
+      override def selectionsUntyped: List[ColumnSelection[Source, _]] = head :: tail.selectionsUntyped
+
+      // def table(name0: TableName): Table.Source[SelectionsRepr, Cons[Source, A, B]] = 
+      //   new Table.Source[SelectionsRepr, Cons[Source, A, B]] {
+      //     val name: TableName = name0
+      //     val selectionSchema: SelectionSchema[A :*: B] = SelectionSchema(self)
+      //     val selections: SelectionsRepr[TableType] = mkSelections[TableType]
+      //     val selectionsUntyped: List[ColumnSelection[_]] = self.selectionsUntyped
+      //   }
+
+      // override protected def mkSelections[T]: SelectionsRepr[T] = 
+      //   (Expr.Source(head), tail.mkSelections)
+    }
   }
 
   sealed trait BinaryOp[A]
