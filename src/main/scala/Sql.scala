@@ -1,5 +1,7 @@
 package zio.sql
 
+import scala.language.implicitConversions
+
 trait Sql {
   type ColumnName = String
   type TableName = String
@@ -12,7 +14,7 @@ trait Sql {
 
     def columnsUntyped: List[Column[_]]
 
-    protected def mkColumns[T]: ColumnsRepr[T]
+    protected def mkColumns[T](name: TableName): ColumnsRepr[T]
   }
   object ColumnSet {
     type Empty = Empty.type
@@ -25,7 +27,7 @@ trait Sql {
 
       override def columnsUntyped: List[Column[_]] = Nil
 
-      override protected def mkColumns[T]: ColumnsRepr[T] = ()
+      override protected def mkColumns[T](name: TableName): ColumnsRepr[T] = ()
     }
     sealed case class Cons[A, B <: ColumnSet](head: Column[A], tail: B) extends ColumnSet { self =>     
       type ColumnsRepr[T] = (Expr[T, A], tail.ColumnsRepr[T])
@@ -38,15 +40,12 @@ trait Sql {
         new Table.Source[ColumnsRepr, A :*: B] {
           val name: TableName = name0
           val columnSchema: ColumnSchema[A :*: B] = ColumnSchema(self)
-          val columns: ColumnsRepr[TableType] = mkColumns[TableType]
+          val columns: ColumnsRepr[TableType] = mkColumns[TableType](name0)
           val columnsUntyped: List[Column[_]] = self.columnsUntyped
         }
 
-      override protected def mkColumns[T]: ColumnsRepr[T] = 
-        (Expr.Source(head), tail.mkColumns)
-    }
-    object :*: {
-      def unapply[A, B](tuple: (A, B)): Some[(A, B)] = Some(tuple)
+      override protected def mkColumns[T](name: TableName): ColumnsRepr[T] = 
+        (Expr.Source(name, head), tail.mkColumns(name))
     }
     import Column._ 
 
@@ -55,6 +54,10 @@ trait Sql {
     val table = columnSet.table("person")
 
     val age :*: name :*: _ = table.columns
+  }
+
+  object :*: {
+    def unapply[A, B](tuple: (A, B)): Some[(A, B)] = Some(tuple)
   }
 
   sealed trait TypeTag[A]
@@ -90,14 +93,21 @@ trait Sql {
     } 
   }
 
-  /**
+  /*
    * (SELECT *, "foo", table.a + table.b AS sum... FROM table WHERE cond) UNION (SELECT ... FROM table)
    *   UNION ('1', '2', '3')
    * UPDATE table SET ...
    * INSERT ... INTO table
    * DELETE ... FROM table
    */
-  sealed trait Sql[-A, +B]
+  def select[A, B <: SelectionSet[A]](selection: Selection[A, B]): SelectBuilder[A, B] = 
+    SelectBuilder(selection)
+
+  sealed case class SelectBuilder[A, B <: SelectionSet[A]](selection: Selection[A, B]) {
+    def from(table: Table.Aux[A]): Read.Select[A, B] = 
+      Read.Select(selection, table, Expr.Literal(true))
+  }
+  implicit def literal[A: TypeTag](a: A): Expr[Any, A] = Expr.Literal(a)
 
   /**
    * A `Read[A]` models a selection of a set of values of type `A`.
@@ -105,7 +115,14 @@ trait Sql {
   sealed trait Read[+A]
   object Read {
     sealed case class Select[A, B <: SelectionSet[A]](
-      selection: Selection[A, B], table: Table.Aux[A], where: Expr[A, Boolean]) extends Read[B]
+      selection: Selection[A, B], table: Table.Aux[A], whereExpr: Expr[A, Boolean], offset: Option[Long] = None, limit: Option[Long] = None) extends Read[B] {
+      def where(whereExpr2: Expr[A, Boolean]): Select[A, B] = 
+        Select(selection, table, Expr.Binary(whereExpr, whereExpr2, BinaryOp.AndBool))
+
+      def limit(n: Long): Select[A, B] = copy(limit = Some(n))
+
+      def offset(n: Long): Select[A, B] = copy(offset = Some(n))
+    }
     
     sealed case class Union[B](left: Read[B], right: Read[B], distinct: Boolean) extends Read[B]
 
@@ -115,7 +132,14 @@ trait Sql {
   /**
    * A columnar selection of `B` from a source `A`, modeled as `A => B`.
    */
-  sealed case class Selection[-A, +B <: SelectionSet[A]](value: B)
+  sealed case class Selection[-A, +B <: SelectionSet[A]](value: B) { self =>
+    type SelectionType 
+
+    def ++ [A1 <: A, C <: SelectionSet[A1]](that: Selection[A1, C]): Selection[A1, self.value.Append[A1, C]] = 
+      Selection(self.value ++ that.value)
+
+    def columns: value.SelectionsRepr[SelectionType] = value.mkColumns[SelectionType]
+  }
   object Selection {
     import SelectionSet.{ Empty, Cons }
     import ColumnSelection._
@@ -137,6 +161,10 @@ trait Sql {
 
     def computedAs[A, B](expr: Expr[A, B], name: ColumnName): Selection[A, Cons[A, B, Empty]] =
       computedOption(expr, Some(name))
+
+    val selection = constant(1) ++ empty ++ constant("foo") ++ constant(true) ++ empty
+
+    val int :*: str :*: bool = selection.columns
   }
   
   sealed trait ColumnSelection[-A, +B]
@@ -147,42 +175,47 @@ trait Sql {
 
   sealed trait SelectionSet[-Source] {
     type SelectionsRepr[T]
+    
+    type Append[Source1 <: Source, That <: SelectionSet[Source1]] <: SelectionSet[Source1]
 
     def :*: [Source1 <: Source, A](head: ColumnSelection[Source1, A]): SelectionSet[Source1]
 
+    def ++ [Source1 <: Source, That <: SelectionSet[Source1]](that: That): Append[Source1, That]
+
     def selectionsUntyped: List[ColumnSelection[Source, _]]
 
-    //protected def mkSelections[T]: SelectionsRepr[T]
+    def mkColumns[T]: SelectionsRepr[T]
   }
   object SelectionSet {
     type Empty = Empty.type
 
     case object Empty extends SelectionSet[Any] {
-      type SelectionsRepr[_] = Unit
+      override type SelectionsRepr[T] = Unit
+
+      override type Append[Source1 <: Any, That <: SelectionSet[Source1]] = That
 
       override def :*: [Source1 <: Any, A](head: ColumnSelection[Source1, A]) = Cons(head, Empty)
 
+      override def ++ [Source1 <: Any, That <: SelectionSet[Source1]](that: That): Append[Source1, That] = 
+        that
+
       override def selectionsUntyped: List[ColumnSelection[Any, _]] = Nil
 
-      //override protected def mkSelections[T]: SelectionsRepr[T] = ()
+      def mkColumns[T]: SelectionsRepr[T] = ()
     }
     sealed case class Cons[Source, A, B <: SelectionSet[Source]](head: ColumnSelection[Source, A], tail: B) extends SelectionSet[Source] { self =>     
-      type SelectionsRepr[T] = (Expr[T, A], tail.SelectionsRepr[T])
+      override type SelectionsRepr[T] = (ColumnSelection[Source, A], tail.SelectionsRepr[T])
+      override type Append[Source1 <: Source, That <: SelectionSet[Source1]] = 
+        Cons[Source1, A, tail.Append[Source1, That]]
 
       override def :*: [Source1 <: Source, C](head: ColumnSelection[Source1, C]) = Cons(head, self)
 
+      override def ++ [Source1 <: Source, That <: SelectionSet[Source1]](that: That): Append[Source1, That] = 
+        Cons(head, tail ++ that)
+
       override def selectionsUntyped: List[ColumnSelection[Source, _]] = head :: tail.selectionsUntyped
 
-      // def table(name0: TableName): Table.Source[SelectionsRepr, Cons[Source, A, B]] = 
-      //   new Table.Source[SelectionsRepr, Cons[Source, A, B]] {
-      //     val name: TableName = name0
-      //     val selectionSchema: SelectionSchema[A :*: B] = SelectionSchema(self)
-      //     val selections: SelectionsRepr[TableType] = mkSelections[TableType]
-      //     val selectionsUntyped: List[ColumnSelection[_]] = self.selectionsUntyped
-      //   }
-
-      // override protected def mkSelections[T]: SelectionsRepr[T] = 
-      //   (Expr.Source(head), tail.mkSelections)
+      def mkColumns[T]: SelectionsRepr[T] = (head, tail.mkColumns[T])
     }
   }
 
@@ -202,15 +235,39 @@ trait Sql {
     case object OrBool extends BinaryOp[Boolean]
     case object StringConcat extends BinaryOp[String]
   }
+  sealed trait RelationalOp
+  object RelationalOp {
+    case object Equals extends RelationalOp
+    case object LessThan extends RelationalOp
+    case object GreaterThan extends RelationalOp
+    case object LessThanEqual extends RelationalOp
+    case object GreaterThanEqual extends RelationalOp
+  }
 
   /**
    * Models a function `A => B`.
    * SELECT product.price + 10
    */
-  sealed trait Expr[-A, +B]
+  sealed trait Expr[-A, +B] { self => 
+    def === [A1 <: A, B1 >: B](that: Expr[A1, B1]): Expr[A1, Boolean] = 
+      Expr.Relational(self, that, RelationalOp.Equals)
+
+    def > [A1 <: A, B1 >: B](that: Expr[A1, B1]): Expr[A1, Boolean] = 
+      Expr.Relational(self, that, RelationalOp.GreaterThan)
+
+    def < [A1 <: A, B1 >: B](that: Expr[A1, B1]): Expr[A1, Boolean] = 
+      Expr.Relational(self, that, RelationalOp.LessThan)
+
+    def >= [A1 <: A, B1 >: B](that: Expr[A1, B1]): Expr[A1, Boolean] = 
+      Expr.Relational(self, that, RelationalOp.GreaterThanEqual)
+
+    def <= [A1 <: A, B1 >: B](that: Expr[A1, B1]): Expr[A1, Boolean] = 
+      Expr.Relational(self, that, RelationalOp.LessThanEqual)
+  }
   object Expr {
-    sealed case class Source[A, B] private [Sql] (column: Column[B]) extends Expr[A, B]
+    sealed case class Source[A, B] private [Sql] (tableName: TableName, column: Column[B]) extends Expr[A, B]
     sealed case class Binary[A, B](left: Expr[A, B], right: Expr[A, B], op: BinaryOp[B]) extends Expr[A, B]
+    sealed case class Relational[A, B](left: Expr[A, B], right: Expr[A, B], op: RelationalOp) extends Expr[A, Boolean]
     sealed case class In[A, B](value: Expr[A, B], set: Read[B]) extends Expr[A, Boolean]
     sealed case class Literal[B: TypeTag](value: B) extends Expr[Any, B]
     sealed case class FunctionCall[A, B, C](value: Expr[A, B], function: FunctionDef[B, C])
@@ -222,11 +279,18 @@ trait Sql {
 }
 
 /*
- def query(limit: Int) = 
-    select(age * 2 ~ name ~ username)
+  
+ def query(limit: Int) = {
+    val selection = age * 2 ~ name ~ username
+
+    val newAge :*: newName :*: newUsername = selection
+
+    select(selection)
       .from(person)
-      .where(age === lit(42))
+      .where(age === 42)
       .limit(limit)
+      .orderBy(newAge.ascending, newName.descending)
+ }
 
 val query = 
   Param.int { limit =>
