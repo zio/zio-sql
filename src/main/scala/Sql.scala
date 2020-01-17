@@ -138,7 +138,7 @@ trait Sql {
     def ++ [A1 <: A, C <: SelectionSet[A1]](that: Selection[A1, C]): Selection[A1, self.value.Append[A1, C]] = 
       Selection(self.value ++ that.value)
 
-    def columns: value.SelectionsRepr[SelectionType] = value.mkColumns[SelectionType]
+    def columns: value.SelectionsRepr[SelectionType] = value.selections[SelectionType]
   }
   object Selection {
     import SelectionSet.{ Empty, Cons }
@@ -164,7 +164,7 @@ trait Sql {
 
     val selection = constant(1) ++ empty ++ constant("foo") ++ constant(true) ++ empty
 
-    val int :*: str :*: bool = selection.columns
+    val int :*: str :*: bool :*: _ = selection.columns
   }
   
   sealed trait ColumnSelection[-A, +B]
@@ -184,7 +184,7 @@ trait Sql {
 
     def selectionsUntyped: List[ColumnSelection[Source, _]]
 
-    def mkColumns[T]: SelectionsRepr[T]
+    def selections[T]: SelectionsRepr[T]
   }
   object SelectionSet {
     type Empty = Empty.type
@@ -201,7 +201,7 @@ trait Sql {
 
       override def selectionsUntyped: List[ColumnSelection[Any, _]] = Nil
 
-      def mkColumns[T]: SelectionsRepr[T] = ()
+      def selections[T]: SelectionsRepr[T] = ()
     }
     sealed case class Cons[Source, A, B <: SelectionSet[Source]](head: ColumnSelection[Source, A], tail: B) extends SelectionSet[Source] { self =>     
       override type SelectionsRepr[T] = (ColumnSelection[Source, A], tail.SelectionsRepr[T])
@@ -215,7 +215,7 @@ trait Sql {
 
       override def selectionsUntyped: List[ColumnSelection[Source, _]] = head :: tail.selectionsUntyped
 
-      def mkColumns[T]: SelectionsRepr[T] = (head, tail.mkColumns[T])
+      def selections[T]: SelectionsRepr[T] = (head, tail.selections[T])
     }
   }
 
