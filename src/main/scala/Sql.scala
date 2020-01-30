@@ -5,6 +5,15 @@ import scala.language.implicitConversions
 trait Sql {
   type ColumnName = String
   type TableName = String
+
+  sealed trait TypeTag[A]
+  object TypeTag {
+    implicit case object TInt extends TypeTag[Int]
+    implicit case object TLong extends TypeTag[Long]
+    implicit case object TBoolean extends TypeTag[Boolean]
+    implicit case object TString extends TypeTag[String]
+  }
+
   sealed case class ColumnSchema[A](value: A)
 
   sealed trait ColumnSet {
@@ -53,19 +62,19 @@ trait Sql {
 
     val table = columnSet.table("person")
 
+    val table2 = columnSet.table("person2")
+
     val age :*: name :*: _ = table.columns
+
+    val age2 :*: name2 :*: _ = table2.columns
+
+    val joined = (table join table2) on {
+      age === age2
+    }
   }
 
   object :*: {
     def unapply[A, B](tuple: (A, B)): Some[(A, B)] = Some(tuple)
-  }
-
-  sealed trait TypeTag[A]
-  object TypeTag {
-    implicit case object TInt extends TypeTag[Int]
-    implicit case object TLong extends TypeTag[Long]
-    implicit case object TBoolean extends TypeTag[Boolean]
-    implicit case object TString extends TypeTag[String]
   }
 
   sealed case class FunctionName(name: String)
@@ -79,10 +88,38 @@ trait Sql {
     def string(name: String): Column[String] = Column[String](name)
   }
 
-  sealed trait Table {
+  sealed trait JoinType
+  object JoinType {
+    case object Inner       extends JoinType
+    case object LeftOuter   extends JoinType
+    case object RightOuter  extends JoinType
+    case object FullOuter   extends JoinType
+  }
+
+  /**
+    * (left join right) on (...)
+    */
+  sealed trait Table { self =>
     type TableType
+
+    final def fullOuter[That](that: Table.Aux[That]): Table.JoinBuilder[self.TableType, That] =
+      new Table.JoinBuilder[self.TableType, That](JoinType.FullOuter, self, that)
+
+    final def join[That](that: Table.Aux[That]): Table.JoinBuilder[self.TableType, That] =
+      new Table.JoinBuilder[self.TableType, That](JoinType.Inner, self, that)
+
+    final def leftOuter[That](that: Table.Aux[That]): Table.JoinBuilder[self.TableType, That] =
+      new Table.JoinBuilder[self.TableType, That](JoinType.LeftOuter, self, that)
+    
+    final def rightOuter[That](that: Table.Aux[That]): Table.JoinBuilder[self.TableType, That] =
+      new Table.JoinBuilder[self.TableType, That](JoinType.RightOuter, self, that)
   }
   object Table {
+    class JoinBuilder[A, B](joinType: JoinType, left: Table.Aux[A], right: Table.Aux[B]) {
+      def on(expr: Expr[A with B, Boolean]): Table.Aux[A with B] = 
+        Joined(joinType, left, right, expr)
+    }
+
     type Aux[A] = Table { type TableType = A }
 
     sealed trait Source[F[_], A] extends Table {
@@ -91,11 +128,18 @@ trait Sql {
       val columns: F[TableType]
       val columnsUntyped: List[Column[_]]
     } 
+
+    sealed case class Joined[A, B](joinType: JoinType, left: Table.Aux[A], right: Table.Aux[B], on: Expr[A with B, Boolean]) extends Table {
+      type TableType = left.TableType with right.TableType
+    }
   }
 
   /*
    * (SELECT *, "foo", table.a + table.b AS sum... FROM table WHERE cond) UNION (SELECT ... FROM table)
    *   UNION ('1', '2', '3')
+   *   ORDER BY table.a ASC, foo, sum DESC
+   *   LIMIT 200
+   *   OFFSET 100
    * UPDATE table SET ...
    * INSERT ... INTO table
    * DELETE ... FROM table
@@ -115,18 +159,33 @@ trait Sql {
   sealed trait Read[+A]
   object Read {
     sealed case class Select[A, B <: SelectionSet[A]](
-      selection: Selection[A, B], table: Table.Aux[A], whereExpr: Expr[A, Boolean], offset: Option[Long] = None, limit: Option[Long] = None) extends Read[B] {
+      selection: Selection[A, B], table: Table.Aux[A], 
+      whereExpr: Expr[A, Boolean], 
+      orderBy: List[Ordering[Expr[A, Any]]] = Nil, 
+      offset: Option[Long] = None, limit: Option[Long] = None) extends Read[B] { self =>
       def where(whereExpr2: Expr[A, Boolean]): Select[A, B] = 
-        Select(selection, table, Expr.Binary(whereExpr, whereExpr2, BinaryOp.AndBool))
+        copy(whereExpr = Expr.Binary(self.whereExpr, whereExpr2, BinaryOp.AndBool))
 
       def limit(n: Long): Select[A, B] = copy(limit = Some(n))
 
       def offset(n: Long): Select[A, B] = copy(offset = Some(n))
+
+      def orderBy(o: Ordering[Expr[A, Any]], os: Ordering[Expr[A, Any]]*): Select[A, B] = 
+        copy(orderBy = self.orderBy ++ (o :: os.toList))
     }
     
     sealed case class Union[B](left: Read[B], right: Read[B], distinct: Boolean) extends Read[B]
 
     sealed case class Literal[B: TypeTag](values: Iterable[B]) extends Read[B]
+  }
+
+  sealed trait Ordering[+A]
+  object Ordering {
+    sealed case class Asc[A](value: A) extends Ordering[A]
+    sealed case class Desc[A](value: A) extends Ordering[A]
+
+    implicit def exprToOrdering[A, B](expr: Expr[A, B]): Ordering[Expr[A, B]] = 
+      Asc(expr)
   }
 
   /**
@@ -263,6 +322,14 @@ trait Sql {
 
     def <= [A1 <: A, B1 >: B](that: Expr[A1, B1]): Expr[A1, Boolean] = 
       Expr.Relational(self, that, RelationalOp.LessThanEqual)
+
+    def ascending: Ordering[Expr[A, B]] = Ordering.Asc(self)
+
+    def asc: Ordering[Expr[A, B]] = Ordering.Asc(self)
+
+    def descending: Ordering[Expr[A, B]] = Ordering.Desc(self)
+
+    def desc: Ordering[Expr[A, B]] = Ordering.Desc(self)
   }
   object Expr {
     sealed case class Source[A, B] private [Sql] (tableName: TableName, column: Column[B]) extends Expr[A, B]
