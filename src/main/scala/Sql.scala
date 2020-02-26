@@ -1,6 +1,8 @@
 package zio.sql
 
 import scala.language.implicitConversions
+import java.time.LocalDate
+import java.time.LocalTime
 
 trait Sql {
   type ColumnName = String
@@ -8,9 +10,15 @@ trait Sql {
 
   sealed trait TypeTag[A]
   object TypeTag {
-    implicit case object TInt extends TypeTag[Int]
-    implicit case object TLong extends TypeTag[Long]
+    implicit case object TBigDecimal extends TypeTag[BigDecimal]
     implicit case object TBoolean extends TypeTag[Boolean]
+    implicit case object TDouble extends TypeTag[Double]
+    implicit case object TFloat extends TypeTag[Float]
+    implicit case object TInt extends TypeTag[Int]
+    implicit case object TLocalDate extends TypeTag[LocalDate]
+    implicit case object TLocalTime extends TypeTag[LocalTime]
+    implicit case object TLong extends TypeTag[Long]
+    implicit case object TShort extends TypeTag[Short]
     implicit case object TString extends TypeTag[String]
   }
 
@@ -83,9 +91,22 @@ trait Sql {
     def typeTag: TypeTag[A] = implicitly[TypeTag[A]]
   }
   object Column {
+    def boolean(name: String): Column[Boolean] = Column[Boolean](name)
+    def date(name: String): Column[LocalDate] = Column[LocalDate](name)
+    def decimal(name: String): Column[BigDecimal] = Column[BigDecimal](name)
+    def double(name: String): Column[Double] = Column[Double](name)
+    def float(name: String): Column[Float] = Column[Float](name)
     def int(name: String): Column[Int] = Column[Int](name)
     def long(name: String): Column[Long] = Column[Long](name)
+    def short(name: String): Column[Short] = Column[Short](name)
     def string(name: String): Column[String] = Column[String](name)
+    def time(name: String): Column[LocalTime] = Column[LocalTime](name)
+    //TODO binary string type
+    //TODO date time type
+    //TODO interval type
+    //TODO national string type
+    //TODO CLOB / national CLOB
+    //ANSI SQL BNF ref: http://jakewheat.github.io/sql-overview/sql-2011-foundation-grammar.html#predefined-type
   }
 
   sealed trait JoinType
