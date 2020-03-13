@@ -1,8 +1,7 @@
 package zio.sql
 
 import scala.language.implicitConversions
-import java.time.LocalDate
-import java.time.LocalTime
+import java.time._
 
 trait Sql {
   type ColumnName = String
@@ -14,10 +13,14 @@ trait Sql {
     implicit case object TBoolean extends TypeTag[Boolean]
     implicit case object TDouble extends TypeTag[Double]
     implicit case object TFloat extends TypeTag[Float]
+    implicit case object TInstant extends TypeTag[Instant]
     implicit case object TInt extends TypeTag[Int]
     implicit case object TLocalDate extends TypeTag[LocalDate]
+    implicit case object TLocalDateTime extends TypeTag[LocalDateTime]
     implicit case object TLocalTime extends TypeTag[LocalTime]
     implicit case object TLong extends TypeTag[Long]
+    implicit case object TOffsetDateTime extends TypeTag[OffsetDateTime]
+    implicit case object TOffsetTime extends TypeTag[OffsetTime]
     implicit case object TShort extends TypeTag[Short]
     implicit case object TString extends TypeTag[String]
   }
@@ -92,17 +95,21 @@ trait Sql {
   }
   object Column {
     def boolean(name: String): Column[Boolean] = Column[Boolean](name)
-    def date(name: String): Column[LocalDate] = Column[LocalDate](name)
     def decimal(name: String): Column[BigDecimal] = Column[BigDecimal](name)
     def double(name: String): Column[Double] = Column[Double](name)
     def float(name: String): Column[Float] = Column[Float](name)
+    def instant(name: String): Column[Instant] = Column[Instant](name) //as sql TIMESTAMP (?)
     def int(name: String): Column[Int] = Column[Int](name)
+    def localDate(name: String): Column[LocalDate] = Column[LocalDate](name) //as sql DATE
+    def localDateTime(name: String): Column[LocalDateTime] = Column[LocalDateTime](name) //as sql TIMESTAMP (WTIHOUT TIMEZONE)
+    def localTime(name: String): Column[LocalTime] = Column[LocalTime](name) //as sql TIME (WITHOUT TIMEZONE)
     def long(name: String): Column[Long] = Column[Long](name)
+    def offsetDateTime(name: String): Column[OffsetDateTime] = Column[OffsetDateTime](name) //as sql TIMESTAMP WITH TIMEZONE
+    def offsetTime(name: String): Column[OffsetTime] = Column[OffsetTime](name) //as sql TIME WITH TIMEZONE
     def short(name: String): Column[Short] = Column[Short](name)
     def string(name: String): Column[String] = Column[String](name)
-    def time(name: String): Column[LocalTime] = Column[LocalTime](name)
+
     //TODO binary string type
-    //TODO date time type
     //TODO interval type
     //TODO national string type
     //TODO CLOB / national CLOB
