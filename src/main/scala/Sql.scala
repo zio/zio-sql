@@ -249,7 +249,9 @@ trait Sql {
     def computedAs[A, B](expr: Expr[A, B], name: ColumnName): Selection[A, Cons[A, B, Empty]] =
       computedOption(expr, Some(name))
 
-    val selection = constant(1) ++ empty ++ constant("foo") ++ constant(true) ++ empty
+    val selection = 
+      computed(Expr.FunctionCall(Expr.Literal("test"), FunctionDef.CharLength)) ++ 
+      constant(1) ++ empty ++ constant("foo") ++ constant(true) ++ empty
 
     val int :*: str :*: bool :*: _ = selection.columns
   }
@@ -371,6 +373,43 @@ trait Sql {
   }
 
   sealed case class FunctionDef[-A, +B](name: FunctionName)
+  object FunctionDef {
+
+    case class ModOperands(x: Double, y: Double)
+    case class PowerOperands(base: Double, exp: Double)
+    case class WidthBucketOperands(operand: Double, b1: Double, b2: Double, count: Int)
+    case class OverlayOperands(source: String, _with: String, from: Int, _for: Option[Int] = None)
+    case class PositionOperands(substring: String, source: String)
+    case class SubstringOperands(source: String, from: Int, to: Option[Int])
+    case class TrimOperands(source: String, spec: Option[TrimSpec] = None)
+    trait TrimSpec
+    case class Leading(chars: Option[String] = None) extends TrimSpec
+    case class Trailing(chars: Option[String] = None) extends TrimSpec
+    case class Both(chars: Option[String] = None) extends TrimSpec
+
+    //match functions
+    val Abs = FunctionDef[Double, Double](FunctionName("abs"))
+    val Ceil = FunctionDef[Double, Double](FunctionName("ceil"))
+    val Exp = FunctionDef[Double, Double](FunctionName("exp"))
+    val Floor = FunctionDef[Double, Double](FunctionName("floor"))
+    //val Log = FunctionDef[Double, Double](FunctionName("log")) //not part of SQL 2011 spec
+    val Ln = FunctionDef[Double, Double](FunctionName("ln"))
+    val Mod = FunctionDef[ModOperands, Double](FunctionName("mod"))
+    val Power = FunctionDef[PowerOperands, Double](FunctionName("power"))
+    val Sqrt = FunctionDef[Double, Double](FunctionName("sqrt"))
+    val WidthBucket = FunctionDef[WidthBucketOperands, Int](FunctionName("width bucket"))
+
+    //string functions
+    val CharLength = FunctionDef[String, Int](FunctionName("character length"))
+    val Lower = FunctionDef[String, String](FunctionName("lower"))
+    val OctetLength = FunctionDef[String, Int](FunctionName("octet length"))
+    val Overlay = FunctionDef[OverlayOperands, String](FunctionName("overlay"))
+    val Position = FunctionDef[PositionOperands, Int](FunctionName("position"))
+    val Substring = FunctionDef[SubstringOperands, String](FunctionName("substring"))
+    //TODO substring regex
+    val Trim = FunctionDef[TrimOperands, String](FunctionName("trim"))
+    val Upper = FunctionDef[String, String](FunctionName("upper"))
+  }
 }
 
 /*
