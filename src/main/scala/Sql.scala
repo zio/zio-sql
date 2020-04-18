@@ -1,6 +1,7 @@
 package zio.sql
 
 import scala.language.implicitConversions
+
 import java.time._
 
 trait Sql {
@@ -11,6 +12,8 @@ trait Sql {
   object TypeTag {
     implicit case object TBigDecimal extends TypeTag[BigDecimal]
     implicit case object TBoolean extends TypeTag[Boolean]
+    implicit case object TByteArray extends TypeTag[Array[Byte]]
+    implicit case object TChar extends TypeTag[Char]
     implicit case object TDouble extends TypeTag[Double]
     implicit case object TFloat extends TypeTag[Float]
     implicit case object TInstant extends TypeTag[Instant]
@@ -23,6 +26,7 @@ trait Sql {
     implicit case object TOffsetTime extends TypeTag[OffsetTime]
     implicit case object TShort extends TypeTag[Short]
     implicit case object TString extends TypeTag[String]
+    implicit case object TZonedDateTime extends TypeTag[ZonedDateTime]
   }
 
   sealed case class ColumnSchema[A](value: A)
@@ -93,27 +97,35 @@ trait Sql {
   sealed case class Column[A: TypeTag](name: String) {
     def typeTag: TypeTag[A] = implicitly[TypeTag[A]]
   }
-  object Column {
-    def boolean(name: String): Column[Boolean] = Column[Boolean](name)
-    def decimal(name: String): Column[BigDecimal] = Column[BigDecimal](name)
-    def double(name: String): Column[Double] = Column[Double](name)
-    def float(name: String): Column[Float] = Column[Float](name)
-    def instant(name: String): Column[Instant] = Column[Instant](name) //as sql TIMESTAMP (?)
-    def int(name: String): Column[Int] = Column[Int](name)
-    def localDate(name: String): Column[LocalDate] = Column[LocalDate](name) //as sql DATE
-    def localDateTime(name: String): Column[LocalDateTime] = Column[LocalDateTime](name) //as sql TIMESTAMP (WTIHOUT TIMEZONE)
-    def localTime(name: String): Column[LocalTime] = Column[LocalTime](name) //as sql TIME (WITHOUT TIMEZONE)
-    def long(name: String): Column[Long] = Column[Long](name)
-    def offsetDateTime(name: String): Column[OffsetDateTime] = Column[OffsetDateTime](name) //as sql TIMESTAMP WITH TIMEZONE
-    def offsetTime(name: String): Column[OffsetTime] = Column[OffsetTime](name) //as sql TIME WITH TIMEZONE
-    def short(name: String): Column[Short] = Column[Short](name)
-    def string(name: String): Column[String] = Column[String](name)
+  object Column {                                                                           // | SQL                          | PostgreSQL                           | T-SQL
+    def bigDecimal(name: String): Column[BigDecimal]         = Column[BigDecimal](name)     // | decimal/dec/numeric          | decimal/numeric                      | decimal/numeric
+    def boolean(name: String): Column[Boolean]               = Column[Boolean](name)        // | boolean                      | boolean                              | bit
+    def byteArray(name: String): Column[Array[Byte]]         = Column[Array[Byte]](name)    // | blob                         | bytea                                | varbinary(max)
+    def char(name: String): Column[Char]                     = Column[Char](name)           // | char(n)/character(n)         | char/character/char(1)/character(1)  | nchar(1)
+    def double(name: String): Column[Double]                 = Column[Double](name)         // | double precision/float(n)    | double precision/float(25-53)/float8 | double precision/float(53)
+    def float(name: String): Column[Float]                   = Column[Float](name)          // | real/float(n)                | real/float(1-24)/float4              | real/float(24)
+    def instant(name: String): Column[Instant]               = Column[Instant](name)        // | timestamp (WITHOUT TIMEZONE) | [*] timestamp (WITHOUT TIMEZONE)     | ???
+    def int(name: String): Column[Int]                       = Column[Int](name)            // | int/integer                  | int/integer/int4                     | int
+    def localDate(name: String): Column[LocalDate]           = Column[LocalDate](name)      // | date                         | date                                 | date
+    def localDateTime(name: String): Column[LocalDateTime]   = Column[LocalDateTime](name)  // | timestamp (WITHOUT TIMEZONE) | timestamp (WITHOUT TIMEZONE)         | datetime/datetime2
+    def localTime(name: String): Column[LocalTime]           = Column[LocalTime](name)      // | time (WITHOUT TIMEZONE)      | time (WITHOUT TIMEZONE)              | time
+    def long(name: String): Column[Long]                     = Column[Long](name)           // | bigint                       | bigint/int8                          | bigint
+    def offsetDateTime(name: String): Column[OffsetDateTime] = Column[OffsetDateTime](name) // | timestamp WITH TIMEZONE      | timestamp WITH TIMEZONE              | datetimeoffset
+    def offsetTime(name: String): Column[OffsetTime]         = Column[OffsetTime](name)     // | time WITH TIMEZONE           | time WITH TIMEZONE                   | ???
+    def short(name: String): Column[Short]                   = Column[Short](name)          // | smallint                     | smallint/int2                        | smallint
+    def string(name: String): Column[String]                 = Column[String](name)         // | varchar(n)                   | [**] varchar                         | [**] nvarchar(max)
+    def zonedDateTime(name: String): Column[ZonedDateTime]   = Column[ZonedDateTime](name)  // | timestamp WITH TIMEZONE      | timestamp WITH TIMEZONE              | datetimeoffset
 
-    //TODO binary string type
-    //TODO interval type
-    //TODO national string type
-    //TODO CLOB / national CLOB
-    //ANSI SQL BNF ref: http://jakewheat.github.io/sql-overview/sql-2011-foundation-grammar.html#predefined-type
+    // [*] Java Instant has nanosecond resolution while PostgreSQL's date/time data types are in microseconds
+    // [**] 'n' in varchar(n) mean different things - in PostgreSQL it's number of chars, but in T-SQL it's number of bytes. That's why for T-SQL it's nvarchar.
+    //
+    //TODO research: how to represent UUID in different dbs
+    //TODO research: how to represent byte in different dbs
+    //TODO research: SQL defines 'interval' type. See if databases support it and if it's useful for some Scala types (eg. FiniteDuration)
+    
+    //ANSI SQL BNF 2011 ref: http://jakewheat.github.io/sql-overview/sql-2011-foundation-grammar.html#predefined-type
+    //PostgreSQL Data types https://www.postgresql.org/docs/12/datatype.html
+    //T-SQL Data types https://docs.microsoft.com/en-us/sql/t-sql/data-types/data-types-transact-sql?view=sql-server-ver15
   }
 
   sealed trait JoinType
