@@ -8,6 +8,8 @@ trait Sql {
   type ColumnName = String
   type TableName = String
 
+  type TypeTagExtension[+A]
+
   sealed trait TypeTag[A]
   object TypeTag {
     implicit case object TBigDecimal extends TypeTag[BigDecimal]
@@ -27,6 +29,10 @@ trait Sql {
     implicit case object TShort extends TypeTag[Short]
     implicit case object TString extends TypeTag[String]
     implicit case object TZonedDateTime extends TypeTag[ZonedDateTime]
+    sealed case class TDialectSpecific[A](typeTagExtension: TypeTagExtension[A]) extends TypeTag[A]
+
+    implicit def dialectSpecific[A](implicit typeTagExtension: TypeTagExtension[A]): TypeTag[A] = 
+      TDialectSpecific(typeTagExtension)
   }
 
   sealed case class ColumnSchema[A](value: A)
