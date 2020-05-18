@@ -222,8 +222,6 @@ trait Sql {
       Read.Select(selection, table, true, Nil)
   }
 
-  
-
   sealed case class DeleteBuilder[A](table: Table.Aux[A]) {
     def where[F](expr: Expr[F, A, Boolean]): Delete[F, A] = Delete(table, expr)
   }
@@ -234,13 +232,14 @@ trait Sql {
   )
 
   // UPDATE table
-  // SET foo = bar 
+  // SET foo = bar
   // WHERE baz > buzz
   sealed case class Update[A](table: Table.Aux[A], set: List[Set[_, A]], whereExpr: Expr[_, A, Boolean]) {
-    def set[F: Features.IsSource, Value](lhs: Expr[F, A, Value], rhs: Expr[_, A, Value]): Update[A] = 
+
+    def set[F: Features.IsSource, Value](lhs: Expr[F, A, Value], rhs: Expr[_, A, Value]): Update[A] =
       copy(set = set :+ Set(lhs, rhs))
 
-    def where(whereExpr2: Expr[_, A, Boolean]): Update[A] = 
+    def where(whereExpr2: Expr[_, A, Boolean]): Update[A] =
       copy(whereExpr = whereExpr && whereExpr2)
   }
 
@@ -250,15 +249,19 @@ trait Sql {
     def lhs: Expr[F, A, Value]
     def rhs: Expr[_, A, Value]
   }
+
   object Set {
     type Aux[F, -A, Value0] = Set[F, A] { type Value = Value0 }
 
-    def apply[F: Features.IsSource, A, Value0](lhs0: Expr[F, A, Value0], rhs0: Expr[_, A, Value0]): Set.Aux[F, A, Value0] = 
+    def apply[F: Features.IsSource, A, Value0](
+      lhs0: Expr[F, A, Value0],
+      rhs0: Expr[_, A, Value0]
+    ): Set.Aux[F, A, Value0] =
       new Set[F, A] {
-        type Value = Value0 
+        type Value = Value0
 
-        def lhs = lhs0 
-        def rhs = rhs0 
+        def lhs = lhs0
+        def rhs = rhs0
       }
   }
 
@@ -277,8 +280,8 @@ trait Sql {
       selection: Selection[F, A, B],
       table: Table.Aux[A],
       whereExpr: Expr[_, A, Boolean],
-      groupBy: List[Expr[_, A, Any]],
-      orderBy: List[Ordering[Expr[_, A, Any]]] = Nil,
+      groupBy: List[Expr[_, A, _]],
+      orderBy: List[Ordering[Expr[_, A, _]]] = Nil,
       offset: Option[Long] = None,
       limit: Option[Long] = None
     ) extends Read[B] { self =>
@@ -290,10 +293,10 @@ trait Sql {
 
       def offset(n: Long): Select[F, A, B] = copy(offset = Some(n))
 
-      def orderBy(o: Ordering[Expr[_, A, Any]], os: Ordering[Expr[_, A, Any]]*): Select[F, A, B] =
+      def orderBy(o: Ordering[Expr[_, A, _]], os: Ordering[Expr[_, A, _]]*): Select[F, A, B] =
         copy(orderBy = self.orderBy ++ (o :: os.toList))
 
-      def groupBy(key: Expr[_, A, Any], keys: Expr[_, A, Any]*)(
+      def groupBy(key: Expr[_, A, _], keys: Expr[_, A, _]*)(
         implicit ev: Features.IsAggregated[F]
       ): Select[F, A, B] = {
         val _ = ev
@@ -452,22 +455,22 @@ trait Sql {
     case object GreaterThanEqual extends RelationalOp
   }
 
-  type :||: [A, B] = Features.Union[A, B]
+  type :||:[A, B] = Features.Union[A, B]
 
   /**
    * Models a function `A => B`.
    * SELECT product.price + 10
    */
-  sealed trait Expr[F, -A, +B] { self =>
+  sealed trait Expr[F, -A, B] { self =>
 
-    def + [F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =
-      Expr.Binary(self, that, BinaryOp.Add[B1]())
+    def + [F2, A1 <: A](that: Expr[F2, A1, B])(implicit ev: IsNumeric[B]): Expr[F :||: F2, A1, B] =
+      Expr.Binary(self, that, BinaryOp.Add[B]())
 
-    def - [F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =
-      Expr.Binary(self, that, BinaryOp.Sub[B1]())
+    def - [F2, A1 <: A](that: Expr[F2, A1, B])(implicit ev: IsNumeric[B]): Expr[F :||: F2, A1, B] =
+      Expr.Binary(self, that, BinaryOp.Sub[B]())
 
-    def * [F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =
-      Expr.Binary(self, that, BinaryOp.Sub[B1]())
+    def * [F2, A1 <: A](that: Expr[F2, A1, B])(implicit ev: IsNumeric[B]): Expr[F :||: F2, A1, B] =
+      Expr.Binary(self, that, BinaryOp.Sub[B]())
 
     def && [F2, A1 <: A](that: Expr[F2, A1, Boolean])(implicit ev: B <:< Boolean): Expr[F :||: F2, A1, Boolean] =
       Expr.Binary(self.widen[Boolean], that, BinaryOp.AndBool)
@@ -475,22 +478,22 @@ trait Sql {
     def || [F2, A1 <: A](that: Expr[F2, A1, Boolean])(implicit ev: B <:< Boolean): Expr[F :||: F2, A1, Boolean] =
       Expr.Binary(self.widen[Boolean], that, BinaryOp.OrBool)
 
-    def === [F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
+    def === [F2, A1 <: A](that: Expr[F2, A1, B]): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.Equals)
 
-    def > [F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
+    def > [F2, A1 <: A](that: Expr[F2, A1, B]): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.GreaterThan)
 
-    def < [F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
+    def < [F2, A1 <: A](that: Expr[F2, A1, B]): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.LessThan)
 
-    def >= [F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
+    def >= [F2, A1 <: A](that: Expr[F2, A1, B]): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.GreaterThanEqual)
 
-    def <= [F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
+    def <= [F2, A1 <: A](that: Expr[F2, A1, B]): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.LessThanEqual)
 
-    def as[B1 >: B](name: String): Selection[F, A, SelectionSet.Cons[A, B1, SelectionSet.Empty]] =
+    def as(name: String): Selection[F, A, SelectionSet.Cons[A, B, SelectionSet.Empty]] =
       Selection.computedAs(self, name)
 
     def ascending: Ordering[Expr[F, A, B]] = Ordering.Asc(self)
@@ -501,7 +504,7 @@ trait Sql {
 
     def desc: Ordering[Expr[F, A, B]] = Ordering.Desc(self)
 
-    def in[B1 >: B](set: Read[B1]): Expr[F, A, Boolean] = Expr.In(self, set)
+    def in(set: Read[B]): Expr[F, A, Boolean] = Expr.In(self, set)
 
     def widen[C](implicit ev: B <:< C): Expr[F, A, C] = {
       val _ = ev
@@ -513,12 +516,13 @@ trait Sql {
   object Features {
     type Aggregated[_]
     type Union[_, _]
-    type Source 
+    type Source
     type Literal
 
     sealed trait IsAggregated[A]
+
     object IsAggregated {
-      def apply[A](implicit is: IsAggregated[A]): IsAggregated[A] = is 
+      def apply[A](implicit is: IsAggregated[A]): IsAggregated[A] = is
 
       implicit def AggregatedIsAggregated[A]: IsAggregated[Aggregated[A]] = ???
 
@@ -527,6 +531,7 @@ trait Sql {
 
     @implicitNotFound("You can only use this function on a column in the source table")
     sealed trait IsSource[A]
+
     object IsSource {
       implicit case object SourceIsSource extends IsSource[Source]
     }
@@ -535,15 +540,19 @@ trait Sql {
   object Expr {
     implicit def literal[A: TypeTag](a: A): Expr[Features.Literal, Any, A] = Expr.Literal(a)
 
-    sealed case class Source[A, B] private[Sql] (tableName: TableName, column: Column[B])         extends Expr[Features.Source, A, B]
-    sealed case class Binary[F1, F2, A, B](left: Expr[F1, A, B], right: Expr[F2, A, B], op: BinaryOp[B]) extends Expr[Features.Union[F1, F2], A, B]
+    sealed case class Source[A, B] private[Sql] (tableName: TableName, column: Column[B])
+        extends Expr[Features.Source, A, B]
+
+    sealed case class Binary[F1, F2, A, B](left: Expr[F1, A, B], right: Expr[F2, A, B], op: BinaryOp[B])
+        extends Expr[Features.Union[F1, F2], A, B]
 
     sealed case class Relational[F1, F2, A, B](left: Expr[F1, A, B], right: Expr[F2, A, B], op: RelationalOp)
         extends Expr[Features.Union[F1, F2], A, Boolean]
     sealed case class In[F, A, B](value: Expr[F, A, B], set: Read[B]) extends Expr[F, A, Boolean]
     sealed case class Literal[B: TypeTag](value: B)                   extends Expr[Features.Literal, Any, B]
 
-    sealed case class AggregationCall[F, A, B, Z](param: Expr[F, A, B], aggregation: AggregationDef[B, Z]) extends Expr[Features.Aggregated[F], A, Z]
+    sealed case class AggregationCall[F, A, B, Z](param: Expr[F, A, B], aggregation: AggregationDef[B, Z])
+        extends Expr[Features.Aggregated[F], A, Z]
 
     sealed case class FunctionCall1[F, A, B, Z](param: Expr[F, A, B], function: FunctionDef[B, Z]) extends Expr[F, A, Z]
 
@@ -569,20 +578,20 @@ trait Sql {
     ) extends Expr[Features.Union[F1, Features.Union[F2, Features.Union[F3, F4]]], A, Z]
   }
 
-  sealed case class AggregationDef[-A, +B](name: FunctionName) { self =>
+  sealed case class AggregationDef[-A, B](name: FunctionName) { self =>
 
-    def apply[F, Source](expr: Expr[F, Source, A]): Expr[Features.Aggregated[F], Source, B] =
+    def apply[F, Source, A1 <: A](expr: Expr[F, Source, A1]): Expr[Features.Aggregated[F], Source, B] =
       Expr.AggregationCall(expr, self)
   }
 
   object AggregationDef {
-    val Count     = AggregationDef[Any, Long](FunctionName("count"))
-    val Sum       = AggregationDef[Double, Double](FunctionName("sum"))
-    val Arbitrary = AggregationDef[Any, Any](FunctionName("arbitrary"))
+    val Count: AggregationDef[Any, Long] = AggregationDef(FunctionName("count"))
+    val Sum                              = AggregationDef[Double, Double](FunctionName("sum"))
+    val Arbitrary                        = AggregationDef[Any, Any](FunctionName("arbitrary"))
   }
 
-  sealed case class FunctionDef[-A, +B](name: FunctionName) { self =>
-    def apply[F, Source](param1: Expr[F, Source, A]): Expr[F, Source, B] = Expr.FunctionCall1(param1, self)
+  sealed case class FunctionDef[-A, B](name: FunctionName) { self =>
+    def apply[F, Source, A1 <: A](param1: Expr[F, Source, A1]): Expr[F, Source, B] = Expr.FunctionCall1(param1, self)
 
     def apply[F1, F2, A1 <: A, Source, P1, P2](param1: Expr[F1, Source, P1], param2: Expr[F2, Source, P2])(
       implicit ev: A1 =:= (P1, P2)
@@ -657,12 +666,15 @@ trait Sql {
     val query1 =
       (select {
         ((age + 2) as "age") ++ (name as "name") ++ (Abs(3.0) as "dummy")
-      } from table).limit(200).offset(1000).orderBy(age.descending)
+      } from table)
+        .limit(200)
+        .offset(1000)
+        .orderBy(age.descending)
 
     val query2 =
       (select {
         (Arbitrary(age) as "age") ++ (Count(name) as "count")
-      } from table).groupBy(age)
+      } from table) groupBy age
 
     deleteFrom(table).where(age === 3)
 
