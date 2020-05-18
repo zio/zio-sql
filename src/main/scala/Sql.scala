@@ -658,12 +658,10 @@ trait Sql {
 
     val age2 :*: name2 :*: _ = table2.columns
 
-    val joined = (table join table2) on (age === age2)
-
     import FunctionDef._
     import AggregationDef._
 
-    val query1 =
+    val queried =
       (select {
         ((age + 2) as "age") ++ (name as "name") ++ (Abs(3.0) as "dummy")
       } from table)
@@ -671,16 +669,22 @@ trait Sql {
         .offset(1000)
         .orderBy(age.descending)
 
-    val query2 =
+    val joined =
+      select {
+        (age as "age") ++ (age2 as "age2")
+      } from (table join table2).on(name === name2)
+
+    val aggregated =
       (select {
-        (Arbitrary(age) as "age") ++ (Count(name) as "count")
+        (Arbitrary(age) as "age") ++ (Count(1) as "count")
       } from table) groupBy age
 
-    deleteFrom(table).where(age === 3)
+    val deleted = deleteFrom(table).where(age === 3)
 
-    update(table)
-      .set(age, age + 2)
-      .set(name, "foo")
-      .where(age > 100)
+    val updated =
+      update(table)
+        .set(age, age + 2)
+        .set(name, "foo")
+        .where(age > 100)
   }
 }
