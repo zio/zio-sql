@@ -10,12 +10,14 @@ object InfrastructureHelper {
     def name: String = self match {
       case Database.Postgres => "postgres"
       case Database.MySQL    => "mysql"
+      case Database.MSSQL    => "mssql"
       case Database.Oracle   => "oracle"
     }
 
     def port: Int = self match {
       case Database.Postgres => 5432
       case Database.MySQL    => 3306
+      case Database.MSSQL    => 1433
       case Database.Oracle   => 1521
     }
   }
@@ -23,6 +25,7 @@ object InfrastructureHelper {
   object Database {
     case object Postgres extends Database
     case object MySQL    extends Database
+    case object MSSQL    extends Database
     case object Oracle   extends Database
   }
 

@@ -26,6 +26,12 @@ startMySQL := startService(Database.MySQL, streams.value)
 lazy val stopMySQL = taskKey[Unit]("Shut down MySQL")
 stopMySQL := stopService(Database.MySQL, streams.value)
 
+lazy val startMsSQL = taskKey[Unit]("Start up Microsoft SQL Server")
+startMsSQL := startService(Database.MSSQL, streams.value)
+
+lazy val stopMsSQL = taskKey[Unit]("Shut down Microsoft SQL Server")
+stopMsSQL := stopService(Database.MSSQL, streams.value)
+
 lazy val startOracle = taskKey[Unit]("Start up Oracle")
 startOracle := startService(Database.Oracle, streams.value)
 
