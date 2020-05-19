@@ -18,5 +18,5 @@ ZIO SQL does not offer Language Integrated Queries (LINQ) or similar functionali
 
 If you want to learn more, please check out:
 
-[ZIO SQL Homepage](https://zio.github.io/zio-sql)
-[ZIO SQL Discord](https://discord.gg/2ccFBr4)
+ - [ZIO SQL Homepage](https://zio.github.io/zio-sql)
+ - [ZIO SQL Discord](https://discord.gg/2ccFBr4)
