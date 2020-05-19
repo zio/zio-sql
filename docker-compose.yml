@@ -1,0 +1,33 @@
+version: '3.1'
+
+services:
+  postgres:
+    image: postgres:12
+    restart: always
+    environment:
+      POSTGRES_USER: zio_user
+      POSTGRES_PASSWORD: zio_pw
+    ports:
+      - "5432:5432"
+
+  mysql:
+    image: mysql:8
+    restart: always
+    environment:
+      MYSQL_USER: zio_user
+      MYSQL_PASSWORD: zio_pw
+      MYSQL_ROOT_PASSWORD: zio_pw
+    ports:
+      - "3306:3306"
+
+  oracle:
+    image: oracleinanutshell/oracle-xe-11g
+    restart: always
+    environment:
+      ORACLE_ALLOW_REMOTE: 'true'
+      ORACLE_DISABLE_ASYNCH_IO: 'true'
+    ports:
+      - "1521:1521"
+      - "5500:5500"
+    # Username: system
+    # Password: oracle
