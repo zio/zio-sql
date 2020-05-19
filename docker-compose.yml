@@ -20,6 +20,17 @@ services:
     ports:
       - "3306:3306"
 
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    restart: always
+    environment:
+      ACCEPT_EULA: Y
+      SA_PASSWORD: zio_pw123ABC!
+      MSSQL_PID: Developer
+    ports:
+    - "1433:1433"
+      # Username: sa
+
   oracle:
     image: oracleinanutshell/oracle-xe-11g
     restart: always
@@ -29,5 +40,6 @@ services:
     ports:
       - "1521:1521"
       - "5500:5500"
+    # SID: XE
     # Username: system
     # Password: oracle
