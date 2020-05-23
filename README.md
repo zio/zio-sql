@@ -11,7 +11,7 @@ ZIO SQL can be used as a library for modeling SQL in a type-safe ADT. In additio
 
 For the JDBC module: 
 
- - Like Slick, ZIO SQL has an emphasis on type-safe SQL construction using Scala values and methods. However, ZIO SQL utilizes reified lenses, contravariant intersection types, and in-query nullability to improve ergonomics for end-users.
+ - Like Slick, ZIO SQL has an emphasis on type-safe SQL construction using Scala values and methods. However, ZIO SQL utilizes reified lenses, contravariant intersection types, and in-query nullability to improve ergonomics for end-users. Unlike Slick, the intention is to use names resembling SQL instead of trying to mimic the Scala collections.
  - Like Doobie, ZIO SQL is purely functional, but ZIO SQL does compile-time query validation that catches most issues, and has rich ZIO integration, offering improved type-safety compared to monofunctor effects and minimal dependencies (depending only on ZIO).
 
 ZIO SQL does not offer Language Integrated Queries (LINQ) or similar functionality. It is intended only as a data model for representing SQL queries and an accompanying lightweight JDBC-based executor.
