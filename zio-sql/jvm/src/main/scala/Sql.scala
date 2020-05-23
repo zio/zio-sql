@@ -583,9 +583,9 @@ trait Sql {
     }
   }
 
-  sealed case class AggregationDef[-A, B](name: FunctionName) { self =>
+  sealed case class AggregationDef[-A, +B](name: FunctionName) { self =>
 
-    def apply[F, Source, A1 <: A](expr: Expr[F, Source, A1]): Expr[Features.Aggregated[F], Source, B] =
+    def apply[F, Source](expr: Expr[F, Source, A]): Expr[Features.Aggregated[F], Source, B] =
       Expr.AggregationCall(expr, self)
   }
 
