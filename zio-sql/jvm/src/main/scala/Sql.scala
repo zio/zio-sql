@@ -65,7 +65,7 @@ trait Sql {
     type ColumnsRepr[T]
     type Append[That <: ColumnSet] <: ColumnSet
 
-    def ++ [That <: ColumnSet](that: That): Append[That]
+    def ++[That <: ColumnSet](that: That): Append[That]
 
     def columnsUntyped: List[Column.Untyped]
 
@@ -81,7 +81,7 @@ trait Sql {
       type ColumnsRepr[_]            = Unit
       type Append[That <: ColumnSet] = That
 
-      override def ++ [That <: ColumnSet](that: That): Append[That] = that
+      override def ++[That <: ColumnSet](that: That): Append[That] = that
 
       override def columnsUntyped: List[Column.Untyped] = Nil
 
@@ -92,7 +92,7 @@ trait Sql {
       type ColumnsRepr[T]            = (Expr[Features.Source, T, A], tail.ColumnsRepr[T])
       type Append[That <: ColumnSet] = Cons[A, tail.Append[That]]
 
-      override def ++ [That <: ColumnSet](that: That): Append[That] = Cons(head, tail ++ that)
+      override def ++[That <: ColumnSet](that: That): Append[That] = Cons(head, tail ++ that)
 
       override def columnsUntyped: List[Column.Untyped] = head :: tail.columnsUntyped
 
@@ -327,7 +327,7 @@ trait Sql {
   sealed case class Selection[F, -A, +B <: SelectionSet[A]](value: B) { self =>
     type SelectionType
 
-    def ++ [F2, A1 <: A, C <: SelectionSet[A1]](
+    def ++[F2, A1 <: A, C <: SelectionSet[A1]](
       that: Selection[F2, A1, C]
     ): Selection[F :||: F2, A1, self.value.Append[A1, C]] =
       Selection(self.value ++ that.value)
@@ -379,7 +379,7 @@ trait Sql {
 
     type Append[Source1, That <: SelectionSet[Source1]] <: SelectionSet[Source1]
 
-    def ++ [Source1 <: Source, That <: SelectionSet[Source1]](that: That): Append[Source1, That]
+    def ++[Source1 <: Source, That <: SelectionSet[Source1]](that: That): Append[Source1, That]
 
     def selectionsUntyped: List[ColumnSelection[Source, _]]
 
@@ -394,7 +394,7 @@ trait Sql {
 
       override type Append[Source1, That <: SelectionSet[Source1]] = That
 
-      override def ++ [Source1 <: Any, That <: SelectionSet[Source1]](that: That): Append[Source1, That] =
+      override def ++[Source1 <: Any, That <: SelectionSet[Source1]](that: That): Append[Source1, That] =
         that
 
       override def selectionsUntyped: List[ColumnSelection[Any, _]] = Nil
@@ -409,7 +409,7 @@ trait Sql {
       override type Append[Source1, That <: SelectionSet[Source1]] =
         Cons[Source1, A, tail.Append[Source1, That]]
 
-      override def ++ [Source1 <: Source, That <: SelectionSet[Source1]](that: That): Append[Source1, That] =
+      override def ++[Source1 <: Source, That <: SelectionSet[Source1]](that: That): Append[Source1, That] =
         Cons[Source1, A, tail.Append[Source1, That]](head, tail ++ that)
 
       override def selectionsUntyped: List[ColumnSelection[Source, _]] = head :: tail.selectionsUntyped
@@ -463,34 +463,34 @@ trait Sql {
    */
   sealed trait Expr[F, -A, B] { self =>
 
-    def + [F2, A1 <: A](that: Expr[F2, A1, B])(implicit ev: IsNumeric[B]): Expr[F :||: F2, A1, B] =
+    def +[F2, A1 <: A](that: Expr[F2, A1, B])(implicit ev: IsNumeric[B]): Expr[F :||: F2, A1, B] =
       Expr.Binary(self, that, BinaryOp.Add[B]())
 
-    def - [F2, A1 <: A](that: Expr[F2, A1, B])(implicit ev: IsNumeric[B]): Expr[F :||: F2, A1, B] =
+    def -[F2, A1 <: A](that: Expr[F2, A1, B])(implicit ev: IsNumeric[B]): Expr[F :||: F2, A1, B] =
       Expr.Binary(self, that, BinaryOp.Sub[B]())
 
-    def * [F2, A1 <: A](that: Expr[F2, A1, B])(implicit ev: IsNumeric[B]): Expr[F :||: F2, A1, B] =
+    def *[F2, A1 <: A](that: Expr[F2, A1, B])(implicit ev: IsNumeric[B]): Expr[F :||: F2, A1, B] =
       Expr.Binary(self, that, BinaryOp.Sub[B]())
 
-    def && [F2, A1 <: A](that: Expr[F2, A1, Boolean])(implicit ev: B <:< Boolean): Expr[F :||: F2, A1, Boolean] =
+    def &&[F2, A1 <: A](that: Expr[F2, A1, Boolean])(implicit ev: B <:< Boolean): Expr[F :||: F2, A1, Boolean] =
       Expr.Binary(self.widen[Boolean], that, BinaryOp.AndBool)
 
-    def || [F2, A1 <: A](that: Expr[F2, A1, Boolean])(implicit ev: B <:< Boolean): Expr[F :||: F2, A1, Boolean] =
+    def ||[F2, A1 <: A](that: Expr[F2, A1, Boolean])(implicit ev: B <:< Boolean): Expr[F :||: F2, A1, Boolean] =
       Expr.Binary(self.widen[Boolean], that, BinaryOp.OrBool)
 
-    def === [F2, A1 <: A](that: Expr[F2, A1, B]): Expr[F :||: F2, A1, Boolean] =
+    def ===[F2, A1 <: A](that: Expr[F2, A1, B]): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.Equals)
 
-    def > [F2, A1 <: A](that: Expr[F2, A1, B]): Expr[F :||: F2, A1, Boolean] =
+    def >[F2, A1 <: A](that: Expr[F2, A1, B]): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.GreaterThan)
 
-    def < [F2, A1 <: A](that: Expr[F2, A1, B]): Expr[F :||: F2, A1, Boolean] =
+    def <[F2, A1 <: A](that: Expr[F2, A1, B]): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.LessThan)
 
-    def >= [F2, A1 <: A](that: Expr[F2, A1, B]): Expr[F :||: F2, A1, Boolean] =
+    def >=[F2, A1 <: A](that: Expr[F2, A1, B]): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.GreaterThanEqual)
 
-    def <= [F2, A1 <: A](that: Expr[F2, A1, B]): Expr[F :||: F2, A1, Boolean] =
+    def <=[F2, A1 <: A](that: Expr[F2, A1, B]): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.LessThanEqual)
 
     def as(name: String): Selection[F, A, SelectionSet.Cons[A, B, SelectionSet.Empty]] =
@@ -593,31 +593,28 @@ trait Sql {
   sealed case class FunctionDef[-A, B](name: FunctionName) { self =>
     def apply[F, Source, A1 <: A](param1: Expr[F, Source, A1]): Expr[F, Source, B] = Expr.FunctionCall1(param1, self)
 
-    def apply[F1, F2, A1 <: A, Source, P1, P2](param1: Expr[F1, Source, P1], param2: Expr[F2, Source, P2])(
-      implicit ev: A1 =:= (P1, P2)
+    def apply[F1, F2, Source, P1, P2](param1: Expr[F1, Source, P1], param2: Expr[F2, Source, P2])(
+      implicit ev: (P1, P2) <:< A
     ): Expr[F1 :||: F2, Source, B] =
-      Expr.FunctionCall2(param1, param2, (self: FunctionDef[A1, B]).narrow[A1, (P1, P2)])
+      Expr.FunctionCall2(param1, param2, self.narrow[(P1, P2)])
 
-    def apply[F1, F2, F3, A1 <: A, Source, P1, P2, P3](
+    def apply[F1, F2, F3, Source, P1, P2, P3](
       param1: Expr[F1, Source, P1],
       param2: Expr[F2, Source, P2],
       param3: Expr[F3, Source, P3]
-    )(implicit ev: A1 =:= (P1, P2, P3)): Expr[F1 :||: F2 :||: F3, Source, B] =
-      Expr.FunctionCall3(param1, param2, param3, (self: FunctionDef[A1, B]).narrow[A1, (P1, P2, P3)])
+    )(implicit ev: (P1, P2, P3) <:< A): Expr[F1 :||: F2 :||: F3, Source, B] =
+      Expr.FunctionCall3(param1, param2, param3, self.narrow[(P1, P2, P3)])
 
-    def apply[F1, F2, F3, F4, A1 <: A, Source, P1, P2, P3, P4](
+    def apply[F1, F2, F3, F4, Source, P1, P2, P3, P4](
       param1: Expr[F1, Source, P1],
       param2: Expr[F2, Source, P2],
       param3: Expr[F3, Source, P3],
       param4: Expr[F4, Source, P4]
-    )(implicit ev: A1 =:= (P1, P2, P3, P4)): Expr[F1 :||: F2 :||: F3 :||: F4, Source, B] =
-      Expr.FunctionCall4(param1, param2, param3, param4, (self: FunctionDef[A1, B]).narrow[A1, (P1, P2, P3, P4)])
+    )(implicit ev: (P1, P2, P3, P4) <:< A): Expr[F1 :||: F2 :||: F3 :||: F4, Source, B] =
+      Expr.FunctionCall4(param1, param2, param3, param4, self.narrow[(P1, P2, P3, P4)])
 
-    def narrow[A1 <: A, C](implicit ev: A1 =:= C): FunctionDef[C, B] = {
-      val _ = ev
-
+    def narrow[C](implicit ev: C <:< A): FunctionDef[C, B] =
       self.asInstanceOf[FunctionDef[C, B]]
-    }
   }
 
   object FunctionDef {
