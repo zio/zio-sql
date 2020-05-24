@@ -280,8 +280,8 @@ trait Sql {
       selection: Selection[F, A, B],
       table: Table.Aux[A],
       whereExpr: Expr[_, A, Boolean],
-      groupBy: List[Expr[_, A, _]],
-      orderBy: List[Ordering[Expr[_, A, _]]] = Nil,
+      groupBy: List[Expr[_, A, Any]],
+      orderBy: List[Ordering[Expr[_, A, Any]]] = Nil,
       offset: Option[Long] = None,
       limit: Option[Long] = None
     ) extends Read[B] { self =>
@@ -293,10 +293,10 @@ trait Sql {
 
       def offset(n: Long): Select[F, A, B] = copy(offset = Some(n))
 
-      def orderBy(o: Ordering[Expr[_, A, _]], os: Ordering[Expr[_, A, _]]*): Select[F, A, B] =
+      def orderBy(o: Ordering[Expr[_, A, Any]], os: Ordering[Expr[_, A, Any]]*): Select[F, A, B] =
         copy(orderBy = self.orderBy ++ (o :: os.toList))
 
-      def groupBy(key: Expr[_, A, _], keys: Expr[_, A, _]*)(
+      def groupBy(key: Expr[_, A, Any], keys: Expr[_, A, Any]*)(
         implicit ev: Features.IsAggregated[F]
       ): Select[F, A, B] = {
         val _ = ev
@@ -464,13 +464,13 @@ trait Sql {
   sealed trait Expr[F, -A, +B] { self =>
 
     def +[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =
-      Expr.Binary(self, that, BinaryOp.Add())
+      Expr.Binary(self, that, BinaryOp.Add[B1]())
 
     def -[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =
-      Expr.Binary(self, that, BinaryOp.Sub())
+      Expr.Binary(self, that, BinaryOp.Sub[B1]())
 
     def *[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =
-      Expr.Binary(self, that, BinaryOp.Sub())
+      Expr.Binary(self, that, BinaryOp.Mul[B1]())
 
     def &&[F2, A1 <: A, B1 >: B](
       that: Expr[F2, A1, Boolean]
@@ -497,12 +497,12 @@ trait Sql {
     def <=[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.LessThanEqual)
 
+    def as[B1 >: B](name: String): Selection[F, A, SelectionSet.Cons[A, B1, SelectionSet.Empty]] =
+      Selection.computedAs(self, name)
+
     def ascending: Ordering[Expr[F, A, B]] = Ordering.Asc(self)
 
     def asc: Ordering[Expr[F, A, B]] = Ordering.Asc(self)
-
-    def as[B1 >: B](name: String): Selection[F, A, SelectionSet.Cons[A, B1, SelectionSet.Empty]] =
-      Selection.computedAs(self, name)
 
     def descending: Ordering[Expr[F, A, B]] = Ordering.Desc(self)
 
