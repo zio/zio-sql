@@ -236,7 +236,7 @@ trait Sql {
   // WHERE baz > buzz
   sealed case class Update[A](table: Table.Aux[A], set: List[Set[_, A]], whereExpr: Expr[_, A, Boolean]) {
 
-    def set[F: Features.IsSource, Value](lhs: Expr[F, A, Value], rhs: Expr[_, A, Value]): Update[A] =
+    def set[F: Features.IsSource, Value: TypeTag](lhs: Expr[F, A, Value], rhs: Expr[_, A, Value]): Update[A] =
       copy(set = set :+ Set(lhs, rhs))
 
     def where(whereExpr2: Expr[_, A, Boolean]): Update[A] =
@@ -501,13 +501,17 @@ trait Sql {
 
     def asc: Ordering[Expr[F, A, B]] = Ordering.Asc(self)
 
+    def as[B1 >: B](name: String): Selection[F, A, SelectionSet.Cons[A, B1, SelectionSet.Empty]] =
+      Selection.computedAs(self, name)
+
     def descending: Ordering[Expr[F, A, B]] = Ordering.Desc(self)
 
     def desc: Ordering[Expr[F, A, B]] = Ordering.Desc(self)
 
+    def in[B1 >: B](set: Read[B1]): Expr[F, A, Boolean] = Expr.In(self, set)
+
     def widen[C](implicit ev: B <:< C): Expr[F, A, C] = {
       val _ = ev
-
       self.asInstanceOf[Expr[F, A, C]]
     }
   }
@@ -575,12 +579,6 @@ trait Sql {
       param4: Expr[F4, A, E],
       function: FunctionDef[(B, C, D, E), Z]
     ) extends Expr[Features.Union[F1, Features.Union[F2, Features.Union[F3, F4]]], A, Z]
-
-    implicit final class ExprSyntax[F, A, B](private val self: Expr[F, A, B]) {
-      def as(name: String): Selection[F, A, SelectionSet.Cons[A, B, SelectionSet.Empty]] =
-        Selection.computedAs(self, name)
-      def in(set: Read[B]): Expr[F, A, Boolean] = Expr.In(self, set)
-    }
   }
 
   sealed case class AggregationDef[-A, +B](name: FunctionName) { self =>
@@ -618,8 +616,10 @@ trait Sql {
     )(implicit ev: (P1, P2, P3, P4) <:< A): Expr[F1 :||: F2 :||: F3 :||: F4, Source, B] =
       Expr.FunctionCall4(param1, param2, param3, param4, self.narrow[(P1, P2, P3, P4)])
 
-    def narrow[C](implicit ev: C <:< A): FunctionDef[C, B] =
+    def narrow[C](implicit ev: C <:< A): FunctionDef[C, B] = {
+      val _ = ev
       self.asInstanceOf[FunctionDef[C, B]]
+    }
   }
 
   object FunctionDef {
