@@ -1,8 +1,9 @@
 package zio.sql
 
 import scala.language.implicitConversions
-
 import java.time._
+import java.util.UUID
+
 import scala.annotation.implicitNotFound
 
 trait Sql {
@@ -30,6 +31,7 @@ trait Sql {
     implicit case object TOffsetTime                                             extends TypeTag[OffsetTime]
     implicit case object TShort                                                  extends TypeTag[Short]
     implicit case object TString                                                 extends TypeTag[String]
+    implicit case object TUUID                                                   extends TypeTag[UUID]
     implicit case object TZonedDateTime                                          extends TypeTag[ZonedDateTime]
     sealed case class TDialectSpecific[A](typeTagExtension: TypeTagExtension[A]) extends TypeTag[A]
 
@@ -65,7 +67,7 @@ trait Sql {
     type ColumnsRepr[T]
     type Append[That <: ColumnSet] <: ColumnSet
 
-    def ++ [That <: ColumnSet](that: That): Append[That]
+    def ++[That <: ColumnSet](that: That): Append[That]
 
     def columnsUntyped: List[Column.Untyped]
 
@@ -81,7 +83,7 @@ trait Sql {
       type ColumnsRepr[_]            = Unit
       type Append[That <: ColumnSet] = That
 
-      override def ++ [That <: ColumnSet](that: That): Append[That] = that
+      override def ++[That <: ColumnSet](that: That): Append[That] = that
 
       override def columnsUntyped: List[Column.Untyped] = Nil
 
@@ -92,7 +94,7 @@ trait Sql {
       type ColumnsRepr[T]            = (Expr[Features.Source, T, A], tail.ColumnsRepr[T])
       type Append[That <: ColumnSet] = Cons[A, tail.Append[That]]
 
-      override def ++ [That <: ColumnSet](that: That): Append[That] = Cons(head, tail ++ that)
+      override def ++[That <: ColumnSet](that: That): Append[That] = Cons(head, tail ++ that)
 
       override def columnsUntyped: List[Column.Untyped] = head :: tail.columnsUntyped
 
@@ -125,6 +127,7 @@ trait Sql {
     def short(name: String): Singleton[Short]                   = singleton[Short](name)
     def singleton[A: TypeTag](name: String): Singleton[A]       = Cons(Column[A](name), Empty)
     def string(name: String): Singleton[String]                 = singleton[String](name)
+    def uuid(name: String): Singleton[UUID]                     = singleton[UUID](name)
     def zonedDateTime(name: String): Singleton[ZonedDateTime]   = singleton[ZonedDateTime](name)
   }
 
@@ -327,7 +330,7 @@ trait Sql {
   sealed case class Selection[F, -A, +B <: SelectionSet[A]](value: B) { self =>
     type SelectionType
 
-    def ++ [F2, A1 <: A, C <: SelectionSet[A1]](
+    def ++[F2, A1 <: A, C <: SelectionSet[A1]](
       that: Selection[F2, A1, C]
     ): Selection[F :||: F2, A1, self.value.Append[A1, C]] =
       Selection(self.value ++ that.value)
@@ -379,7 +382,7 @@ trait Sql {
 
     type Append[Source1, That <: SelectionSet[Source1]] <: SelectionSet[Source1]
 
-    def ++ [Source1 <: Source, That <: SelectionSet[Source1]](that: That): Append[Source1, That]
+    def ++[Source1 <: Source, That <: SelectionSet[Source1]](that: That): Append[Source1, That]
 
     def selectionsUntyped: List[ColumnSelection[Source, _]]
 
@@ -394,7 +397,7 @@ trait Sql {
 
       override type Append[Source1, That <: SelectionSet[Source1]] = That
 
-      override def ++ [Source1 <: Any, That <: SelectionSet[Source1]](that: That): Append[Source1, That] =
+      override def ++[Source1 <: Any, That <: SelectionSet[Source1]](that: That): Append[Source1, That] =
         that
 
       override def selectionsUntyped: List[ColumnSelection[Any, _]] = Nil
@@ -409,7 +412,7 @@ trait Sql {
       override type Append[Source1, That <: SelectionSet[Source1]] =
         Cons[Source1, A, tail.Append[Source1, That]]
 
-      override def ++ [Source1 <: Source, That <: SelectionSet[Source1]](that: That): Append[Source1, That] =
+      override def ++[Source1 <: Source, That <: SelectionSet[Source1]](that: That): Append[Source1, That] =
         Cons[Source1, A, tail.Append[Source1, That]](head, tail ++ that)
 
       override def selectionsUntyped: List[ColumnSelection[Source, _]] = head :: tail.selectionsUntyped
@@ -463,34 +466,34 @@ trait Sql {
    */
   sealed trait Expr[F, -A, B] { self =>
 
-    def + [F2, A1 <: A](that: Expr[F2, A1, B])(implicit ev: IsNumeric[B]): Expr[F :||: F2, A1, B] =
+    def +[F2, A1 <: A](that: Expr[F2, A1, B])(implicit ev: IsNumeric[B]): Expr[F :||: F2, A1, B] =
       Expr.Binary(self, that, BinaryOp.Add[B]())
 
-    def - [F2, A1 <: A](that: Expr[F2, A1, B])(implicit ev: IsNumeric[B]): Expr[F :||: F2, A1, B] =
+    def -[F2, A1 <: A](that: Expr[F2, A1, B])(implicit ev: IsNumeric[B]): Expr[F :||: F2, A1, B] =
       Expr.Binary(self, that, BinaryOp.Sub[B]())
 
-    def * [F2, A1 <: A](that: Expr[F2, A1, B])(implicit ev: IsNumeric[B]): Expr[F :||: F2, A1, B] =
+    def *[F2, A1 <: A](that: Expr[F2, A1, B])(implicit ev: IsNumeric[B]): Expr[F :||: F2, A1, B] =
       Expr.Binary(self, that, BinaryOp.Sub[B]())
 
-    def && [F2, A1 <: A](that: Expr[F2, A1, Boolean])(implicit ev: B <:< Boolean): Expr[F :||: F2, A1, Boolean] =
+    def &&[F2, A1 <: A](that: Expr[F2, A1, Boolean])(implicit ev: B <:< Boolean): Expr[F :||: F2, A1, Boolean] =
       Expr.Binary(self.widen[Boolean], that, BinaryOp.AndBool)
 
-    def || [F2, A1 <: A](that: Expr[F2, A1, Boolean])(implicit ev: B <:< Boolean): Expr[F :||: F2, A1, Boolean] =
+    def ||[F2, A1 <: A](that: Expr[F2, A1, Boolean])(implicit ev: B <:< Boolean): Expr[F :||: F2, A1, Boolean] =
       Expr.Binary(self.widen[Boolean], that, BinaryOp.OrBool)
 
-    def === [F2, A1 <: A](that: Expr[F2, A1, B]): Expr[F :||: F2, A1, Boolean] =
+    def ===[F2, A1 <: A](that: Expr[F2, A1, B]): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.Equals)
 
-    def > [F2, A1 <: A](that: Expr[F2, A1, B]): Expr[F :||: F2, A1, Boolean] =
+    def >[F2, A1 <: A](that: Expr[F2, A1, B]): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.GreaterThan)
 
-    def < [F2, A1 <: A](that: Expr[F2, A1, B]): Expr[F :||: F2, A1, Boolean] =
+    def <[F2, A1 <: A](that: Expr[F2, A1, B]): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.LessThan)
 
-    def >= [F2, A1 <: A](that: Expr[F2, A1, B]): Expr[F :||: F2, A1, Boolean] =
+    def >=[F2, A1 <: A](that: Expr[F2, A1, B]): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.GreaterThanEqual)
 
-    def <= [F2, A1 <: A](that: Expr[F2, A1, B]): Expr[F :||: F2, A1, Boolean] =
+    def <=[F2, A1 <: A](that: Expr[F2, A1, B]): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.LessThanEqual)
 
     def as(name: String): Selection[F, A, SelectionSet.Cons[A, B, SelectionSet.Empty]] =
