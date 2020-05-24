@@ -598,31 +598,28 @@ trait Sql {
   sealed case class FunctionDef[-A, +B](name: FunctionName) { self =>
     def apply[F, Source](param1: Expr[F, Source, A]): Expr[F, Source, B] = Expr.FunctionCall1(param1, self)
 
-    def apply[F1, F2, A1 <: A, Source, P1, P2](param1: Expr[F1, Source, P1], param2: Expr[F2, Source, P2])(
-      implicit ev: A1 =:= (P1, P2)
+    def apply[F1, F2, Source, P1, P2](param1: Expr[F1, Source, P1], param2: Expr[F2, Source, P2])(
+      implicit ev: (P1, P2) <:< A
     ): Expr[F1 :||: F2, Source, B] =
-      Expr.FunctionCall2(param1, param2, (self: FunctionDef[A1, B]).narrow[A1, (P1, P2)])
+      Expr.FunctionCall2(param1, param2, self.narrow[(P1, P2)])
 
-    def apply[F1, F2, F3, A1 <: A, Source, P1, P2, P3](
+    def apply[F1, F2, F3, Source, P1, P2, P3](
       param1: Expr[F1, Source, P1],
       param2: Expr[F2, Source, P2],
       param3: Expr[F3, Source, P3]
-    )(implicit ev: A1 =:= (P1, P2, P3)): Expr[F1 :||: F2 :||: F3, Source, B] =
-      Expr.FunctionCall3(param1, param2, param3, (self: FunctionDef[A1, B]).narrow[A1, (P1, P2, P3)])
+    )(implicit ev: (P1, P2, P3) <:< A): Expr[F1 :||: F2 :||: F3, Source, B] =
+      Expr.FunctionCall3(param1, param2, param3, self.narrow[(P1, P2, P3)])
 
-    def apply[F1, F2, F3, F4, A1 <: A, Source, P1, P2, P3, P4](
+    def apply[F1, F2, F3, F4, Source, P1, P2, P3, P4](
       param1: Expr[F1, Source, P1],
       param2: Expr[F2, Source, P2],
       param3: Expr[F3, Source, P3],
       param4: Expr[F4, Source, P4]
-    )(implicit ev: A1 =:= (P1, P2, P3, P4)): Expr[F1 :||: F2 :||: F3 :||: F4, Source, B] =
-      Expr.FunctionCall4(param1, param2, param3, param4, (self: FunctionDef[A1, B]).narrow[A1, (P1, P2, P3, P4)])
+    )(implicit ev: (P1, P2, P3, P4) <:< A): Expr[F1 :||: F2 :||: F3 :||: F4, Source, B] =
+      Expr.FunctionCall4(param1, param2, param3, param4, self.narrow[(P1, P2, P3, P4)])
 
-    def narrow[A1 <: A, C](implicit ev: A1 =:= C): FunctionDef[C, B] = {
-      val _ = ev
-
+    def narrow[C](implicit ev: C <:< A): FunctionDef[C, B] =
       self.asInstanceOf[FunctionDef[C, B]]
-    }
   }
 
   object FunctionDef {
