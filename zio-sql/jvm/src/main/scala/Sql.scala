@@ -547,8 +547,8 @@ trait Sql {
   object Expr {
     implicit def literal[A: TypeTag](a: A): Expr[Features.Literal, Any, A] = Expr.Literal(a)
 
-    sealed case class Source[A, B] private[Sql] (tableName: TableName, column: Column[B])
-        extends Expr[Features.Source, A, B]
+    sealed case class Source[B] private[Sql] (tableName: TableName, column: Column[B])
+        extends Expr[Features.Source, Any, B]
 
     sealed case class Binary[F1, F2, A, B](left: Expr[F1, A, B], right: Expr[F2, A, B], op: BinaryOp[B])
         extends Expr[Features.Union[F1, F2], A, B]
