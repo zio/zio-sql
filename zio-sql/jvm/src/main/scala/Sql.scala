@@ -595,6 +595,9 @@ trait Sql {
     val Count: AggregationDef[Any, Long] = AggregationDef(FunctionName("count"))
     val Sum                              = AggregationDef[Double, Double](FunctionName("sum"))
     val Arbitrary                        = AggregationDef[Any, Any](FunctionName("arbitrary"))
+    val Avg                              = AggregationDef[Double, Double](FunctionName("avg"))
+    val Min                              = AggregationDef[Any, Any](FunctionName("min"))
+    val Max                              = AggregationDef[Any, Any](FunctionName("max"))
   }
 
   sealed case class FunctionDef[-A, +B](name: FunctionName) { self =>
