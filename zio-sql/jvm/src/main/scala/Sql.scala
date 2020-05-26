@@ -105,7 +105,7 @@ trait Sql {
         }
 
       override protected def mkColumns[T](name: TableName): ColumnsRepr[T] =
-        (Expr.Source(name, head), tail.mkColumns(name))
+        (Expr.source(name, head), tail.mkColumns(name))
     }
 
     def bigDecimal(name: String): Singleton[BigDecimal]         = singleton[BigDecimal](name)
@@ -363,7 +363,7 @@ trait Sql {
       computedOption(expr, Some(name))
 
     val selection =
-      computed(FunctionDef.CharLength(Expr.Literal("test"))) ++
+      computed(FunctionDef.CharLength(Expr.literal("test"))) ++
         constant(1) ++ empty ++ constant("foo") ++ constant(true) ++ empty
 
     val int :*: str :*: bool :*: _ = selection.columns
@@ -465,41 +465,41 @@ trait Sql {
    * Models a function `A => B`.
    * SELECT product.price + 10
    */
-  sealed trait Expr[F, -A, +B] { self =>
+  sealed case class Expr[F, -A, +B](caseValue: Expr.ExprCase[F, A, B, Expr[_, _, _]]) { self =>
 
     def +[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =
-      Expr.Binary(self, that, BinaryOp.Add[B1]())
+      Expr.binary(self, that, BinaryOp.Add[B1]())
 
     def -[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =
-      Expr.Binary(self, that, BinaryOp.Sub[B1]())
+      Expr.binary(self, that, BinaryOp.Sub[B1]())
 
     def *[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =
-      Expr.Binary(self, that, BinaryOp.Mul[B1]())
+      Expr.binary(self, that, BinaryOp.Mul[B1]())
 
     def &&[F2, A1 <: A, B1 >: B](
       that: Expr[F2, A1, Boolean]
     )(implicit ev: B <:< Boolean): Expr[F :||: F2, A1, Boolean] =
-      Expr.Binary(self.widen[Boolean], that, BinaryOp.AndBool)
+      Expr.binary(self.widen[Boolean], that, BinaryOp.AndBool)
 
     def ||[F2, A1 <: A, B1 >: B](
       that: Expr[F2, A1, Boolean]
     )(implicit ev: B <:< Boolean): Expr[F :||: F2, A1, Boolean] =
-      Expr.Binary(self.widen[Boolean], that, BinaryOp.OrBool)
+      Expr.binary(self.widen[Boolean], that, BinaryOp.OrBool)
 
     def ===[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
-      Expr.Relational(self, that, RelationalOp.Equals)
+      Expr.relational(self, that, RelationalOp.Equals)
 
     def >[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
-      Expr.Relational(self, that, RelationalOp.GreaterThan)
+      Expr.relational(self, that, RelationalOp.GreaterThan)
 
     def <[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
-      Expr.Relational(self, that, RelationalOp.LessThan)
+      Expr.relational(self, that, RelationalOp.LessThan)
 
     def >=[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
-      Expr.Relational(self, that, RelationalOp.GreaterThanEqual)
+      Expr.relational(self, that, RelationalOp.GreaterThanEqual)
 
     def <=[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
-      Expr.Relational(self, that, RelationalOp.LessThanEqual)
+      Expr.relational(self, that, RelationalOp.LessThanEqual)
 
     def as[B1 >: B](name: String): Selection[F, A, SelectionSet.Cons[A, B1, SelectionSet.Empty]] =
       Selection.computedAs(self, name)
@@ -512,12 +512,36 @@ trait Sql {
 
     def desc: Ordering[Expr[F, A, B]] = Ordering.Desc(self)
 
-    def in[B1 >: B](set: Read[B1]): Expr[F, A, Boolean] = Expr.In(self, set)
+    def in[B1 >: B](set: Read[B1]): Expr[F, A, Boolean] = Expr.in(self, set)
 
     def widen[C](implicit ev: B <:< C): Expr[F, A, C] = {
       val _ = ev
       self.asInstanceOf[Expr[F, A, C]]
     }
+
+    def fold[Z](f: Expr.ExprCase[_, _, _, Z] => Z): Z =
+      caseValue match {
+        case c: Expr.AggregationCallCase[_, _, _, _, Expr[_, _, _]] =>
+          f(Expr.AggregationCallCase(c.param.fold(f), c.aggregation))
+        case c: Expr.BinaryCase[_, _, _, _, Expr[_, _, _]] =>
+          f(Expr.BinaryCase(c.left.fold(f), c.right.fold(f), c.op))
+        case c: Expr.FunctionCall1Case[_, _, _, _, Expr[_, _, _]] =>
+          f(Expr.FunctionCall1Case(c.param.fold(f), c.function))
+        case c: Expr.FunctionCall2Case[_, _, _, _, _, _, Expr[_, _, _]] =>
+          f(Expr.FunctionCall2Case(c.param1.fold(f), c.param2.fold(f), c.function))
+        case c: Expr.FunctionCall3Case[_, _, _, _, _, _, _, _, Expr[_, _, _] @unchecked] =>
+          f(Expr.FunctionCall3Case(c.param1.fold(f), c.param2.fold(f), c.param2.fold(f), c.function))
+        case c: Expr.FunctionCall4Case[_, _, _, _, _, _, _, _, _, _, Expr[_, _, _] @unchecked] =>
+          f(Expr.FunctionCall4Case(c.param1.fold(f), c.param2.fold(f), c.param3.fold(f), c.param4.fold(f), c.function))
+        case c: Expr.InCase[_, _, _, Expr[_, _, _]] =>
+          f(Expr.InCase(c.value.fold(f), c.set))
+        case c: Expr.LiteralCase[_] =>
+          f(c)
+        case c: Expr.RelationalCase[_, _, _, _, Expr[_, _, _]] =>
+          f(Expr.RelationalCase(c.left.fold(f), c.right.fold(f), c.op))
+        case c: Expr.SourceCase[_, _] =>
+          f(c)
+      }
   }
 
   object Features {
@@ -545,50 +569,103 @@ trait Sql {
   }
 
   object Expr {
-    implicit def literal[A: TypeTag](a: A): Expr[Features.Literal, Any, A] = Expr.Literal(a)
 
-    sealed case class Source[A, B] private[Sql] (tableName: TableName, column: Column[B])
-        extends Expr[Features.Source, A, B]
+    def aggregationCall[F, A, B, Z](
+      param: Expr[F, A, B],
+      aggregationDef: AggregationDef[B, Z]
+    ): Expr[Features.Aggregated[F], A, Z] =
+      Expr(Expr.AggregationCallCase(param, aggregationDef))
 
-    sealed case class Binary[F1, F2, A, B](left: Expr[F1, A, B], right: Expr[F2, A, B], op: BinaryOp[B])
-        extends Expr[Features.Union[F1, F2], A, B]
+    def binary[F1, F2, A, B](left: Expr[F1, A, B], right: Expr[F2, A, B], op: BinaryOp[B]): Expr[F1 :||: F2, A, B] =
+      Expr(Expr.BinaryCase(left, right, op))
 
-    sealed case class Relational[F1, F2, A, B](left: Expr[F1, A, B], right: Expr[F2, A, B], op: RelationalOp)
-        extends Expr[Features.Union[F1, F2], A, Boolean]
-    sealed case class In[F, A, B](value: Expr[F, A, B], set: Read[B]) extends Expr[F, A, Boolean]
-    sealed case class Literal[B: TypeTag](value: B)                   extends Expr[Features.Literal, Any, B]
+    def functionCall1[F, A, B, Z](param: Expr[F, A, B], function: FunctionDef[B, Z]): Expr[F, A, Z] =
+      Expr(Expr.FunctionCall1Case(param, function))
 
-    sealed case class AggregationCall[F, A, B, Z](param: Expr[F, A, B], aggregation: AggregationDef[B, Z])
-        extends Expr[Features.Aggregated[F], A, Z]
-
-    sealed case class FunctionCall1[F, A, B, Z](param: Expr[F, A, B], function: FunctionDef[B, Z]) extends Expr[F, A, Z]
-
-    sealed case class FunctionCall2[F1, F2, A, B, C, Z](
+    def functionCall2[F1, F2, A, B, C, Z](
       param1: Expr[F1, A, B],
       param2: Expr[F2, A, C],
       function: FunctionDef[(B, C), Z]
-    ) extends Expr[Features.Union[F1, F2], A, Z]
+    ): Expr[F1 :||: F2, A, Z] =
+      Expr(Expr.FunctionCall2Case(param1, param2, function))
 
-    sealed case class FunctionCall3[F1, F2, F3, A, B, C, D, Z](
+    def functionCall3[F1, F2, F3, A, B, C, D, Z](
       param1: Expr[F1, A, B],
       param2: Expr[F2, A, C],
       param3: Expr[F3, A, D],
       function: FunctionDef[(B, C, D), Z]
-    ) extends Expr[Features.Union[F1, Features.Union[F2, F3]], A, Z]
+    ): Expr[F1 :||: F2 :||: F3, A, Z] =
+      Expr(Expr.FunctionCall3Case(param1, param2, param3, function))
 
-    sealed case class FunctionCall4[F1, F2, F3, F4, A, B, C, D, E, Z](
+    def functionCall4[F1, F2, F3, F4, A, B, C, D, E, Z](
       param1: Expr[F1, A, B],
       param2: Expr[F2, A, C],
       param3: Expr[F3, A, D],
       param4: Expr[F4, A, E],
       function: FunctionDef[(B, C, D, E), Z]
-    ) extends Expr[Features.Union[F1, Features.Union[F2, Features.Union[F3, F4]]], A, Z]
+    ): Expr[F1 :||: F2 :||: F3 :||: F4, A, Z] =
+      Expr(Expr.FunctionCall4Case(param1, param2, param3, param4, function))
+
+    def in[F, A, B](value: Expr[F, A, B], set: Read[B]): Expr[F, A, Boolean] =
+      Expr(Expr.InCase(value, set))
+
+    implicit def literal[A: TypeTag](a: A): Expr[Features.Literal, Any, A] =
+      Expr(Expr.LiteralCase(a))
+
+    def relational[F1, F2, A, B](
+      left: Expr[F1, A, B],
+      right: Expr[F2, A, B],
+      op: RelationalOp
+    ): Expr[F1 :||: F2, A, Boolean] =
+      Expr(Expr.RelationalCase(left, right, op))
+
+    private[sql] def source[A, B](tableName: TableName, column: Column[B]): Expr[Features.Source, A, B] =
+      Expr(Expr.SourceCase(tableName, column))
+
+    trait ExprCase[F, -A, +B, +T]
+
+    sealed case class AggregationCallCase[F, A, B, Z, T](param: T, aggregation: AggregationDef[B, Z])
+        extends ExprCase[Features.Aggregated[F], A, Z, T]
+
+    sealed case class BinaryCase[F1, F2, A, B, T](left: T, right: T, op: BinaryOp[B])
+        extends ExprCase[Features.Union[F1, F2], A, B, T]
+
+    sealed case class FunctionCall1Case[F, A, B, Z, T](param: T, function: FunctionDef[B, Z])
+        extends ExprCase[F, A, Z, T]
+
+    sealed case class FunctionCall2Case[F1, F2, A, B, C, Z, T](param1: T, param2: T, function: FunctionDef[(B, C), Z])
+        extends ExprCase[Features.Union[F1, F2], A, Z, T]
+
+    sealed case class FunctionCall3Case[F1, F2, F3, A, B, C, D, Z, T](
+      param1: T,
+      param2: T,
+      param3: T,
+      function: FunctionDef[(B, C, D), Z]
+    ) extends ExprCase[Features.Union[F1, Features.Union[F2, F3]], A, Z, Nothing]
+
+    sealed case class FunctionCall4Case[F1, F2, F3, F4, A, B, C, D, E, Z, T](
+      param1: T,
+      param2: T,
+      param3: T,
+      param4: T,
+      function: FunctionDef[(B, C, D, E), Z]
+    ) extends ExprCase[Features.Union[F1, Features.Union[F2, Features.Union[F3, F4]]], A, Z, Nothing]
+
+    sealed case class InCase[F, A, B, T](value: T, set: Read[B]) extends ExprCase[F, A, Boolean, T]
+
+    sealed case class LiteralCase[B: TypeTag](value: B) extends ExprCase[Features.Literal, Any, B, Nothing]
+
+    sealed case class RelationalCase[F1, F2, A, B, T](left: T, right: T, op: RelationalOp)
+        extends ExprCase[Features.Union[F1, F2], A, Boolean, T]
+
+    sealed case class SourceCase[A, B] private[Sql] (tableName: TableName, column: Column[B])
+        extends ExprCase[Features.Source, A, B, Nothing]
   }
 
   sealed case class AggregationDef[-A, +B](name: FunctionName) { self =>
 
     def apply[F, Source](expr: Expr[F, Source, A]): Expr[Features.Aggregated[F], Source, B] =
-      Expr.AggregationCall(expr, self)
+      Expr.aggregationCall(expr, self)
   }
 
   object AggregationDef {
@@ -601,19 +678,20 @@ trait Sql {
   }
 
   sealed case class FunctionDef[-A, +B](name: FunctionName) { self =>
-    def apply[F, Source](param1: Expr[F, Source, A]): Expr[F, Source, B] = Expr.FunctionCall1(param1, self)
+    def apply[F, Source](param1: Expr[F, Source, A]): Expr[F, Source, B] =
+      Expr.functionCall1(param1, self)
 
     def apply[F1, F2, Source, P1, P2](param1: Expr[F1, Source, P1], param2: Expr[F2, Source, P2])(
       implicit ev: (P1, P2) <:< A
     ): Expr[F1 :||: F2, Source, B] =
-      Expr.FunctionCall2(param1, param2, self.narrow[(P1, P2)])
+      Expr.functionCall2(param1, param2, self.narrow[(P1, P2)])
 
     def apply[F1, F2, F3, Source, P1, P2, P3](
       param1: Expr[F1, Source, P1],
       param2: Expr[F2, Source, P2],
       param3: Expr[F3, Source, P3]
     )(implicit ev: (P1, P2, P3) <:< A): Expr[F1 :||: F2 :||: F3, Source, B] =
-      Expr.FunctionCall3(param1, param2, param3, self.narrow[(P1, P2, P3)])
+      Expr.functionCall3(param1, param2, param3, self.narrow[(P1, P2, P3)])
 
     def apply[F1, F2, F3, F4, Source, P1, P2, P3, P4](
       param1: Expr[F1, Source, P1],
@@ -621,7 +699,7 @@ trait Sql {
       param3: Expr[F3, Source, P3],
       param4: Expr[F4, Source, P4]
     )(implicit ev: (P1, P2, P3, P4) <:< A): Expr[F1 :||: F2 :||: F3 :||: F4, Source, B] =
-      Expr.FunctionCall4(param1, param2, param3, param4, self.narrow[(P1, P2, P3, P4)])
+      Expr.functionCall4(param1, param2, param3, param4, self.narrow[(P1, P2, P3, P4)])
 
     def narrow[C](implicit ev: C <:< A): FunctionDef[C, B] = {
       val _ = ev
