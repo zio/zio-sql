@@ -627,16 +627,24 @@ trait Sql {
   }
 
   object FunctionDef {
-    //match functions
+    //math functions
     val Abs   = FunctionDef[Double, Double](FunctionName("abs"))
+    val Acos  = FunctionDef[Double, Double](FunctionName("acos"))
+    val Asin  = FunctionDef[Double, Double](FunctionName("asin"))
+    val Atan  = FunctionDef[Double, Double](FunctionName("atan"))
     val Ceil  = FunctionDef[Double, Double](FunctionName("ceil"))
+    val Cos   = FunctionDef[Double, Double](FunctionName("cos"))
     val Exp   = FunctionDef[Double, Double](FunctionName("exp"))
     val Floor = FunctionDef[Double, Double](FunctionName("floor"))
     //val Log = FunctionDef[Double, Double](FunctionName("log")) //not part of SQL 2011 spec
     val Ln          = FunctionDef[Double, Double](FunctionName("ln"))
     val Mod         = FunctionDef[(Double, Double), Double](FunctionName("mod"))
     val Power       = FunctionDef[(Double, Double), Double](FunctionName("power"))
+    val Round       = FunctionDef[(Double, Int), Double](FunctionName("round"))
+    val Sign        = FunctionDef[Double, Double](FunctionName("sign"))
+    val Sin         = FunctionDef[Double, Double](FunctionName("sin"))
     val Sqrt        = FunctionDef[Double, Double](FunctionName("sqrt"))
+    val Tan         = FunctionDef[Double, Double](FunctionName("tan"))
     val WidthBucket = FunctionDef[(Double, Double, Double, Int), Int](FunctionName("width bucket"))
 
     //string functions
