@@ -651,11 +651,16 @@ trait Sql {
     val WidthBucket = FunctionDef[(Double, Double, Double, Int), Int](FunctionName("width bucket"))
 
     //string functions
+    val Ascii       = FunctionDef[String, Int](FunctionName("ascii"))
     val CharLength  = FunctionDef[String, Int](FunctionName("character length"))
+    val Concat      = FunctionDef[(String, String), String](FunctionName("concat"))
     val Lower       = FunctionDef[String, String](FunctionName("lower"))
+    val Ltrim       = FunctionDef[String, String](FunctionName("ltrim"))
     val OctetLength = FunctionDef[String, Int](FunctionName("octet length"))
     val Overlay     = FunctionDef[(String, String, Int, Option[Int]), String](FunctionName("overlay"))
     val Position    = FunctionDef[(String, String), Int](FunctionName("position"))
+    val Replace     = FunctionDef[(String, String), String](FunctionName("replace"))
+    val Rtrim       = FunctionDef[String, String](FunctionName("rtrim"))
     val Substring   = FunctionDef[(String, Int, Option[Int]), String](FunctionName("substring"))
     //TODO substring regex
     val Trim  = FunctionDef[String, String](FunctionName("trim"))
