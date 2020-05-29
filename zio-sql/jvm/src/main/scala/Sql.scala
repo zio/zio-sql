@@ -461,6 +461,15 @@ trait Sql {
 
   type :||:[A, B] = Features.Union[A, B]
 
+  def exprName[F, A, B](expr: Expr[F, A, B]): Option[String] =
+    expr match {
+      case Expr.Source(_, c) => Some(c.name)
+      case _ => None
+    }
+
+  implicit def expToSelection[F, A, B](expr: Expr[F, A, B]) =
+    Selection.computedOption(expr, exprName(expr))
+
   /**
    * Models a function `A => B`.
    * SELECT product.price + 10
