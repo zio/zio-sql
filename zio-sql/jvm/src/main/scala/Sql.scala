@@ -467,7 +467,7 @@ trait Sql {
       case _ => None
     }
 
-  implicit def expToSelection[F, A, B](expr: Expr[F, A, B]) =
+  implicit def expToSelection[F, A, B](expr: Expr[F, A, B]): Selection[F, A, SelectionSet.Cons[A, B, SelectionSet.Empty]] =
     Selection.computedOption(expr, exprName(expr))
 
   /**
