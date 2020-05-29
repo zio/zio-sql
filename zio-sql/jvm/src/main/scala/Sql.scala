@@ -665,6 +665,9 @@ trait Sql {
     //TODO substring regex
     val Trim  = FunctionDef[String, String](FunctionName("trim"))
     val Upper = FunctionDef[String, String](FunctionName("upper"))
+
+    // date functions
+    val CurrentTimestamp = FunctionDef[Nothing, Instant](FunctionName("current_timestamp"))
   }
 
   object Example1 {
