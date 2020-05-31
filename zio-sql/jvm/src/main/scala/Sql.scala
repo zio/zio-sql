@@ -59,6 +59,7 @@ trait Sql {
     implicit case object TLongIsNumeric   extends AbstractIsNumeric[Long]
     implicit case object TFloatIsNumeric  extends AbstractIsNumeric[Float]
     implicit case object TDoubleIsNumeric extends AbstractIsNumeric[Double]
+    implicit case object TBigDecimalIsNumeric extends AbstractIsNumeric[BigDecimal]
   }
 
   sealed case class ColumnSchema[A](value: A)
