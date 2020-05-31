@@ -70,17 +70,6 @@ object Examples {
         .on(orderId == fkOrderId)
     })
     .groupBy(userId, fName /*, lName */) //shouldn't compile without lName todo fix #38
-
-  val orderDiscounts = select {
-    //(Arbitrary(fkUserId) as "usr_id") ++ (Arbitrary(orderId) as "order_id") ++ (Sum(quantity * unitPrice) as "order")
-    (fkUserId as "usr_id") ++ (orderId as "order_id") ++ (unitPrice as "order_unit_price") ++ (ProductPrices.price as "list_price")
-  } from {
-    orders
-      .join(orderDetails)
-      .on(fkOrderId === orderId)
-      .join(ProductPrices.productPrices)
-      .on(ProductPrices.fkProductId === OrderDetails.fkProductId)
-  }
 }
 object ShopSchema extends Sql { self =>
   import self.ColumnSet._
