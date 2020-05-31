@@ -69,7 +69,7 @@ object Examples {
         .leftOuter(orderDetails)
         .on(orderId == fkOrderId)
     })
-    .groupBy(userId, fName , lName) //shouldn't compile without lName todo fix #38
+    .groupBy(userId, fName /*, lName */) //shouldn't compile without lName todo fix #38
 
   val orderDiscounts = select {
     //(Arbitrary(fkUserId) as "usr_id") ++ (Arbitrary(orderId) as "order_id") ++ (Sum(quantity * unitPrice) as "order")
