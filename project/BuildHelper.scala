@@ -106,11 +106,9 @@ object BuildHelper {
     }
 
   def platformSpecificSources(platform: String, conf: String, baseDirectory: File)(versions: String*) =
-    List("scala" :: versions.toList.map("scala-" + _): _*)
-      .map { version =>
-        baseDirectory.getParentFile / platform.toLowerCase / "src" / conf / version
-      }
-      .filter(_.exists)
+    List("scala" :: versions.toList.map("scala-" + _): _*).map { version =>
+      baseDirectory.getParentFile / platform.toLowerCase / "src" / conf / version
+    }.filter(_.exists)
 
   def crossPlatformSources(scalaVer: String, platform: String, conf: String, baseDir: File, isDotty: Boolean) =
     CrossVersion.partialVersion(scalaVer) match {
