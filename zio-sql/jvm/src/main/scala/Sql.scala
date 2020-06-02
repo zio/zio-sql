@@ -3,6 +3,8 @@ package zio.sql
 import scala.language.implicitConversions
 
 import java.time._
+import java.util.UUID
+
 import scala.annotation.implicitNotFound
 
 trait Sql {
@@ -30,6 +32,7 @@ trait Sql {
     implicit case object TOffsetTime                                             extends TypeTag[OffsetTime]
     implicit case object TShort                                                  extends TypeTag[Short]
     implicit case object TString                                                 extends TypeTag[String]
+    implicit case object TUUID                                                   extends TypeTag[UUID]
     implicit case object TZonedDateTime                                          extends TypeTag[ZonedDateTime]
     sealed case class TDialectSpecific[A](typeTagExtension: TypeTagExtension[A]) extends TypeTag[A]
 
@@ -57,6 +60,7 @@ trait Sql {
     implicit case object TLongIsNumeric   extends AbstractIsNumeric[Long]
     implicit case object TFloatIsNumeric  extends AbstractIsNumeric[Float]
     implicit case object TDoubleIsNumeric extends AbstractIsNumeric[Double]
+    implicit case object TBigDecimalIsNumeric extends AbstractIsNumeric[BigDecimal]
   }
 
   sealed case class ColumnSchema[A](value: A)
@@ -125,6 +129,7 @@ trait Sql {
     def short(name: String): Singleton[Short]                   = singleton[Short](name)
     def singleton[A: TypeTag](name: String): Singleton[A]       = Cons(Column[A](name), Empty)
     def string(name: String): Singleton[String]                 = singleton[String](name)
+    def uuid(name: String): Singleton[UUID]                     = singleton[UUID](name)
     def zonedDateTime(name: String): Singleton[ZonedDateTime]   = singleton[ZonedDateTime](name)
   }
 
