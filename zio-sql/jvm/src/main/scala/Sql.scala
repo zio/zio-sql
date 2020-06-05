@@ -465,7 +465,7 @@ trait Sql {
    * Models a function `A => B`.
    * SELECT product.price + 10
    */
-  sealed case class Expr[F, -A, +B](caseValue: Expr.ExprCase[F, A, B, Expr[_, _, _]]) { self =>
+  sealed case class Expr[F, -A, +B](caseValue: Expr.ExprCase[F, A, B, Expr]) { self =>
 
     def +[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =
       Expr.binary(self, that, BinaryOp.Add[B1]())
@@ -519,29 +519,63 @@ trait Sql {
       self.asInstanceOf[Expr[F, A, C]]
     }
 
-    def fold[Z](f: Expr.ExprCase[_, _, _, Z] => Z): Z =
+    def size: Int =
+      fold[Int] {
+        case Expr.AggregationCallCase(param, _)                        => param + 1
+        case Expr.BinaryCase(left, right, _)                           => left + right + 1
+        case Expr.FunctionCall1Case(param, _)                          => param + 1
+        case Expr.FunctionCall2Case(param1, param2, _)                 => param1 + param2 + 1
+        case Expr.FunctionCall3Case(param1, param2, param3, _)         => param1 + param2 + param3 + 1
+        case Expr.FunctionCall4Case(param1, param2, param3, param4, _) => param1 + param2 + param3 + param4 + 1
+        case Expr.InCase(value, _)                                     => value + 1
+        case Expr.LiteralCase(_)                                       => 1
+        case Expr.RelationalCase(left, right, _)                       => left + right + 1
+        case Expr.SourceCase(_, _)                                     => 1
+      }
+
+    def fold[Z](f: Expr.ExprCase[_, Nothing, Any, ({ type Fold[F, -A, +B] = Z })#Fold] => Z): Z = {
+      type Fold[F, -A, +B] = Z
       caseValue match {
-        case c: Expr.AggregationCallCase[_, _, _, _, Expr[_, _, _]] =>
-          f(Expr.AggregationCallCase(c.param.fold(f), c.aggregation))
-        case c: Expr.BinaryCase[_, _, _, _, Expr[_, _, _]] =>
-          f(Expr.BinaryCase(c.left.fold(f), c.right.fold(f), c.op))
-        case c: Expr.FunctionCall1Case[_, _, _, _, Expr[_, _, _]] =>
-          f(Expr.FunctionCall1Case(c.param.fold(f), c.function))
-        case c: Expr.FunctionCall2Case[_, _, _, _, _, _, Expr[_, _, _]] =>
-          f(Expr.FunctionCall2Case(c.param1.fold(f), c.param2.fold(f), c.function))
-        case c: Expr.FunctionCall3Case[_, _, _, _, _, _, _, _, Expr[_, _, _] @unchecked] =>
-          f(Expr.FunctionCall3Case(c.param1.fold(f), c.param2.fold(f), c.param2.fold(f), c.function))
-        case c: Expr.FunctionCall4Case[_, _, _, _, _, _, _, _, _, _, Expr[_, _, _] @unchecked] =>
-          f(Expr.FunctionCall4Case(c.param1.fold(f), c.param2.fold(f), c.param3.fold(f), c.param4.fold(f), c.function))
-        case c: Expr.InCase[_, _, _, Expr[_, _, _]] =>
-          f(Expr.InCase(c.value.fold(f), c.set))
-        case c: Expr.LiteralCase[_] =>
+        case c: Expr.AggregationCallCase[_, A, _, B, Expr] =>
+          f(Expr.AggregationCallCase[Any, A, Nothing, B, Fold](c.param.fold(f), c.aggregation))
+        case c: Expr.BinaryCase[_, _, A, B, Expr] =>
+          f(Expr.BinaryCase[Any, Any, A, B, Fold](c.left.fold(f), c.right.fold(f), c.op))
+        case c: Expr.FunctionCall1Case[_, A, _, B, Expr] =>
+          f(Expr.FunctionCall1Case[F, A, Nothing, B, Fold](c.param.fold(f), c.function))
+        case c: Expr.FunctionCall2Case[_, _, A, _, _, B, Expr] =>
+          f(
+            Expr
+              .FunctionCall2Case[Any, Any, A, Nothing, Nothing, B, Fold](c.param1.fold(f), c.param2.fold(f), c.function)
+          )
+        case c: Expr.FunctionCall3Case[_, _, _, A, _, _, _, B, Expr] =>
+          f(
+            Expr.FunctionCall3Case[Any, Any, Any, A, Nothing, Nothing, Nothing, B, Fold](
+              c.param1.fold(f),
+              c.param2.fold(f),
+              c.param3.fold(f),
+              c.function
+            )
+          )
+        case c: Expr.FunctionCall4Case[_, _, _, _, A, _, _, _, _, B, Expr] =>
+          f(
+            Expr.FunctionCall4Case[Any, Any, Any, Any, A, Nothing, Nothing, Nothing, Nothing, B, Fold](
+              c.param1.fold(f),
+              c.param2.fold(f),
+              c.param3.fold(f),
+              c.param4.fold(f),
+              c.function
+            )
+          )
+        case c: Expr.InCase[F, A, _, Expr] =>
+          f(Expr.InCase[F, A, Any, Fold](c.value.fold(f), c.set))
+        case c: Expr.LiteralCase[B] =>
           f(c)
-        case c: Expr.RelationalCase[_, _, _, _, Expr[_, _, _]] =>
-          f(Expr.RelationalCase(c.left.fold(f), c.right.fold(f), c.op))
-        case c: Expr.SourceCase[_, _] =>
+        case c: Expr.RelationalCase[_, _, A, _, Expr] =>
+          f(Expr.RelationalCase[Any, Any, A, Any, Fold](c.left.fold(f), c.right.fold(f), c.op))
+        case c: Expr.SourceCase[A, B] =>
           f(c)
       }
+    }
   }
 
   object Features {
@@ -622,41 +656,49 @@ trait Sql {
     private[sql] def source[A, B](tableName: TableName, column: Column[B]): Expr[Features.Source, A, B] =
       Expr(Expr.SourceCase(tableName, column))
 
-    trait ExprCase[F, -A, +B, +T]
+    trait ExprCase[F, -A, +B, +T[_, -_, +_]]
 
-    sealed case class AggregationCallCase[F, A, B, Z, T](param: T, aggregation: AggregationDef[B, Z])
-        extends ExprCase[Features.Aggregated[F], A, Z, T]
+    sealed case class AggregationCallCase[F, A, B, Z, T[_, -_, +_]](
+      param: T[F, A, B],
+      aggregation: AggregationDef[B, Z]
+    ) extends ExprCase[Features.Aggregated[F], A, Z, T]
 
-    sealed case class BinaryCase[F1, F2, A, B, T](left: T, right: T, op: BinaryOp[B])
+    sealed case class BinaryCase[F1, F2, A, B, T[_, -_, +_]](left: T[F1, A, B], right: T[F2, A, B], op: BinaryOp[B])
         extends ExprCase[Features.Union[F1, F2], A, B, T]
 
-    sealed case class FunctionCall1Case[F, A, B, Z, T](param: T, function: FunctionDef[B, Z])
+    sealed case class FunctionCall1Case[F, A, B, Z, T[_, -_, +_]](param: T[F, A, B], function: FunctionDef[B, Z])
         extends ExprCase[F, A, Z, T]
 
-    sealed case class FunctionCall2Case[F1, F2, A, B, C, Z, T](param1: T, param2: T, function: FunctionDef[(B, C), Z])
-        extends ExprCase[Features.Union[F1, F2], A, Z, T]
+    sealed case class FunctionCall2Case[F1, F2, A, B, C, Z, T[_, -_, +_]](
+      param1: T[F1, A, B],
+      param2: T[F2, A, C],
+      function: FunctionDef[(B, C), Z]
+    ) extends ExprCase[Features.Union[F1, F2], A, Z, T]
 
-    sealed case class FunctionCall3Case[F1, F2, F3, A, B, C, D, Z, T](
-      param1: T,
-      param2: T,
-      param3: T,
+    sealed case class FunctionCall3Case[F1, F2, F3, A, B, C, D, Z, T[_, -_, +_]](
+      param1: T[F1, A, B],
+      param2: T[F2, A, C],
+      param3: T[F3, A, D],
       function: FunctionDef[(B, C, D), Z]
-    ) extends ExprCase[Features.Union[F1, Features.Union[F2, F3]], A, Z, Nothing]
+    ) extends ExprCase[Features.Union[F1, Features.Union[F2, F3]], A, Z, T]
 
-    sealed case class FunctionCall4Case[F1, F2, F3, F4, A, B, C, D, E, Z, T](
-      param1: T,
-      param2: T,
-      param3: T,
-      param4: T,
+    sealed case class FunctionCall4Case[F1, F2, F3, F4, A, B, C, D, E, Z, T[_, -_, +_]](
+      param1: T[F1, A, B],
+      param2: T[F2, A, C],
+      param3: T[F3, A, D],
+      param4: T[F4, A, E],
       function: FunctionDef[(B, C, D, E), Z]
-    ) extends ExprCase[Features.Union[F1, Features.Union[F2, Features.Union[F3, F4]]], A, Z, Nothing]
+    ) extends ExprCase[Features.Union[F1, Features.Union[F2, Features.Union[F3, F4]]], A, Z, T]
 
-    sealed case class InCase[F, A, B, T](value: T, set: Read[B]) extends ExprCase[F, A, Boolean, T]
+    sealed case class InCase[F, A, B, T[_, -_, +_]](value: T[F, A, B], set: Read[B]) extends ExprCase[F, A, Boolean, T]
 
     sealed case class LiteralCase[B: TypeTag](value: B) extends ExprCase[Features.Literal, Any, B, Nothing]
 
-    sealed case class RelationalCase[F1, F2, A, B, T](left: T, right: T, op: RelationalOp)
-        extends ExprCase[Features.Union[F1, F2], A, Boolean, T]
+    sealed case class RelationalCase[F1, F2, A, B, T[_, -_, +_]](
+      left: T[F1, A, B],
+      right: T[F2, A, B],
+      op: RelationalOp
+    ) extends ExprCase[Features.Union[F1, F2], A, Boolean, T]
 
     sealed case class SourceCase[A, B] private[Sql] (tableName: TableName, column: Column[B])
         extends ExprCase[Features.Source, A, B, Nothing]
