@@ -2,7 +2,7 @@ package zio.sql
 
 import zio.sql._
 
-object Examples {
+object Examples extends App {
   import ShopSchema._
   import ShopSchema.AggregationDef._
   import ShopSchema.Users._
@@ -48,6 +48,7 @@ object Examples {
     (fName as "first_name") ++ (lName as "last_name") ++ (orderDate as "order_date")
   } from (users leftOuter orders).on(fkUserId === userId)
 
+  println(basicJoin.render(RenderMode.Compact))
   /*
     select users.usr_id, first_name, last_name, sum(quantity * unit_price) as "total_spend"
     from users
@@ -59,7 +60,7 @@ object Examples {
     (Arbitrary(userId) as "usr_id") ++
       (Arbitrary(fName) as "first_name") ++
       (Arbitrary(lName) as "last_name") ++
-      (Arbitrary(orderId) as "order_id") ++ //todo fix #39, remove column 
+      (Arbitrary(orderId) as "order_id") ++ //todo fix #39, remove column
       (Sum(quantity * unitPrice) as "total_spend")
   }
     from {
@@ -69,7 +70,7 @@ object Examples {
         .leftOuter(orderDetails)
         .on(orderId == fkOrderId)
     })
-    .groupBy(userId, fName /*, lName */) //shouldn't compile without lName todo fix #38
+    .groupBy(userId, fName /*, lName */ ) //shouldn't compile without lName todo fix #38
 }
 object ShopSchema extends Sql { self =>
   import self.ColumnSet._
