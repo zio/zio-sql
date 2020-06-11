@@ -17,6 +17,8 @@ object Examples extends App {
     (fName as "first") ++ (lName as "last")
   } from users)
 
+  println(basicSelectWithAliases.render(RenderMode.Compact))
+
   //select top 2 first_name, last_name from users order by last_name, first_name desc
   val selectWithRefinements =
     (select {
@@ -24,14 +26,24 @@ object Examples extends App {
     }
       from users)
       .limit(2)
+      .offset(3) //todo shouldn't be able to set an offset unless a limit is specified
       .orderBy(
         lName //defaults to ascending order, do not need to specify .asc
         ,
         fName.desc //desc must be specified if you want descending order
       )
+  println(selectWithRefinements.render(RenderMode.Compact))
+
+  // update users set first_name = 'Fred' where first_name = 'Terrence'
+  val basicUpdate = update(users)
+    .set(fName, "Fred")
+    .where(fName === "Terrence")
+
+  println(basicUpdate.render(RenderMode.Compact))
 
   //delete from users where first_name = 'Terrence'
   val basicDelete = deleteFrom(users).where(fName === "Terrence")
+  println(basicDelete.render(RenderMode.Compact))
 
   //NOT VALID todo fix issue #37
   //Incorrect syntax near the keyword 'inner'.

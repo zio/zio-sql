@@ -237,8 +237,12 @@ trait Sql {
 
   def deleteFrom[A](table: Table.Aux[A]): DeleteBuilder[A] = DeleteBuilder(table)
 
-  def update[A](table: Table.Aux[A]): Update[A] = Update(table, Nil, true)
+  def update[A](table: Table.Aux[A]): UpdateBuilder[A] = UpdateBuilder(table)
 
+  sealed case class UpdateBuilder[A](table: Table.Aux[A]) {
+    def set[F: Features.IsSource, Value: TypeTag](lhs: Expr[F, A, Value], rhs: Expr[_, A, Value]): Update[A] =
+      Update(table, Set(lhs, rhs) :: Nil, true)
+  }
   sealed case class SelectBuilder[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]) {
 
     def from(table: Table.Aux[A]): Read.Select[F, A, B] =
@@ -252,27 +256,60 @@ trait Sql {
   sealed case class Delete[F, A](
     table: Table.Aux[A],
     whereExpr: Expr[F, A, Boolean]
-  )
+  ) extends Renderable {
+    override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+      builder.append("delete from ")
+      table.renderBuilder(builder, mode)
+      /*todo check whereExpr
+        whereExpr match {
+        case Expr.Literal(true) => ()
+        case _ =>*/
+      builder.append(" where ")
+      whereExpr.renderBuilder(builder, mode)
+      //}
+    }
+  }
 
   // UPDATE table
   // SET foo = bar
   // WHERE baz > buzz
-  sealed case class Update[A](table: Table.Aux[A], set: List[Set[_, A]], whereExpr: Expr[_, A, Boolean]) {
+  //todo `set` must be non-empty
+  sealed case class Update[A](table: Table.Aux[A], set: List[Set[_, A]], whereExpr: Expr[_, A, Boolean])
+      extends Renderable {
 
     def set[F: Features.IsSource, Value: TypeTag](lhs: Expr[F, A, Value], rhs: Expr[_, A, Value]): Update[A] =
       copy(set = set :+ Set(lhs, rhs))
 
     def where(whereExpr2: Expr[_, A, Boolean]): Update[A] =
       copy(whereExpr = whereExpr && whereExpr2)
+
+    override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+      builder.append("update ")
+      table.renderBuilder(builder, mode)
+      builder.append(" set ")
+      set.renderBuilder(builder, mode)
+      whereExpr match {
+        case Expr.Literal(true) => ()
+        case _ =>
+          builder.append(" where ")
+          whereExpr.renderBuilder(builder, mode)
+      }
+    }
   }
 
-  sealed trait Set[F, -A] {
+  sealed trait Set[F, -A] extends Renderable {
     type Value
 
     def lhs: Expr[F, A, Value]
     def rhs: Expr[_, A, Value]
 
     def typeTag: TypeTag[Value]
+
+    override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+      lhs.renderBuilder(builder, mode)
+      builder.append(" = ")
+      rhs.renderBuilder(builder, mode)
+    }
   }
 
   object Set {
@@ -309,17 +346,42 @@ trait Sql {
       whereExpr: Expr[_, A, Boolean],
       groupBy: List[Expr[_, A, Any]],
       orderBy: List[Ordering[Expr[_, A, Any]]] = Nil,
-      offset: Option[Long] = None,
+      offset: Option[Long] = None, //todo don't know how to do this outside of postgres/mysql
       limit: Option[Long] = None
     ) extends Read[B] { self =>
 
+      /*todo need to add dialect to render/render builder - limit is represented as:
+        SQL Server:
+          select top x ...
+        MySQL/Postgre: at the end
+          select ... limit x
+        Oracle: part of the where clause
+          select ... where rownum <= x
+       */
       override def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
         builder.append("select ")
         selection.renderBuilder(builder, mode)
         builder.append(" from ")
         table.renderBuilder(builder, mode)
-        val _ = builder.append(" where ")
-        whereExpr.renderBuilder(builder, mode)
+        whereExpr match {
+          case Expr.Literal(true) => ()
+          case _ =>
+            builder.append(" where ")
+            whereExpr.renderBuilder(builder, mode)
+        }
+
+        limit match {
+          case Some(limit) =>
+            builder.append(" limit ")
+            offset match {
+              case Some(offset) =>
+                val _ = builder.append(offset).append(", ")
+              case None => ()
+            }
+            val _ = builder.append(limit)
+
+          case None => ()
+        }
       }
 
       def where(whereExpr2: Expr[_, A, Boolean]): Select[F, A, B] =
@@ -410,12 +472,6 @@ trait Sql {
 
     def computedAs[F, A, B](expr: Expr[F, A, B], name: ColumnName): Selection[F, A, Cons[A, B, Empty]] =
       computedOption(expr, Some(name))
-
-    val selection =
-      computed(FunctionDef.CharLength(Expr.Literal("test"))) ++
-        constant(1) ++ empty ++ constant("foo") ++ constant(true) ++ empty
-
-    val int :*: str :*: bool :*: _ = selection.columns
   }
 
   sealed trait ColumnSelection[-A, +B] extends Renderable {
@@ -486,7 +542,7 @@ trait Sql {
       override def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
         head.renderBuilder(builder, mode)
         tail match {
-          case _ : SelectionSet.Empty.type => ()
+          case _: SelectionSet.Empty.type => ()
           case _ =>
             builder.append(", ")
             tail.renderBuilder(builder, mode)
@@ -680,6 +736,7 @@ trait Sql {
       override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
         left.renderBuilder(builder, mode)
         op.renderBuilder(builder, mode)
+        right.renderBuilder(builder, mode)
       }
     }
 
