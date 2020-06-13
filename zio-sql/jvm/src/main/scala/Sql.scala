@@ -55,11 +55,11 @@ trait Sql {
     abstract class AbstractIsNumeric[A: TypeTag] extends IsNumeric[A] {
       def typeTag = implicitly[TypeTag[A]]
     }
-    implicit case object TShortIsNumeric  extends AbstractIsNumeric[Short]
-    implicit case object TIntIsNumeric    extends AbstractIsNumeric[Int]
-    implicit case object TLongIsNumeric   extends AbstractIsNumeric[Long]
-    implicit case object TFloatIsNumeric  extends AbstractIsNumeric[Float]
-    implicit case object TDoubleIsNumeric extends AbstractIsNumeric[Double]
+    implicit case object TShortIsNumeric      extends AbstractIsNumeric[Short]
+    implicit case object TIntIsNumeric        extends AbstractIsNumeric[Int]
+    implicit case object TLongIsNumeric       extends AbstractIsNumeric[Long]
+    implicit case object TFloatIsNumeric      extends AbstractIsNumeric[Float]
+    implicit case object TDoubleIsNumeric     extends AbstractIsNumeric[Double]
     implicit case object TBigDecimalIsNumeric extends AbstractIsNumeric[BigDecimal]
   }
 
@@ -191,6 +191,9 @@ trait Sql {
       val columns: F[TableType]
       val columnsUntyped: List[Column.Untyped]
     }
+    object Source {
+      type Aux[F[_], A, B] = Table.Source[F, A] { type TableType = B }
+    }
 
     sealed case class Joined[F, A, B](
       joinType: JoinType,
@@ -217,7 +220,7 @@ trait Sql {
   def select[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]): SelectBuilder[F, A, B] =
     SelectBuilder(selection)
 
-  def deleteFrom[A](table: Table.Aux[A]): DeleteBuilder[A] = DeleteBuilder(table)
+  def deleteFrom[F[_], A, B](table: Table.Source.Aux[F, A, B]): DeleteBuilder[F, A, B] = DeleteBuilder(table)
 
   def update[A](table: Table.Aux[A]): Update[A] = Update(table, Nil, true)
 
@@ -227,13 +230,13 @@ trait Sql {
       Read.Select(selection, table, true, Nil)
   }
 
-  sealed case class DeleteBuilder[A](table: Table.Aux[A]) {
-    def where[F](expr: Expr[F, A, Boolean]): Delete[F, A] = Delete(table, expr)
+  sealed case class DeleteBuilder[F[_], A, B](table: Table.Source.Aux[F, A, B]) {
+    def where[F1](expr: Expr[F1, B, Boolean]): Delete[F1, F, A, B] = Delete(table, expr)
   }
 
-  sealed case class Delete[F, A](
-    table: Table.Aux[A],
-    whereExpr: Expr[F, A, Boolean]
+  sealed case class Delete[F1, F[_], A, B](
+    table: Table.Source.Aux[F, A, B],
+    whereExpr: Expr[F1, B, Boolean]
   )
 
   // UPDATE table
