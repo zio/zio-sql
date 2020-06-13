@@ -55,11 +55,11 @@ trait Sql {
     abstract class AbstractIsNumeric[A: TypeTag] extends IsNumeric[A] {
       def typeTag = implicitly[TypeTag[A]]
     }
-    implicit case object TShortIsNumeric  extends AbstractIsNumeric[Short]
-    implicit case object TIntIsNumeric    extends AbstractIsNumeric[Int]
-    implicit case object TLongIsNumeric   extends AbstractIsNumeric[Long]
-    implicit case object TFloatIsNumeric  extends AbstractIsNumeric[Float]
-    implicit case object TDoubleIsNumeric extends AbstractIsNumeric[Double]
+    implicit case object TShortIsNumeric      extends AbstractIsNumeric[Short]
+    implicit case object TIntIsNumeric        extends AbstractIsNumeric[Int]
+    implicit case object TLongIsNumeric       extends AbstractIsNumeric[Long]
+    implicit case object TFloatIsNumeric      extends AbstractIsNumeric[Float]
+    implicit case object TDoubleIsNumeric     extends AbstractIsNumeric[Double]
     implicit case object TBigDecimalIsNumeric extends AbstractIsNumeric[BigDecimal]
   }
 
@@ -223,7 +223,7 @@ trait Sql {
 
   sealed case class SelectBuilder[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]) {
 
-    def from(table: Table.Aux[A]): Read.Select[F, A, B] =
+    def from[A1 <: A](table: Table.Aux[A1]): Read.Select[F, A1, B] =
       Read.Select(selection, table, true, Nil)
   }
 
