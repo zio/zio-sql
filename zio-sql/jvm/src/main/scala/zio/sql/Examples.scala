@@ -59,7 +59,6 @@ object Examples {
     (Arbitrary(userId) as "usr_id") ++
       (Arbitrary(fName) as "first_name") ++
       (Arbitrary(lName) as "last_name") ++
-      (Arbitrary(orderId) as "order_id") ++ //todo fix #39, remove column 
       (Sum(quantity * unitPrice) as "total_spend")
   }
     from {
@@ -69,7 +68,7 @@ object Examples {
         .leftOuter(orderDetails)
         .on(orderId == fkOrderId)
     })
-    .groupBy(userId, fName /*, lName */) //shouldn't compile without lName todo fix #38
+    .groupBy(userId, fName /*, lName */ ) //shouldn't compile without lName todo fix #38
 }
 object ShopSchema extends Sql { self =>
   import self.ColumnSet._
