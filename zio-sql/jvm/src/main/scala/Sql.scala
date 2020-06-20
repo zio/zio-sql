@@ -173,6 +173,8 @@ trait Sql {
 
     final def rightOuter[That](that: Table.Aux[That]): Table.JoinBuilder[self.TableType, That] =
       new Table.JoinBuilder[self.TableType, That](JoinType.RightOuter, self, that)
+
+    private[Sql] def widen: Table.Aux[TableType] = self.asInstanceOf[Table.Aux[TableType]]
   }
 
   object Table {
@@ -231,12 +233,12 @@ trait Sql {
   }
 
   sealed case class DeleteBuilder[F[_], A, B](table: Table.Source.Aux[F, A, B]) {
-    def where[F1](expr: Expr[F1, B, Boolean]): Delete[F1, F, A, B] = Delete(table, expr)
+    def where[F1](expr: Expr[F1, B, Boolean]): Delete[F1, B] = Delete(table.widen, expr)
   }
 
-  sealed case class Delete[F1, F[_], A, B](
-    table: Table.Source.Aux[F, A, B],
-    whereExpr: Expr[F1, B, Boolean]
+  sealed case class Delete[F, A](
+    table: Table.Aux[A],
+    whereExpr: Expr[F, A, Boolean]
   )
 
   // UPDATE table
