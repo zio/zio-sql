@@ -95,17 +95,22 @@ trait Sql {
     sealed case class Cons[A, B <: ColumnSet](head: Column[A], tail: B) extends ColumnSet { self =>
       type ColumnsRepr[T]            = (Expr[Features.Source, T, A], tail.ColumnsRepr[T])
       type Append[That <: ColumnSet] = Cons[A, tail.Append[That]]
+      type TableType
 
       override def ++[That <: ColumnSet](that: That): Append[That] = Cons(head, tail ++ that)
 
       override def columnsUntyped: List[Column.Untyped] = head :: tail.columnsUntyped
 
-      def table(name0: TableName): Table.Source[ColumnsRepr, A :*: B] =
-        new Table.Source[ColumnsRepr, A :*: B] {
+      def table(name0: TableName): Table.Source.Aux[ColumnsRepr,  A :*: B] =
+        new Table.Source {
+          type Repr[C]   = ColumnsRepr[C]
+          type Cols      = A :*: B
+          //type TableType = self.TableType
           val name: TableName                      = name0
           val columnSchema: ColumnSchema[A :*: B]  = ColumnSchema(self)
           val columns: ColumnsRepr[TableType]      = mkColumns[TableType](name0)
-          val columnsUntyped: List[Column.Untyped] = self.columnsUntyped
+          //val columnsUntyped: List[Column.Untyped] = self.columnsUntyped
+
         }
 
       override protected def mkColumns[T](name: TableName): ColumnsRepr[T] =
@@ -187,11 +192,18 @@ trait Sql {
 
     type Aux[A] = Table { type TableType = A }
 
-    sealed trait Source[F[_], A] extends Table {
+    sealed trait Source extends Table {
+      type Repr[_] //F[_]
+      type Cols    //B in Aux formerly A to leave A for TableType
       val name: TableName
-      val columnSchema: ColumnSchema[A]
-      val columns: F[TableType]
-      val columnsUntyped: List[Column.Untyped]
+      val columnSchema: ColumnSchema[Cols]
+      val columns: Repr[TableType]
+    }
+    object Source {
+      type Aux[F[_],  B] = Table.Source {
+        type Repr[X]   = F[X]
+        type Cols      = B
+      }
     }
     object Source {
       type Aux[F[_], A, B] = Table.Source[F, A] { type TableType = B }
@@ -228,7 +240,7 @@ trait Sql {
 
   sealed case class SelectBuilder[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]) {
 
-    def from(table: Table.Aux[A]): Read.Select[F, A, B] =
+    def from[A1 <: A](table: Table.Aux[A1]): Read.Select[F, A1, B] =
       Read.Select(selection, table, true, Nil)
   }
 
