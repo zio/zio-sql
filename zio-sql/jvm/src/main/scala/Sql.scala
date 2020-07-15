@@ -95,22 +95,19 @@ trait Sql {
     sealed case class Cons[A, B <: ColumnSet](head: Column[A], tail: B) extends ColumnSet { self =>
       type ColumnsRepr[T]            = (Expr[Features.Source, T, A], tail.ColumnsRepr[T])
       type Append[That <: ColumnSet] = Cons[A, tail.Append[That]]
-      type TableType
 
       override def ++[That <: ColumnSet](that: That): Append[That] = Cons(head, tail ++ that)
 
       override def columnsUntyped: List[Column.Untyped] = head :: tail.columnsUntyped
 
-      def table(name0: TableName): Table.Source.Aux[ColumnsRepr,  A :*: B] =
+      def table(name0: TableName): Table.Source.Aux_[ColumnsRepr, A :*: B] =
         new Table.Source {
-          type Repr[C]   = ColumnsRepr[C]
-          type Cols      = A :*: B
-          //type TableType = self.TableType
+          type Repr[C] = ColumnsRepr[C]
+          type Cols    = A :*: B
           val name: TableName                      = name0
           val columnSchema: ColumnSchema[A :*: B]  = ColumnSchema(self)
           val columns: ColumnsRepr[TableType]      = mkColumns[TableType](name0)
-          //val columnsUntyped: List[Column.Untyped] = self.columnsUntyped
-
+          val columnsUntyped: List[Column.Untyped] = self.columnsUntyped
         }
 
       override protected def mkColumns[T](name: TableName): ColumnsRepr[T] =
@@ -179,7 +176,7 @@ trait Sql {
     final def rightOuter[That](that: Table.Aux[That]): Table.JoinBuilder[self.TableType, That] =
       new Table.JoinBuilder[self.TableType, That](JoinType.RightOuter, self, that)
 
-    private[Sql] def widen: Table.Aux[TableType] = self.asInstanceOf[Table.Aux[TableType]]
+    val columnsUntyped: List[Column.Untyped]
   }
 
   object Table {
@@ -193,20 +190,22 @@ trait Sql {
     type Aux[A] = Table { type TableType = A }
 
     sealed trait Source extends Table {
-      type Repr[_] //F[_]
-      type Cols    //B in Aux formerly A to leave A for TableType
+      type Repr[_]
+      type Cols
       val name: TableName
       val columnSchema: ColumnSchema[Cols]
       val columns: Repr[TableType]
     }
     object Source {
-      type Aux[F[_],  B] = Table.Source {
+      type Aux_[F[_], B] = Table.Source {
+        type Repr[X] = F[X]
+        type Cols    = B
+      }
+      type Aux[F[_], A, B] = Table.Source {
         type Repr[X]   = F[X]
+        type TableType = A
         type Cols      = B
       }
-    }
-    object Source {
-      type Aux[F[_], A, B] = Table.Source[F, A] { type TableType = B }
     }
 
     sealed case class Joined[F, A, B](
@@ -216,6 +215,7 @@ trait Sql {
       on: Expr[F, A with B, Boolean]
     ) extends Table {
       type TableType = left.TableType with right.TableType
+      val columnsUntyped: List[Column.Untyped] = left.columnsUntyped ++ right.columnsUntyped
     }
   }
 
@@ -244,8 +244,8 @@ trait Sql {
       Read.Select(selection, table, true, Nil)
   }
 
-  sealed case class DeleteBuilder[F[_], A, B](table: Table.Source.Aux[F, A, B]) {
-    def where[F1](expr: Expr[F1, B, Boolean]): Delete[F1, B] = Delete(table.widen, expr)
+  sealed case class DeleteBuilder[F[_], A, B](table: Table.Aux[A]) {
+    def where[F1](expr: Expr[F1, A, Boolean]): Delete[F1, A] = Delete(table, expr)
   }
 
   sealed case class Delete[F, A](
