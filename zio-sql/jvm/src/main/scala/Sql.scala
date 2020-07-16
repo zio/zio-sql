@@ -284,7 +284,6 @@ trait Sql {
   }
 
   object Read {
-
     sealed case class Select[F, A, B <: SelectionSet[A]](
       selection: Selection[F, A, B],
       table: Table.Aux[A],
@@ -317,7 +316,7 @@ trait Sql {
 
     sealed case class Literal[B: TypeTag](values: Iterable[B]) extends Read[B]
 
-    def lit[B: TypeTag](values: B*): Read[B] = Literal(values.toSeq)
+    def lit[B: TypeTag](values: B*): Read.Literal[B] = Literal(values.toSeq)
   }
 
   sealed trait Ordering[+A]
@@ -447,11 +446,11 @@ trait Sql {
       def isNumeric: IsNumeric[A] = implicitly[IsNumeric[A]]
     }
 
-    case object AndBool        extends BinaryOp[Boolean]
-    case object OrBool         extends BinaryOp[Boolean]
+    case object AndBool extends BinaryOp[Boolean]
+    case object OrBool  extends BinaryOp[Boolean]
 
-    case object AndBit        extends BinaryOp[Integer]
-    case object OrBit         extends BinaryOp[Integer]
+    case object AndBit extends BinaryOp[Integer]
+    case object OrBit  extends BinaryOp[Integer]
 
   }
   sealed trait RelationalOp
@@ -534,7 +533,7 @@ trait Sql {
 
     def desc: Ordering[Expr[F, A, B]] = Ordering.Desc(self)
 
-    def in[B1 >: B](set: Read[B1]): Expr[F, A, Boolean] = Expr.In(self, set)
+    def in[B1 >: B](set: Inable[B1]): Expr[F, A, Boolean] = Expr.In(self, set)
 
     def widen[C](implicit ev: B <:< C): Expr[F, A, C] = {
       val _ = ev
@@ -572,10 +571,12 @@ trait Sql {
     def exprName[F, A, B](expr: Expr[F, A, B]): Option[String] =
       expr match {
         case Expr.Source(_, c) => Some(c.name)
-        case _ => None
+        case _                 => None
       }
 
-    implicit def expToSelection[F, A, B](expr: Expr[F, A, B]): Selection[F, A, SelectionSet.Cons[A, B, SelectionSet.Empty]] =
+    implicit def expToSelection[F, A, B](
+      expr: Expr[F, A, B]
+    ): Selection[F, A, SelectionSet.Cons[A, B, SelectionSet.Empty]] =
       Selection.computedOption(expr, exprName(expr))
 
     sealed case class Source[A, B] private[Sql] (tableName: TableName, column: Column[B])
@@ -586,8 +587,8 @@ trait Sql {
 
     sealed case class Relational[F1, F2, A, B](left: Expr[F1, A, B], right: Expr[F2, A, B], op: RelationalOp)
         extends Expr[Features.Union[F1, F2], A, Boolean]
-    sealed case class In[F, A, B](value: Expr[F, A, B], set: Read[B]) extends Expr[F, A, Boolean]
-    sealed case class Literal[B: TypeTag](value: B)                   extends Expr[Features.Literal, Any, B]
+    sealed case class In[F, A, B](value: Expr[F, A, B], set: Inable[B]) extends Expr[F, A, Boolean]
+    sealed case class Literal[B: TypeTag](value: B)                     extends Expr[Features.Literal, Any, B]
 
     sealed case class AggregationCall[F, A, B, Z](param: Expr[F, A, B], aggregation: AggregationDef[B, Z])
         extends Expr[Features.Aggregated[F], A, Z]
@@ -614,6 +615,22 @@ trait Sql {
       param4: Expr[F4, A, E],
       function: FunctionDef[(B, C, D, E), Z]
     ) extends Expr[Features.Union[F1, Features.Union[F2, Features.Union[F3, F4]]], A, Z]
+  }
+
+  trait Inable[B]
+
+  object Inable {
+    sealed case class SingleColumnSelect[F, A, B](
+      select: Read.Select[F, A, SelectionSet.Cons[A, B, SelectionSet.Empty]]
+    ) extends Inable[B]
+
+    sealed case class InableLiteral[B](values: Iterable[B]) extends Inable[B]
+
+    implicit def select2SingleColumn[F, A, B](
+      select: Read.Select[F, A, SelectionSet.Cons[A, B, SelectionSet.Empty]]
+    ): Inable[B] = SingleColumnSelect(select)
+
+    implicit def literalRead2Inable[B](literal: Read.Literal[B]): Inable[B] = InableLiteral(literal.values)
   }
 
   sealed case class AggregationDef[-A, +B](name: FunctionName) { self =>

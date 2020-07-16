@@ -1,5 +1,7 @@
 package zio.sql
 
+import zio.sql.ShopSchema.Orders.orders
+import zio.sql.ShopSchema.Users.users
 import zio.sql._
 
 object Examples {
@@ -38,10 +40,11 @@ object Examples {
   //delete from orders inner join users on orders.usr_id = users.usr_id where first_name = 'Terrence'
   val invalidJoinDelete = deleteFrom((orders join users).on(fkUserId === userId)).where(fName === "Terrence")
 
-  /*
-    val deleteFromWithSubquery = deleteFrom(orders).where(fkUserId in {
-      select(userId as "id") from users where (fName === "Fred") //todo fix issue #36
-    }) */
+  val deleteFromWithLiteral = deleteFrom(orders).where(fkUserId in Read.lit(1, 2, 3))
+
+  val deleteFromWithSubquery: ShopSchema.Delete[ShopSchema.Features.Source, orders.TableType] = deleteFrom(orders).where(fkUserId.in(
+    select(userId as "id") from users where (fName === "Fred")
+  ))
 
   //select first_name, last_name, order_date from users left join orders on users.usr_id = orders.usr_id
   val basicJoin = select {
@@ -62,15 +65,17 @@ object Examples {
       (Sum(quantity * unitPrice) as "total_spend")
   }
     from {
-      users
-        .join(orders)
-        .on(userId === fkUserId)
-        .leftOuter(orderDetails)
-        .on(orderId == fkOrderId)
-    })
-    .groupBy(userId, fName /*, lName */ ) //shouldn't compile without lName todo fix #38
+    users
+      .join(orders)
+      .on(userId === fkUserId)
+      .leftOuter(orderDetails)
+      .on(orderId == fkOrderId)
+  })
+    .groupBy(userId, fName /*, lName */) //shouldn't compile without lName todo fix #38
 }
+
 object ShopSchema extends Sql { self =>
+
   import self.ColumnSet._
 
   object Users {
@@ -78,17 +83,20 @@ object ShopSchema extends Sql { self =>
 
     val userId :*: dob :*: fName :*: lName :*: _ = users.columns
   }
+
   object Orders {
     val orders = (int("order_id") ++ int("usr_id") ++ localDate("order_date")).table("orders")
 
     val orderId :*: fkUserId :*: orderDate :*: _ = orders.columns
   }
+
   object Products {
     val products =
       (int("product_id") ++ string("name") ++ string("description") ++ string("image_url")).table("products")
 
     val productId :*: description :*: imageURL :*: _ = products.columns
   }
+
   object ProductPrices {
     val productPrices =
       (int("product_id") ++ offsetDateTime("effective") ++ bigDecimal("price")).table("product_prices")
@@ -103,4 +111,5 @@ object ShopSchema extends Sql { self =>
 
     val fkOrderId :*: fkProductId :*: quantity :*: unitPrice :*: _ = orderDetails.columns
   }
+
 }
