@@ -1,11 +1,10 @@
 package zio.sql
 
-import scala.language.implicitConversions
-
 import java.time._
 import java.util.UUID
 
 import scala.annotation.implicitNotFound
+import scala.language.implicitConversions
 
 trait Sql {
   type ColumnName = String
@@ -345,8 +344,8 @@ trait Sql {
   }
 
   object Selection {
-    import SelectionSet.{ Cons, Empty }
     import ColumnSelection._
+    import SelectionSet.{ Cons, Empty }
 
     val empty: Selection[Any, Any, Empty] = Selection(Empty)
 
@@ -447,11 +446,11 @@ trait Sql {
       def isNumeric: IsNumeric[A] = implicitly[IsNumeric[A]]
     }
 
-    case object AndBool        extends BinaryOp[Boolean]
-    case object OrBool         extends BinaryOp[Boolean]
+    case object AndBool extends BinaryOp[Boolean]
+    case object OrBool  extends BinaryOp[Boolean]
 
-    case object AndBit        extends BinaryOp[Integer]
-    case object OrBit         extends BinaryOp[Integer]
+    case object AndBit extends BinaryOp[Integer]
+    case object OrBit  extends BinaryOp[Integer]
 
   }
   sealed trait RelationalOp
@@ -572,10 +571,12 @@ trait Sql {
     def exprName[F, A, B](expr: Expr[F, A, B]): Option[String] =
       expr match {
         case Expr.Source(_, c) => Some(c.name)
-        case _ => None
+        case _                 => None
       }
 
-    implicit def expToSelection[F, A, B](expr: Expr[F, A, B]): Selection[F, A, SelectionSet.Cons[A, B, SelectionSet.Empty]] =
+    implicit def expToSelection[F, A, B](
+      expr: Expr[F, A, B]
+    ): Selection[F, A, SelectionSet.Cons[A, B, SelectionSet.Empty]] =
       Selection.computedOption(expr, exprName(expr))
 
     sealed case class Source[A, B] private[Sql] (tableName: TableName, column: Column[B])
@@ -714,8 +715,8 @@ trait Sql {
 
     val age2 :*: name2 :*: _ = table2.columns
 
-    import FunctionDef._
     import AggregationDef._
+    import FunctionDef._
 
     val queried =
       (select {
