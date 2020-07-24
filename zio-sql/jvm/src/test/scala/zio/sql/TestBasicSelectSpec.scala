@@ -1,13 +1,14 @@
 package zio.sql
 
-import zio.test._
 import zio.test.Assertion._
+import zio.test._
 
 object TestBasicSelect {
   val userSql = new Sql { self =>
     import self.ColumnSet._
 
-    val userTable = (string("user_id") ++ localDate("dob") ++ string("first_name") ++ string("last_name")).table("users")
+    val userTable =
+      (string("user_id") ++ localDate("dob") ++ string("first_name") ++ string("last_name")).table("users")
 
     val userId :*: dob :*: fName :*: lName :*: _ = userTable.columns
 
