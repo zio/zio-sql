@@ -98,3 +98,11 @@ lazy val docs = project
   )
   .dependsOn(root)
   .enablePlugins(MdocPlugin, DocusaurusPlugin, ScalaUnidocPlugin)
+
+lazy val examples = project
+  .in(file("examples"))
+  .settings(
+    skip in publish := true,
+    moduleName := "examples"
+  )
+  .dependsOn(zioSql.jvm)
