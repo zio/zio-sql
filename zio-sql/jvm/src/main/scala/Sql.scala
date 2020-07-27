@@ -430,15 +430,13 @@ trait Sql {
   sealed trait UnaryOp[A]
 
   object UnaryOp {
-    sealed case class Not[A: IsNumeric]() extends UnaryOp[A] {
+    sealed case class Negate[A: IsNumeric]() extends UnaryOp[A] {
       def isNumeric: IsNumeric[A] = implicitly[IsNumeric[A]]
     }
 
     case object NotBit extends UnaryOp[Integer]
     case object NotBool extends UnaryOp[Boolean]
     case object NotNum extends UnaryOp[Integer]
-    case object IsNull extends UnaryOp[Any]
-    case object IsNotNull extends UnaryOp[Any]
   }
 
   sealed trait BinaryOp[A]
@@ -468,6 +466,16 @@ trait Sql {
     case object OrBit         extends BinaryOp[Integer]
 
   }
+
+  sealed trait PropertyOp
+
+  object PropertyOp {
+    case object IsNull           extends PropertyOp
+    case object IsNotNull        extends PropertyOp
+    case object IsTrue           extends PropertyOp
+    case object IsNotTrue        extends PropertyOp
+  }
+
   sealed trait RelationalOp
 
   object RelationalOp {
@@ -537,20 +545,26 @@ trait Sql {
     )(implicit ev: B <:< Integer): Expr[F :||: F2, A1, Integer] =
       Expr.Binary(self.widen[Integer], that, BinaryOp.OrBit)
 
-    def ~[A1 <: A]()(implicit ev: B <:< Integer): Expr.Unary[F, A1, Integer] =
+    def unary_~[A1 <: A](implicit ev: B <:< Integer): Expr.Unary[F, A1, Integer] =
       Expr.Unary(self.widen[Integer], UnaryOp.NotBit)
 
-    def -[A1 <: A]()(implicit ev: B <:< Integer): Expr.Unary[F, A1, Integer] =
+    def unary_-[A1 <: A](implicit ev: B <:< Integer): Expr.Unary[F, A1, Integer] =
       Expr.Unary(self.widen[Integer], UnaryOp.NotNum)
 
-    def not[A1 <: A]()(implicit ev: B <:< Boolean): Expr.Unary[F, A1, Boolean] =
+    def not[A1 <: A](implicit ev: B <:< Boolean): Expr.Unary[F, A1, Boolean] =
       Expr.Unary(self.widen[Boolean], UnaryOp.NotBool)
 
-    def isNull[A1 <: A](): Expr.Unary[F, A1, Any] =
-      Expr.Unary(self.widen[Any], UnaryOp.IsNull)
+    def isNull[A1 <: A]: Expr[F, A1, Boolean] =
+      Expr.Property(self, PropertyOp.IsNull)
 
-    def isNotNull[A1 <: A](): Expr.Unary[F, A1, Any] =
-      Expr.Unary(self.widen[Any], UnaryOp.IsNotNull)
+    def isNotNull[A1 <: A]: Expr[F, A1, Boolean] =
+      Expr.Property(self, PropertyOp.IsNotNull)
+
+    def isTrue[A1 <: A](implicit ev: B <:< Boolean): Expr[F, A1, Boolean] =
+      Expr.Property(self, PropertyOp.IsTrue)
+
+    def isNotTrue[A1 <: A](implicit ev: B <:< Boolean): Expr[F, A1, Boolean] =
+      Expr.Property(self, PropertyOp.IsNotNull)
 
     def as[B1 >: B](name: String): Selection[F, A, SelectionSet.Cons[A, B1, SelectionSet.Empty]] =
       Selection.computedAs(self, name)
@@ -612,6 +626,8 @@ trait Sql {
         extends Expr[Features.Source, A, B]
 
     sealed case class Unary[F, A, B](base: Expr[F, A, B], op: UnaryOp[B]) extends Expr[Features.Modified[F], A, B]
+
+    sealed case class Property[F, A, B](base: Expr[F, A, B], op: PropertyOp) extends Expr[F, A, Boolean]
 
     sealed case class Binary[F1, F2, A, B](left: Expr[F1, A, B], right: Expr[F2, A, B], op: BinaryOp[B])
         extends Expr[Features.Union[F1, F2], A, B]
