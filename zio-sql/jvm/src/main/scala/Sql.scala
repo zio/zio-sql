@@ -427,6 +427,17 @@ trait Sql {
     }
   }
 
+  sealed trait UnaryOp[A]
+
+  object UnaryOp {
+    sealed case class Not[A: IsNumeric]() extends UnaryOp[A] {
+      def isNumeric: IsNumeric[A] = implicitly[IsNumeric[A]]
+    }
+
+    case object NotBit extends UnaryOp[Integer]
+    case object NotBool extends UnaryOp[Boolean]
+  }
+
   sealed trait BinaryOp[A]
 
   object BinaryOp {
@@ -523,6 +534,12 @@ trait Sql {
     )(implicit ev: B <:< Integer): Expr[F :||: F2, A1, Integer] =
       Expr.Binary(self.widen[Integer], that, BinaryOp.OrBit)
 
+    def ~[A1 <: A]()(implicit ev: B <:< Integer): Expr.Unary[F, A1, Integer] =
+      Expr.Unary(self.widen[Integer], UnaryOp.NotBit)
+
+    def not[A1 <: A]()(implicit ev: B <:< Boolean): Expr.Unary[F, A1, Boolean] =
+      Expr.Unary(self.widen[Boolean], UnaryOp.NotBool)
+
     def as[B1 >: B](name: String): Selection[F, A, SelectionSet.Cons[A, B1, SelectionSet.Empty]] =
       Selection.computedAs(self, name)
 
@@ -547,6 +564,7 @@ trait Sql {
     type Union[_, _]
     type Source
     type Literal
+    type Modified[_]
 
     sealed trait IsAggregated[A]
 
@@ -580,6 +598,8 @@ trait Sql {
 
     sealed case class Source[A, B] private[Sql] (tableName: TableName, column: Column[B])
         extends Expr[Features.Source, A, B]
+
+    sealed case class Unary[F, A, B](base: Expr[F, A, B], op: UnaryOp[B]) extends Expr[Features.Modified[F], A, B]
 
     sealed case class Binary[F1, F2, A, B](left: Expr[F1, A, B], right: Expr[F2, A, B], op: BinaryOp[B])
         extends Expr[Features.Union[F1, F2], A, B]
