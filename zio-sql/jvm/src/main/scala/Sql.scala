@@ -436,6 +436,9 @@ trait Sql {
 
     case object NotBit extends UnaryOp[Integer]
     case object NotBool extends UnaryOp[Boolean]
+    case object NotNum extends UnaryOp[Integer]
+    case object IsNull extends UnaryOp[Any]
+    case object IsNotNull extends UnaryOp[Any]
   }
 
   sealed trait BinaryOp[A]
@@ -537,8 +540,17 @@ trait Sql {
     def ~[A1 <: A]()(implicit ev: B <:< Integer): Expr.Unary[F, A1, Integer] =
       Expr.Unary(self.widen[Integer], UnaryOp.NotBit)
 
+    def -[A1 <: A]()(implicit ev: B <:< Integer): Expr.Unary[F, A1, Integer] =
+      Expr.Unary(self.widen[Integer], UnaryOp.NotNum)
+
     def not[A1 <: A]()(implicit ev: B <:< Boolean): Expr.Unary[F, A1, Boolean] =
       Expr.Unary(self.widen[Boolean], UnaryOp.NotBool)
+
+    def isNull[A1 <: A](): Expr.Unary[F, A1, Any] =
+      Expr.Unary(self.widen[Any], UnaryOp.IsNull)
+
+    def isNotNull[A1 <: A](): Expr.Unary[F, A1, Any] =
+      Expr.Unary(self.widen[Any], UnaryOp.IsNotNull)
 
     def as[B1 >: B](name: String): Selection[F, A, SelectionSet.Cons[A, B1, SelectionSet.Empty]] =
       Selection.computedAs(self, name)
