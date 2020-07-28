@@ -463,22 +463,23 @@ trait Sql {
     sealed case class Div[A: IsNumeric]() extends BinaryOp[A] {
       def isNumeric: IsNumeric[A] = implicitly[IsNumeric[A]]
     }
-    case object DivInt       extends BinaryOp[Int]
-    case object ModInt       extends BinaryOp[Int]
-    case object DivLong      extends BinaryOp[Long]
-    case object ModLong      extends BinaryOp[Long]
-    case object AndBool      extends BinaryOp[Boolean]
-    case object OrBool       extends BinaryOp[Boolean]
-    case object StringConcat extends BinaryOp[String]
+
+    case object AndBool        extends BinaryOp[Boolean]
+    case object OrBool         extends BinaryOp[Boolean]
+
+    case object AndBit        extends BinaryOp[Integer]
+    case object OrBit         extends BinaryOp[Integer]
+
   }
   sealed trait RelationalOp
 
   object RelationalOp {
     case object Equals           extends RelationalOp
-    case object LessThan         extends RelationalOp
     case object GreaterThan      extends RelationalOp
-    case object LessThanEqual    extends RelationalOp
     case object GreaterThanEqual extends RelationalOp
+    case object LessThan         extends RelationalOp
+    case object LessThanEqual    extends RelationalOp
+    case object NotEqual         extends RelationalOp
   }
 
   type :||:[A, B] = Features.Union[A, B]
@@ -498,6 +499,9 @@ trait Sql {
     def *[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =
       Expr.Binary(self, that, BinaryOp.Mul[B1]())
 
+    def /[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =
+      Expr.Binary(self, that, BinaryOp.Div[B1]())
+
     def &&[F2, A1 <: A, B1 >: B](
       that: Expr[F2, A1, Boolean]
     )(implicit ev: B <:< Boolean): Expr[F :||: F2, A1, Boolean] =
@@ -511,6 +515,9 @@ trait Sql {
     def ===[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.Equals)
 
+    def <>[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
+      Expr.Relational(self, that, RelationalOp.NotEqual)
+
     def >[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.GreaterThan)
 
@@ -522,6 +529,16 @@ trait Sql {
 
     def <=[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.LessThanEqual)
+
+    def &[F2, A1 <: A, B1 >: B](
+      that: Expr[F2, A1, Integer]
+    )(implicit ev: B <:< Integer): Expr[F :||: F2, A1, Integer] =
+      Expr.Binary(self.widen[Integer], that, BinaryOp.AndBit)
+
+    def |[F2, A1 <: A, B1 >: B](
+      that: Expr[F2, A1, Integer]
+    )(implicit ev: B <:< Integer): Expr[F :||: F2, A1, Integer] =
+      Expr.Binary(self.widen[Integer], that, BinaryOp.OrBit)
 
     def as[B1 >: B](name: String): Selection[F, A, SelectionSet.Cons[A, B1, SelectionSet.Empty]] =
       Selection.computedAs(self, name)
@@ -568,6 +585,15 @@ trait Sql {
 
   object Expr {
     implicit def literal[A: TypeTag](a: A): Expr[Features.Literal, Any, A] = Expr.Literal(a)
+
+    def exprName[F, A, B](expr: Expr[F, A, B]): Option[String] =
+      expr match {
+        case Expr.Source(_, c) => Some(c.name)
+        case _ => None
+      }
+
+    implicit def expToSelection[F, A, B](expr: Expr[F, A, B]): Selection[F, A, SelectionSet.Cons[A, B, SelectionSet.Empty]] =
+      Selection.computedOption(expr, exprName(expr))
 
     sealed case class Source[A, B] private[Sql] (tableName: TableName, column: Column[B])
         extends Expr[Features.Source, A, B]

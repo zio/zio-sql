@@ -10,25 +10,16 @@ object Examples {
   import ShopSchema.OrderDetails._
 
   //select first_name, last_name from users
-  //val basicSelect = select { fName ++ lName } from userTable //todo fix issue #28
+  val basicSelect = select { fName ++ lName } from users
 
   //select first_name as first, last_name as last from users
-  val basicSelectWithAliases = (select {
+  val basicSelectWithAliases = select {
     (fName as "first") ++ (lName as "last")
-  } from users)
+  } from users
 
   //select top 2 first_name, last_name from users order by last_name, first_name desc
   val selectWithRefinements =
-    (select {
-      (fName as "first_name") ++ (lName as "last_name") //todo fix #28 get rid of aliases
-    }
-      from users)
-      .limit(2)
-      .orderBy(
-        lName //defaults to ascending order, do not need to specify .asc
-        ,
-        fName.desc //desc must be specified if you want descending order
-      )
+    select { fName ++ lName } from users orderBy (lName, fName.desc) limit 2
 
   //delete from users where first_name = 'Terrence'
   val basicDelete = deleteFrom(users).where(fName === "Terrence")
@@ -40,7 +31,7 @@ object Examples {
 
   //select first_name, last_name, order_date from users left join orders on users.usr_id = orders.usr_id
   val basicJoin = select {
-    (fName as "first_name") ++ (lName as "last_name") ++ (orderDate as "order_date")
+    fName ++ lName ++ orderDate
   } from (users leftOuter orders).on(fkUserId === userId)
 
   /*
@@ -50,20 +41,21 @@ object Examples {
         left join order_details on orders.order_id = order_details.order_id
     group by users.usr_id, first_name, last_name */
 
-  val orderValues = (select {
-    (Arbitrary(userId) as "usr_id") ++
-      (Arbitrary(fName) as "first_name") ++
-      (Arbitrary(lName) as "last_name") ++
-      (Sum(quantity * unitPrice) as "total_spend")
-  }
-    from {
-      users
-        .join(orders)
-        .on(userId === fkUserId)
-        .leftOuter(orderDetails)
-        .on(orderId == fkOrderId)
-    })
-    .groupBy(userId, fName /*, lName */ ) //shouldn't compile without lName todo fix #38
+  val orderValues =
+    (select {
+      (Arbitrary(userId)) ++
+        (Arbitrary(fName)) ++
+        (Arbitrary(lName)) ++
+        (Sum(quantity * unitPrice) as "total_spend")
+    }
+      from {
+        users
+          .join(orders)
+          .on(userId === fkUserId)
+          .leftOuter(orderDetails)
+          .on(orderId == fkOrderId)
+      })
+      .groupBy(userId, fName /*, lName */ ) //shouldn't compile without lName todo fix #38
 }
 object ShopSchema extends Sql { self =>
   import self.ColumnSet._
