@@ -1,6 +1,6 @@
 package zio.sql
 
-import zio.test.{DefaultRunnableSpec, assert, suite, test}
+import zio.test.{ assert, suite, test, DefaultRunnableSpec }
 import zio.test.Assertion.anything
 
 object PredicateOpSpec extends DefaultRunnableSpec {
@@ -8,19 +8,19 @@ object PredicateOpSpec extends DefaultRunnableSpec {
 
   def spec = suite("Unary operators")(
     test("isTrue works on boolean column") {
-      val query = selectAll.where( deleted.isTrue )
+      val query = selectAll.where(deleted.isTrue)
       assert(query)(anything)
     },
     test("isNotTrue works on boolean column") {
-      val query = selectAll.where( deleted.isNotTrue )
+      val query = selectAll.where(deleted.isNotTrue)
       assert(query)(anything)
     },
     test("isNotNull works on column with any type") {
-      val query = selectAll.where( name.isNotNull )
+      val query = selectAll.where(name.isNotNull)
       assert(query)(anything)
     },
     test("isNull works on column with any type") {
-      val query = selectAll.where( name.isNull )
+      val query = selectAll.where(name.isNull)
       assert(query)(anything)
     }
   )

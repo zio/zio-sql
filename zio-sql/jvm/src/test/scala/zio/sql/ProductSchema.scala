@@ -12,7 +12,7 @@ object ProductSchema {
       int("base_amount") ++
       int("final_amount") ++
       boolean("deleted")
-    ).table("product")
+  ).table("product")
 
   val id :*: lastUpdated :*: name :*: baseAmount :*: finalAmount :*: deleted :*: _ = productTable.columns
 
