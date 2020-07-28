@@ -434,7 +434,10 @@ trait Sql {
       def isNumeric: IsNumeric[A] = implicitly[IsNumeric[A]]
     }
 
-    case object NotBit extends UnaryOp[Integer]
+    sealed case class NotBit[A: IsNumeric]() extends UnaryOp[A] {
+      def isNumeric: IsNumeric[A] = implicitly[IsNumeric[A]]
+    }
+
     case object NotBool extends UnaryOp[Boolean]
   }
 
@@ -458,21 +461,24 @@ trait Sql {
       def isNumeric: IsNumeric[A] = implicitly[IsNumeric[A]]
     }
 
-    case object AndBool        extends BinaryOp[Boolean]
-    case object OrBool         extends BinaryOp[Boolean]
+    case object AndBool extends BinaryOp[Boolean]
+    case object OrBool  extends BinaryOp[Boolean]
 
-    case object AndBit        extends BinaryOp[Integer]
-    case object OrBit         extends BinaryOp[Integer]
-
+    sealed case class AndBit[A: IsNumeric]() extends BinaryOp[A] {
+      def isNumeric: IsNumeric[A] = implicitly[IsNumeric[A]]
+    }
+    sealed case class OrBit[A: IsNumeric]() extends BinaryOp[A] {
+      def isNumeric: IsNumeric[A] = implicitly[IsNumeric[A]]
+    }
   }
 
   sealed trait PropertyOp
 
   object PropertyOp {
-    case object IsNull           extends PropertyOp
-    case object IsNotNull        extends PropertyOp
-    case object IsTrue           extends PropertyOp
-    case object IsNotTrue        extends PropertyOp
+    case object IsNull    extends PropertyOp
+    case object IsNotNull extends PropertyOp
+    case object IsTrue    extends PropertyOp
+    case object IsNotTrue extends PropertyOp
   }
 
   sealed trait RelationalOp
@@ -534,18 +540,14 @@ trait Sql {
     def <=[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.LessThanEqual)
 
-    def &[F2, A1 <: A, B1 >: B](
-      that: Expr[F2, A1, Integer]
-    )(implicit ev: B <:< Integer): Expr[F :||: F2, A1, Integer] =
-      Expr.Binary(self.widen[Integer], that, BinaryOp.AndBit)
+    def &[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =
+      Expr.Binary(self, that, BinaryOp.AndBit[B1])
 
-    def |[F2, A1 <: A, B1 >: B](
-      that: Expr[F2, A1, Integer]
-    )(implicit ev: B <:< Integer): Expr[F :||: F2, A1, Integer] =
-      Expr.Binary(self.widen[Integer], that, BinaryOp.OrBit)
+    def |[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =
+      Expr.Binary(self, that, BinaryOp.OrBit[B1])
 
-    def unary_~(implicit ev: B <:< Integer): Expr.Unary[F, A, Integer] =
-      Expr.Unary(self.widen[Integer], UnaryOp.NotBit)
+    def unary_~[B1 >: B](implicit ev: IsNumeric[B1]): Expr.Unary[F, A, B1] =
+      Expr.Unary(self, UnaryOp.NotBit[B1])
 
     def unary_-[B1 >: B](implicit ev: IsNumeric[B1]): Expr.Unary[F, A, B1] =
       Expr.Unary(self, UnaryOp.Negate[B1])
@@ -589,7 +591,6 @@ trait Sql {
     type Union[_, _]
     type Source
     type Literal
-    //type Modified[_]
 
     sealed trait IsAggregated[A]
 
