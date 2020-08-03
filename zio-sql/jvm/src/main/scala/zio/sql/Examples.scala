@@ -24,11 +24,6 @@ object Examples {
   //delete from users where first_name = 'Terrence'
   val basicDelete = deleteFrom(users).where(fName === "Terrence")
 
-  //NOT VALID todo fix issue #37
-  //Incorrect syntax near the keyword 'inner'.
-  //delete from orders inner join users on orders.usr_id = users.usr_id where first_name = 'Terrence'
-  val invalidJoinDelete = deleteFrom((orders join users) on (fkUserId === userId)).where(fName === "Terrence")
-
   /*
     val deleteFromWithSubquery = deleteFrom(orders).where(fkUserId in {
       select(userId as "id") from users where (fName === "Fred") //todo fix issue #36

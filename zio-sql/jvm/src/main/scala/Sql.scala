@@ -116,8 +116,10 @@ trait Sql {
 
       override def columnsUntyped: List[Column.Untyped] = head :: tail.columnsUntyped
 
-      def table(name0: TableName): Table.Source[ColumnsRepr, A :*: B] =
-        new Table.Source[ColumnsRepr, A :*: B] {
+      def table(name0: TableName): Table.Source.Aux_[ColumnsRepr, A :*: B] =
+        new Table.Source {
+          type Repr[C] = ColumnsRepr[C]
+          type Cols    = A :*: B
           val name: TableName                      = name0
           val columnSchema: ColumnSchema[A :*: B]  = ColumnSchema(self)
           val columns: ColumnsRepr[TableType]      = mkColumns[TableType](name0)
@@ -189,6 +191,8 @@ trait Sql {
 
     final def rightOuter[That](that: Table.Aux[That]): Table.JoinBuilder[self.TableType, That] =
       new Table.JoinBuilder[self.TableType, That](JoinType.RightOuter, self, that)
+
+    val columnsUntyped: List[Column.Untyped]
   }
 
   object Table {
@@ -201,11 +205,23 @@ trait Sql {
 
     type Aux[A] = Table { type TableType = A }
 
-    sealed trait Source[F[_], A] extends Table {
+    sealed trait Source extends Table {
+      type Repr[_]
+      type Cols
       val name: TableName
-      val columnSchema: ColumnSchema[A]
-      val columns: F[TableType]
-      val columnsUntyped: List[Column.Untyped]
+      val columnSchema: ColumnSchema[Cols]
+      val columns: Repr[TableType]
+    }
+    object Source {
+      type Aux_[F[_], B] = Table.Source {
+        type Repr[X] = F[X]
+        type Cols    = B
+      }
+      type Aux[F[_], A, B] = Table.Source {
+        type Repr[X]   = F[X]
+        type TableType = A
+        type Cols      = B
+      }
     }
 
     sealed case class Joined[F, A, B](
@@ -215,6 +231,7 @@ trait Sql {
       on: Expr[F, A with B, Boolean]
     ) extends Table {
       type TableType = left.TableType with right.TableType
+      val columnsUntyped: List[Column.Untyped] = left.columnsUntyped ++ right.columnsUntyped
     }
   }
 
@@ -233,7 +250,7 @@ trait Sql {
   def select[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]): SelectBuilder[F, A, B] =
     SelectBuilder(selection)
 
-  def deleteFrom[A](table: Table.Aux[A]): DeleteBuilder[A] = DeleteBuilder(table)
+  def deleteFrom[F[_], A, B](table: Table.Source.Aux[F, A, B]): DeleteBuilder[F, A, B] = DeleteBuilder(table)
 
   def update[A](table: Table.Aux[A]): Update[A] = Update(table, Nil, true)
 
@@ -243,8 +260,8 @@ trait Sql {
       Read.Select(selection, table, true, Nil)
   }
 
-  sealed case class DeleteBuilder[A](table: Table.Aux[A]) {
-    def where[F](expr: Expr[F, A, Boolean]): Delete[F, A] = Delete(table, expr)
+  sealed case class DeleteBuilder[F[_], A, B](table: Table.Aux[A]) {
+    def where[F1](expr: Expr[F1, A, Boolean]): Delete[F1, A] = Delete(table, expr)
   }
 
   sealed case class Delete[F, A](
