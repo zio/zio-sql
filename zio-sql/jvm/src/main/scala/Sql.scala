@@ -18,6 +18,7 @@ trait Sql {
   object TypeTag {
     implicit case object TBigDecimal                                             extends TypeTag[BigDecimal]
     implicit case object TBoolean                                                extends TypeTag[Boolean]
+    implicit case object TByte                                                   extends TypeTag[Byte]
     implicit case object TByteArray                                              extends TypeTag[Array[Byte]]
     implicit case object TChar                                                   extends TypeTag[Char]
     implicit case object TDouble                                                 extends TypeTag[Double]
@@ -44,6 +45,21 @@ trait Sql {
 
     implicit def dialectSpecific[A](implicit typeTagExtension: TypeTagExtension[A]): TypeTag[A] =
       TDialectSpecific(typeTagExtension)
+  }
+
+  sealed trait IsIntegral[A] {
+    def typeTag: TypeTag[A]
+  }
+
+  object IsIntegral {
+
+    abstract class AbstractIsIntegral[A: TypeTag] extends IsIntegral[A] {
+      def typeTag = implicitly[TypeTag[A]]
+    }
+    implicit case object TByteIsIntegral       extends AbstractIsIntegral[Byte]
+    implicit case object TShortIsIntegral      extends AbstractIsIntegral[Short]
+    implicit case object TIntIsIntegral        extends AbstractIsIntegral[Int]
+    implicit case object TLongIsIntegral       extends AbstractIsIntegral[Long]
   }
 
   sealed trait IsNumeric[A] {
@@ -427,6 +443,20 @@ trait Sql {
     }
   }
 
+  sealed trait UnaryOp[A]
+
+  object UnaryOp {
+    sealed case class Negate[A: IsNumeric]() extends UnaryOp[A] {
+      def isNumeric: IsNumeric[A] = implicitly[IsNumeric[A]]
+    }
+
+    sealed case class NotBit[A: IsIntegral]() extends UnaryOp[A] {
+      def isIntegral: IsIntegral[A] = implicitly[IsIntegral[A]]
+    }
+
+    case object NotBool extends UnaryOp[Boolean]
+  }
+
   sealed trait BinaryOp[A]
 
   object BinaryOp {
@@ -447,13 +477,26 @@ trait Sql {
       def isNumeric: IsNumeric[A] = implicitly[IsNumeric[A]]
     }
 
-    case object AndBool        extends BinaryOp[Boolean]
-    case object OrBool         extends BinaryOp[Boolean]
+    case object AndBool extends BinaryOp[Boolean]
+    case object OrBool  extends BinaryOp[Boolean]
 
-    case object AndBit        extends BinaryOp[Integer]
-    case object OrBit         extends BinaryOp[Integer]
-
+    sealed case class AndBit[A: IsIntegral]() extends BinaryOp[A] {
+      def isIntegral: IsIntegral[A] = implicitly[IsIntegral[A]]
+    }
+    sealed case class OrBit[A: IsIntegral]() extends BinaryOp[A] {
+      def isIntegral: IsIntegral[A] = implicitly[IsIntegral[A]]
+    }
   }
+
+  sealed trait PropertyOp
+
+  object PropertyOp {
+    case object IsNull    extends PropertyOp
+    case object IsNotNull extends PropertyOp
+    case object IsTrue    extends PropertyOp
+    case object IsNotTrue extends PropertyOp
+  }
+
   sealed trait RelationalOp
 
   object RelationalOp {
@@ -513,15 +556,32 @@ trait Sql {
     def <=[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.LessThanEqual)
 
-    def &[F2, A1 <: A, B1 >: B](
-      that: Expr[F2, A1, Integer]
-    )(implicit ev: B <:< Integer): Expr[F :||: F2, A1, Integer] =
-      Expr.Binary(self.widen[Integer], that, BinaryOp.AndBit)
+    def &[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsIntegral[B1]): Expr[F :||: F2, A1, B1] =
+      Expr.Binary(self, that, BinaryOp.AndBit[B1])
 
-    def |[F2, A1 <: A, B1 >: B](
-      that: Expr[F2, A1, Integer]
-    )(implicit ev: B <:< Integer): Expr[F :||: F2, A1, Integer] =
-      Expr.Binary(self.widen[Integer], that, BinaryOp.OrBit)
+    def |[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsIntegral[B1]): Expr[F :||: F2, A1, B1] =
+      Expr.Binary(self, that, BinaryOp.OrBit[B1])
+
+    def unary_~[B1 >: B](implicit ev: IsIntegral[B1]): Expr.Unary[F, A, B1] =
+      Expr.Unary(self, UnaryOp.NotBit[B1])
+
+    def unary_-[B1 >: B](implicit ev: IsNumeric[B1]): Expr.Unary[F, A, B1] =
+      Expr.Unary(self, UnaryOp.Negate[B1])
+
+    def not[A1 <: A](implicit ev: B <:< Boolean): Expr.Unary[F, A1, Boolean] =
+      Expr.Unary(self.widen[Boolean], UnaryOp.NotBool)
+
+    def isNull[A1 <: A]: Expr[F, A1, Boolean] =
+      Expr.Property(self, PropertyOp.IsNull)
+
+    def isNotNull[A1 <: A]: Expr[F, A1, Boolean] =
+      Expr.Property(self, PropertyOp.IsNotNull)
+
+    def isTrue[A1 <: A](implicit ev: B <:< Boolean): Expr[F, A1, Boolean] =
+      Expr.Property(self, PropertyOp.IsTrue)
+
+    def isNotTrue[A1 <: A](implicit ev: B <:< Boolean): Expr[F, A1, Boolean] =
+      Expr.Property(self, PropertyOp.IsNotNull)
 
     def as[B1 >: B](name: String): Selection[F, A, SelectionSet.Cons[A, B1, SelectionSet.Empty]] =
       Selection.computedAs(self, name)
@@ -580,6 +640,10 @@ trait Sql {
 
     sealed case class Source[A, B] private[Sql] (tableName: TableName, column: Column[B])
         extends Expr[Features.Source, A, B]
+
+    sealed case class Unary[F, -A, B](base: Expr[F, A, B], op: UnaryOp[B]) extends Expr[F, A, B]
+
+    sealed case class Property[F, -A, +B](base: Expr[F, A, B], op: PropertyOp) extends Expr[F, A, Boolean]
 
     sealed case class Binary[F1, F2, A, B](left: Expr[F1, A, B], right: Expr[F2, A, B], op: BinaryOp[B])
         extends Expr[Features.Union[F1, F2], A, B]
