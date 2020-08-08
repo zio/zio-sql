@@ -25,9 +25,18 @@ object Examples {
   val basicDelete = deleteFrom(users).where(fName === "Terrence")
 
   /*
-    val deleteFromWithSubquery = deleteFrom(orders).where(fkUserId in {
-      select(userId as "id") from users where (fName === "Fred") //todo fix issue #36
-    }) */
+  val singleColumnSelect = select(userId) from users where (fName === "Fred")
+
+  val deleteFromWithSubquery = deleteFrom(orders).where(fkUserId in {
+    singleColumnSelect //todo fix issue #36
+  })
+  */
+
+  //delete from users where first_name in ('Fred', 'Terrance')
+  val deleteFromWithLiteral =
+    deleteFrom(users) where (fName in {
+      Read.lit("Fred", "Terrance") //todo make syntax nicer #52
+    })
 
   //select first_name, last_name, order_date from users left join orders on users.usr_id = orders.usr_id
   val basicJoin = select {

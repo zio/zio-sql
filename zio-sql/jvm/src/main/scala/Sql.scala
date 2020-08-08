@@ -56,10 +56,10 @@ trait Sql {
     abstract class AbstractIsIntegral[A: TypeTag] extends IsIntegral[A] {
       def typeTag = implicitly[TypeTag[A]]
     }
-    implicit case object TByteIsIntegral       extends AbstractIsIntegral[Byte]
-    implicit case object TShortIsIntegral      extends AbstractIsIntegral[Short]
-    implicit case object TIntIsIntegral        extends AbstractIsIntegral[Int]
-    implicit case object TLongIsIntegral       extends AbstractIsIntegral[Long]
+    implicit case object TByteIsIntegral  extends AbstractIsIntegral[Byte]
+    implicit case object TShortIsIntegral extends AbstractIsIntegral[Short]
+    implicit case object TIntIsIntegral   extends AbstractIsIntegral[Int]
+    implicit case object TLongIsIntegral  extends AbstractIsIntegral[Long]
   }
 
   sealed trait IsNumeric[A] {
@@ -310,10 +310,10 @@ trait Sql {
   /**
    * A `Read[A]` models a selection of a set of values of type `A`.
    */
-  sealed trait Read[+A] { self =>
-    def union[A1 >: A](that: Read[A1]): Read[A1] = Read.Union(self, that, true)
+  sealed trait Read[F, +A] { self =>
+    def union[F1, A1 >: A](that: Read[F1, A1]): Read[F :||: F1, A1] = Read.Union(self, that, true)
 
-    def unionAll[A1 >: A](that: Read[A1]): Read[A1] = Read.Union(self, that, false)
+    def unionAll[F1, A1 >: A](that: Read[F1, A1]): Read[F :||: F1, A1] = Read.Union(self, that, false)
   }
 
   object Read {
@@ -326,7 +326,7 @@ trait Sql {
       orderBy: List[Ordering[Expr[_, A, Any]]] = Nil,
       offset: Option[Long] = None,
       limit: Option[Long] = None
-    ) extends Read[B] { self =>
+    ) extends Read[F, B] { self =>
 
       def where(whereExpr2: Expr[_, A, Boolean]): Select[F, A, B] =
         copy(whereExpr = self.whereExpr && whereExpr2)
@@ -346,11 +346,12 @@ trait Sql {
       }
     }
 
-    sealed case class Union[B](left: Read[B], right: Read[B], distinct: Boolean) extends Read[B]
+    sealed case class Union[F1, F2, B](left: Read[F1, B], right: Read[F2, B], distinct: Boolean)
+        extends Read[F1 :||: F2, B]
 
-    sealed case class Literal[B: TypeTag](values: Iterable[B]) extends Read[B]
+    sealed case class Literal[B: TypeTag](values: Iterable[B]) extends Read[Features.Literal, B]
 
-    def lit[B: TypeTag](values: B*): Read[B] = Literal(values.toSeq)
+    def lit[B: TypeTag](values: B*): Read[Features.Literal, B] = Literal(values.toSeq)
   }
 
   sealed trait Ordering[+A]
@@ -611,7 +612,7 @@ trait Sql {
 
     def desc: Ordering[Expr[F, A, B]] = Ordering.Desc(self)
 
-    def in[B1 >: B](set: Read[B1]): Expr[F, A, Boolean] = Expr.In(self, set)
+    def in[F1, B1 >: B](set: Read[F1, B1]): Expr[F, A, Boolean] = Expr.In(self, set)
 
     def widen[C](implicit ev: B <:< C): Expr[F, A, C] = {
       val _ = ev
@@ -620,6 +621,7 @@ trait Sql {
   }
 
   object Features {
+    type SingleColumnSelect[_]
     type Aggregated[_]
     type Union[_, _]
     type Source
@@ -649,10 +651,12 @@ trait Sql {
     def exprName[F, A, B](expr: Expr[F, A, B]): Option[String] =
       expr match {
         case Expr.Source(_, c) => Some(c.name)
-        case _ => None
+        case _                 => None
       }
 
-    implicit def expToSelection[F, A, B](expr: Expr[F, A, B]): Selection[F, A, SelectionSet.Cons[A, B, SelectionSet.Empty]] =
+    implicit def expToSelection[F, A, B](
+      expr: Expr[F, A, B]
+    ): Selection[F, A, SelectionSet.Cons[A, B, SelectionSet.Empty]] =
       Selection.computedOption(expr, exprName(expr))
 
     sealed case class Source[A, B] private[Sql] (tableName: TableName, column: Column[B])
@@ -667,8 +671,10 @@ trait Sql {
 
     sealed case class Relational[F1, F2, A, B](left: Expr[F1, A, B], right: Expr[F2, A, B], op: RelationalOp)
         extends Expr[Features.Union[F1, F2], A, Boolean]
-    sealed case class In[F, A, B](value: Expr[F, A, B], set: Read[B]) extends Expr[F, A, Boolean]
-    sealed case class Literal[B: TypeTag](value: B)                   extends Expr[Features.Literal, Any, B]
+
+    sealed case class In[F, F1, A, B](value: Expr[F, A, B], set: Read[F1, B]) extends Expr[F, A, Boolean]
+
+    sealed case class Literal[B: TypeTag](value: B) extends Expr[Features.Literal, Any, B]
 
     sealed case class AggregationCall[F, A, B, Z](param: Expr[F, A, B], aggregation: AggregationDef[B, Z])
         extends Expr[Features.Aggregated[F], A, Z]
