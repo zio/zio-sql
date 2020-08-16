@@ -19,6 +19,7 @@ trait Sql {
   object TypeTag {
     implicit case object TBigDecimal                                             extends TypeTag[BigDecimal]
     implicit case object TBoolean                                                extends TypeTag[Boolean]
+    implicit case object TByte                                                   extends TypeTag[Byte]
     implicit case object TByteArray                                              extends TypeTag[Array[Byte]]
     implicit case object TChar                                                   extends TypeTag[Char]
     implicit case object TDouble                                                 extends TypeTag[Double]
@@ -45,6 +46,21 @@ trait Sql {
 
     implicit def dialectSpecific[A](implicit typeTagExtension: TypeTagExtension[A]): TypeTag[A] =
       TDialectSpecific(typeTagExtension)
+  }
+
+  sealed trait IsIntegral[A] {
+    def typeTag: TypeTag[A]
+  }
+
+  object IsIntegral {
+
+    abstract class AbstractIsIntegral[A: TypeTag] extends IsIntegral[A] {
+      def typeTag = implicitly[TypeTag[A]]
+    }
+    implicit case object TByteIsIntegral       extends AbstractIsIntegral[Byte]
+    implicit case object TShortIsIntegral      extends AbstractIsIntegral[Short]
+    implicit case object TIntIsIntegral        extends AbstractIsIntegral[Int]
+    implicit case object TLongIsIntegral       extends AbstractIsIntegral[Long]
   }
 
   sealed trait IsNumeric[A] {
@@ -101,8 +117,10 @@ trait Sql {
 
       override def columnsUntyped: List[Column.Untyped] = head :: tail.columnsUntyped
 
-      def table(name0: TableName): Table.Source[ColumnsRepr, A :*: B] =
-        new Table.Source[ColumnsRepr, A :*: B] {
+      def table(name0: TableName): Table.Source.Aux_[ColumnsRepr, A :*: B] =
+        new Table.Source {
+          type Repr[C] = ColumnsRepr[C]
+          type Cols    = A :*: B
           val name: TableName                      = name0
           val columnSchema: ColumnSchema[A :*: B]  = ColumnSchema(self)
           val columns: ColumnsRepr[TableType]      = mkColumns[TableType](name0)
@@ -175,6 +193,8 @@ trait Sql {
 
     final def rightOuter[That](that: Table.Aux[That]): Table.JoinBuilder[self.TableType, That] =
       new Table.JoinBuilder[self.TableType, That](JoinType.RightOuter, self, that)
+
+    val columnsUntyped: List[Column.Untyped]
   }
 
   object Table {
@@ -186,14 +206,26 @@ trait Sql {
 
     type Aux[A] = Table { type TableType = A }
 
-    sealed trait Source[F[_], A] extends Table {
+    sealed trait Source extends Table {
+      type Repr[_]
+      type Cols
       val name: TableName
-      val columnSchema: ColumnSchema[A]
-      val columns: F[TableType]
-      val columnsUntyped: List[Column.Untyped]
+      val columnSchema: ColumnSchema[Cols]
+      val columns: Repr[TableType]
 
       override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
         val _ = builder.append(name)
+      }
+    }
+    object Source {
+      type Aux_[F[_], B] = Table.Source {
+        type Repr[X] = F[X]
+        type Cols    = B
+      }
+      type Aux[F[_], A, B] = Table.Source {
+        type Repr[X]   = F[X]
+        type TableType = A
+        type Cols      = B
       }
     }
 
@@ -204,6 +236,8 @@ trait Sql {
       on: Expr[F, A with B, Boolean]
     ) extends Table {
       type TableType = left.TableType with right.TableType
+
+      val columnsUntyped: List[Column.Untyped] = left.columnsUntyped ++ right.columnsUntyped
 
       override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
         left.renderBuilder(builder, mode)
@@ -235,7 +269,7 @@ trait Sql {
   def select[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]): SelectBuilder[F, A, B] =
     SelectBuilder(selection)
 
-  def deleteFrom[A](table: Table.Aux[A]): DeleteBuilder[A] = DeleteBuilder(table)
+  def deleteFrom[F[_], A, B](table: Table.Source.Aux[F, A, B]): DeleteBuilder[F, A, B] = DeleteBuilder(table)
 
   def update[A](table: Table.Aux[A]): UpdateBuilder[A] = UpdateBuilder(table)
 
@@ -245,12 +279,12 @@ trait Sql {
   }
   sealed case class SelectBuilder[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]) {
 
-    def from(table: Table.Aux[A]): Read.Select[F, A, B] =
+    def from[A1 <: A](table: Table.Aux[A1]): Read.Select[F, A1, B] =
       Read.Select(selection, table, true, Nil)
   }
 
-  sealed case class DeleteBuilder[A](table: Table.Aux[A]) {
-    def where[F](expr: Expr[F, A, Boolean]): Delete[F, A] = Delete(table, expr)
+  sealed case class DeleteBuilder[F[_], A, B](table: Table.Aux[A]) {
+    def where[F1](expr: Expr[F1, A, Boolean]): Delete[F1, A] = Delete(table, expr)
   }
 
   sealed case class Delete[F, A](
@@ -563,7 +597,24 @@ trait Sql {
     }
   }
 
-  sealed trait BinaryOp[A] extends Renderable {
+  sealed trait UnaryOp[A]
+
+  object UnaryOp {
+    sealed case class Negate[A: IsNumeric]() extends UnaryOp[A] {
+      def isNumeric: IsNumeric[A] = implicitly[IsNumeric[A]]
+    }
+
+    sealed case class NotBit[A: IsIntegral]() extends UnaryOp[A] {
+      def isIntegral: IsIntegral[A] = implicitly[IsIntegral[A]]
+    }
+
+    case object NotBool extends UnaryOp[Boolean]
+  }
+
+  sealed trait BinaryOp[A]
+
+
+  sealed trait BinaryOp[A]{
     val symbol: String
 
     override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
@@ -599,13 +650,28 @@ trait Sql {
     case object AndBool extends BinaryOp[Boolean] {
       override val symbol: String = "and"
     }
-    case object OrBool extends BinaryOp[Boolean] {
-      override val symbol: String = "or"
+
+    case object AndBool extends BinaryOp[Boolean]
+    case object OrBool  extends BinaryOp[Boolean]
+
+    sealed case class AndBit[A: IsIntegral]() extends BinaryOp[A] {
+      def isIntegral: IsIntegral[A] = implicitly[IsIntegral[A]]
     }
-    case object StringConcat extends BinaryOp[String] {
-      override val symbol: String = "+"
+    sealed case class OrBit[A: IsIntegral]() extends BinaryOp[A] {
+      def isIntegral: IsIntegral[A] = implicitly[IsIntegral[A]]
     }
   }
+
+  sealed trait PropertyOp
+
+  object PropertyOp {
+    case object IsNull    extends PropertyOp
+    case object IsNotNull extends PropertyOp
+    case object IsTrue    extends PropertyOp
+    case object IsNotTrue extends PropertyOp
+  }
+
+
   sealed trait RelationalOp extends Renderable
 
   object RelationalOp {
@@ -636,6 +702,7 @@ trait Sql {
     }
   }
 
+
   type :||:[A, B] = Features.Union[A, B]
 
   /**
@@ -653,6 +720,9 @@ trait Sql {
     def *[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =
       Expr.Binary(self, that, BinaryOp.Mul[B1]())
 
+    def /[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =
+      Expr.Binary(self, that, BinaryOp.Div[B1]())
+
     def &&[F2, A1 <: A, B1 >: B](
       that: Expr[F2, A1, Boolean]
     )(implicit ev: B <:< Boolean): Expr[F :||: F2, A1, Boolean] =
@@ -666,6 +736,9 @@ trait Sql {
     def ===[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.Equals)
 
+    def <>[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
+      Expr.Relational(self, that, RelationalOp.NotEqual)
+
     def >[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.GreaterThan)
 
@@ -677,6 +750,33 @@ trait Sql {
 
     def <=[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.LessThanEqual)
+
+    def &[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsIntegral[B1]): Expr[F :||: F2, A1, B1] =
+      Expr.Binary(self, that, BinaryOp.AndBit[B1])
+
+    def |[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsIntegral[B1]): Expr[F :||: F2, A1, B1] =
+      Expr.Binary(self, that, BinaryOp.OrBit[B1])
+
+    def unary_~[B1 >: B](implicit ev: IsIntegral[B1]): Expr.Unary[F, A, B1] =
+      Expr.Unary(self, UnaryOp.NotBit[B1])
+
+    def unary_-[B1 >: B](implicit ev: IsNumeric[B1]): Expr.Unary[F, A, B1] =
+      Expr.Unary(self, UnaryOp.Negate[B1])
+
+    def not[A1 <: A](implicit ev: B <:< Boolean): Expr.Unary[F, A1, Boolean] =
+      Expr.Unary(self.widen[Boolean], UnaryOp.NotBool)
+
+    def isNull[A1 <: A]: Expr[F, A1, Boolean] =
+      Expr.Property(self, PropertyOp.IsNull)
+
+    def isNotNull[A1 <: A]: Expr[F, A1, Boolean] =
+      Expr.Property(self, PropertyOp.IsNotNull)
+
+    def isTrue[A1 <: A](implicit ev: B <:< Boolean): Expr[F, A1, Boolean] =
+      Expr.Property(self, PropertyOp.IsTrue)
+
+    def isNotTrue[A1 <: A](implicit ev: B <:< Boolean): Expr[F, A1, Boolean] =
+      Expr.Property(self, PropertyOp.IsNotNull)
 
     def as[B1 >: B](name: String): Selection[F, A, SelectionSet.Cons[A, B1, SelectionSet.Empty]] =
       Selection.computedAs(self, name)
@@ -724,12 +824,25 @@ trait Sql {
   object Expr {
     implicit def literal[A: TypeTag](a: A): Expr[Features.Literal, Any, A] = Expr.Literal(a)
 
+    def exprName[F, A, B](expr: Expr[F, A, B]): Option[String] =
+      expr match {
+        case Expr.Source(_, c) => Some(c.name)
+        case _ => None
+      }
+
+    implicit def expToSelection[F, A, B](expr: Expr[F, A, B]): Selection[F, A, SelectionSet.Cons[A, B, SelectionSet.Empty]] =
+      Selection.computedOption(expr, exprName(expr))
+
     sealed case class Source[A, B] private[Sql] (tableName: TableName, column: Column[B])
         extends Expr[Features.Source, A, B] {
       override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
         val _ = builder.append(column.name)
       }
     }
+
+    sealed case class Unary[F, -A, B](base: Expr[F, A, B], op: UnaryOp[B]) extends Expr[F, A, B]
+
+    sealed case class Property[F, -A, +B](base: Expr[F, A, B], op: PropertyOp) extends Expr[F, A, Boolean]
 
     sealed case class Binary[F1, F2, A, B](left: Expr[F1, A, B], right: Expr[F2, A, B], op: BinaryOp[B])
         extends Expr[Features.Union[F1, F2], A, B] {
@@ -915,6 +1028,9 @@ trait Sql {
     //TODO substring regex
     val Trim  = FunctionDef[String, String](FunctionName("trim"))
     val Upper = FunctionDef[String, String](FunctionName("upper"))
+
+    // date functions
+    val CurrentTimestamp = FunctionDef[Nothing, Instant](FunctionName("current_timestamp"))
   }
 
   object Example1 {

@@ -10,45 +10,22 @@ object Examples extends App {
   import ShopSchema.OrderDetails._
 
   //select first_name, last_name from users
-  //val basicSelect = select { fName ++ lName } from userTable //todo fix issue #28
+  val basicSelect = select { fName ++ lName } from users
 
   //select first_name as first, last_name as last from users
-  val basicSelectWithAliases = (select {
+  val basicSelectWithAliases = select {
     (fName as "first") ++ (lName as "last")
-  } from users)
+  } from users
 
   println(basicSelectWithAliases.render(RenderMode.Compact))
 
   //select top 2 first_name, last_name from users order by last_name, first_name desc
   val selectWithRefinements =
-    (select {
-      (fName as "first_name") ++ (lName as "last_name") //todo fix #28 get rid of aliases
-    }
-      from users)
-      .limit(2)
-      .offset(3) //todo shouldn't be able to set an offset unless a limit is specified
-      .orderBy(
-        lName //defaults to ascending order, do not need to specify .asc
-        ,
-        fName.desc //desc must be specified if you want descending order
-      )
-  println(selectWithRefinements.render(RenderMode.Compact))
-
-  // update users set first_name = 'Fred' where first_name = 'Terrence'
-  val basicUpdate = update(users)
-    .set(fName, "Fred")
-    .where(fName === "Terrence")
-
-  println(basicUpdate.render(RenderMode.Compact))
+    select { fName ++ lName } from users orderBy (lName, fName.desc) limit 2
 
   //delete from users where first_name = 'Terrence'
   val basicDelete = deleteFrom(users).where(fName === "Terrence")
   println(basicDelete.render(RenderMode.Compact))
-
-  //NOT VALID todo fix issue #37
-  //Incorrect syntax near the keyword 'inner'.
-  //delete from orders inner join users on orders.usr_id = users.usr_id where first_name = 'Terrence'
-  val invalidJoinDelete = deleteFrom((orders join users).on(fkUserId === userId)).where(fName === "Terrence")
 
   /*
     val deleteFromWithSubquery = deleteFrom(orders).where(fkUserId in {
@@ -57,7 +34,7 @@ object Examples extends App {
 
   //select first_name, last_name, order_date from users left join orders on users.usr_id = orders.usr_id
   val basicJoin = select {
-    (fName as "first_name") ++ (lName as "last_name") ++ (orderDate as "order_date")
+    fName ++ lName ++ orderDate
   } from (users leftOuter orders).on(fkUserId === userId)
 
   println(basicJoin.render(RenderMode.Compact))
@@ -68,21 +45,21 @@ object Examples extends App {
         left join order_details on orders.order_id = order_details.order_id
     group by users.usr_id, first_name, last_name */
 
-  val orderValues = (select {
-    (Arbitrary(userId) as "usr_id") ++
-      (Arbitrary(fName) as "first_name") ++
-      (Arbitrary(lName) as "last_name") ++
-      (Arbitrary(orderId) as "order_id") ++ //todo fix #39, remove column
-      (Sum(quantity * unitPrice) as "total_spend")
-  }
-    from {
-      users
-        .join(orders)
-        .on(userId === fkUserId)
-        .leftOuter(orderDetails)
-        .on(orderId == fkOrderId)
-    })
-    .groupBy(userId, fName /*, lName */ ) //shouldn't compile without lName todo fix #38
+  val orderValues =
+    (select {
+      (Arbitrary(userId)) ++
+        (Arbitrary(fName)) ++
+        (Arbitrary(lName)) ++
+        (Sum(quantity * unitPrice) as "total_spend")
+    }
+      from {
+        users
+          .join(orders)
+          .on(userId === fkUserId)
+          .leftOuter(orderDetails)
+          .on(orderId == fkOrderId)
+      })
+      .groupBy(userId, fName /*, lName */ ) //shouldn't compile without lName todo fix #38
 }
 object ShopSchema extends Sql { self =>
   import self.ColumnSet._
