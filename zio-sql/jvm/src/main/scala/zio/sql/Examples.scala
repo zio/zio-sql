@@ -52,9 +52,9 @@ object Examples {
 
   val orderValues =
     (select {
-      (Arbitrary(userId)) ++
-        (Arbitrary(fName)) ++
-        (Arbitrary(lName)) ++
+      Arbitrary(userId) ++
+        Arbitrary(fName) ++
+        Arbitrary(lName) ++
         (Sum(quantity * unitPrice) as "total_spend")
     }
       from {

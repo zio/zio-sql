@@ -372,7 +372,7 @@ trait Sql {
 
     def ++[F2, A1 <: A, C <: SelectionSet[A1]](
       that: Selection[F2, A1, C]
-    ): Selection[F :||: F2, A1, self.value.Append[A1, C]] =
+    ): Selection[F :><: F2, A1, self.value.Append[A1, C]] =
       Selection(self.value ++ that.value)
 
     def columns[A1 <: A]: value.SelectionsRepr[A1, SelectionType] = value.selections[A1, SelectionType]
@@ -527,6 +527,7 @@ trait Sql {
   }
 
   type :||:[A, B] = Features.Union[A, B]
+  type :><:[A, B] = Features.UnionColumns[A, B]
 
   /**
    * Models a function `A => B`.
@@ -621,9 +622,9 @@ trait Sql {
   }
 
   object Features {
-    type SingleColumnSelect[_]
     type Aggregated[_]
     type Union[_, _]
+    type UnionColumns[_, _]
     type Source
     type Literal
 
@@ -632,9 +633,10 @@ trait Sql {
     object IsAggregated {
       def apply[A](implicit is: IsAggregated[A]): IsAggregated[A] = is
 
-      implicit def AggregatedIsAggregated[A]: IsAggregated[Aggregated[A]] = ???
+      implicit def AggregatedIsAggregated[A]: IsAggregated[Aggregated[A]] = new IsAggregated[Aggregated[A]] {}
 
-      implicit def UnionIsAggregated[A: IsAggregated, B: IsAggregated]: IsAggregated[Union[A, B]] = ???
+      implicit def UnionIsAggregated[A: IsAggregated, B: IsAggregated]: IsAggregated[UnionColumns[A, B]] =
+        new IsAggregated[UnionColumns[A, B]] {}
     }
 
     @implicitNotFound("You can only use this function on a column in the source table")
