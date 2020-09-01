@@ -3,7 +3,7 @@ package zio.sql
 import zio.test.Assertion.anything
 import zio.test.{ assert, suite, test, DefaultRunnableSpec }
 
-object GroupByHavinSpec extends DefaultRunnableSpec {
+object GroupByHavingSpec extends DefaultRunnableSpec {
 
   import AggregatedProductSchema._
 
