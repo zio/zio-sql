@@ -382,6 +382,7 @@ trait Sql {
       table: Table.Aux[A],
       whereExpr: Expr[_, A, Boolean],
       groupBy: List[Expr[_, A, Any]],
+      havingExpr: Expr[_, A, Boolean] = true,
       orderBy: List[Ordering[Expr[_, A, Any]]] = Nil,
       offset: Option[Long] = None, //todo don't know how to do this outside of postgres/mysql
       limit: Option[Long] = None
@@ -437,6 +438,11 @@ trait Sql {
         val _ = ev
         copy(groupBy = groupBy ++ (key :: keys.toList))
       }
+
+      def having(havingExpr2: Expr[_, A, Boolean])(
+        implicit ev: Features.IsAggregated[F]
+      ): Select[F, A, B] =
+        copy(havingExpr = self.havingExpr && havingExpr2)
     }
 
     sealed case class Union[B](left: Read[B], right: Read[B], distinct: Boolean) extends Read[B] {
