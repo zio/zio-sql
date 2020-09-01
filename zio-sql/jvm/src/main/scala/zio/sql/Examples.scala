@@ -2,27 +2,32 @@ package zio.sql
 
 import zio.sql._
 
-object Examples {
+object Examples extends App {
   import ShopSchema._
   import ShopSchema.AggregationDef._
+  import ShopSchema.FunctionDef._
   import ShopSchema.Users._
   import ShopSchema.Orders._
   import ShopSchema.OrderDetails._
 
   //select first_name, last_name from users
   val basicSelect = select { fName ++ lName } from users
+  println(basicSelect.render(RenderMode.Compact))
 
   //select first_name as first, last_name as last from users
   val basicSelectWithAliases = select {
     (fName as "first") ++ (lName as "last")
   } from users
+  println(basicSelectWithAliases.render(RenderMode.Compact))
 
   //select top 2 first_name, last_name from users order by last_name, first_name desc
   val selectWithRefinements =
     select { fName ++ lName } from users orderBy (lName, fName.desc) limit 2
+  println(selectWithRefinements.render(RenderMode.Compact))
 
   //delete from users where first_name = 'Terrence'
   val basicDelete = deleteFrom(users).where(fName === "Terrence")
+  println(basicDelete.render(RenderMode.Compact))
 
   /*
     val deleteFromWithSubquery = deleteFrom(orders).where(fkUserId in {
@@ -33,7 +38,7 @@ object Examples {
   val basicJoin = select {
     fName ++ lName ++ orderDate
   } from (users leftOuter orders).on(fkUserId === userId)
-
+  println(basicJoin.render(RenderMode.Compact))
   /*
     select users.usr_id, first_name, last_name, sum(quantity * unit_price) as "total_spend"
     from users
@@ -46,7 +51,8 @@ object Examples {
       (Arbitrary(userId)) ++
         (Arbitrary(fName)) ++
         (Arbitrary(lName)) ++
-        (Sum(quantity * unitPrice) as "total_spend")
+        (Sum(quantity * unitPrice) as "total_spend") ++
+        Sum(Abs(quantity))
     }
       from {
         users
@@ -56,6 +62,7 @@ object Examples {
           .on(orderId == fkOrderId)
       })
       .groupBy(userId, fName /*, lName */ ) //shouldn't compile without lName todo fix #38
+  println(orderValues.render(RenderMode.Compact))
 }
 object ShopSchema extends Sql { self =>
   import self.ColumnSet._

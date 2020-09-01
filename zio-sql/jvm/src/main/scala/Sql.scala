@@ -1,11 +1,11 @@
 package zio.sql
 
 import scala.language.implicitConversions
-
 import java.time._
 import java.util.UUID
 
 import scala.annotation.implicitNotFound
+import scala.collection.immutable.Nil
 
 trait Sql {
   type ColumnName = String
@@ -56,10 +56,10 @@ trait Sql {
     abstract class AbstractIsIntegral[A: TypeTag] extends IsIntegral[A] {
       def typeTag = implicitly[TypeTag[A]]
     }
-    implicit case object TByteIsIntegral       extends AbstractIsIntegral[Byte]
-    implicit case object TShortIsIntegral      extends AbstractIsIntegral[Short]
-    implicit case object TIntIsIntegral        extends AbstractIsIntegral[Int]
-    implicit case object TLongIsIntegral       extends AbstractIsIntegral[Long]
+    implicit case object TByteIsIntegral  extends AbstractIsIntegral[Byte]
+    implicit case object TShortIsIntegral extends AbstractIsIntegral[Short]
+    implicit case object TIntIsIntegral   extends AbstractIsIntegral[Int]
+    implicit case object TLongIsIntegral  extends AbstractIsIntegral[Long]
   }
 
   sealed trait IsNumeric[A] {
@@ -124,6 +124,7 @@ trait Sql {
           val columnSchema: ColumnSchema[A :*: B]  = ColumnSchema(self)
           val columns: ColumnsRepr[TableType]      = mkColumns[TableType](name0)
           val columnsUntyped: List[Column.Untyped] = self.columnsUntyped
+
         }
 
       override protected def mkColumns[T](name: TableName): ColumnsRepr[T] =
@@ -155,7 +156,11 @@ trait Sql {
     def unapply[A, B](tuple: (A, B)): Some[(A, B)] = Some(tuple)
   }
 
-  sealed case class FunctionName(name: String)
+  sealed case class FunctionName(name: String) extends Renderable {
+    override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+      val _ = builder.append(name)
+    }
+  }
 
   sealed case class Column[A: TypeTag](name: String) {
     def typeTag: TypeTag[A] = implicitly[TypeTag[A]]
@@ -177,7 +182,7 @@ trait Sql {
   /**
    * (left join right) on (...)
    */
-  sealed trait Table { self =>
+  sealed trait Table extends Renderable { self =>
     type TableType
 
     final def fullOuter[That](that: Table.Aux[That]): Table.JoinBuilder[self.TableType, That] =
@@ -198,7 +203,6 @@ trait Sql {
   object Table {
 
     class JoinBuilder[A, B](joinType: JoinType, left: Table.Aux[A], right: Table.Aux[B]) {
-
       def on[F](expr: Expr[F, A with B, Boolean]): Table.Aux[A with B] =
         Joined(joinType, left, right, expr)
     }
@@ -211,6 +215,10 @@ trait Sql {
       val name: TableName
       val columnSchema: ColumnSchema[Cols]
       val columns: Repr[TableType]
+
+      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+        val _ = builder.append(name)
+      }
     }
     object Source {
       type Aux_[F[_], B] = Table.Source {
@@ -231,7 +239,21 @@ trait Sql {
       on: Expr[F, A with B, Boolean]
     ) extends Table {
       type TableType = left.TableType with right.TableType
+
       val columnsUntyped: List[Column.Untyped] = left.columnsUntyped ++ right.columnsUntyped
+
+      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+        left.renderBuilder(builder, mode)
+        builder.append(joinType match {
+          case JoinType.Inner      => " inner join "
+          case JoinType.LeftOuter  => " left join "
+          case JoinType.RightOuter => " right join "
+          case JoinType.FullOuter  => " outer join "
+        })
+        right.renderBuilder(builder, mode)
+        builder.append(" on ")
+        on.renderBuilder(builder, mode)
+      }
     }
   }
 
@@ -252,8 +274,12 @@ trait Sql {
 
   def deleteFrom[F[_], A, B](table: Table.Source.Aux[F, A, B]): DeleteBuilder[F, A, B] = DeleteBuilder(table)
 
-  def update[A](table: Table.Aux[A]): Update[A] = Update(table, Nil, true)
+  def update[A](table: Table.Aux[A]): UpdateBuilder[A] = UpdateBuilder(table)
 
+  sealed case class UpdateBuilder[A](table: Table.Aux[A]) {
+    def set[F: Features.IsSource, Value: TypeTag](lhs: Expr[F, A, Value], rhs: Expr[_, A, Value]): Update[A] =
+      Update(table, Set(lhs, rhs) :: Nil, true)
+  }
   sealed case class SelectBuilder[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]) {
 
     def from[A1 <: A](table: Table.Aux[A1]): Read.Select[F, A1, B] =
@@ -267,27 +293,60 @@ trait Sql {
   sealed case class Delete[F, A](
     table: Table.Aux[A],
     whereExpr: Expr[F, A, Boolean]
-  )
+  ) extends Renderable {
+    override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+      builder.append("delete from ")
+      table.renderBuilder(builder, mode)
+      /*todo check whereExpr
+        whereExpr match {
+        case Expr.Literal(true) => ()
+        case _ =>*/
+      builder.append(" where ")
+      whereExpr.renderBuilder(builder, mode)
+      //}
+    }
+  }
 
   // UPDATE table
   // SET foo = bar
   // WHERE baz > buzz
-  sealed case class Update[A](table: Table.Aux[A], set: List[Set[_, A]], whereExpr: Expr[_, A, Boolean]) {
+  //todo `set` must be non-empty
+  sealed case class Update[A](table: Table.Aux[A], set: List[Set[_, A]], whereExpr: Expr[_, A, Boolean])
+      extends Renderable {
 
     def set[F: Features.IsSource, Value: TypeTag](lhs: Expr[F, A, Value], rhs: Expr[_, A, Value]): Update[A] =
       copy(set = set :+ Set(lhs, rhs))
 
     def where(whereExpr2: Expr[_, A, Boolean]): Update[A] =
       copy(whereExpr = whereExpr && whereExpr2)
+
+    override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+      builder.append("update ")
+      table.renderBuilder(builder, mode)
+      builder.append(" set ")
+      set.renderBuilder(builder, mode)
+      whereExpr match {
+        case Expr.Literal(true) => ()
+        case _ =>
+          builder.append(" where ")
+          whereExpr.renderBuilder(builder, mode)
+      }
+    }
   }
 
-  sealed trait Set[F, -A] {
+  sealed trait Set[F, -A] extends Renderable {
     type Value
 
     def lhs: Expr[F, A, Value]
     def rhs: Expr[_, A, Value]
 
     def typeTag: TypeTag[Value]
+
+    override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+      lhs.renderBuilder(builder, mode)
+      builder.append(" = ")
+      rhs.renderBuilder(builder, mode)
+    }
   }
 
   object Set {
@@ -310,7 +369,7 @@ trait Sql {
   /**
    * A `Read[A]` models a selection of a set of values of type `A`.
    */
-  sealed trait Read[+A] { self =>
+  sealed trait Read[+A] extends Renderable { self =>
     def union[A1 >: A](that: Read[A1]): Read[A1] = Read.Union(self, that, true)
 
     def unionAll[A1 >: A](that: Read[A1]): Read[A1] = Read.Union(self, that, false)
@@ -324,9 +383,43 @@ trait Sql {
       whereExpr: Expr[_, A, Boolean],
       groupBy: List[Expr[_, A, Any]],
       orderBy: List[Ordering[Expr[_, A, Any]]] = Nil,
-      offset: Option[Long] = None,
+      offset: Option[Long] = None, //todo don't know how to do this outside of postgres/mysql
       limit: Option[Long] = None
     ) extends Read[B] { self =>
+
+      /*todo need to add dialect to render/render builder - limit is represented as:
+        SQL Server:
+          select top x ...
+        MySQL/Postgre: at the end
+          select ... limit x
+        Oracle: part of the where clause
+          select ... where rownum <= x
+       */
+      override def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+        builder.append("select ")
+        selection.renderBuilder(builder, mode)
+        builder.append(" from ")
+        table.renderBuilder(builder, mode)
+        whereExpr match {
+          case Expr.Literal(true) => ()
+          case _ =>
+            builder.append(" where ")
+            whereExpr.renderBuilder(builder, mode)
+        }
+
+        limit match {
+          case Some(limit) =>
+            builder.append(" limit ")
+            offset match {
+              case Some(offset) =>
+                val _ = builder.append(offset).append(", ")
+              case None => ()
+            }
+            val _ = builder.append(limit)
+
+          case None => ()
+        }
+      }
 
       def where(whereExpr2: Expr[_, A, Boolean]): Select[F, A, B] =
         copy(whereExpr = self.whereExpr && whereExpr2)
@@ -346,9 +439,21 @@ trait Sql {
       }
     }
 
-    sealed case class Union[B](left: Read[B], right: Read[B], distinct: Boolean) extends Read[B]
+    sealed case class Union[B](left: Read[B], right: Read[B], distinct: Boolean) extends Read[B] {
+      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
 
-    sealed case class Literal[B: TypeTag](values: Iterable[B]) extends Read[B]
+        left.renderBuilder(builder, mode)
+        builder.append(" union ")
+        if (!distinct) builder.append("all ")
+        right.renderBuilder(builder, mode)
+      }
+    }
+
+    sealed case class Literal[B: TypeTag](values: Iterable[B]) extends Read[B] {
+      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+        val _ = builder.append(" (").append(values.mkString(",")).append(") ") //todo fix
+      }
+    }
 
     def lit[B: TypeTag](values: B*): Read[B] = Literal(values.toSeq)
   }
@@ -366,7 +471,12 @@ trait Sql {
   /**
    * A columnar selection of `B` from a source `A`, modeled as `A => B`.
    */
-  sealed case class Selection[F, -A, +B <: SelectionSet[A]](value: B) { self =>
+  sealed case class Selection[F, -A, +B <: SelectionSet[A]](value: B) extends Renderable { self =>
+
+    override def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+      val _ = value.renderBuilder(builder, mode)
+    }
+
     type SelectionType
 
     def ++[F2, A1 <: A, C <: SelectionSet[A1]](
@@ -399,24 +509,44 @@ trait Sql {
 
     def computedAs[F, A, B](expr: Expr[F, A, B], name: ColumnName): Selection[F, A, Cons[A, B, Empty]] =
       computedOption(expr, Some(name))
-
-    val selection =
-      computed(FunctionDef.CharLength(Expr.Literal("test"))) ++
-        constant(1) ++ empty ++ constant("foo") ++ constant(true) ++ empty
-
-    val int :*: str :*: bool :*: _ = selection.columns
   }
 
-  sealed trait ColumnSelection[-A, +B] {
+  sealed trait ColumnSelection[-A, +B] extends Renderable {
     def name: Option[ColumnName]
   }
 
   object ColumnSelection {
-    sealed case class Constant[A: TypeTag](value: A, name: Option[ColumnName])         extends ColumnSelection[Any, A]
-    sealed case class Computed[F, A, B](expr: Expr[F, A, B], name: Option[ColumnName]) extends ColumnSelection[A, B]
+    sealed case class Constant[A: TypeTag](value: A, name: Option[ColumnName]) extends ColumnSelection[Any, A] {
+
+      override def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+        builder.append(value.toString())
+        name match {
+          case Some(name) =>
+            val _ = builder.append(" as ").append(name)
+          case None => ()
+        }
+      }
+
+    }
+    sealed case class Computed[F, A, B](expr: Expr[F, A, B], name: Option[ColumnName]) extends ColumnSelection[A, B] {
+
+      override def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+        expr.renderBuilder(builder, mode)
+        name match {
+          case Some(name) =>
+            Expr.exprName(expr) match {
+              case Some(sourceName) if name != sourceName =>
+                val _ = builder.append(" as ").append(name)
+              case _ => ()
+            }
+          case _ => ()
+        }
+      }
+
+    }
   }
 
-  sealed trait SelectionSet[-Source] {
+  sealed trait SelectionSet[-Source] extends Renderable {
     type SelectionsRepr[Source1, T]
 
     type Append[Source1, That <: SelectionSet[Source1]] <: SelectionSet[Source1]
@@ -432,6 +562,9 @@ trait Sql {
     type Empty = Empty.type
 
     case object Empty extends SelectionSet[Any] {
+
+      override def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = ()
+
       override type SelectionsRepr[Source1, T] = Unit
 
       override type Append[Source1, That <: SelectionSet[Source1]] = That
@@ -446,6 +579,17 @@ trait Sql {
 
     sealed case class Cons[-Source, A, B <: SelectionSet[Source]](head: ColumnSelection[Source, A], tail: B)
         extends SelectionSet[Source] { self =>
+
+      override def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+        head.renderBuilder(builder, mode)
+        tail match {
+          case _: SelectionSet.Empty.type => ()
+          case _ =>
+            builder.append(", ")
+            tail.renderBuilder(builder, mode)
+        }
+      }
+
       override type SelectionsRepr[Source1, T] = (ColumnSelection[Source1, A], tail.SelectionsRepr[Source1, T])
 
       override type Append[Source1, That <: SelectionSet[Source1]] =
@@ -460,69 +604,138 @@ trait Sql {
     }
   }
 
-  sealed trait UnaryOp[A]
+  sealed trait UnaryOp[A] extends Renderable {
+    val symbol: String
+    override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+      val _ = builder.append(" ").append(symbol)
+    }
+  }
 
   object UnaryOp {
     sealed case class Negate[A: IsNumeric]() extends UnaryOp[A] {
       def isNumeric: IsNumeric[A] = implicitly[IsNumeric[A]]
+      val symbol                  = "-"
     }
 
     sealed case class NotBit[A: IsIntegral]() extends UnaryOp[A] {
       def isIntegral: IsIntegral[A] = implicitly[IsIntegral[A]]
+      val symbol                    = "~"
     }
 
-    case object NotBool extends UnaryOp[Boolean]
+    case object NotBool extends UnaryOp[Boolean] {
+      val symbol = "not"
+    }
   }
 
-  sealed trait BinaryOp[A]
+  sealed trait BinaryOp[A] extends Renderable {
+    val symbol: String
+
+    override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+      val _ = builder.append(" ").append(symbol).append(" ")
+    }
+  }
 
   object BinaryOp {
 
     sealed case class Add[A: IsNumeric]() extends BinaryOp[A] {
       def isNumeric: IsNumeric[A] = implicitly[IsNumeric[A]]
+
+      override val symbol: String = "+"
     }
 
     sealed case class Sub[A: IsNumeric]() extends BinaryOp[A] {
       def isNumeric: IsNumeric[A] = implicitly[IsNumeric[A]]
+
+      override val symbol: String = "-"
     }
 
     sealed case class Mul[A: IsNumeric]() extends BinaryOp[A] {
       def isNumeric: IsNumeric[A] = implicitly[IsNumeric[A]]
+
+      override val symbol: String = "*"
     }
 
     sealed case class Div[A: IsNumeric]() extends BinaryOp[A] {
       def isNumeric: IsNumeric[A] = implicitly[IsNumeric[A]]
+
+      override val symbol: String = "/"
+    }
+    case object AndBool extends BinaryOp[Boolean] {
+      override val symbol: String = "and"
     }
 
-    case object AndBool extends BinaryOp[Boolean]
-    case object OrBool  extends BinaryOp[Boolean]
+    case object OrBool extends BinaryOp[Boolean] {
+      override val symbol: String = "or"
+    }
 
     sealed case class AndBit[A: IsIntegral]() extends BinaryOp[A] {
       def isIntegral: IsIntegral[A] = implicitly[IsIntegral[A]]
+      override val symbol: String   = "&"
     }
     sealed case class OrBit[A: IsIntegral]() extends BinaryOp[A] {
       def isIntegral: IsIntegral[A] = implicitly[IsIntegral[A]]
+      override val symbol: String   = "|"
+
     }
   }
 
-  sealed trait PropertyOp
+  sealed trait PropertyOp extends Renderable {
+    val symbol: String
 
-  object PropertyOp {
-    case object IsNull    extends PropertyOp
-    case object IsNotNull extends PropertyOp
-    case object IsTrue    extends PropertyOp
-    case object IsNotTrue extends PropertyOp
+    override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+      val _ = builder.append(" ").append(symbol)
+    }
   }
 
-  sealed trait RelationalOp
+  object PropertyOp {
+    case object IsNull extends PropertyOp {
+      override val symbol: String = "is null"
+    }
+    case object IsNotNull extends PropertyOp {
+      override val symbol: String = "is not null"
+    }
+    //todo how is this different to "= true"?
+    case object IsTrue extends PropertyOp {
+      override val symbol: String = "= true"
+    }
+    case object IsNotTrue extends PropertyOp {
+      override val symbol: String = "= false"
+    }
+  }
+
+  sealed trait RelationalOp extends Renderable
 
   object RelationalOp {
-    case object Equals           extends RelationalOp
-    case object GreaterThan      extends RelationalOp
-    case object GreaterThanEqual extends RelationalOp
-    case object LessThan         extends RelationalOp
-    case object LessThanEqual    extends RelationalOp
-    case object NotEqual         extends RelationalOp
+    case object Equals extends RelationalOp {
+      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+        val _ = builder.append(" = ")
+      }
+    }
+    case object LessThan extends RelationalOp {
+      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+        val _ = builder.append(" < ")
+      }
+    }
+    case object GreaterThan extends RelationalOp {
+      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+        val _ = builder.append(" > ")
+      }
+    }
+    case object LessThanEqual extends RelationalOp {
+      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+        val _ = builder.append(" <= ")
+      }
+    }
+    case object GreaterThanEqual extends RelationalOp {
+      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+        val _ = builder.append(" >= ")
+      }
+    }
+    case object NotEqual extends RelationalOp {
+      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+        val _ = builder.append(" <> ")
+      }
+    }
   }
 
   type :||:[A, B] = Features.Union[A, B]
@@ -531,7 +744,7 @@ trait Sql {
    * Models a function `A => B`.
    * SELECT product.price + 10
    */
-  sealed trait Expr[F, -A, +B] { self =>
+  sealed trait Expr[F, -A, +B] extends Renderable { self =>
 
     def +[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =
       Expr.Binary(self, that, BinaryOp.Add[B1]())
@@ -630,9 +843,10 @@ trait Sql {
     object IsAggregated {
       def apply[A](implicit is: IsAggregated[A]): IsAggregated[A] = is
 
-      implicit def AggregatedIsAggregated[A]: IsAggregated[Aggregated[A]] = ???
+      implicit def AggregatedIsAggregated[A]: IsAggregated[Aggregated[A]] = new IsAggregated[Aggregated[A]] {}
 
-      implicit def UnionIsAggregated[A: IsAggregated, B: IsAggregated]: IsAggregated[Union[A, B]] = ???
+      implicit def UnionIsAggregated[A: IsAggregated, B: IsAggregated]: IsAggregated[Union[A, B]] =
+        new IsAggregated[Union[A, B]] {}
     }
 
     @implicitNotFound("You can only use this function on a column in the source table")
@@ -649,44 +863,116 @@ trait Sql {
     def exprName[F, A, B](expr: Expr[F, A, B]): Option[String] =
       expr match {
         case Expr.Source(_, c) => Some(c.name)
-        case _ => None
+        case _                 => None
       }
 
-    implicit def expToSelection[F, A, B](expr: Expr[F, A, B]): Selection[F, A, SelectionSet.Cons[A, B, SelectionSet.Empty]] =
+    implicit def expToSelection[F, A, B](
+      expr: Expr[F, A, B]
+    ): Selection[F, A, SelectionSet.Cons[A, B, SelectionSet.Empty]] =
       Selection.computedOption(expr, exprName(expr))
 
     sealed case class Source[A, B] private[Sql] (tableName: TableName, column: Column[B])
-        extends Expr[Features.Source, A, B]
+        extends Expr[Features.Source, A, B] {
+      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+        val _ = builder.append(column.name)
+      }
+    }
 
-    sealed case class Unary[F, -A, B](base: Expr[F, A, B], op: UnaryOp[B]) extends Expr[F, A, B]
+    sealed case class Unary[F, -A, B](base: Expr[F, A, B], op: UnaryOp[B]) extends Expr[F, A, B] {
+      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+        op.renderBuilder(builder, mode)
+        val _ = builder.append(op)
+      }
+    }
 
-    sealed case class Property[F, -A, +B](base: Expr[F, A, B], op: PropertyOp) extends Expr[F, A, Boolean]
+    sealed case class Property[F, -A, +B](base: Expr[F, A, B], op: PropertyOp) extends Expr[F, A, Boolean] {
+      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+        base.renderBuilder(builder, mode)
+        op.renderBuilder(builder, mode)
+      }
+    }
 
     sealed case class Binary[F1, F2, A, B](left: Expr[F1, A, B], right: Expr[F2, A, B], op: BinaryOp[B])
-        extends Expr[Features.Union[F1, F2], A, B]
+        extends Expr[Features.Union[F1, F2], A, B] {
+      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+        left.renderBuilder(builder, mode)
+        op.renderBuilder(builder, mode)
+        right.renderBuilder(builder, mode)
+      }
+    }
 
     sealed case class Relational[F1, F2, A, B](left: Expr[F1, A, B], right: Expr[F2, A, B], op: RelationalOp)
-        extends Expr[Features.Union[F1, F2], A, Boolean]
-    sealed case class In[F, A, B](value: Expr[F, A, B], set: Read[B]) extends Expr[F, A, Boolean]
-    sealed case class Literal[B: TypeTag](value: B)                   extends Expr[Features.Literal, Any, B]
+        extends Expr[Features.Union[F1, F2], A, Boolean] {
+      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+        left.renderBuilder(builder, mode)
+        op.renderBuilder(builder, mode)
+        right.renderBuilder(builder, mode)
+      }
+    }
+    sealed case class In[F, A, B](value: Expr[F, A, B], set: Read[B]) extends Expr[F, A, Boolean] {
+      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+        builder.append(" in ")
+        set.renderBuilder(builder, mode)
+      }
+    }
+    sealed case class Literal[B: TypeTag](value: B) extends Expr[Features.Literal, Any, B] {
+      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+        val _ = builder.append(value.toString) //todo fix
+      }
+    }
 
     sealed case class AggregationCall[F, A, B, Z](param: Expr[F, A, B], aggregation: AggregationDef[B, Z])
-        extends Expr[Features.Aggregated[F], A, Z]
+        extends Expr[Features.Aggregated[F], A, Z] {
+      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+        builder.append(aggregation.name.name)
+        builder.append("(")
+        param.renderBuilder(builder, mode)
+        val _ = builder.append(")")
+      }
+    }
 
-    sealed case class FunctionCall1[F, A, B, Z](param: Expr[F, A, B], function: FunctionDef[B, Z]) extends Expr[F, A, Z]
+    sealed case class FunctionCall1[F, A, B, Z](param: Expr[F, A, B], function: FunctionDef[B, Z])
+        extends Expr[F, A, Z] {
+      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+        builder.append(function.name.name)
+        builder.append("(")
+        param.renderBuilder(builder, mode)
+        val _ = builder.append(")")
+      }
+    }
 
     sealed case class FunctionCall2[F1, F2, A, B, C, Z](
       param1: Expr[F1, A, B],
       param2: Expr[F2, A, C],
       function: FunctionDef[(B, C), Z]
-    ) extends Expr[Features.Union[F1, F2], A, Z]
+    ) extends Expr[Features.Union[F1, F2], A, Z] {
+      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+        builder.append(function.name.name)
+        builder.append("(")
+        param1.renderBuilder(builder, mode)
+        builder.append(",")
+        param2.renderBuilder(builder, mode)
+        val _ = builder.append(")")
+      }
+    }
 
     sealed case class FunctionCall3[F1, F2, F3, A, B, C, D, Z](
       param1: Expr[F1, A, B],
       param2: Expr[F2, A, C],
       param3: Expr[F3, A, D],
       function: FunctionDef[(B, C, D), Z]
-    ) extends Expr[Features.Union[F1, Features.Union[F2, F3]], A, Z]
+    ) extends Expr[Features.Union[F1, Features.Union[F2, F3]], A, Z] {
+      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+        builder.append(function.name.name)
+        builder.append("(")
+        param1.renderBuilder(builder, mode)
+        builder.append(",")
+        param2.renderBuilder(builder, mode)
+        builder.append(",")
+        param3.renderBuilder(builder, mode)
+        val _ = builder.append(")")
+      }
+    }
 
     sealed case class FunctionCall4[F1, F2, F3, F4, A, B, C, D, E, Z](
       param1: Expr[F1, A, B],
@@ -694,7 +980,20 @@ trait Sql {
       param3: Expr[F3, A, D],
       param4: Expr[F4, A, E],
       function: FunctionDef[(B, C, D, E), Z]
-    ) extends Expr[Features.Union[F1, Features.Union[F2, Features.Union[F3, F4]]], A, Z]
+    ) extends Expr[Features.Union[F1, Features.Union[F2, Features.Union[F3, F4]]], A, Z] {
+      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
+        builder.append(function.name.name)
+        builder.append("(")
+        param1.renderBuilder(builder, mode)
+        builder.append(",")
+        param2.renderBuilder(builder, mode)
+        builder.append(",")
+        param3.renderBuilder(builder, mode)
+        builder.append(",")
+        param4.renderBuilder(builder, mode)
+        val _ = builder.append(")")
+      }
+    }
   }
 
   sealed case class AggregationDef[-A, +B](name: FunctionName) { self =>
