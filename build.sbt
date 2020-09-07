@@ -56,12 +56,21 @@ lazy val root = project
     unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
   )
   .aggregate(
-    zioSqlJVM,
-    zioSqlJS
+    coreJVM,
+    coreJS,
+    docs,
+    driver,
+    examples,
+    jdbc,
+    mysql,
+    oracle,
+    postgres,
+    sqlserver,
+    test
   )
 
-lazy val zioSql = crossProject(JSPlatform, JVMPlatform)
-  .in(file("zio-sql"))
+lazy val core = crossProject(JSPlatform, JVMPlatform)
+  .in(file("core"))
   .settings(stdSettings("zio-sql"))
   .settings(crossProjectSettings)
   .settings(buildInfoSettings("zio.sql"))
@@ -74,10 +83,10 @@ lazy val zioSql = crossProject(JSPlatform, JVMPlatform)
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
 
-lazy val zioSqlJS = zioSql.js
+lazy val coreJS = core.js
   .settings(scalaJSUseMainModuleInitializer := true)
 
-lazy val zioSqlJVM = zioSql.jvm
+lazy val coreJVM = core.jvm
   .settings(dottySettings)
 
 lazy val docs = project
@@ -90,13 +99,13 @@ lazy val docs = project
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio" % zioVersion
     ),
-    unidocProjectFilter in (ScalaUnidoc, unidoc) := inProjects(root),
+    //unidocProjectFilter in (ScalaUnidoc, unidoc) := inProjects(root),
     target in (ScalaUnidoc, unidoc) := (baseDirectory in LocalRootProject).value / "website" / "static" / "api",
     cleanFiles += (target in (ScalaUnidoc, unidoc)).value,
     docusaurusCreateSite := docusaurusCreateSite.dependsOn(unidoc in Compile).value,
     docusaurusPublishGhpages := docusaurusPublishGhpages.dependsOn(unidoc in Compile).value
   )
-  .dependsOn(root)
+  .dependsOn(coreJVM)
   .enablePlugins(MdocPlugin, DocusaurusPlugin, ScalaUnidocPlugin)
 
 lazy val examples = project
@@ -105,4 +114,95 @@ lazy val examples = project
     skip in publish := true,
     moduleName := "examples"
   )
-  .dependsOn(zioSql.jvm)
+  .dependsOn(core.jvm)
+
+lazy val driver = project
+  .in(file("driver"))
+  .settings(stdSettings("zio-sql"))
+  .settings(buildInfoSettings("zio.sql"))
+  .settings(
+    libraryDependencies ++= Seq(
+      "dev.zio" %% "zio"          % zioVersion,
+      "dev.zio" %% "zio-test"     % zioVersion % "test",
+      "dev.zio" %% "zio-test-sbt" % zioVersion % "test"
+    )
+  )
+  .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
+
+lazy val jdbc = project
+  .in(file("jdbc"))
+  .settings(stdSettings("zio-sql"))
+  .settings(buildInfoSettings("zio.sql"))
+  .settings(
+    libraryDependencies ++= Seq(
+      "dev.zio" %% "zio"          % zioVersion,
+      "dev.zio" %% "zio-test"     % zioVersion % "test",
+      "dev.zio" %% "zio-test-sbt" % zioVersion % "test"
+    )
+  )
+  .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
+
+lazy val mysql = project
+  .in(file("mysql"))
+  .settings(stdSettings("zio-sql"))
+  .settings(buildInfoSettings("zio.sql"))
+  .settings(
+    libraryDependencies ++= Seq(
+      "dev.zio" %% "zio"          % zioVersion,
+      "dev.zio" %% "zio-test"     % zioVersion % "test",
+      "dev.zio" %% "zio-test-sbt" % zioVersion % "test"
+    )
+  )
+  .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
+
+lazy val oracle = project
+  .in(file("oracle"))
+  .settings(stdSettings("zio-sql"))
+  .settings(buildInfoSettings("zio.sql"))
+  .settings(
+    libraryDependencies ++= Seq(
+      "dev.zio" %% "zio"          % zioVersion,
+      "dev.zio" %% "zio-test"     % zioVersion % "test",
+      "dev.zio" %% "zio-test-sbt" % zioVersion % "test"
+    )
+  )
+  .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
+
+lazy val postgres = project
+  .in(file("postgres"))
+  .settings(stdSettings("zio-sql"))
+  .settings(buildInfoSettings("zio.sql"))
+  .settings(
+    libraryDependencies ++= Seq(
+      "dev.zio" %% "zio"          % zioVersion,
+      "dev.zio" %% "zio-test"     % zioVersion % "test",
+      "dev.zio" %% "zio-test-sbt" % zioVersion % "test"
+    )
+  )
+  .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
+
+lazy val sqlserver = project
+  .in(file("sqlserver"))
+  .settings(stdSettings("zio-sql"))
+  .settings(buildInfoSettings("zio.sql"))
+  .settings(
+    libraryDependencies ++= Seq(
+      "dev.zio" %% "zio"          % zioVersion,
+      "dev.zio" %% "zio-test"     % zioVersion % "test",
+      "dev.zio" %% "zio-test-sbt" % zioVersion % "test"
+    )
+  )
+  .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
+
+lazy val test = project
+  .in(file("test"))
+  .settings(stdSettings("zio-sql"))
+  .settings(buildInfoSettings("zio.sql"))
+  .settings(
+    libraryDependencies ++= Seq(
+      "dev.zio" %% "zio"          % zioVersion,
+      "dev.zio" %% "zio-test"     % zioVersion % "test",
+      "dev.zio" %% "zio-test-sbt" % zioVersion % "test"
+    )
+  )
+  .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
