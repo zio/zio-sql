@@ -4,6 +4,8 @@ import scala.language.implicitConversions
 import java.time._
 import java.util.UUID
 
+import zio.Chunk
+
 import scala.annotation.implicitNotFound
 import scala.collection.immutable.Nil
 
@@ -19,7 +21,7 @@ trait Sql {
     implicit case object TBigDecimal                                             extends TypeTag[BigDecimal]
     implicit case object TBoolean                                                extends TypeTag[Boolean]
     implicit case object TByte                                                   extends TypeTag[Byte]
-    implicit case object TByteArray                                              extends TypeTag[Array[Byte]]
+    implicit case object TByteArray                                              extends TypeTag[Chunk[Byte]]
     implicit case object TChar                                                   extends TypeTag[Char]
     implicit case object TDouble                                                 extends TypeTag[Double]
     implicit case object TFloat                                                  extends TypeTag[Float]
@@ -133,7 +135,7 @@ trait Sql {
 
     def bigDecimal(name: String): Singleton[BigDecimal]         = singleton[BigDecimal](name)
     def boolean(name: String): Singleton[Boolean]               = singleton[Boolean](name)
-    def byteArray(name: String): Singleton[Array[Byte]]         = singleton[Array[Byte]](name)
+    def byteArray(name: String): Singleton[Chunk[Byte]]         = singleton[Chunk[Byte]](name)
     def char(name: String): Singleton[Char]                     = singleton[Char](name)
     def double(name: String): Singleton[Double]                 = singleton[Double](name)
     def float(name: String): Singleton[Float]                   = singleton[Float](name)
@@ -369,10 +371,10 @@ trait Sql {
   /**
    * A `Read[A]` models a selection of a set of values of type `A`.
    */
-  sealed trait Read[+A] extends Renderable { self =>
-    def union[A1 >: A](that: Read[A1]): Read[A1] = Read.Union(self, that, true)
+  sealed trait Read[+A <: SelectionSet[_]] extends Renderable { self =>
+    def union[A1 >: A <: SelectionSet[_]](that: Read[A1]): Read[A1] = Read.Union(self, that, true)
 
-    def unionAll[A1 >: A](that: Read[A1]): Read[A1] = Read.Union(self, that, false)
+    def unionAll[A1 >: A <: SelectionSet[_]](that: Read[A1]): Read[A1] = Read.Union(self, that, false)
   }
 
   object Read {
@@ -445,7 +447,7 @@ trait Sql {
         copy(havingExpr = self.havingExpr && havingExpr2)
     }
 
-    sealed case class Union[B](left: Read[B], right: Read[B], distinct: Boolean) extends Read[B] {
+    sealed case class Union[B <: SelectionSet[_]](left: Read[B], right: Read[B], distinct: Boolean) extends Read[B] {
       override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
 
         left.renderBuilder(builder, mode)
@@ -455,13 +457,13 @@ trait Sql {
       }
     }
 
-    sealed case class Literal[B: TypeTag](values: Iterable[B]) extends Read[B] {
+    sealed case class Literal[B: TypeTag](values: Iterable[B]) extends Read[SelectionSet.Singleton[Any, B]] {
       override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
         val _ = builder.append(" (").append(values.mkString(",")).append(") ") //todo fix
       }
     }
 
-    def lit[B: TypeTag](values: B*): Read[B] = Literal(values.toSeq)
+    def lit[B: TypeTag](values: B*): Read[SelectionSet.Singleton[Any, B]] = Literal(values.toSeq)
   }
 
   sealed trait Ordering[+A]
@@ -565,6 +567,8 @@ trait Sql {
   }
 
   object SelectionSet {
+    type Singleton[-Source, A] = Cons[Source, A, Empty]
+
     type Empty = Empty.type
 
     case object Empty extends SelectionSet[Any] {
@@ -830,7 +834,7 @@ trait Sql {
 
     def desc: Ordering[Expr[F, A, B]] = Ordering.Desc(self)
 
-    def in[B1 >: B](set: Read[B1]): Expr[F, A, Boolean] = Expr.In(self, set)
+    def in[B1 >: B <: SelectionSet[_]](set: Read[B1]): Expr[F, A, Boolean] = Expr.In(self, set)
 
     def widen[C](implicit ev: B <:< C): Expr[F, A, C] = {
       val _ = ev
@@ -915,7 +919,7 @@ trait Sql {
         right.renderBuilder(builder, mode)
       }
     }
-    sealed case class In[F, A, B](value: Expr[F, A, B], set: Read[B]) extends Expr[F, A, Boolean] {
+    sealed case class In[F, A, B <: SelectionSet[_]](value: Expr[F, A, B], set: Read[B]) extends Expr[F, A, Boolean] {
       override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
         builder.append(" in ")
         set.renderBuilder(builder, mode)
