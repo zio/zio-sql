@@ -169,7 +169,7 @@ trait Jdbc extends Sql {
         case TUUID            => tryDecode[java.util.UUID](java.util.UUID.fromString(column.fold(resultSet.getString(_), resultSet.getString(_))))
         case TZonedDateTime   => ???
         case TDialectSpecific(_) => ???
-        case t @ TOption()    => extractColumn(column, resultSet, t.typeTag, false).map(Option(_))
+        case t @ Nullable()   => extractColumn(column, resultSet, t.typeTag, false).map(Option(_))
       }
     }
 
