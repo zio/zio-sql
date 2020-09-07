@@ -368,16 +368,23 @@ trait Sql {
       }
   }
 
+  def renderRead(read: Read[_]): String = read.render(RenderMode.Pretty(2))
+
   /**
    * A `Read[A]` models a selection of a set of values of type `A`.
    */
   sealed trait Read[+A <: SelectionSet[_]] extends Renderable { self =>
+    type ResultType
+
     def union[A1 >: A <: SelectionSet[_]](that: Read[A1]): Read[A1] = Read.Union(self, that, true)
 
     def unionAll[A1 >: A <: SelectionSet[_]](that: Read[A1]): Read[A1] = Read.Union(self, that, false)
   }
 
   object Read {
+    type Aux[ResultType0, +A <: SelectionSet[_]] = Read[A] { 
+      type ResultType = ResultType0
+    }
 
     sealed case class Select[F, A, B <: SelectionSet[A]](
       selection: Selection[F, A, B],
@@ -389,6 +396,7 @@ trait Sql {
       offset: Option[Long] = None, //todo don't know how to do this outside of postgres/mysql
       limit: Option[Long] = None
     ) extends Read[B] { self =>
+      type ResultType = selection.value.ResultTypeRepr
 
       /*todo need to add dialect to render/render builder - limit is represented as:
         SQL Server:
@@ -448,6 +456,8 @@ trait Sql {
     }
 
     sealed case class Union[B <: SelectionSet[_]](left: Read[B], right: Read[B], distinct: Boolean) extends Read[B] {
+      type ResultType = left.ResultType
+
       override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
 
         left.renderBuilder(builder, mode)
@@ -458,6 +468,10 @@ trait Sql {
     }
 
     sealed case class Literal[B: TypeTag](values: Iterable[B]) extends Read[SelectionSet.Singleton[Any, B]] {
+      type ResultType = (B, Unit)
+
+      def typeTag: TypeTag[B] = implicitly[TypeTag[B]]
+
       override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
         val _ = builder.append(" (").append(values.mkString(",")).append(") ") //todo fix
       }
@@ -520,11 +534,12 @@ trait Sql {
   }
 
   sealed trait ColumnSelection[-A, +B] extends Renderable {
-    def name: Option[ColumnName]
+    def name: Option[ColumnName]    
   }
 
   object ColumnSelection {
     sealed case class Constant[A: TypeTag](value: A, name: Option[ColumnName]) extends ColumnSelection[Any, A] {
+      def typeTag: TypeTag[A] = implicitly[TypeTag[A]]
 
       override def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
         builder.append(value.toString())
@@ -537,6 +552,7 @@ trait Sql {
 
     }
     sealed case class Computed[F, A, B](expr: Expr[F, A, B], name: Option[ColumnName]) extends ColumnSelection[A, B] {
+      def typeTag: TypeTag[B] = Expr.typeTagOf(expr)
 
       override def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
         expr.renderBuilder(builder, mode)
@@ -557,6 +573,8 @@ trait Sql {
   sealed trait SelectionSet[-Source] extends Renderable {
     type SelectionsRepr[Source1, T]
 
+    type ResultTypeRepr
+
     type Append[Source1, That <: SelectionSet[Source1]] <: SelectionSet[Source1]
 
     def ++[Source1 <: Source, That <: SelectionSet[Source1]](that: That): Append[Source1, That]
@@ -576,6 +594,8 @@ trait Sql {
       override def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = ()
 
       override type SelectionsRepr[Source1, T] = Unit
+
+      override type ResultTypeRepr = Unit
 
       override type Append[Source1, That <: SelectionSet[Source1]] = That
 
@@ -601,6 +621,8 @@ trait Sql {
       }
 
       override type SelectionsRepr[Source1, T] = (ColumnSelection[Source1, A], tail.SelectionsRepr[Source1, T])
+
+      override type ResultTypeRepr = (A, tail.ResultTypeRepr)
 
       override type Append[Source1, That <: SelectionSet[Source1]] =
         Cons[Source1, A, tail.Append[Source1, That]]
@@ -749,6 +771,33 @@ trait Sql {
   }
 
   type :||:[A, B] = Features.Union[A, B]
+  
+
+  object Features {
+    type Aggregated[_]
+    type Union[_, _]
+    type Source
+    type Literal
+
+    sealed trait IsAggregated[A]
+
+    object IsAggregated {
+      def apply[A](implicit is: IsAggregated[A]): IsAggregated[A] = is
+
+      implicit def AggregatedIsAggregated[A]: IsAggregated[Aggregated[A]] = new IsAggregated[Aggregated[A]] {}
+
+      implicit def UnionIsAggregated[A: IsAggregated, B: IsAggregated]: IsAggregated[Union[A, B]] =
+        new IsAggregated[Union[A, B]] {}
+    }
+
+    @implicitNotFound("You can only use this function on a column in the source table")
+    sealed trait IsSource[A]
+
+    object IsSource {
+      implicit case object SourceIsSource extends IsSource[Source]
+    }
+  }
+
 
   /**
    * Models a function `A => B`.
@@ -841,33 +890,10 @@ trait Sql {
       self.asInstanceOf[Expr[F, A, C]]
     }
   }
-
-  object Features {
-    type Aggregated[_]
-    type Union[_, _]
-    type Source
-    type Literal
-
-    sealed trait IsAggregated[A]
-
-    object IsAggregated {
-      def apply[A](implicit is: IsAggregated[A]): IsAggregated[A] = is
-
-      implicit def AggregatedIsAggregated[A]: IsAggregated[Aggregated[A]] = new IsAggregated[Aggregated[A]] {}
-
-      implicit def UnionIsAggregated[A: IsAggregated, B: IsAggregated]: IsAggregated[Union[A, B]] =
-        new IsAggregated[Union[A, B]] {}
-    }
-
-    @implicitNotFound("You can only use this function on a column in the source table")
-    sealed trait IsSource[A]
-
-    object IsSource {
-      implicit case object SourceIsSource extends IsSource[Source]
-    }
-  }
-
   object Expr {
+    // FIXME!!!!!
+    def typeTagOf[A](expr: Expr[_, _, A]): TypeTag[A] = ???
+
     implicit def literal[A: TypeTag](a: A): Expr[Features.Literal, Any, A] = Expr.Literal(a)
 
     def exprName[F, A, B](expr: Expr[F, A, B]): Option[String] =
@@ -926,6 +952,8 @@ trait Sql {
       }
     }
     sealed case class Literal[B: TypeTag](value: B) extends Expr[Features.Literal, Any, B] {
+      def typeTag: TypeTag[B] = implicitly[TypeTag[B]]
+
       override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
         val _ = builder.append(value.toString) //todo fix
       }
@@ -943,6 +971,7 @@ trait Sql {
 
     sealed case class FunctionCall1[F, A, B, Z](param: Expr[F, A, B], function: FunctionDef[B, Z])
         extends Expr[F, A, Z] {
+      
       override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
         builder.append(function.name.name)
         builder.append("(")
@@ -1013,15 +1042,16 @@ trait Sql {
   }
 
   object AggregationDef {
-    val Count: AggregationDef[Any, Long] = AggregationDef(FunctionName("count"))
-    val Sum                              = AggregationDef[Double, Double](FunctionName("sum"))
-    val Arbitrary                        = AggregationDef[Any, Any](FunctionName("arbitrary"))
-    val Avg                              = AggregationDef[Double, Double](FunctionName("avg"))
-    val Min                              = AggregationDef[Any, Any](FunctionName("min"))
-    val Max                              = AggregationDef[Any, Any](FunctionName("max"))
+    val Count     = AggregationDef[Any, Long](FunctionName("count"))
+    val Sum       = AggregationDef[Double, Double](FunctionName("sum"))
+    val Arbitrary = AggregationDef[Any, Any](FunctionName("arbitrary"))
+    val Avg       = AggregationDef[Double, Double](FunctionName("avg"))
+    val Min       = AggregationDef[Any, Any](FunctionName("min"))
+    val Max       = AggregationDef[Any, Any](FunctionName("max"))
   }
 
   sealed case class FunctionDef[-A, +B](name: FunctionName) { self =>
+
     def apply[F, Source](param1: Expr[F, Source, A]): Expr[F, Source, B] = Expr.FunctionCall1(param1, self)
 
     def apply[F1, F2, Source, P1, P2](param1: Expr[F1, Source, P1], param2: Expr[F2, Source, P2])(

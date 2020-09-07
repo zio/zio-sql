@@ -25,6 +25,11 @@ object Examples extends App {
     select { fName ++ lName } from users orderBy (lName, fName.desc) limit 2
   println(selectWithRefinements.render(RenderMode.Compact))
 
+  case class Person(fname: String, lname: String)
+
+  // execute(selectWithRefinements).to(Person)
+  // execute(selectWithRefinements).to((_, _))
+
   //delete from users where first_name = 'Terrence'
   val basicDelete = deleteFrom(users).where(fName === "Terrence")
   println(basicDelete.render(RenderMode.Compact))
@@ -64,7 +69,7 @@ object Examples extends App {
       .groupBy(userId, fName /*, lName */ ) //shouldn't compile without lName todo fix #38
   println(orderValues.render(RenderMode.Compact))
 }
-object ShopSchema extends Sql { self =>
+object ShopSchema extends Jdbc { self =>
   import self.ColumnSet._
 
   object Users {

@@ -23,7 +23,7 @@ inThisBuild(
 addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
-val zioVersion = "1.0.0-RC18-2"
+val zioVersion = "1.0.1"
 
 lazy val startPostgres = taskKey[Unit]("Start up Postgres")
 startPostgres := startService(Database.Postgres, streams.value)
@@ -77,6 +77,7 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
   .settings(
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio"          % zioVersion,
+      "dev.zio" %% "zio-streams"  % zioVersion,
       "dev.zio" %% "zio-test"     % zioVersion % "test",
       "dev.zio" %% "zio-test-sbt" % zioVersion % "test"
     )
@@ -115,6 +116,7 @@ lazy val examples = project
     moduleName := "examples"
   )
   .dependsOn(core.jvm)
+  .dependsOn(jdbc)
 
 lazy val driver = project
   .in(file("driver"))
@@ -136,11 +138,13 @@ lazy val jdbc = project
   .settings(
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio"          % zioVersion,
+      "dev.zio" %% "zio-streams"  % zioVersion,
       "dev.zio" %% "zio-test"     % zioVersion % "test",
       "dev.zio" %% "zio-test-sbt" % zioVersion % "test"
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
+  .dependsOn(core.jvm)
 
 lazy val mysql = project
   .in(file("mysql"))
