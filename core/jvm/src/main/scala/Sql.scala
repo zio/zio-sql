@@ -18,32 +18,33 @@ trait Sql {
   sealed trait TypeTag[A]
 
   object TypeTag {
-    implicit case object TBigDecimal                                             extends TypeTag[BigDecimal]
-    implicit case object TBoolean                                                extends TypeTag[Boolean]
-    implicit case object TByte                                                   extends TypeTag[Byte]
-    implicit case object TByteArray                                              extends TypeTag[Chunk[Byte]]
-    implicit case object TChar                                                   extends TypeTag[Char]
-    implicit case object TDouble                                                 extends TypeTag[Double]
-    implicit case object TFloat                                                  extends TypeTag[Float]
-    implicit case object TInstant                                                extends TypeTag[Instant]
-    implicit case object TInt                                                    extends TypeTag[Int]
-    implicit case object TLocalDate                                              extends TypeTag[LocalDate]
-    implicit case object TLocalDateTime                                          extends TypeTag[LocalDateTime]
-    implicit case object TLocalTime                                              extends TypeTag[LocalTime]
-    implicit case object TLong                                                   extends TypeTag[Long]
-    implicit case object TOffsetDateTime                                         extends TypeTag[OffsetDateTime]
-    implicit case object TOffsetTime                                             extends TypeTag[OffsetTime]
-    implicit case object TShort                                                  extends TypeTag[Short]
-    implicit case object TString                                                 extends TypeTag[String]
-    implicit case object TUUID                                                   extends TypeTag[UUID]
-    implicit case object TZonedDateTime                                          extends TypeTag[ZonedDateTime]
-    sealed case class TDialectSpecific[A](typeTagExtension: TypeTagExtension[A]) extends TypeTag[A]
+    sealed trait NotNull[A]                                                      extends TypeTag[A]
+    implicit case object TBigDecimal                                             extends NotNull[BigDecimal]
+    implicit case object TBoolean                                                extends NotNull[Boolean]
+    implicit case object TByte                                                   extends NotNull[Byte]
+    implicit case object TByteArray                                              extends NotNull[Chunk[Byte]]
+    implicit case object TChar                                                   extends NotNull[Char]
+    implicit case object TDouble                                                 extends NotNull[Double]
+    implicit case object TFloat                                                  extends NotNull[Float]
+    implicit case object TInstant                                                extends NotNull[Instant]
+    implicit case object TInt                                                    extends NotNull[Int]
+    implicit case object TLocalDate                                              extends NotNull[LocalDate]
+    implicit case object TLocalDateTime                                          extends NotNull[LocalDateTime]
+    implicit case object TLocalTime                                              extends NotNull[LocalTime]
+    implicit case object TLong                                                   extends NotNull[Long]
+    implicit case object TOffsetDateTime                                         extends NotNull[OffsetDateTime]
+    implicit case object TOffsetTime                                             extends NotNull[OffsetTime]
+    implicit case object TShort                                                  extends NotNull[Short]
+    implicit case object TString                                                 extends NotNull[String]
+    implicit case object TUUID                                                   extends NotNull[UUID]
+    implicit case object TZonedDateTime                                          extends NotNull[ZonedDateTime]
+    sealed case class TDialectSpecific[A](typeTagExtension: TypeTagExtension[A]) extends NotNull[A]
 
-    sealed case class TOption[A: TypeTag]() extends TypeTag[Option[A]] {
+    sealed case class Nullable[A: NotNull]() extends TypeTag[Option[A]] {
       def typeTag: TypeTag[A] = implicitly[TypeTag[A]]
     }
 
-    implicit def option[A: TypeTag]: TypeTag[Option[A]] = TOption[A]
+    implicit def option[A: NotNull]: TypeTag[Option[A]] = Nullable[A]
 
     implicit def dialectSpecific[A](implicit typeTagExtension: TypeTagExtension[A]): TypeTag[A] =
       TDialectSpecific(typeTagExtension)
@@ -382,7 +383,7 @@ trait Sql {
   }
 
   object Read {
-    type Aux[ResultType0, +A <: SelectionSet[_]] = Read[A] { 
+    type Aux[ResultType0, +A <: SelectionSet[_]] = Read[A] {
       type ResultType = ResultType0
     }
 
@@ -534,7 +535,7 @@ trait Sql {
   }
 
   sealed trait ColumnSelection[-A, +B] extends Renderable {
-    def name: Option[ColumnName]    
+    def name: Option[ColumnName]
   }
 
   object ColumnSelection {
@@ -771,7 +772,6 @@ trait Sql {
   }
 
   type :||:[A, B] = Features.Union[A, B]
-  
 
   object Features {
     type Aggregated[_]
@@ -797,7 +797,6 @@ trait Sql {
       implicit case object SourceIsSource extends IsSource[Source]
     }
   }
-
 
   /**
    * Models a function `A => B`.
@@ -971,7 +970,7 @@ trait Sql {
 
     sealed case class FunctionCall1[F, A, B, Z](param: Expr[F, A, B], function: FunctionDef[B, Z])
         extends Expr[F, A, Z] {
-      
+
       override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
         builder.append(function.name.name)
         builder.append("(")
