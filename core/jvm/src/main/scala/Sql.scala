@@ -882,7 +882,7 @@ trait Sql {
 
     def desc: Ordering[Expr[F, A, B]] = Ordering.Desc(self)
 
-    def in[B1 >: B <: SelectionSet[_]](set: Read[B1]): Expr[F, A, Boolean] = Expr.In(self, set)
+    def in[B1 >: B <: SelectionSet[_]](set: Read[B1]): Expr[F, A, Boolean] = Expr.In(self.asInstanceOf[Sql.this.Expr[F, A, Sql.this.SelectionSet[_]]], set)
 
     def widen[C](implicit ev: B <:< C): Expr[F, A, C] = {
       val _ = ev
