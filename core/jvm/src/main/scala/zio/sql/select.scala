@@ -2,7 +2,7 @@ package zio.sql
 
 import scala.language.implicitConversions
 
-trait SelectModule { self: TableModule with ExprModule =>
+trait SelectModule { self: ExprModule with TableModule =>
 
   sealed case class SelectBuilder[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]) {
 

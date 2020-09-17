@@ -1,6 +1,6 @@
 package zio.sql
 
-trait UpdateModule extends TypetagModule with FeaturesModule { self: ExprModule with TableModule =>
+trait UpdateModule extends TypeTagModule with FeaturesModule { self: ExprModule with TableModule =>
 
   sealed case class UpdateBuilder[A](table: Table.Aux[A]) {
     def set[F: Features.IsSource, Value: TypeTag](lhs: Expr[F, A, Value], rhs: Expr[_, A, Value]): Update[A] =
@@ -33,5 +33,4 @@ trait UpdateModule extends TypetagModule with FeaturesModule { self: ExprModule 
       }
     }
   }
-
 }
