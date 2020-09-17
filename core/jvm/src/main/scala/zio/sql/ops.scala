@@ -1,6 +1,6 @@
 package zio.sql
 
-trait OpsModule extends TypetagModule {
+trait OpsModule extends TypeTagModule {
 
   sealed trait UnaryOp[A] extends Renderable {
     val symbol: String

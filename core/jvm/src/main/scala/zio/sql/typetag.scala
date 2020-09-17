@@ -5,7 +5,7 @@ import java.util.UUID
 
 import zio.Chunk
 
-trait TypetagModule {
+trait TypeTagModule {
 
   type TypeTagExtension[+A]
 
@@ -75,5 +75,4 @@ trait TypetagModule {
     implicit case object TDoubleIsNumeric     extends AbstractIsNumeric[Double]
     implicit case object TBigDecimalIsNumeric extends AbstractIsNumeric[BigDecimal]
   }
-
 }
