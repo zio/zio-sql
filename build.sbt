@@ -120,8 +120,8 @@ lazy val examples = project
 
 lazy val driver = project
   .in(file("driver"))
-  .settings(stdSettings("zio-sql"))
-  .settings(buildInfoSettings("zio.sql"))
+  .settings(stdSettings("zio-sql-driver"))
+  .settings(buildInfoSettings("zio.sql.driver"))
   .settings(
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio"          % zioVersion,
@@ -133,8 +133,8 @@ lazy val driver = project
 
 lazy val jdbc = project
   .in(file("jdbc"))
-  .settings(stdSettings("zio-sql"))
-  .settings(buildInfoSettings("zio.sql"))
+  .settings(stdSettings("zio-sql-jdbc"))
+  .settings(buildInfoSettings("zio.sql.jdbc"))
   .settings(
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio"          % zioVersion,
@@ -148,8 +148,8 @@ lazy val jdbc = project
 
 lazy val mysql = project
   .in(file("mysql"))
-  .settings(stdSettings("zio-sql"))
-  .settings(buildInfoSettings("zio.sql"))
+  .settings(stdSettings("zio-sql-mysql"))
+  .settings(buildInfoSettings("zio.sql.mysql"))
   .settings(
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio"          % zioVersion,
@@ -161,8 +161,8 @@ lazy val mysql = project
 
 lazy val oracle = project
   .in(file("oracle"))
-  .settings(stdSettings("zio-sql"))
-  .settings(buildInfoSettings("zio.sql"))
+  .settings(stdSettings("zio-sql-oracle"))
+  .settings(buildInfoSettings("zio.sql.oracle"))
   .settings(
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio"          % zioVersion,
@@ -174,8 +174,8 @@ lazy val oracle = project
 
 lazy val postgres = project
   .in(file("postgres"))
-  .settings(stdSettings("zio-sql"))
-  .settings(buildInfoSettings("zio.sql"))
+  .settings(stdSettings("zio-sql-postgres"))
+  .settings(buildInfoSettings("zio.sql.postgres"))
   .settings(
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio"          % zioVersion,
@@ -187,8 +187,8 @@ lazy val postgres = project
 
 lazy val sqlserver = project
   .in(file("sqlserver"))
-  .settings(stdSettings("zio-sql"))
-  .settings(buildInfoSettings("zio.sql"))
+  .settings(stdSettings("zio-sql-sqlserver"))
+  .settings(buildInfoSettings("zio.sql.sqlserver"))
   .settings(
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio"          % zioVersion,
@@ -200,9 +200,10 @@ lazy val sqlserver = project
 
 lazy val test = project
   .in(file("test"))
-  .settings(stdSettings("zio-sql"))
-  .settings(buildInfoSettings("zio.sql"))
+  .settings(stdSettings("zio-sql-test"))
+  .settings(buildInfoSettings("zio.sql.test"))
   .settings(
+    skip in publish := true,
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio"          % zioVersion,
       "dev.zio" %% "zio-test"     % zioVersion % "test",
