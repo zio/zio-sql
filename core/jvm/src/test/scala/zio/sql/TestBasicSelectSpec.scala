@@ -7,7 +7,8 @@ object TestBasicSelect {
   val userSql = new Sql { self =>
     import self.ColumnSet._
 
-    val userTable = (string("user_id") ++ localDate("dob") ++ string("first_name") ++ string("last_name")).table("users")
+    val userTable =
+      (string("user_id") ++ localDate("dob") ++ string("first_name") ++ string("last_name")).table("users")
 
     val userId :*: dob :*: fName :*: lName :*: _ = userTable.columns
 

@@ -4,7 +4,8 @@ import java.time._
 
 import scala.language.implicitConversions
 
-trait ExprModule extends NewtypesModule with TypeTagModule with FeaturesModule with OpsModule { self: SelectModule with TableModule =>
+trait ExprModule extends NewtypesModule with TypeTagModule with FeaturesModule with OpsModule {
+  self: SelectModule with TableModule =>
 
   /**
    * Models a function `A => B`.
