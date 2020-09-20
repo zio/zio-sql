@@ -163,7 +163,7 @@ trait SelectModule { self: ExprModule with TableModule =>
       computedOption(expr, Some(name))
   }
 
-    sealed trait ColumnSelection[-A, +B] extends Renderable {
+  sealed trait ColumnSelection[-A, +B] extends Renderable {
     def name: Option[ColumnName]
   }
 
