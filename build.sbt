@@ -115,8 +115,9 @@ lazy val examples = project
     skip in publish := true,
     moduleName := "examples"
   )
-  .dependsOn(core.jvm)
+  .dependsOn(coreJVM)
   .dependsOn(jdbc)
+  .dependsOn(sqlserver)
 
 lazy val driver = project
   .in(file("driver"))
@@ -197,6 +198,8 @@ lazy val sqlserver = project
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
+  .dependsOn(core.jvm)
+  .dependsOn(jdbc)
 
 lazy val test = project
   .in(file("test"))
