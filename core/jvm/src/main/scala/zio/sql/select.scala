@@ -266,7 +266,9 @@ trait SelectModule { self: ExprModule with TableModule =>
     }
   }
 
-  sealed trait Ordering[+A]
+  sealed trait Ordering[+A] {
+    val value : A
+  }
 
   object Ordering {
     sealed case class Asc[A](value: A)  extends Ordering[A]
