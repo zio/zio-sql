@@ -2,13 +2,13 @@ package zio.sql.sqlserver
 
 import zio.sql.{ Jdbc, Sql }
 
-object SqlServer extends Sql with Jdbc {
+trait SqlServerModule extends Sql with Jdbc { self =>
 
-  override def renderRead(read: SqlServer.Read[_]): String = {
+  override def renderRead(read: self.Read[_]): String = {
     val builder = new StringBuilder
 
     //todo fix (need `typeTagOf` working)
-    def buildExpr[A, B](expr: SqlServer.Expr[_, A, B]): Unit = expr match {
+    def buildExpr[A, B](expr: self.Expr[_, A, B]): Unit = expr match {
       case Expr.Source(tableName, column)                               =>
         val _ = builder.append(tableName).append(".").append(column.name)
       case Expr.Unary(base, op)                                         =>
@@ -69,14 +69,14 @@ object SqlServer extends Sql with Jdbc {
         val _ = builder.append(")")
     }
 
-    def buildReadString[A <: SelectionSet[_]](read: SqlServer.Read[_]): Unit =
+    def buildReadString[A <: SelectionSet[_]](read: self.Read[_]): Unit =
       read match {
-        //todo offset (needs orderBy, fetch instead of top)
+        //todo offset (needs orderBy, must use fetch _instead_ of top)
         case Read.Select(selection, table, whereExpr, groupBy, havingExpr, orderBy, offset, limit) =>
           builder.append("select ")
           limit match {
             case Some(limit) =>
-              builder.append(" top ").append(limit)
+              builder.append("top ").append(limit).append(" ")
             case None        => ()
           }
           buildSelection(selection.value)
@@ -87,6 +87,25 @@ object SqlServer extends Sql with Jdbc {
             case _                  =>
               builder.append(" where ")
               buildExpr(whereExpr)
+          }
+          groupBy match {
+            case _ :: _ =>
+              builder.append(" group by ")
+              buildExprList(groupBy)
+
+              havingExpr match {
+                case Expr.Literal(true) => ()
+                case _                  =>
+                  builder.append(" having ")
+                  buildExpr(havingExpr)
+              }
+            case Nil    => ()
+          }
+          orderBy match {
+            case _ :: _ =>
+              builder.append(" order by ")
+              buildOrderingList(orderBy)
+            case Nil    => ()
           }
 
         case Read.Union(left, right, distinct) =>
@@ -99,24 +118,60 @@ object SqlServer extends Sql with Jdbc {
           val _ = builder.append(" (").append(values.mkString(",")).append(") ") //todo fix needs escaping
       }
 
+    def buildExprList(expr: List[Expr[_, _, _]]): Unit               =
+      expr match {
+        case head :: tail =>
+          buildExpr(head)
+          tail match {
+            case _ :: _ =>
+              builder.append(", ")
+              buildExprList(tail)
+            case Nil    => ()
+          }
+        case Nil          => ()
+      }
+    def buildOrderingList(expr: List[Ordering[Expr[_, _, _]]]): Unit =
+      expr match {
+        case head :: tail =>
+          head match {
+            case Ordering.Asc(value)  => buildExpr(value)
+            case Ordering.Desc(value) =>
+              buildExpr(value)
+              builder.append(" desc")
+          }
+          tail match {
+            case _ :: _ =>
+              builder.append(", ")
+              buildOrderingList(tail)
+            case Nil    => ()
+          }
+        case Nil          => ()
+      }
+
     def buildSelection[A](selectionSet: SelectionSet[A]): Unit =
       selectionSet match {
         case SelectionSet.Cons(head, tail) =>
           buildColumnSelection(head)
-          buildSelection(tail)
+          tail match {
+            case SelectionSet.Empty => ()
+            case _                  =>
+              builder.append(", ")
+              buildSelection(tail)
+          }
         case SelectionSet.Empty            => ()
       }
 
     def buildColumnSelection[A, B](columnSelection: ColumnSelection[A, B]): Unit =
       columnSelection match {
         case ColumnSelection.Constant(value, name) =>
-          builder.append(value.toString())
+          builder.append(value.toString()) //todo fix escaping
           name match {
             case Some(name) =>
               val _ = builder.append(" as ").append(name)
             case None       => ()
           }
         case ColumnSelection.Computed(expr, name)  =>
+          buildExpr(expr)
           name match {
             case Some(name) =>
               Expr.exprName(expr) match {
@@ -124,11 +179,13 @@ object SqlServer extends Sql with Jdbc {
                   val _ = builder.append(" as ").append(name)
                 case _                                      => ()
               }
-            case _          => ()
+            case _          => () //todo what do we do if we don't have a name?
           }
       }
-    def buildTable[A](table: Table.Aux[A]): Unit                                 =
+    def buildTable(table: Table): Unit                                           =
       table match {
+        case source: Table.Source                    =>
+          val _ = builder.append(source.name)
         case Table.Joined(joinType, left, right, on) =>
           buildTable(left)
           builder.append(joinType match {
@@ -140,6 +197,7 @@ object SqlServer extends Sql with Jdbc {
           buildTable(right)
           builder.append(" on ")
           buildExpr(on)
+          val _ = builder.append(" ")
       }
     buildReadString(read)
     builder.toString()

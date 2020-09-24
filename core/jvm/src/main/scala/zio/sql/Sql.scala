@@ -1,6 +1,6 @@
 package zio.sql
 
-trait Sql extends SelectModule with DeleteModule with UpdateModule with ExprModule with TableModule {
+trait Sql extends SelectModule with DeleteModule with UpdateModule with ExprModule with TableModule { self =>
 
   /*
    * (SELECT *, "foo", table.a + table.b AS sum... FROM table WHERE cond) UNION (SELECT ... FROM table)

@@ -1,24 +1,29 @@
 package zio.sql
 
+import zio.sql.sqlserver.SqlServerModule
+
 object Examples extends App {
+  import ShopSchema._
+  import ShopSchema.AggregationDef._
+  import ShopSchema.FunctionDef._
   import ShopSchema.OrderDetails._
   import ShopSchema.Orders._
   import ShopSchema.Users._
 
   //select first_name, last_name from users
   val basicSelect = select(fName ++ lName) from users
-  println(basicSelect.render(RenderMode.Compact))
+  println(renderRead(basicSelect))
 
   //select first_name as first, last_name as last from users
   val basicSelectWithAliases = select {
     (fName as "first") ++ (lName as "last")
   } from users
-  println(basicSelectWithAliases.render(RenderMode.Compact))
+  println(renderRead(basicSelectWithAliases))
 
   //select top 2 first_name, last_name from users order by last_name, first_name desc
   val selectWithRefinements =
     select(fName ++ lName) from users orderBy (lName, fName.desc) limit 2
-  println(selectWithRefinements.render(RenderMode.Compact))
+  println(renderRead(selectWithRefinements))
 
   case class Person(fname: String, lname: String)
 
@@ -27,7 +32,7 @@ object Examples extends App {
 
   //delete from users where first_name = 'Terrence'
   val basicDelete = deleteFrom(users).where(fName === "Terrence")
-  println(basicDelete.render(RenderMode.Compact))
+  //println(renderDelete(basicDelete))
 
   /*
     val deleteFromWithSubquery = deleteFrom(orders).where(fkUserId in {
@@ -38,7 +43,7 @@ object Examples extends App {
   val basicJoin = select {
     fName ++ lName ++ orderDate
   } from (users leftOuter orders).on(fkUserId === userId)
-  println(basicJoin.render(RenderMode.Compact))
+  println(renderRead(basicJoin))
   /*
     select users.usr_id, first_name, last_name, sum(quantity * unit_price) as "total_spend"
     from users
@@ -59,26 +64,26 @@ object Examples extends App {
           .join(orders)
           .on(userId === fkUserId)
           .leftOuter(orderDetails)
-          .on(orderId == fkOrderId)
+          .on(orderId === fkOrderId)
       })
       .groupBy(userId, fName /*, lName */ ) //shouldn't compile without lName todo fix #38
-  println(orderValues.render(RenderMode.Compact))
+  println(renderRead(orderValues))
 }
 
-object ShopSchema extends SqlServer { self =>
+object ShopSchema extends SqlServerModule { self =>
   import self.ColumnSet._
 
-  object Users {
+  object Users         {
     val users = (int("usr_id") ++ localDate("dob") ++ string("first_name") ++ string("last_name")).table("users")
 
     val userId :*: dob :*: fName :*: lName :*: _ = users.columns
   }
-  object Orders {
+  object Orders        {
     val orders = (int("order_id") ++ int("usr_id") ++ localDate("order_date")).table("orders")
 
     val orderId :*: fkUserId :*: orderDate :*: _ = orders.columns
   }
-  object Products {
+  object Products      {
     val products =
       (int("product_id") ++ string("name") ++ string("description") ++ string("image_url")).table("products")
 
@@ -94,7 +99,9 @@ object ShopSchema extends SqlServer { self =>
   object OrderDetails {
     val orderDetails =
       (int("order_id") ++ int("product_id") ++ double("quantity") ++ double("unit_price"))
-        .table("order_details") //todo fix #3 quantity should be int, unit price should be bigDecimal, numeric operators only support double ATM.
+        .table(
+          "order_details"
+        ) //todo fix #3 quantity should be int, unit price should be bigDecimal, numeric operators only support double ATM.
 
     val fkOrderId :*: fkProductId :*: quantity :*: unitPrice :*: _ = orderDetails.columns
   }
