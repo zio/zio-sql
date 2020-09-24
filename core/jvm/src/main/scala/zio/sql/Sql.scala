@@ -21,5 +21,5 @@ trait Sql extends SelectModule with DeleteModule with UpdateModule with ExprModu
 
   def update[A](table: Table.Aux[A]): UpdateBuilder[A] = UpdateBuilder(table)
 
-  def renderRead(read: Read[_]): String = read.render(RenderMode.Pretty(2))
+  def renderRead(read: self.Read[_]): String
 }

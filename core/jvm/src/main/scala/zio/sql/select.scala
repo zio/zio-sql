@@ -13,7 +13,7 @@ trait SelectModule { self: ExprModule with TableModule =>
   /**
    * A `Read[A]` models a selection of a set of values of type `A`.
    */
-  sealed trait Read[+A <: SelectionSet[_]] extends Renderable { self =>
+  sealed trait Read[+A <: SelectionSet[_]] { self =>
     type ResultType
 
     def union[A1 >: A <: SelectionSet[_]](that: Read[A1]): Read[A1] = Read.Union(self, that, true)
@@ -37,40 +37,6 @@ trait SelectModule { self: ExprModule with TableModule =>
       limit: Option[Long] = None
     ) extends Read[B] { self =>
       type ResultType = selection.value.ResultTypeRepr
-
-      /*todo need to add dialect to render/render builder - limit is represented as:
-        SQL Server:
-          select top x ...
-        MySQL/Postgre: at the end
-          select ... limit x
-        Oracle: part of the where clause
-          select ... where rownum <= x
-       */
-      override def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
-        builder.append("select ")
-        selection.renderBuilder(builder, mode)
-        builder.append(" from ")
-        table.renderBuilder(builder, mode)
-        whereExpr match {
-          case Expr.Literal(true) => ()
-          case _                  =>
-            builder.append(" where ")
-            whereExpr.renderBuilder(builder, mode)
-        }
-
-        limit match {
-          case Some(limit) =>
-            builder.append(" limit ")
-            offset match {
-              case Some(offset) =>
-                val _ = builder.append(offset).append(", ")
-              case None         => ()
-            }
-            val _ = builder.append(limit)
-
-          case None        => ()
-        }
-      }
 
       def where(whereExpr2: Expr[_, A, Boolean]): Select[F, A, B] =
         copy(whereExpr = self.whereExpr && whereExpr2)
@@ -97,14 +63,6 @@ trait SelectModule { self: ExprModule with TableModule =>
 
     sealed case class Union[B <: SelectionSet[_]](left: Read[B], right: Read[B], distinct: Boolean) extends Read[B] {
       type ResultType = left.ResultType
-
-      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
-
-        left.renderBuilder(builder, mode)
-        builder.append(" union ")
-        if (!distinct) builder.append("all ")
-        right.renderBuilder(builder, mode)
-      }
     }
 
     sealed case class Literal[B: TypeTag](values: Iterable[B]) extends Read[SelectionSet.Singleton[Any, B]] {
@@ -112,9 +70,6 @@ trait SelectModule { self: ExprModule with TableModule =>
 
       def typeTag: TypeTag[B] = implicitly[TypeTag[B]]
 
-      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
-        val _ = builder.append(" (").append(values.mkString(",")).append(") ") //todo fix
-      }
     }
 
     def lit[B: TypeTag](values: B*): Read[SelectionSet.Singleton[Any, B]] = Literal(values.toSeq)
@@ -123,11 +78,7 @@ trait SelectModule { self: ExprModule with TableModule =>
   /**
    * A columnar selection of `B` from a source `A`, modeled as `A => B`.
    */
-  sealed case class Selection[F, -A, +B <: SelectionSet[A]](value: B) extends Renderable { self =>
-
-    override def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
-      val _ = value.renderBuilder(builder, mode)
-    }
+  sealed case class Selection[F, -A, +B <: SelectionSet[A]](value: B) { self =>
 
     type SelectionType
 
@@ -163,44 +114,22 @@ trait SelectModule { self: ExprModule with TableModule =>
       computedOption(expr, Some(name))
   }
 
-  sealed trait ColumnSelection[-A, +B] extends Renderable {
+  sealed trait ColumnSelection[-A, +B] {
     def name: Option[ColumnName]
   }
 
   object ColumnSelection {
+
     sealed case class Constant[A: TypeTag](value: A, name: Option[ColumnName]) extends ColumnSelection[Any, A] {
       def typeTag: TypeTag[A] = implicitly[TypeTag[A]]
-
-      override def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
-        builder.append(value.toString())
-        name match {
-          case Some(name) =>
-            val _ = builder.append(" as ").append(name)
-          case None       => ()
-        }
-      }
-
     }
+
     sealed case class Computed[F, A, B](expr: Expr[F, A, B], name: Option[ColumnName]) extends ColumnSelection[A, B] {
       def typeTag: TypeTag[B] = Expr.typeTagOf(expr)
-
-      override def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
-        expr.renderBuilder(builder, mode)
-        name match {
-          case Some(name) =>
-            Expr.exprName(expr) match {
-              case Some(sourceName) if name != sourceName =>
-                val _ = builder.append(" as ").append(name)
-              case _                                      => ()
-            }
-          case _          => ()
-        }
-      }
-
     }
   }
 
-  sealed trait SelectionSet[-Source] extends Renderable {
+  sealed trait SelectionSet[-Source] {
     type SelectionsRepr[Source1, T]
 
     type ResultTypeRepr
@@ -221,8 +150,6 @@ trait SelectModule { self: ExprModule with TableModule =>
 
     case object Empty extends SelectionSet[Any] {
 
-      override def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = ()
-
       override type SelectionsRepr[Source1, T] = Unit
 
       override type ResultTypeRepr = Unit
@@ -239,16 +166,6 @@ trait SelectModule { self: ExprModule with TableModule =>
 
     sealed case class Cons[-Source, A, B <: SelectionSet[Source]](head: ColumnSelection[Source, A], tail: B)
         extends SelectionSet[Source] { self =>
-
-      override def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
-        head.renderBuilder(builder, mode)
-        tail match {
-          case _: SelectionSet.Empty.type => ()
-          case _                          =>
-            builder.append(", ")
-            tail.renderBuilder(builder, mode)
-        }
-      }
 
       override type SelectionsRepr[Source1, T] = (ColumnSelection[Source1, A], tail.SelectionsRepr[Source1, T])
 
@@ -267,7 +184,7 @@ trait SelectModule { self: ExprModule with TableModule =>
   }
 
   sealed trait Ordering[+A] {
-    val value : A
+    val value: A
   }
 
   object Ordering {

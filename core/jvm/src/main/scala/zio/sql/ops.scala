@@ -5,12 +5,7 @@ trait OpsModule extends TypeTagModule {
   sealed trait Operator {
     val symbol: String
   }
-  sealed trait UnaryOp[A] extends Operator with Renderable {
-
-    override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
-      val _ = builder.append(" ").append(symbol)
-    }
-  }
+  sealed trait UnaryOp[A] extends Operator
 
   object UnaryOp {
     sealed case class Negate[A: IsNumeric]() extends UnaryOp[A] {
@@ -28,12 +23,8 @@ trait OpsModule extends TypeTagModule {
     }
   }
 
-  sealed trait BinaryOp[A] extends Operator with Renderable {
+  sealed trait BinaryOp[A] extends Operator {
     val symbol: String
-
-    override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
-      val _ = builder.append(" ").append(symbol).append(" ")
-    }
   }
 
   object BinaryOp {
@@ -80,12 +71,7 @@ trait OpsModule extends TypeTagModule {
     }
   }
 
-  sealed trait PropertyOp extends Operator with Renderable {
-
-    override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
-      val _ = builder.append(" ").append(symbol)
-    }
-  }
+  sealed trait PropertyOp extends Operator
 
   object PropertyOp {
     case object IsNull    extends PropertyOp {
@@ -103,44 +89,25 @@ trait OpsModule extends TypeTagModule {
     }
   }
 
-  sealed trait RelationalOp extends Operator with Renderable
+  sealed trait RelationalOp extends Operator
 
   object RelationalOp {
     case object Equals           extends RelationalOp {
-      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
-        val _ = builder.append(" = ")
-      }
-
       override val symbol: String = "="
     }
     case object LessThan         extends RelationalOp {
-      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
-        val _ = builder.append(" < ")
-      }
       override val symbol: String = "<"
     }
     case object GreaterThan      extends RelationalOp {
-      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
-        val _ = builder.append(" > ")
-      }
       override val symbol: String = ">"
     }
     case object LessThanEqual    extends RelationalOp {
-      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
-        val _ = builder.append(" <= ")
-      }
       override val symbol: String = "<="
     }
     case object GreaterThanEqual extends RelationalOp {
-      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
-        val _ = builder.append(" >= ")
-      }
       override val symbol: String = ">="
     }
     case object NotEqual         extends RelationalOp {
-      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
-        val _ = builder.append(" <> ")
-      }
       override val symbol: String = "<>"
     }
   }

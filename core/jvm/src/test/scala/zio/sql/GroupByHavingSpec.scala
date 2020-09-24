@@ -15,7 +15,9 @@ object GroupByHavingSpec extends DefaultRunnableSpec {
 }
 
 object AggregatedProductSchema {
-  val sqldsl = new Sql {}
+  val sqldsl = new Sql {
+    override def renderRead(read: this.Read[_]): String = ???
+  }
   import sqldsl.ColumnSet._
   import sqldsl.AggregationDef._
   import sqldsl._
