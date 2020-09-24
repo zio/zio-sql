@@ -1,8 +1,8 @@
 package zio.sql.sqlserver
 
-import zio.sql.{Jdbc, Sql}
+import zio.sql.Jdbc
 
-trait SqlServerModule extends Sql with Jdbc { self =>
+trait SqlServerModule extends Jdbc { self =>
 
   override def renderRead(read: self.Read[_]): String = {
     val builder = new StringBuilder
@@ -181,9 +181,10 @@ trait SqlServerModule extends Sql with Jdbc { self =>
             case _          => () //todo what do we do if we don't have a name?
           }
       }
-    def buildTable(table: Table): Unit =
+    def buildTable(table: Table): Unit                                           =
       table match {
-        case sourceTable: self.Table.Source                    =>
+        //The outer reference in this type test cannot be checked at run time?!
+        case sourceTable: self.Table.Source          =>
           val _ = builder.append(sourceTable.name)
         case Table.Joined(joinType, left, right, on) =>
           buildTable(left)
