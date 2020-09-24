@@ -7,6 +7,8 @@ object TestBasicSelect {
   val userSql = new Sql { self =>
     import self.ColumnSet._
 
+    override def renderRead(read: this.Read[_]): String = ???
+
     val userTable =
       (string("user_id") ++ localDate("dob") ++ string("first_name") ++ string("last_name")).table("users")
 

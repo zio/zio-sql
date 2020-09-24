@@ -104,7 +104,7 @@ trait TableModule { self: ExprModule =>
   /**
    * (left join right) on (...)
    */
-  sealed trait Table extends Renderable { self =>
+  sealed trait Table { self =>
     type TableType
 
     final def fullOuter[That](that: Table.Aux[That]): Table.JoinBuilder[self.TableType, That] =
@@ -137,13 +137,9 @@ trait TableModule { self: ExprModule =>
       val name: TableName
       val columnSchema: ColumnSchema[Cols]
       val columns: Repr[TableType]
-
-      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
-        val _ = builder.append(name)
-      }
     }
     object Source {
-      type Aux_[F[_], B] = Table.Source {
+      type Aux_[F[_], B]   = Table.Source {
         type Repr[X] = F[X]
         type Cols    = B
       }
@@ -163,19 +159,6 @@ trait TableModule { self: ExprModule =>
       type TableType = left.TableType with right.TableType
 
       val columnsUntyped: List[Column.Untyped] = left.columnsUntyped ++ right.columnsUntyped
-
-      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
-        left.renderBuilder(builder, mode)
-        builder.append(joinType match {
-          case JoinType.Inner      => " inner join "
-          case JoinType.LeftOuter  => " left join "
-          case JoinType.RightOuter => " right join "
-          case JoinType.FullOuter  => " outer join "
-        })
-        right.renderBuilder(builder, mode)
-        builder.append(" on ")
-        on.renderBuilder(builder, mode)
-      }
     }
   }
 }

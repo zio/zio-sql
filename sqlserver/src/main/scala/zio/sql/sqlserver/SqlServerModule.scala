@@ -1,13 +1,12 @@
 package zio.sql.sqlserver
 
-import zio.sql.{ Jdbc, Sql }
+import zio.sql.{Jdbc, Sql}
 
 trait SqlServerModule extends Sql with Jdbc { self =>
 
   override def renderRead(read: self.Read[_]): String = {
     val builder = new StringBuilder
 
-    //todo fix (need `typeTagOf` working)
     def buildExpr[A, B](expr: self.Expr[_, A, B]): Unit = expr match {
       case Expr.Source(tableName, column)                               =>
         val _ = builder.append(tableName).append(".").append(column.name)
@@ -182,10 +181,10 @@ trait SqlServerModule extends Sql with Jdbc { self =>
             case _          => () //todo what do we do if we don't have a name?
           }
       }
-    def buildTable(table: Table): Unit                                           =
+    def buildTable(table: Table): Unit =
       table match {
-        case source: Table.Source                    =>
-          val _ = builder.append(source.name)
+        case sourceTable: self.Table.Source                    =>
+          val _ = builder.append(sourceTable.name)
         case Table.Joined(joinType, left, right, on) =>
           buildTable(left)
           builder.append(joinType match {

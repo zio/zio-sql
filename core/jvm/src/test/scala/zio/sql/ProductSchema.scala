@@ -1,7 +1,9 @@
 package zio.sql
 
 object ProductSchema {
-  val sql = new Sql {}
+  val sql = new Sql {
+    override def renderRead(read: this.Read[_]): String = ???
+  }
   import sql.ColumnSet._
   import sql._
 
