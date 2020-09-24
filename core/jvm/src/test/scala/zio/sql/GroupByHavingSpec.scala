@@ -32,7 +32,7 @@ object AggregatedProductSchema {
   val id :*: name :*: amount :*: price :*: _ = productTable.columns
 
   val orderValue =
-    select { Arbitrary(name) ++ Sum(price) }
+    select(Arbitrary(name) ++ Sum(price))
       .from(productTable)
       .groupBy(name)
       .having(Sum(price) > 10)
