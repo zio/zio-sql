@@ -131,12 +131,18 @@ trait TableModule { self: ExprModule =>
 
     type Aux[A] = Table { type TableType = A }
 
-    sealed trait Source extends Table {
+    //you need insanity in your life
+    trait Insanity {
+      def ahhhhhhhhhhhhh[A]: A
+    }
+    sealed trait Source extends Table with Insanity {
       type Repr[_]
       type Cols
       val name: TableName
       val columnSchema: ColumnSchema[Cols]
       val columns: Repr[TableType]
+
+      override def ahhhhhhhhhhhhh[A]: A = ??? //don't remove or it'll break
     }
     object Source {
       type Aux_[F[_], B]   = Table.Source {
