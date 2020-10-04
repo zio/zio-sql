@@ -263,8 +263,8 @@ trait ExprModule extends NewtypesModule with TypeTagModule with FeaturesModule w
 
     def apply[F, Source](param1: Expr[F, Source, A]): Expr[F, Source, B] = Expr.FunctionCall1(param1, self)
 
-    def apply[F1, F2, Source, P1, P2](param1: Expr[F1, Source, P1], param2: Expr[F2, Source, P2])(
-      implicit ev: (P1, P2) <:< A
+    def apply[F1, F2, Source, P1, P2](param1: Expr[F1, Source, P1], param2: Expr[F2, Source, P2])(implicit
+      ev: (P1, P2) <:< A
     ): Expr[F1 :||: F2, Source, B] =
       Expr.FunctionCall2(param1, param2, self.narrow[(P1, P2)])
 
@@ -291,14 +291,14 @@ trait ExprModule extends NewtypesModule with TypeTagModule with FeaturesModule w
 
   object FunctionDef {
     //math functions
-    val Abs   = FunctionDef[Double, Double](FunctionName("abs"))
-    val Acos  = FunctionDef[Double, Double](FunctionName("acos"))
-    val Asin  = FunctionDef[Double, Double](FunctionName("asin"))
-    val Atan  = FunctionDef[Double, Double](FunctionName("atan"))
-    val Ceil  = FunctionDef[Double, Double](FunctionName("ceil"))
-    val Cos   = FunctionDef[Double, Double](FunctionName("cos"))
-    val Exp   = FunctionDef[Double, Double](FunctionName("exp"))
-    val Floor = FunctionDef[Double, Double](FunctionName("floor"))
+    val Abs         = FunctionDef[Double, Double](FunctionName("abs"))
+    val Acos        = FunctionDef[Double, Double](FunctionName("acos"))
+    val Asin        = FunctionDef[Double, Double](FunctionName("asin"))
+    val Atan        = FunctionDef[Double, Double](FunctionName("atan"))
+    val Ceil        = FunctionDef[Double, Double](FunctionName("ceil"))
+    val Cos         = FunctionDef[Double, Double](FunctionName("cos"))
+    val Exp         = FunctionDef[Double, Double](FunctionName("exp"))
+    val Floor       = FunctionDef[Double, Double](FunctionName("floor"))
     //val Log = FunctionDef[Double, Double](FunctionName("log")) //not part of SQL 2011 spec
     val Ln          = FunctionDef[Double, Double](FunctionName("ln"))
     val Mod         = FunctionDef[(Double, Double), Double](FunctionName("mod"))
@@ -323,8 +323,8 @@ trait ExprModule extends NewtypesModule with TypeTagModule with FeaturesModule w
     val Rtrim       = FunctionDef[String, String](FunctionName("rtrim"))
     val Substring   = FunctionDef[(String, Int, Option[Int]), String](FunctionName("substring"))
     //TODO substring regex
-    val Trim  = FunctionDef[String, String](FunctionName("trim"))
-    val Upper = FunctionDef[String, String](FunctionName("upper"))
+    val Trim        = FunctionDef[String, String](FunctionName("trim"))
+    val Upper       = FunctionDef[String, String](FunctionName("upper"))
 
     // date functions
     val CurrentTimestamp = FunctionDef[Nothing, Instant](FunctionName("current_timestamp"))

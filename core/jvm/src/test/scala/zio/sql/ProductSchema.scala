@@ -16,5 +16,5 @@ object ProductSchema {
 
   val id :*: lastUpdated :*: name :*: baseAmount :*: finalAmount :*: deleted :*: _ = productTable.columns
 
-  val selectAll = select { id ++ lastUpdated ++ baseAmount ++ deleted } from productTable
+  val selectAll = select(id ++ lastUpdated ++ baseAmount ++ deleted) from productTable
 }

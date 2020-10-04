@@ -143,7 +143,7 @@ trait TableModule { self: ExprModule =>
       }
     }
     object Source {
-      type Aux_[F[_], B] = Table.Source {
+      type Aux_[F[_], B]   = Table.Source {
         type Repr[X] = F[X]
         type Cols    = B
       }

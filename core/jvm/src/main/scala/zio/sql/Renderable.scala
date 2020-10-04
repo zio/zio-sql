@@ -1,6 +1,6 @@
 package zio.sql
 
-trait Renderable {
+trait Renderable  {
   def render(mode: RenderMode): String = {
     val builder = new StringBuilder
     renderBuilder(builder, mode)
@@ -20,7 +20,7 @@ object Renderable {
             case Nil    => ()
           }
           tail.renderBuilder(builder, mode)
-        case Nil => ()
+        case Nil          => ()
       }
   }
 }
