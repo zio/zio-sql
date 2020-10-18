@@ -79,22 +79,23 @@ trait Jdbc extends Sql {
 
                     val resultSet = statement.getResultSet()
 
-                    ZStream.fromEffectOption {
-                      blocking.blocking {
-                        ZIO.effectTotal {
-                          if (resultSet.next()) {
-                            try {
-                              unsafeExtractRow[read.ResultType](resultSet, schema) match {
-                                case Left(error)  => ZIO.fail(Some(error))
-                                case Right(value) => ZIO.succeed(to(value))
-                              }
-                            } catch {
-                              case e: SQLException => ZIO.fail(Some(e))
-                            }
-                          } else ZIO.fail(None)
+                    ZStream.fromEffect {
+                      val buf = scala.collection.mutable.ListBuffer.empty[IO[ Exception, Target]]
+                          
+                      while(resultSet.next()) {
+                        val el = try {
+                          unsafeExtractRow[read.ResultType](resultSet, schema) match {
+                            case Left(error)  => ZIO.fail(error)
+                            case Right(value) => ZIO.succeed(to(value))
+                          }
+                        } catch {
+                          case e: SQLException => ZIO.fail(e)
                         }
-                      }.flatten
-                    }
+                        buf.addOne(el)
+                      }
+                          
+                      ZIO.collectAll(buf.toList)
+                    }.map(ZStream.fromIterable(_)).flatten
                   }.refineToOrDie[Exception]
                 }
               )
@@ -251,6 +252,15 @@ trait Jdbc extends Sql {
         val (a, (b, _)) = ev(resultType)
 
         f(a, b)
+      }))
+
+    def to[A, B, C, Target](
+      f: (A, B, C) => Target
+    )(implicit ev: Output <:< (A, (B, (C, Unit)))): ZStream[ReadExecutor, Exception, Target] =
+      ZStream.unwrap(ZIO.access[ReadExecutor](_.get.execute(read) { resultType =>
+        val (a, (b, (c, _))) = ev(resultType)
+
+        f(a, b, c)
       }))
 
     def to[A, B, C, D, Target](
