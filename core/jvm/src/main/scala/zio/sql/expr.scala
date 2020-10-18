@@ -11,7 +11,7 @@ trait ExprModule extends NewtypesModule with TypeTagModule with FeaturesModule w
    * Models a function `A => B`.
    * SELECT product.price + 10
    */
-  sealed trait Expr[F, -A, +B] extends Renderable { self =>
+  sealed trait Expr[F, -A, +B] { self =>
 
     def +[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =
       Expr.Binary(self, that, BinaryOp.Add[B1]())
@@ -130,111 +130,41 @@ trait ExprModule extends NewtypesModule with TypeTagModule with FeaturesModule w
     ): Selection[F, A, SelectionSet.Cons[A, B, SelectionSet.Empty]] =
       Selection.computedOption(expr, exprName(expr))
 
-    sealed case class Source[A, B] private (tableName: TableName, column: Column[B])
-        extends Expr[Features.Source, A, B] {
-      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
-        val _ = builder.append(column.name)
-      }
-    }
+    sealed case class Source[A, B] private (tableName: TableName, column: Column[B]) extends Expr[Features.Source, A, B]
 
-    sealed case class Unary[F, -A, B](base: Expr[F, A, B], op: UnaryOp[B]) extends Expr[F, A, B] {
-      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
-        op.renderBuilder(builder, mode)
-        val _ = builder.append(op)
-      }
-    }
+    sealed case class Unary[F, -A, B](base: Expr[F, A, B], op: UnaryOp[B]) extends Expr[F, A, B]
 
-    sealed case class Property[F, -A, +B](base: Expr[F, A, B], op: PropertyOp) extends Expr[F, A, Boolean] {
-      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
-        base.renderBuilder(builder, mode)
-        op.renderBuilder(builder, mode)
-      }
-    }
+    sealed case class Property[F, -A, +B](base: Expr[F, A, B], op: PropertyOp) extends Expr[F, A, Boolean]
 
     sealed case class Binary[F1, F2, A, B](left: Expr[F1, A, B], right: Expr[F2, A, B], op: BinaryOp[B])
-        extends Expr[Features.Union[F1, F2], A, B] {
-      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
-        left.renderBuilder(builder, mode)
-        op.renderBuilder(builder, mode)
-        right.renderBuilder(builder, mode)
-      }
-    }
+        extends Expr[Features.Union[F1, F2], A, B]
 
     sealed case class Relational[F1, F2, A, B](left: Expr[F1, A, B], right: Expr[F2, A, B], op: RelationalOp)
-        extends Expr[Features.Union[F1, F2], A, Boolean] {
-      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
-        left.renderBuilder(builder, mode)
-        op.renderBuilder(builder, mode)
-        right.renderBuilder(builder, mode)
-      }
-    }
-    sealed case class In[F, A, B <: SelectionSet[_]](value: Expr[F, A, B], set: Read[B]) extends Expr[F, A, Boolean] {
-      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
-        builder.append(" in ")
-        set.renderBuilder(builder, mode)
-      }
-    }
+        extends Expr[Features.Union[F1, F2], A, Boolean]
+
+    sealed case class In[F, A, B <: SelectionSet[_]](value: Expr[F, A, B], set: Read[B]) extends Expr[F, A, Boolean]
+
     sealed case class Literal[B: TypeTag](value: B) extends Expr[Features.Literal, Any, B] {
       def typeTag: TypeTag[B] = implicitly[TypeTag[B]]
-
-      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
-        val _ = builder.append(value.toString) //todo fix
-      }
     }
 
     sealed case class AggregationCall[F, A, B, Z](param: Expr[F, A, B], aggregation: AggregationDef[B, Z])
-        extends Expr[Features.Aggregated[F], A, Z] {
-      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
-        builder.append(aggregation.name.name)
-        builder.append("(")
-        param.renderBuilder(builder, mode)
-        val _ = builder.append(")")
-      }
-    }
+        extends Expr[Features.Aggregated[F], A, Z]
 
-    sealed case class FunctionCall1[F, A, B, Z](param: Expr[F, A, B], function: FunctionDef[B, Z])
-        extends Expr[F, A, Z] {
-
-      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
-        builder.append(function.name.name)
-        builder.append("(")
-        param.renderBuilder(builder, mode)
-        val _ = builder.append(")")
-      }
-    }
+    sealed case class FunctionCall1[F, A, B, Z](param: Expr[F, A, B], function: FunctionDef[B, Z]) extends Expr[F, A, Z]
 
     sealed case class FunctionCall2[F1, F2, A, B, C, Z](
       param1: Expr[F1, A, B],
       param2: Expr[F2, A, C],
       function: FunctionDef[(B, C), Z]
-    ) extends Expr[Features.Union[F1, F2], A, Z] {
-      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
-        builder.append(function.name.name)
-        builder.append("(")
-        param1.renderBuilder(builder, mode)
-        builder.append(",")
-        param2.renderBuilder(builder, mode)
-        val _ = builder.append(")")
-      }
-    }
+    ) extends Expr[Features.Union[F1, F2], A, Z]
 
     sealed case class FunctionCall3[F1, F2, F3, A, B, C, D, Z](
       param1: Expr[F1, A, B],
       param2: Expr[F2, A, C],
       param3: Expr[F3, A, D],
       function: FunctionDef[(B, C, D), Z]
-    ) extends Expr[Features.Union[F1, Features.Union[F2, F3]], A, Z] {
-      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
-        builder.append(function.name.name)
-        builder.append("(")
-        param1.renderBuilder(builder, mode)
-        builder.append(",")
-        param2.renderBuilder(builder, mode)
-        builder.append(",")
-        param3.renderBuilder(builder, mode)
-        val _ = builder.append(")")
-      }
-    }
+    ) extends Expr[Features.Union[F1, Features.Union[F2, F3]], A, Z]
 
     sealed case class FunctionCall4[F1, F2, F3, F4, A, B, C, D, E, Z](
       param1: Expr[F1, A, B],
@@ -242,20 +172,7 @@ trait ExprModule extends NewtypesModule with TypeTagModule with FeaturesModule w
       param3: Expr[F3, A, D],
       param4: Expr[F4, A, E],
       function: FunctionDef[(B, C, D, E), Z]
-    ) extends Expr[Features.Union[F1, Features.Union[F2, Features.Union[F3, F4]]], A, Z] {
-      override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
-        builder.append(function.name.name)
-        builder.append("(")
-        param1.renderBuilder(builder, mode)
-        builder.append(",")
-        param2.renderBuilder(builder, mode)
-        builder.append(",")
-        param3.renderBuilder(builder, mode)
-        builder.append(",")
-        param4.renderBuilder(builder, mode)
-        val _ = builder.append(")")
-      }
-    }
+    ) extends Expr[Features.Union[F1, Features.Union[F2, Features.Union[F3, F4]]], A, Z]
   }
 
   sealed case class AggregationDef[-A, +B](name: FunctionName) { self =>
@@ -277,8 +194,8 @@ trait ExprModule extends NewtypesModule with TypeTagModule with FeaturesModule w
 
     def apply[F, Source](param1: Expr[F, Source, A]): Expr[F, Source, B] = Expr.FunctionCall1(param1, self)
 
-    def apply[F1, F2, Source, P1, P2](param1: Expr[F1, Source, P1], param2: Expr[F2, Source, P2])(
-      implicit ev: (P1, P2) <:< A
+    def apply[F1, F2, Source, P1, P2](param1: Expr[F1, Source, P1], param2: Expr[F2, Source, P2])(implicit
+      ev: (P1, P2) <:< A
     ): Expr[F1 :||: F2, Source, B] =
       Expr.FunctionCall2(param1, param2, self.narrow[(P1, P2)])
 
@@ -305,14 +222,14 @@ trait ExprModule extends NewtypesModule with TypeTagModule with FeaturesModule w
 
   object FunctionDef {
     //math functions
-    val Abs   = FunctionDef[Double, Double](FunctionName("abs"))
-    val Acos  = FunctionDef[Double, Double](FunctionName("acos"))
-    val Asin  = FunctionDef[Double, Double](FunctionName("asin"))
-    val Atan  = FunctionDef[Double, Double](FunctionName("atan"))
-    val Ceil  = FunctionDef[Double, Double](FunctionName("ceil"))
-    val Cos   = FunctionDef[Double, Double](FunctionName("cos"))
-    val Exp   = FunctionDef[Double, Double](FunctionName("exp"))
-    val Floor = FunctionDef[Double, Double](FunctionName("floor"))
+    val Abs         = FunctionDef[Double, Double](FunctionName("abs"))
+    val Acos        = FunctionDef[Double, Double](FunctionName("acos"))
+    val Asin        = FunctionDef[Double, Double](FunctionName("asin"))
+    val Atan        = FunctionDef[Double, Double](FunctionName("atan"))
+    val Ceil        = FunctionDef[Double, Double](FunctionName("ceil"))
+    val Cos         = FunctionDef[Double, Double](FunctionName("cos"))
+    val Exp         = FunctionDef[Double, Double](FunctionName("exp"))
+    val Floor       = FunctionDef[Double, Double](FunctionName("floor"))
     //val Log = FunctionDef[Double, Double](FunctionName("log")) //not part of SQL 2011 spec
     val Ln          = FunctionDef[Double, Double](FunctionName("ln"))
     val Mod         = FunctionDef[(Double, Double), Double](FunctionName("mod"))
@@ -337,14 +254,14 @@ trait ExprModule extends NewtypesModule with TypeTagModule with FeaturesModule w
     val Rtrim       = FunctionDef[String, String](FunctionName("rtrim"))
     val Substring   = FunctionDef[(String, Int, Option[Int]), String](FunctionName("substring"))
     //TODO substring regex
-    val Trim  = FunctionDef[String, String](FunctionName("trim"))
-    val Upper = FunctionDef[String, String](FunctionName("upper"))
+    val Trim        = FunctionDef[String, String](FunctionName("trim"))
+    val Upper       = FunctionDef[String, String](FunctionName("upper"))
 
     // date functions
     val CurrentTimestamp = FunctionDef[Nothing, Instant](FunctionName("current_timestamp"))
   }
 
-  sealed trait Set[F, -A] extends Renderable {
+  sealed trait Set[F, -A] {
     type Value
 
     def lhs: Expr[F, A, Value]
@@ -352,11 +269,6 @@ trait ExprModule extends NewtypesModule with TypeTagModule with FeaturesModule w
 
     def typeTag: TypeTag[Value]
 
-    override private[zio] def renderBuilder(builder: StringBuilder, mode: RenderMode): Unit = {
-      lhs.renderBuilder(builder, mode)
-      builder.append(" = ")
-      rhs.renderBuilder(builder, mode)
-    }
   }
 
   object Set {
