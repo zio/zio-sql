@@ -140,7 +140,11 @@ lazy val jdbc = project
       "dev.zio" %% "zio"          % zioVersion,
       "dev.zio" %% "zio-streams"  % zioVersion,
       "dev.zio" %% "zio-test"     % zioVersion % "test",
-      "dev.zio" %% "zio-test-sbt" % zioVersion % "test"
+      "dev.zio" %% "zio-test-sbt" % zioVersion % "test",
+      "org.testcontainers" %  "testcontainers"                  % "1.15.0-rc2" % Test,
+      "org.testcontainers" %  "database-commons"                % "1.15.0-rc2" % Test,
+      "org.testcontainers" %  "jdbc"                            % "1.15.0-rc2" % Test,
+      "com.dimafeng"       %% "testcontainers-scala-core" % "1.0.0-alpha1" % Test
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
@@ -178,12 +182,20 @@ lazy val postgres = project
   .settings(buildInfoSettings("zio.sql.postgres"))
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio" %% "zio"          % zioVersion,
-      "dev.zio" %% "zio-test"     % zioVersion % "test",
-      "dev.zio" %% "zio-test-sbt" % zioVersion % "test"
+      "dev.zio"            %% "zio"                             % zioVersion,
+      "dev.zio"            %% "zio-test"                        % zioVersion   % Test,
+      "dev.zio"            %% "zio-test-sbt"                    % zioVersion   % Test,
+      "org.testcontainers" %  "testcontainers"                  % "1.15.0-rc2" % Test,
+      "org.testcontainers" %  "database-commons"                % "1.15.0-rc2" % Test,
+      "org.testcontainers" %  "postgresql"                      % "1.15.0-rc2" % Test,
+      "org.testcontainers" %  "jdbc"                            % "1.15.0-rc2" % Test,
+      "org.postgresql"     %  "postgresql"                      % "42.2.11"    % Test,
+      "com.dimafeng"       %% "testcontainers-scala-postgresql" % "1.0.0-alpha1" % Test    
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
+  .dependsOn(jdbc)
+  .dependsOn(examples)
 
 lazy val sqlserver = project
   .in(file("sqlserver"))
