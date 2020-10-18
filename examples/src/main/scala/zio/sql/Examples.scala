@@ -1,28 +1,28 @@
 package zio.sql
 
-import zio.sql._
+import zio.sql.sqlserver.SqlServerModule
 
-object Examples extends App with ShopSchema {
+object Examples extends App with ShopSchema with SqlServerModule {
   import this.AggregationDef._
   import this.FunctionDef._
-  import this.Users._
-  import this.Orders._
   import this.OrderDetails._
+  import this.Orders._
+  import this.Users._
 
   //select first_name, last_name from users
-  val basicSelect = select { fName ++ lName } from users
-  println(basicSelect.render(RenderMode.Compact))
+  val basicSelect = select(fName ++ lName) from users
+  println(renderRead(basicSelect))
 
   //select first_name as first, last_name as last from users
   val basicSelectWithAliases = select {
     (fName as "first") ++ (lName as "last")
   } from users
-  println(basicSelectWithAliases.render(RenderMode.Compact))
+  println(renderRead(basicSelectWithAliases))
 
   //select top 2 first_name, last_name from users order by last_name, first_name desc
   val selectWithRefinements =
-    select { fName ++ lName } from users orderBy (lName, fName.desc) limit 2
-  println(selectWithRefinements.render(RenderMode.Compact))
+    select(fName ++ lName) from users orderBy (lName, fName.desc) limit 2
+  println(renderRead(selectWithRefinements))
 
   case class Person(fname: String, lname: String)
 
@@ -31,7 +31,7 @@ object Examples extends App with ShopSchema {
 
   //delete from users where first_name = 'Terrence'
   val basicDelete = deleteFrom(users).where(fName === "Terrence")
-  println(basicDelete.render(RenderMode.Compact))
+  //println(renderDelete(basicDelete))
 
   /*
     val deleteFromWithSubquery = deleteFrom(orders).where(fkUserId in {
@@ -42,7 +42,7 @@ object Examples extends App with ShopSchema {
   val basicJoin = select {
     fName ++ lName ++ orderDate
   } from (users leftOuter orders).on(fkUserId === userId)
-  println(basicJoin.render(RenderMode.Compact))
+  println(renderRead(basicJoin))
   /*
     select users.usr_id, first_name, last_name, sum(quantity * unit_price) as "total_spend"
     from users
@@ -63,8 +63,8 @@ object Examples extends App with ShopSchema {
           .join(orders)
           .on(userId === fkUserId)
           .leftOuter(orderDetails)
-          .on(orderId == fkOrderId)
+          .on(orderId === fkOrderId)
       })
       .groupBy(userId, fName /*, lName */ ) //shouldn't compile without lName todo fix #38
-  println(orderValues.render(RenderMode.Compact))
+  println(renderRead(orderValues))
 }

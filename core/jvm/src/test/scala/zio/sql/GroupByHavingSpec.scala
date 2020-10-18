@@ -15,7 +15,9 @@ object GroupByHavingSpec extends DefaultRunnableSpec {
 }
 
 object AggregatedProductSchema {
-  val sqldsl = new Sql {}
+  val sqldsl = new Sql {
+    override def renderRead(read: this.Read[_]): String = ???
+  }
   import sqldsl.ColumnSet._
   import sqldsl.AggregationDef._
   import sqldsl._
@@ -30,7 +32,7 @@ object AggregatedProductSchema {
   val id :*: name :*: amount :*: price :*: _ = productTable.columns
 
   val orderValue =
-    select { Arbitrary(name) ++ Sum(price) }
+    select(Arbitrary(name) ++ Sum(price))
       .from(productTable)
       .groupBy(name)
       .having(Sum(price) > 10)

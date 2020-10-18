@@ -23,7 +23,8 @@ inThisBuild(
 addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
-val zioVersion = "1.0.1"
+val zioVersion = "1.0.3"
+val testcontainersVersion = "1.15.0-rc2"
 
 lazy val startPostgres = taskKey[Unit]("Start up Postgres")
 startPostgres := startService(Database.Postgres, streams.value)
@@ -115,8 +116,7 @@ lazy val examples = project
     skip in publish := true,
     moduleName := "examples"
   )
-  .dependsOn(core.jvm)
-  .dependsOn(jdbc)
+  .dependsOn(sqlserver)
 
 lazy val driver = project
   .in(file("driver"))
@@ -140,11 +140,7 @@ lazy val jdbc = project
       "dev.zio" %% "zio"          % zioVersion,
       "dev.zio" %% "zio-streams"  % zioVersion,
       "dev.zio" %% "zio-test"     % zioVersion % "test",
-      "dev.zio" %% "zio-test-sbt" % zioVersion % "test",
-      "org.testcontainers" %  "testcontainers"                  % "1.15.0-rc2" % Test,
-      "org.testcontainers" %  "database-commons"                % "1.15.0-rc2" % Test,
-      "org.testcontainers" %  "jdbc"                            % "1.15.0-rc2" % Test,
-      "com.dimafeng"       %% "testcontainers-scala-core" % "1.0.0-alpha1" % Test
+      "dev.zio" %% "zio-test-sbt" % zioVersion % "test"
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
@@ -162,6 +158,7 @@ lazy val mysql = project
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
+  .dependsOn(jdbc)
 
 lazy val oracle = project
   .in(file("oracle"))
@@ -175,6 +172,7 @@ lazy val oracle = project
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
+  .dependsOn(jdbc)
 
 lazy val postgres = project
   .in(file("postgres"))
@@ -185,10 +183,10 @@ lazy val postgres = project
       "dev.zio"            %% "zio"                             % zioVersion,
       "dev.zio"            %% "zio-test"                        % zioVersion   % Test,
       "dev.zio"            %% "zio-test-sbt"                    % zioVersion   % Test,
-      "org.testcontainers" %  "testcontainers"                  % "1.15.0-rc2" % Test,
-      "org.testcontainers" %  "database-commons"                % "1.15.0-rc2" % Test,
-      "org.testcontainers" %  "postgresql"                      % "1.15.0-rc2" % Test,
-      "org.testcontainers" %  "jdbc"                            % "1.15.0-rc2" % Test,
+      "org.testcontainers" %  "testcontainers"                  % testcontainersVersion % Test,
+      "org.testcontainers" %  "database-commons"                % testcontainersVersion % Test,
+      "org.testcontainers" %  "postgresql"                      % testcontainersVersion % Test,
+      "org.testcontainers" %  "jdbc"                            % testcontainersVersion % Test,
       "org.postgresql"     %  "postgresql"                      % "42.2.11"    % Test,
       "com.dimafeng"       %% "testcontainers-scala-postgresql" % "1.0.0-alpha1" % Test    
     )
@@ -209,6 +207,7 @@ lazy val sqlserver = project
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
+  .dependsOn(jdbc)
 
 lazy val test = project
   .in(file("test"))
