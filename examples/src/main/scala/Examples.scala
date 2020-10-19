@@ -2,7 +2,7 @@ package zio.sql
 
 import zio.sql._
 
-object Examples   extends App  {
+object Examples extends App {
   import ShopSchema._
   import ShopSchema.AggregationDef._
   import ShopSchema.FunctionDef._
@@ -11,7 +11,7 @@ object Examples   extends App  {
   import ShopSchema.OrderDetails._
 
   //select first_name, last_name from users
-  val basicSelect = select(fName ++ lName) from users
+  val basicSelect = select { fName ++ lName } from users
   println(basicSelect.render(RenderMode.Compact))
 
   //select first_name as first, last_name as last from users
@@ -22,7 +22,7 @@ object Examples   extends App  {
 
   //select top 2 first_name, last_name from users order by last_name, first_name desc
   val selectWithRefinements =
-    select(fName ++ lName) from users orderBy (lName, fName.desc) limit 2
+    select { fName ++ lName } from users orderBy (lName, fName.desc) limit 2
   println(selectWithRefinements.render(RenderMode.Compact))
 
   case class Person(fname: String, lname: String)
@@ -72,17 +72,17 @@ object Examples   extends App  {
 object ShopSchema extends Jdbc { self =>
   import self.ColumnSet._
 
-  object Users         {
+  object Users {
     val users = (int("usr_id") ++ localDate("dob") ++ string("first_name") ++ string("last_name")).table("users")
 
     val userId :*: dob :*: fName :*: lName :*: _ = users.columns
   }
-  object Orders        {
+  object Orders {
     val orders = (int("order_id") ++ int("usr_id") ++ localDate("order_date")).table("orders")
 
     val orderId :*: fkUserId :*: orderDate :*: _ = orders.columns
   }
-  object Products      {
+  object Products {
     val products =
       (int("product_id") ++ string("name") ++ string("description") ++ string("image_url")).table("products")
 
@@ -98,9 +98,7 @@ object ShopSchema extends Jdbc { self =>
   object OrderDetails {
     val orderDetails =
       (int("order_id") ++ int("product_id") ++ double("quantity") ++ double("unit_price"))
-        .table(
-          "order_details"
-        ) //todo fix #3 quantity should be int, unit price should be bigDecimal, numeric operators only support double ATM.
+        .table("order_details") //todo fix #3 quantity should be int, unit price should be bigDecimal, numeric operators only support double ATM.
 
     val fkOrderId :*: fkProductId :*: quantity :*: unitPrice :*: _ = orderDetails.columns
   }

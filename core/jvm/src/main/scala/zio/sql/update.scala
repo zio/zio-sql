@@ -27,7 +27,7 @@ trait UpdateModule extends TypeTagModule with FeaturesModule { self: ExprModule 
       set.renderBuilder(builder, mode)
       whereExpr match {
         case Expr.Literal(true) => ()
-        case _                  =>
+        case _ =>
           builder.append(" where ")
           whereExpr.renderBuilder(builder, mode)
       }

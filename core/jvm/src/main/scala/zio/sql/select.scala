@@ -53,7 +53,7 @@ trait SelectModule { self: ExprModule with TableModule =>
         table.renderBuilder(builder, mode)
         whereExpr match {
           case Expr.Literal(true) => ()
-          case _                  =>
+          case _ =>
             builder.append(" where ")
             whereExpr.renderBuilder(builder, mode)
         }
@@ -64,11 +64,11 @@ trait SelectModule { self: ExprModule with TableModule =>
             offset match {
               case Some(offset) =>
                 val _ = builder.append(offset).append(", ")
-              case None         => ()
+              case None => ()
             }
             val _ = builder.append(limit)
 
-          case None        => ()
+          case None => ()
         }
       }
 
@@ -82,15 +82,15 @@ trait SelectModule { self: ExprModule with TableModule =>
       def orderBy(o: Ordering[Expr[_, A, Any]], os: Ordering[Expr[_, A, Any]]*): Select[F, A, B] =
         copy(orderBy = self.orderBy ++ (o :: os.toList))
 
-      def groupBy(key: Expr[_, A, Any], keys: Expr[_, A, Any]*)(implicit
-        ev: Features.IsAggregated[F]
+      def groupBy(key: Expr[_, A, Any], keys: Expr[_, A, Any]*)(
+        implicit ev: Features.IsAggregated[F]
       ): Select[F, A, B] = {
         val _ = ev
         copy(groupBy = groupBy ++ (key :: keys.toList))
       }
 
-      def having(havingExpr2: Expr[_, A, Boolean])(implicit
-        ev: Features.IsAggregated[F]
+      def having(havingExpr2: Expr[_, A, Boolean])(
+        implicit ev: Features.IsAggregated[F]
       ): Select[F, A, B] =
         copy(havingExpr = self.havingExpr && havingExpr2)
     }
@@ -176,7 +176,7 @@ trait SelectModule { self: ExprModule with TableModule =>
         name match {
           case Some(name) =>
             val _ = builder.append(" as ").append(name)
-          case None       => ()
+          case None => ()
         }
       }
 
@@ -191,9 +191,9 @@ trait SelectModule { self: ExprModule with TableModule =>
             Expr.exprName(expr) match {
               case Some(sourceName) if name != sourceName =>
                 val _ = builder.append(" as ").append(name)
-              case _                                      => ()
+              case _ => ()
             }
-          case _          => ()
+          case _ => ()
         }
       }
 
@@ -244,7 +244,7 @@ trait SelectModule { self: ExprModule with TableModule =>
         head.renderBuilder(builder, mode)
         tail match {
           case _: SelectionSet.Empty.type => ()
-          case _                          =>
+          case _ =>
             builder.append(", ")
             tail.renderBuilder(builder, mode)
         }

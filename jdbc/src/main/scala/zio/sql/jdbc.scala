@@ -69,9 +69,7 @@ trait Jdbc extends Sql {
               .flatMap(conn =>
                 Stream.unwrap {
                   blocking.effectBlocking {
-                    val schema = getColumns(read).zipWithIndex.map { case (value, index) =>
-                      (value, index + 1)
-                    } // SQL is 1-based indexing
+                    val schema = getColumns(read).zipWithIndex.map { case (value, index) => (value, index + 1) } // SQL is 1-based indexing
 
                     val query = renderRead(read)
 
@@ -85,9 +83,11 @@ trait Jdbc extends Sql {
                       blocking.blocking {
                         ZIO.effectTotal {
                           if (resultSet.next()) {
-                            try unsafeExtractRow[read.ResultType](resultSet, schema) match {
-                              case Left(error)  => ZIO.fail(Some(error))
-                              case Right(value) => ZIO.succeed(to(value))
+                            try {
+                              unsafeExtractRow[read.ResultType](resultSet, schema) match {
+                                case Left(error)  => ZIO.fail(Some(error))
+                                case Right(value) => ZIO.succeed(to(value))
+                              }
                             } catch {
                               case e: SQLException => ZIO.fail(Some(e))
                             }
@@ -105,7 +105,7 @@ trait Jdbc extends Sql {
       def message: String
     }
     object DecodingError {
-      sealed case class UnexpectedNull(column: Either[Int, String])       extends DecodingError {
+      sealed case class UnexpectedNull(column: Either[Int, String]) extends DecodingError {
         private def label = column.fold(index => index.toString, name => name)
 
         def message = s"Expected column ${label} to be non-null"
@@ -113,12 +113,12 @@ trait Jdbc extends Sql {
       sealed case class UnexpectedType(expected: TypeTag[_], actual: Int) extends DecodingError {
         def message = s"Expected type ${expected} but found ${actual}"
       }
-      sealed case class MissingColumn(column: Either[Int, String])        extends DecodingError {
+      sealed case class MissingColumn(column: Either[Int, String]) extends DecodingError {
         private def label = column.fold(index => index.toString, name => name)
 
         def message = s"The column ${label} does not exist"
       }
-      case object Closed                                                  extends DecodingError {
+      case object Closed extends DecodingError {
         def message = s"The ResultSet has been closed, so decoding is impossible"
       }
     }
@@ -164,35 +164,35 @@ trait Jdbc extends Sql {
         }
 
       typeTag match {
-        case TBigDecimal         => tryDecode[BigDecimal](column.fold(resultSet.getBigDecimal(_), resultSet.getBigDecimal(_)))
-        case TBoolean            => tryDecode[Boolean](column.fold(resultSet.getBoolean(_), resultSet.getBoolean(_)))
-        case TByte               => tryDecode[Byte](column.fold(resultSet.getByte(_), resultSet.getByte(_)))
-        case TByteArray          =>
+        case TBigDecimal => tryDecode[BigDecimal](column.fold(resultSet.getBigDecimal(_), resultSet.getBigDecimal(_)))
+        case TBoolean    => tryDecode[Boolean](column.fold(resultSet.getBoolean(_), resultSet.getBoolean(_)))
+        case TByte       => tryDecode[Byte](column.fold(resultSet.getByte(_), resultSet.getByte(_)))
+        case TByteArray =>
           tryDecode[Chunk[Byte]](Chunk.fromArray(column.fold(resultSet.getBytes(_), resultSet.getBytes(_))))
-        case TChar               => tryDecode[Char](column.fold(resultSet.getString(_), resultSet.getString(_)).charAt(0))
-        case TDouble             => tryDecode[Double](column.fold(resultSet.getDouble(_), resultSet.getDouble(_)))
-        case TFloat              => tryDecode[Float](column.fold(resultSet.getFloat(_), resultSet.getFloat(_)))
-        case TInstant            =>
+        case TChar   => tryDecode[Char](column.fold(resultSet.getString(_), resultSet.getString(_)).charAt(0))
+        case TDouble => tryDecode[Double](column.fold(resultSet.getDouble(_), resultSet.getDouble(_)))
+        case TFloat  => tryDecode[Float](column.fold(resultSet.getFloat(_), resultSet.getFloat(_)))
+        case TInstant =>
           tryDecode[java.time.Instant](column.fold(resultSet.getTimestamp(_), resultSet.getTimestamp(_)).toInstant())
-        case TInt                => tryDecode[Int](column.fold(resultSet.getInt(_), resultSet.getInt(_)))
-        case TLocalDate          =>
+        case TInt => tryDecode[Int](column.fold(resultSet.getInt(_), resultSet.getInt(_)))
+        case TLocalDate =>
           tryDecode[java.time.LocalDate](
             column.fold(resultSet.getTimestamp(_), resultSet.getTimestamp(_)).toLocalDateTime().toLocalDate()
           )
-        case TLocalDateTime      =>
+        case TLocalDateTime =>
           tryDecode[java.time.LocalDateTime](
             column.fold(resultSet.getTimestamp(_), resultSet.getTimestamp(_)).toLocalDateTime()
           )
-        case TLocalTime          =>
+        case TLocalTime =>
           tryDecode[java.time.LocalTime](
             column.fold(resultSet.getTimestamp(_), resultSet.getTimestamp(_)).toLocalDateTime().toLocalTime()
           )
-        case TLong               => tryDecode[Long](column.fold(resultSet.getLong(_), resultSet.getLong(_)))
-        case TOffsetDateTime     => ???
-        case TOffsetTime         => ???
-        case TShort              => tryDecode[Short](column.fold(resultSet.getShort(_), resultSet.getShort(_)))
-        case TString             => tryDecode[String](column.fold(resultSet.getString(_), resultSet.getString(_)))
-        case TUUID               =>
+        case TLong           => tryDecode[Long](column.fold(resultSet.getLong(_), resultSet.getLong(_)))
+        case TOffsetDateTime => ???
+        case TOffsetTime     => ???
+        case TShort          => tryDecode[Short](column.fold(resultSet.getShort(_), resultSet.getShort(_)))
+        case TString         => tryDecode[String](column.fold(resultSet.getString(_), resultSet.getString(_)))
+        case TUUID =>
           tryDecode[java.util.UUID](
             java.util.UUID.fromString(column.fold(resultSet.getString(_), resultSet.getString(_)))
           )
@@ -209,8 +209,8 @@ trait Jdbc extends Sql {
             case t @ ColumnSelection.Constant(_, _) => t.typeTag
             case t @ ColumnSelection.Computed(_, _) => t.typeTag
           }
-        case Read.Union(left, _, _)                      => getColumns(left)
-        case v @ Read.Literal(_)                         => Vector(v.typeTag)
+        case Read.Union(left, _, _) => getColumns(left)
+        case v @ Read.Literal(_)    => Vector(v.typeTag)
       }
 
     private[sql] def unsafeExtractRow[A](
@@ -221,7 +221,7 @@ trait Jdbc extends Sql {
 
       schema
         .foldRight(result) {
-          case (_, err @ Left(_))            => err // TODO: Accumulate errors
+          case (_, err @ Left(_)) => err // TODO: Accumulate errors
           case ((typeTag, index), Right(vs)) =>
             extractColumn(Left(index), resultSet, typeTag) match {
               case Left(err) => Left(err)
@@ -282,8 +282,8 @@ trait Jdbc extends Sql {
 
     def to[A, B, C, D, E, F, G, H, I, Target](
       f: (A, B, C, D, E, F, G, H, I) => Target
-    )(implicit
-      ev: Output <:< (A, (B, (C, (D, (E, (F, (G, (H, (I, Unit)))))))))
+    )(
+      implicit ev: Output <:< (A, (B, (C, (D, (E, (F, (G, (H, (I, Unit)))))))))
     ): ZStream[ReadExecutor, Exception, Target] =
       ZStream.unwrap(ZIO.access[ReadExecutor](_.get.execute(read) { resultType =>
         val (a, (b, (c, (d, (e, (fArg, (g, (h, (i, _))))))))) = ev(resultType)
@@ -293,8 +293,8 @@ trait Jdbc extends Sql {
 
     def to[A, B, C, D, E, F, G, H, I, J, K, L, Target](
       f: (A, B, C, D, E, F, G, H, I, J, K, L) => Target
-    )(implicit
-      ev: Output <:< (A, (B, (C, (D, (E, (F, (G, (H, (I, (J, (K, (L, Unit))))))))))))
+    )(
+      implicit ev: Output <:< (A, (B, (C, (D, (E, (F, (G, (H, (I, (J, (K, (L, Unit))))))))))))
     ): ZStream[ReadExecutor, Exception, Target] =
       ZStream.unwrap(ZIO.access[ReadExecutor](_.get.execute(read) { resultType =>
         val (a, (b, (c, (d, (e, (fArg, (g, (h, (i, (j, (k, (l, _)))))))))))) = ev(resultType)
@@ -304,8 +304,8 @@ trait Jdbc extends Sql {
 
     def to[A, B, C, D, E, F, G, H, I, J, K, L, M, Target](
       f: (A, B, C, D, E, F, G, H, I, J, K, L, M) => Target
-    )(implicit
-      ev: Output <:< (A, (B, (C, (D, (E, (F, (G, (H, (I, (J, (K, (L, (M, Unit)))))))))))))
+    )(
+      implicit ev: Output <:< (A, (B, (C, (D, (E, (F, (G, (H, (I, (J, (K, (L, (M, Unit)))))))))))))
     ): ZStream[ReadExecutor, Exception, Target] =
       ZStream.unwrap(ZIO.access[ReadExecutor](_.get.execute(read) { resultType =>
         val (a, (b, (c, (d, (e, (fArg, (g, (h, (i, (j, (k, (l, (m, _))))))))))))) = ev(resultType)
@@ -315,8 +315,8 @@ trait Jdbc extends Sql {
 
     def to[A, B, C, D, E, F, G, H, I, J, K, L, M, N, Target](
       f: (A, B, C, D, E, F, G, H, I, J, K, L, M, N) => Target
-    )(implicit
-      ev: Output <:< (A, (B, (C, (D, (E, (F, (G, (H, (I, (J, (K, (L, (M, (N, Unit))))))))))))))
+    )(
+      implicit ev: Output <:< (A, (B, (C, (D, (E, (F, (G, (H, (I, (J, (K, (L, (M, (N, Unit))))))))))))))
     ): ZStream[ReadExecutor, Exception, Target] =
       ZStream.unwrap(ZIO.access[ReadExecutor](_.get.execute(read) { resultType =>
         val (a, (b, (c, (d, (e, (fArg, (g, (h, (i, (j, (k, (l, (m, (n, _)))))))))))))) = ev(resultType)
@@ -326,8 +326,8 @@ trait Jdbc extends Sql {
 
     def to[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, Target](
       f: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O) => Target
-    )(implicit
-      ev: Output <:< (A, (B, (C, (D, (E, (F, (G, (H, (I, (J, (K, (L, (M, (N, (O, Unit)))))))))))))))
+    )(
+      implicit ev: Output <:< (A, (B, (C, (D, (E, (F, (G, (H, (I, (J, (K, (L, (M, (N, (O, Unit)))))))))))))))
     ): ZStream[ReadExecutor, Exception, Target] =
       ZStream.unwrap(ZIO.access[ReadExecutor](_.get.execute(read) { resultType =>
         val (a, (b, (c, (d, (e, (fArg, (g, (h, (i, (j, (k, (l, (m, (n, (o, _))))))))))))))) = ev(resultType)
@@ -337,8 +337,8 @@ trait Jdbc extends Sql {
 
     def to[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Target](
       f: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P) => Target
-    )(implicit
-      ev: Output <:< (A, (B, (C, (D, (E, (F, (G, (H, (I, (J, (K, (L, (M, (N, (O, (P, Unit))))))))))))))))
+    )(
+      implicit ev: Output <:< (A, (B, (C, (D, (E, (F, (G, (H, (I, (J, (K, (L, (M, (N, (O, (P, Unit))))))))))))))))
     ): ZStream[ReadExecutor, Exception, Target] =
       ZStream.unwrap(ZIO.access[ReadExecutor](_.get.execute(read) { resultType =>
         val (a, (b, (c, (d, (e, (fArg, (g, (h, (i, (j, (k, (l, (m, (n, (o, (p, _)))))))))))))))) = ev(resultType)
@@ -348,8 +348,8 @@ trait Jdbc extends Sql {
 
     def to[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, Target](
       f: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q) => Target
-    )(implicit
-      ev: Output <:< (A, (B, (C, (D, (E, (F, (G, (H, (I, (J, (K, (L, (M, (N, (O, (P, (Q, Unit)))))))))))))))))
+    )(
+      implicit ev: Output <:< (A, (B, (C, (D, (E, (F, (G, (H, (I, (J, (K, (L, (M, (N, (O, (P, (Q, Unit)))))))))))))))))
     ): ZStream[ReadExecutor, Exception, Target] =
       ZStream.unwrap(ZIO.access[ReadExecutor](_.get.execute(read) { resultType =>
         val (a, (b, (c, (d, (e, (fArg, (g, (h, (i, (j, (k, (l, (m, (n, (o, (p, (q, _))))))))))))))))) = ev(resultType)
@@ -359,8 +359,8 @@ trait Jdbc extends Sql {
 
     def to[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, Target](
       f: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R) => Target
-    )(implicit
-      ev: Output <:< (
+    )(
+      implicit ev: Output <:< (
         A,
         (B, (C, (D, (E, (F, (G, (H, (I, (J, (K, (L, (M, (N, (O, (P, (Q, (R, Unit)))))))))))))))))
       )
@@ -374,8 +374,8 @@ trait Jdbc extends Sql {
 
     def to[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, Target](
       f: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S) => Target
-    )(implicit
-      ev: Output <:< (
+    )(
+      implicit ev: Output <:< (
         A,
         (B, (C, (D, (E, (F, (G, (H, (I, (J, (K, (L, (M, (N, (O, (P, (Q, (R, (S, Unit))))))))))))))))))
       )
@@ -389,8 +389,8 @@ trait Jdbc extends Sql {
 
     def to[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, Target](
       f: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T) => Target
-    )(implicit
-      ev: Output <:< (
+    )(
+      implicit ev: Output <:< (
         A,
         (B, (C, (D, (E, (F, (G, (H, (I, (J, (K, (L, (M, (N, (O, (P, (Q, (R, (S, (T, Unit)))))))))))))))))))
       )

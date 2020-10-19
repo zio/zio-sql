@@ -53,10 +53,10 @@ trait TypeTagModule {
     abstract class AbstractIsIntegral[A: TypeTag] extends IsIntegral[A] {
       def typeTag = implicitly[TypeTag[A]]
     }
-    implicit case object TByteIsIntegral          extends AbstractIsIntegral[Byte]
-    implicit case object TShortIsIntegral         extends AbstractIsIntegral[Short]
-    implicit case object TIntIsIntegral           extends AbstractIsIntegral[Int]
-    implicit case object TLongIsIntegral          extends AbstractIsIntegral[Long]
+    implicit case object TByteIsIntegral  extends AbstractIsIntegral[Byte]
+    implicit case object TShortIsIntegral extends AbstractIsIntegral[Short]
+    implicit case object TIntIsIntegral   extends AbstractIsIntegral[Int]
+    implicit case object TLongIsIntegral  extends AbstractIsIntegral[Long]
   }
 
   sealed trait IsNumeric[A] {
@@ -68,11 +68,11 @@ trait TypeTagModule {
     abstract class AbstractIsNumeric[A: TypeTag] extends IsNumeric[A] {
       def typeTag = implicitly[TypeTag[A]]
     }
-    implicit case object TShortIsNumeric         extends AbstractIsNumeric[Short]
-    implicit case object TIntIsNumeric           extends AbstractIsNumeric[Int]
-    implicit case object TLongIsNumeric          extends AbstractIsNumeric[Long]
-    implicit case object TFloatIsNumeric         extends AbstractIsNumeric[Float]
-    implicit case object TDoubleIsNumeric        extends AbstractIsNumeric[Double]
-    implicit case object TBigDecimalIsNumeric    extends AbstractIsNumeric[BigDecimal]
+    implicit case object TShortIsNumeric      extends AbstractIsNumeric[Short]
+    implicit case object TIntIsNumeric        extends AbstractIsNumeric[Int]
+    implicit case object TLongIsNumeric       extends AbstractIsNumeric[Long]
+    implicit case object TFloatIsNumeric      extends AbstractIsNumeric[Float]
+    implicit case object TDoubleIsNumeric     extends AbstractIsNumeric[Double]
+    implicit case object TBigDecimalIsNumeric extends AbstractIsNumeric[BigDecimal]
   }
 }

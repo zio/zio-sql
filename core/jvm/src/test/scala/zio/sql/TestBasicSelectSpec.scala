@@ -13,7 +13,7 @@ object TestBasicSelect {
     val userId :*: dob :*: fName :*: lName :*: _ = userTable.columns
 
     //todo this should compile using column names defined in the table
-    val basicSelect = select(fName ++ lName) from userTable
+    val basicSelect = select { fName ++ lName } from userTable
 
     // fName and lName already have column names, shouldn't have to do this
     val basicSelectWithAliases = (select {
