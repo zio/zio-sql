@@ -81,21 +81,17 @@ trait Jdbc extends Sql {
 
                     val resultSet = statement.getResultSet()
 
-                    ZStream.fromEffect {
-                      val buf = scala.collection.mutable.ListBuffer.empty[IO[ Exception, Target]]
-                          
-                      while(resultSet.next()) {
-                        val el = try unsafeExtractRow[read.ResultType](resultSet, schema) match {
+                    ZStream.unfoldM(resultSet) { rs => 
+                      if (rs.next()) {
+                        try unsafeExtractRow[read.ResultType](resultSet, schema) match {
                           case Left(error)  => ZIO.fail(error)
-                          case Right(value) => ZIO.succeed(to(value))
+                          case Right(value) => ZIO.succeed(Some((to(value), rs)))
                         } catch {
                           case e: SQLException => ZIO.fail(e)
                         }
-                        buf.addOne(el)
-                      }
-                          
-                      ZIO.collectAll(buf.toList)
-                    }.map(ZStream.fromIterable(_)).flatten
+                      } else ZIO.succeed(None)
+                    }
+
                   }.refineToOrDie[Exception]
                 }
               )
