@@ -3,17 +3,13 @@ package zio.sql.postgres
 import java.time.LocalDate
 import java.util.UUID
 
-import zio.blocking.Blocking
 import zio.sql.ShopSchema
 import zio.sql.postgresql.PostgresModule
 import zio.test._
 import zio.test.Assertion._
 
 object PostgresModuleTest extends DefaultRunnableSpec with PostgresIntegrationTestBase with PostgresModule with ShopSchema {
-  
-  val executorLayer = ((Blocking.live ++ connectionPoolLayer) >>> ReadExecutor.live)
 
-  //import this.AggregationDef._
   import this.Users._
   import this.Orders._
 

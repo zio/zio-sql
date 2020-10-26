@@ -2,25 +2,42 @@ package zio.sql.postgres
 
 import java.util.Properties
 
+import com.dimafeng.testcontainers.PostgreSQLContainer
 import zio.Has
 import zio.blocking.Blocking
 import zio.sql.{ Jdbc, TestContainer }
 
-trait PostgresIntegrationTestBase { self: Jdbc =>
+trait JdbcIntegrationTestBase { self: Jdbc =>
 
-  private def connProperties(user: String, password: String): Properties = {
+  protected def connProperties(user: String, password: String): Properties = {
     val props = new Properties
     props.setProperty("user", user)
     props.setProperty("password", password)
     props
   }
 
-  val containerName = "postgres:13"
+  def imageName: String
 
-  val postgresLayer = Blocking.live >>> TestContainer.postgres(Some(containerName))
-  
-  private val poolConfigLayer = postgresLayer.map(a => Has(ConnectionPool.Config(a.get.jdbcUrl, connProperties(a.get.username, a.get.password))))
+}
+
+trait PostgresIntegrationTestBase extends JdbcIntegrationTestBase { self: Jdbc =>
+
+  override val imageName = "postgres:alpine:13"
+
+  val container = 
+    new PostgreSQLContainer(
+      dockerImageNameOverride = Some(imageName),
+    )
+    .configure { a => 
+      a.withInitScript("shop_schema.sql")
+      ()
+    }
+
+  val dbLayer = Blocking.live >>> TestContainer.container(container)
+
+  private val poolConfigLayer = dbLayer.map(a => Has(ConnectionPool.Config(a.get.jdbcUrl, connProperties(a.get.username, a.get.password))))
   
   val connectionPoolLayer = (Blocking.live ++ poolConfigLayer) >>> ConnectionPool.live
 
+  val executorLayer = ((Blocking.live ++ connectionPoolLayer) >>> ReadExecutor.live)
 }
