@@ -81,7 +81,7 @@ trait Jdbc extends Sql {
 
                     val resultSet = statement.getResultSet()
 
-                    ZStream.unfoldM(resultSet) { rs => 
+                    ZStream.unfoldM(resultSet) { rs =>
                       if (rs.next()) {
                         try unsafeExtractRow[read.ResultType](resultSet, schema) match {
                           case Left(error)  => ZIO.fail(error)

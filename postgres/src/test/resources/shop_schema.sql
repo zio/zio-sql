@@ -1,4 +1,4 @@
-create table users
+create table customers
 (
     id uuid not null primary key,
     first_name varchar not null,
@@ -9,7 +9,7 @@ create table users
 create table orders
 (
     id uuid not null primary key,
-    usr_id uuid not null,
+    customer_id uuid not null,
     order_date date not null
 );
 
@@ -37,7 +37,7 @@ create table order_details
 );
 
 
-insert into users
+insert into customers
     (id, first_name, last_name, dob)
 values
     ('60b01fc9-c902-4468-8d49-3c0f989def37', 'Ronald', 'Russell', '1983-01-05'),
@@ -75,7 +75,7 @@ values
     ('D5137D3A-894A-4109-9986-E982541B434F', '2020-01-01', 55.00);
 
 insert into orders
-    (id, usr_id, order_date)
+    (id, customer_id, order_date)
 values
     ('04912093-cc2e-46ac-b64c-1bd7bb7758c3', '60b01fc9-c902-4468-8d49-3c0f989def37', '2019-03-25'),
     ('a243fa42-817a-44ec-8b67-22193d212d82', '60b01fc9-c902-4468-8d49-3c0f989def37', '2018-06-04'),

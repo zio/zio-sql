@@ -102,20 +102,19 @@ trait ExprModule extends NewtypesModule with TypeTagModule with FeaturesModule w
   object Expr {
     // FIXME!!!!!
     def typeTagOf[A](expr: Expr[_, _, A]): TypeTag[A] = expr match {
-      case a: Literal[_]                   => a.typeTag
-      case Source(_, c)                    => c.typeTag
-      case Unary(b, _)                     => typeTagOf(b)
-      case Binary(bl, _, _)                => typeTagOf(bl)
-      case Property(b, _)                  => ???
-      case Relational(bl, _, _)            => ???
-      case In(v, _)                        => ???
-      case AggregationCall(p, _)           => typeTagOf(p)
-      case FunctionCall1(p, _)             => ???
-      case FunctionCall2(p1, p2, _)        => ???
-      case FunctionCall3(p1, p2, p3, _)    => ???
+      case a: Literal[_]                    => a.typeTag
+      case Source(_, c)                     => c.typeTag
+      case Unary(b, _)                      => typeTagOf(b)
+      case Binary(bl, _, _)                 => typeTagOf(bl)
+      case Property(b, _)                   => ???
+      case Relational(bl, _, _)             => ???
+      case In(v, _)                         => ???
+      case AggregationCall(p, _)            => typeTagOf(p)
+      case FunctionCall1(p, _)              => ???
+      case FunctionCall2(p1, p2, _)         => ???
+      case FunctionCall3(p1, p2, p3, _)     => ???
       case FunctionCall4(p1, p2, p3, p4, _) => ???
     }
-
 
     implicit def literal[A: TypeTag](a: A): Expr[Features.Literal, Any, A] = Expr.Literal(a)
 
