@@ -23,7 +23,7 @@ inThisBuild(
 addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
-val zioVersion = "1.0.3"
+val zioVersion            = "1.0.3"
 val testcontainersVersion = "1.15.0-rc2"
 
 lazy val startPostgres = taskKey[Unit]("Start up Postgres")
@@ -180,20 +180,19 @@ lazy val postgres = project
   .settings(buildInfoSettings("zio.sql.postgres"))
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio"            %% "zio"                             % zioVersion,
-      "dev.zio"            %% "zio-test"                        % zioVersion   % Test,
-      "dev.zio"            %% "zio-test-sbt"                    % zioVersion   % Test,
-      "org.testcontainers" %  "testcontainers"                  % testcontainersVersion % Test,
-      "org.testcontainers" %  "database-commons"                % testcontainersVersion % Test,
-      "org.testcontainers" %  "postgresql"                      % testcontainersVersion % Test,
-      "org.testcontainers" %  "jdbc"                            % testcontainersVersion % Test,
-      "org.postgresql"     %  "postgresql"                      % "42.2.11"    % Test,
-      "com.dimafeng"       %% "testcontainers-scala-postgresql" % "1.0.0-alpha1" % Test    
+      "dev.zio"           %% "zio"                             % zioVersion,
+      "dev.zio"           %% "zio-test"                        % zioVersion            % Test,
+      "dev.zio"           %% "zio-test-sbt"                    % zioVersion            % Test,
+      "org.testcontainers" % "testcontainers"                  % testcontainersVersion % Test,
+      "org.testcontainers" % "database-commons"                % testcontainersVersion % Test,
+      "org.testcontainers" % "postgresql"                      % testcontainersVersion % Test,
+      "org.testcontainers" % "jdbc"                            % testcontainersVersion % Test,
+      "org.postgresql"     % "postgresql"                      % "42.2.11"             % Test,
+      "com.dimafeng"      %% "testcontainers-scala-postgresql" % "1.0.0-alpha1"        % Test
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
   .dependsOn(jdbc)
-  .dependsOn(examples)
 
 lazy val sqlserver = project
   .in(file("sqlserver"))
