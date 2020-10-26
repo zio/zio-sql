@@ -1,24 +1,17 @@
 package zio.sql
 
-import com.dimafeng.testcontainers.PostgreSQLContainer
-import zio.blocking.{effectBlocking, Blocking}
+import com.dimafeng.testcontainers.SingleContainer
 import zio._
+import zio.blocking.{effectBlocking, Blocking}
 
 object TestContainer {
-  type Postgres = Has[PostgreSQLContainer]
   
-  def postgres(imageName: Option[String] = Some("postgres")): ZLayer[Blocking, Nothing, Postgres] =
+  def container[C <: SingleContainer[_] : Tag](c: C): ZLayer[Blocking, Nothing, Has[C]] =
     ZManaged.make {
       effectBlocking {
-        val container = new PostgreSQLContainer(
-          dockerImageNameOverride = imageName,
-        )
-        .configure { a => 
-          a.withInitScript("shop_schema.sql")
-          ()
-        }
-        container.start()
-        container
+        c.start()
+        c
       }.orDie
     }(container => effectBlocking(container.stop()).orDie).toLayer
+
 }
