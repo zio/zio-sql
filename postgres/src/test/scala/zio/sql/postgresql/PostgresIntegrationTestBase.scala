@@ -24,8 +24,10 @@ trait PostgresIntegrationTestBase extends JdbcIntegrationTestBase { self: Jdbc =
 
   override val imageName = "postgres:alpine:13"
 
-  private val poolConfigLayer = TestContainer.postgres(imageName).map(a => Has(ConnectionPool.Config(a.get.jdbcUrl, connProperties(a.get.username, a.get.password))))
-  
+  private val poolConfigLayer = TestContainer
+    .postgres(imageName)
+    .map(a => Has(ConnectionPool.Config(a.get.jdbcUrl, connProperties(a.get.username, a.get.password))))
+
   private val connectionPoolLayer = (Blocking.live ++ poolConfigLayer) >>> ConnectionPool.live
 
   val executorLayer = ((Blocking.live ++ connectionPoolLayer) >>> ReadExecutor.live)
