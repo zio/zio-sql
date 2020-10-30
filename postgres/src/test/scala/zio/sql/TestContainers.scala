@@ -7,27 +7,26 @@ import zio.blocking.{ effectBlocking, Blocking }
 
 object TestContainer {
 
-  def container[C <: SingleContainer[_]: Tag](c: C): ZLayer[Blocking, Nothing, Has[C]] =
+  def container[C <: SingleContainer[_]: Tag](c: C): ZLayer[Blocking, Throwable, Has[C]] =
     ZManaged.make {
       effectBlocking {
         c.start()
         c
-      }.orDie
+      }
     }(container => effectBlocking(container.stop()).orDie).toLayer
 
-  def postgres(imageName: String): ZLayer[Blocking, Nothing, Has[PostgreSQLContainer]] =
+  def postgres(imageName: String): ZLayer[Blocking, Throwable, Has[PostgreSQLContainer]] =
     ZManaged.make {
       effectBlocking {
         val c = new PostgreSQLContainer(
-          dockerImageNameOverride = Some(imageName),
-        ).configure { a => 
+          dockerImageNameOverride = Some(imageName)
+        ).configure { a =>
           a.withInitScript("shop_schema.sql")
           ()
         }
         c.start()
         c
-      }.orDie
+      }
     }(container => effectBlocking(container.stop()).orDie).toLayer
-
 
 }

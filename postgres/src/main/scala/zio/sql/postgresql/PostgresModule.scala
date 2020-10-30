@@ -73,11 +73,6 @@ trait PostgresModule extends Jdbc { self =>
         //todo offset (needs orderBy, must use fetch _instead_ of top)
         case Read.Select(selection, table, whereExpr, groupBy, havingExpr, orderBy, offset, limit) =>
           builder.append("select ")
-          limit match {
-            case Some(limit) =>
-              builder.append("top ").append(limit).append(" ")
-            case None        => ()
-          }
           buildSelection(selection.value)
           builder.append(" from ")
           buildTable(table)
@@ -105,6 +100,16 @@ trait PostgresModule extends Jdbc { self =>
               builder.append(" order by ")
               buildOrderingList(orderBy)
             case Nil    => ()
+          }
+          limit match {
+            case Some(limit) =>
+              builder.append(" limit ").append(limit)
+            case None        => ()
+          }
+          offset match {
+            case Some(offset) =>
+              val _ = builder.append(" offset ").append(offset)
+            case None         => ()
           }
 
         case Read.Union(left, right, distinct) =>

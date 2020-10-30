@@ -3,6 +3,7 @@ package zio.sql.postgresql
 import java.time.LocalDate
 import java.util.UUID
 
+import zio.Cause
 import zio.sql.postgresql.ShopSchema
 import zio.sql.postgresql.PostgresModule
 import zio.test._
@@ -20,7 +21,7 @@ object PostgresModuleTest
   val spec = suite("Postgres module")(
     testM("Can select from single table") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
-      
+
       val query = select(customerId ++ fName ++ lName ++ dob) from customers
 
       val expected =
@@ -66,8 +67,38 @@ object PostgresModuleTest
         r <- testResult.runCollect
       } yield assert(r)(hasSameElementsDistinct(expected))
 
-      assertion.provideCustomLayer(executorLayer)
+      assertion.provideCustomLayer(executorLayer).mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
+    testM("Can select from single table with limit, offset and order by") {
+      case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
+
+      val query = (select(customerId ++ fName ++ lName ++ dob) from customers).limit(1).offset(1).orderBy(fName)
+
+      val expected =
+        Seq(
+          Customer(
+            UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc"),
+            "Jose",
+            "Wiggins",
+            LocalDate.parse("1987-03-23")
+          )
+        )
+
+      val testResult = new ExecuteBuilder(query)
+        .to[UUID, String, String, LocalDate, Customer] { case row =>
+          Customer(row._1, row._2, row._3, row._4)
+        }
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r)(hasSameElementsDistinct(expected))
+
+      assertion.provideCustomLayer(executorLayer).mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    /*
+     * This is a failing test for aggregation function.
+     * Uncomment it when aggregation function handling is fixed.
+     */
     // testM("Can count rows") {
     //   val query = select { Count(userId) } from users
 
@@ -81,8 +112,6 @@ object PostgresModuleTest
     // },
     testM("Can select from joined tables (inner join)") {
       val query = select(fName ++ lName ++ orderDate) from (customers join orders).on(fkCustomerId === customerId)
-
-      println(renderRead(query))
 
       case class Row(firstName: String, lastName: String, orderDate: LocalDate)
 
@@ -118,12 +147,12 @@ object PostgresModuleTest
         .to[String, String, LocalDate, Row] { case row =>
           Row(row._1, row._2, row._3)
         }
-  
+
       val assertion = for {
         r <- result.runCollect
-      } yield assert(r)(equalTo(expected))
+      } yield assert(r)(hasSameElementsDistinct(expected))
 
-      assertion.provideCustomLayer(executorLayer)
+      assertion.provideCustomLayer(executorLayer).mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
   )
 
