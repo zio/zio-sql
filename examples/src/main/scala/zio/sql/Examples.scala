@@ -2,13 +2,12 @@ package zio.sql
 
 import zio.sql.sqlserver.SqlServerModule
 
-object Examples extends App {
-  import ShopSchema._
-  import ShopSchema.AggregationDef._
-  import ShopSchema.FunctionDef._
-  import ShopSchema.OrderDetails._
-  import ShopSchema.Orders._
-  import ShopSchema.Users._
+object Examples extends App with ShopSchema with SqlServerModule {
+  import this.AggregationDef._
+  import this.FunctionDef._
+  import this.OrderDetails._
+  import this.Orders._
+  import this.Users._
 
   //select first_name, last_name from users
   val basicSelect = select(fName ++ lName) from users
@@ -68,42 +67,4 @@ object Examples extends App {
       })
       .groupBy(userId, fName /*, lName */ ) //shouldn't compile without lName todo fix #38
   println(renderRead(orderValues))
-}
-
-object ShopSchema extends SqlServerModule { self =>
-  import self.ColumnSet._
-
-  object Users         {
-    val users = (int("usr_id") ++ localDate("dob") ++ string("first_name") ++ string("last_name")).table("users")
-
-    val userId :*: dob :*: fName :*: lName :*: _ = users.columns
-  }
-  object Orders        {
-    val orders = (int("order_id") ++ int("usr_id") ++ localDate("order_date")).table("orders")
-
-    val orderId :*: fkUserId :*: orderDate :*: _ = orders.columns
-  }
-  object Products      {
-    val products =
-      (int("product_id") ++ string("name") ++ string("description") ++ string("image_url")).table("products")
-
-    val productId :*: description :*: imageURL :*: _ = products.columns
-  }
-  object ProductPrices {
-    val productPrices =
-      (int("product_id") ++ offsetDateTime("effective") ++ bigDecimal("price")).table("product_prices")
-
-    val fkProductId :*: effective :*: price :*: _ = productPrices.columns
-  }
-
-  object OrderDetails {
-    val orderDetails =
-      (int("order_id") ++ int("product_id") ++ double("quantity") ++ double("unit_price"))
-        .table(
-          "order_details"
-        ) //todo fix #3 quantity should be int, unit price should be bigDecimal, numeric operators only support double ATM.
-
-    val fkOrderId :*: fkProductId :*: quantity :*: unitPrice :*: _ = orderDetails.columns
-  }
-
 }
