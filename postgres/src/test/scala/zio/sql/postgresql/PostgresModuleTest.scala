@@ -10,8 +10,8 @@ import zio.test._
 import zio.test.Assertion._
 
 object PostgresModuleTest
-    extends DefaultRunnableSpec
-    with PostgresIntegrationTestBase
+    //extends DefaultRunnableSpec
+    extends PostgresIntegrationTestBase
     with PostgresModule
     with ShopSchema {
 
@@ -67,7 +67,7 @@ object PostgresModuleTest
         r <- testResult.runCollect
       } yield assert(r)(hasSameElementsDistinct(expected))
 
-      assertion.provideCustomLayer(executorLayer).mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertion//.provideCustomLayer(executorLayer).mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     testM("Can select from single table with limit, offset and order by") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
