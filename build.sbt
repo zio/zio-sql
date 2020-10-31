@@ -187,7 +187,7 @@ lazy val postgres = project
       "org.testcontainers" % "database-commons"                % testcontainersVersion % Test,
       "org.testcontainers" % "postgresql"                      % testcontainersVersion % Test,
       "org.testcontainers" % "jdbc"                            % testcontainersVersion % Test,
-      "org.postgresql"     % "postgresql"                      % "42.2.11"             % Test,
+      "org.postgresql"     % "postgresql"                      % "42.2.18"             % Test,
       "com.dimafeng"      %% "testcontainers-scala-postgresql" % "1.0.0-alpha1"        % Test
     )
   )
