@@ -10,10 +10,11 @@ import BuildInfoKeys._
 import scalafix.sbt.ScalafixPlugin.autoImport.scalafixSemanticdb
 
 object BuildHelper {
-  private val Scala211 = "2.11.12"
-  private val Scala212 = "2.12.10"
-  private val Scala213 = "2.13.1"
+  val Scala211 = "2.11.12"
+  val Scala212 = "2.12.12"
+  val Scala213 = "2.13.3"
   val DottyVersion     = "0.23.0-RC1"
+  val SilencerVersion = "1.7.1"
 
   def buildInfoSettings(packageName: String) =
     Seq(
@@ -44,11 +45,7 @@ object BuildHelper {
     sys.props.get(property).map(_.toBoolean).getOrElse(default)
 
   private def customOptions =
-    if (propertyFlag("fatal.warnings", true)) {
-      Seq("-Xfatal-warnings")
-    } else {
-      Nil
-    }
+    Seq("-Xfatal-warnings")
 
   private def optimizerOptions(optimize: Boolean) =
     if (optimize)
@@ -186,12 +183,14 @@ object BuildHelper {
     scalacOptions := stdOptions ++ extraOptions(scalaVersion.value, optimize = !isSnapshot.value),
     libraryDependencies ++= {
       if (isDotty.value)
-        Seq("com.github.ghik" % "silencer-lib_2.13.1" % "1.6.0" % Provided)
+        Seq(
+          ("com.github.ghik" % s"silencer-lib_$Scala213" % SilencerVersion % Provided)
+            .withDottyCompat(scalaVersion.value)
+        )
       else
         Seq(
-          "com.github.ghik"   % "silencer-lib"        % "1.4.4" % Provided cross CrossVersion.full,
-          compilerPlugin("com.github.ghik" % "silencer-plugin" % "1.4.4" cross CrossVersion.full),
-          compilerPlugin(scalafixSemanticdb)
+          "com.github.ghik" % "silencer-lib" % SilencerVersion % Provided cross CrossVersion.full,
+          compilerPlugin("com.github.ghik" % "silencer-plugin" % SilencerVersion cross CrossVersion.full)
         )
     },
     parallelExecution in Test := true,
