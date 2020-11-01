@@ -1,5 +1,9 @@
 # ZIO SQL
 
+| CI | Discord |
+| --- | --- |
+| [![Build Status][badge-ci]][link-ci] | [![badge-discord]][link-discord] |
+
 ZIO SQL lets you write type-safe, type-inferred, and composable SQL queries in ordinary Scala, helping you prevent persistence bugs before they happen, and leverage your IDE to make writing SQL productive, safe, and fun. 
 
  * **Type-safety**. ZIO SQL queries are type-safe by construction. Most classes of bugs can be detected at compile-time, shortening your feedback loop and helping you use your IDE to write correct queries.
@@ -20,3 +24,8 @@ If you want to learn more, please check out:
 
  - [ZIO SQL Homepage](https://zio.github.io/zio-sql)
  - [ZIO SQL Discord](https://discord.gg/2ccFBr4)
+
+[badge-ci]: https://circleci.com/gh/zio/zio-sql/tree/master.svg?style=svg
+[badge-discord]: https://img.shields.io/discord/629491597070827530?logo=discord "chat on discord"
+[link-ci]: https://circleci.com/gh/zio/zio-sql/tree/master
+[link-discord]: https://discord.gg/2ccFBr4 "Discord"
