@@ -112,6 +112,7 @@ lazy val docs = project
 
 lazy val examples = project
   .in(file("examples"))
+  .settings(dottySettings)
   .settings(
     skip in publish := true,
     moduleName := "examples"
@@ -130,6 +131,7 @@ lazy val driver = project
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
+  .settings(dottySettings)
 
 lazy val jdbc = project
   .in(file("jdbc"))
@@ -141,9 +143,10 @@ lazy val jdbc = project
       "dev.zio" %% "zio-streams"  % zioVersion,
       "dev.zio" %% "zio-test"     % zioVersion % "test",
       "dev.zio" %% "zio-test-sbt" % zioVersion % "test"
-    )
+      )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
+  .settings(dottySettings)
   .dependsOn(core.jvm)
 
 lazy val mysql = project
@@ -158,6 +161,7 @@ lazy val mysql = project
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
+  .settings(dottySettings)
   .dependsOn(jdbc)
 
 lazy val oracle = project
@@ -172,6 +176,7 @@ lazy val oracle = project
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
+  .settings(dottySettings)
   .dependsOn(jdbc)
 
 lazy val postgres = project
@@ -192,6 +197,7 @@ lazy val postgres = project
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
+  .settings(dottySettings)
   .dependsOn(jdbc)
 
 lazy val sqlserver = project
@@ -206,6 +212,7 @@ lazy val sqlserver = project
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
+  .settings(dottySettings)
   .dependsOn(jdbc)
 
 lazy val test = project
@@ -221,3 +228,4 @@ lazy val test = project
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
+  .settings(dottySettings)

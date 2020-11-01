@@ -91,7 +91,7 @@ trait ExprModule extends NewtypesModule with TypeTagModule with FeaturesModule w
 
     def desc: Ordering[Expr[F, A, B]] = Ordering.Desc(self)
 
-    def in[B1 >: B <: SelectionSet[_]](set: Read[B1]): Expr[F, A, Boolean] = Expr.In(self, set)
+    def in[B1 >: B <: SelectionSet[_]](set: Read[B1]): Expr[F, A, Boolean] = Expr.In(self.asInstanceOf[Expr[F, A, SelectionSet[_]]], set)
 
     def widen[C](implicit ev: B <:< C): Expr[F, A, C] = {
       val _ = ev
@@ -101,15 +101,16 @@ trait ExprModule extends NewtypesModule with TypeTagModule with FeaturesModule w
 
   object Expr {
     // FIXME!!!!!
+    // instanceOf is a quick fix for dotty
     def typeTagOf[A](expr: Expr[_, _, A]): TypeTag[A] = expr match {
-      case a: Literal[_]                    => a.typeTag
-      case Source(_, c)                     => c.typeTag
+      case a: Literal[A]                    => a.typeTag
+      case Source(_, c)                     => c.typeTag.asInstanceOf[ExprModule.this.TypeTag[A]]
       case Unary(b, _)                      => typeTagOf(b)
       case Binary(bl, _, _)                 => typeTagOf(bl)
       case Property(b, _)                   => ???
       case Relational(bl, _, _)             => ???
       case In(v, _)                         => ???
-      case AggregationCall(p, _)            => typeTagOf(p)
+      case AggregationCall(p, _)            => typeTagOf(p.asInstanceOf[ExprModule.this.Expr[_, _, A]])
       case FunctionCall1(p, _)              => ???
       case FunctionCall2(p1, p2, _)         => ???
       case FunctionCall3(p1, p2, p3, _)     => ???
@@ -129,7 +130,7 @@ trait ExprModule extends NewtypesModule with TypeTagModule with FeaturesModule w
     ): Selection[F, A, SelectionSet.Cons[A, B, SelectionSet.Empty]] =
       Selection.computedOption(expr, exprName(expr))
 
-    sealed case class Source[A, B] private (tableName: TableName, column: Column[B]) extends Expr[Features.Source, A, B]
+    sealed case class Source[A, B] private[sql] (tableName: TableName, column: Column[B]) extends Expr[Features.Source, A, B]
 
     sealed case class Unary[F, -A, B](base: Expr[F, A, B], op: UnaryOp[B]) extends Expr[F, A, B]
 
