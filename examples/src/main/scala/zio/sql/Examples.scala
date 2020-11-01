@@ -21,7 +21,9 @@ object Examples extends App with ShopSchema with SqlServerModule {
 
   //select top 2 first_name, last_name from users order by last_name, first_name desc
   val selectWithRefinements =
-    select(fName ++ lName) from users orderBy (lName, fName.desc) limit 2
+    (select(fName ++ lName) from users)
+      .orderBy(lName, fName.desc)
+      .limit(2)
   println(renderRead(selectWithRefinements))
 
   case class Person(fname: String, lname: String)

@@ -38,7 +38,7 @@ trait TypeTagModule {
       def typeTag: TypeTag[A] = implicitly[TypeTag[A]]
     }
 
-    implicit def option[A: NotNull]: TypeTag[Option[A]] = Nullable[A]
+    implicit def option[A: NotNull]: TypeTag[Option[A]] = Nullable[A]()
 
     implicit def dialectSpecific[A](implicit typeTagExtension: TypeTagExtension[A]): TypeTag[A] =
       TDialectSpecific(typeTagExtension)
