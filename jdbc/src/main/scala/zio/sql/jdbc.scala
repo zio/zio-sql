@@ -8,7 +8,7 @@ import zio.{ Chunk, Has, IO, Managed, ZIO, ZLayer, ZManaged }
 import zio.blocking.Blocking
 import zio.stream.{ Stream, ZStream }
 
-trait Jdbc extends Sql {
+trait Jdbc extends zio.sql.Sql {
   type ConnectionPool = Has[ConnectionPool.Service]
   object ConnectionPool {
     sealed case class Config(url: String, properties: java.util.Properties)

@@ -13,7 +13,7 @@ object BuildHelper {
   val Scala211        = "2.11.12"
   val Scala212        = "2.12.12"
   val Scala213        = "2.13.3"
-  val DottyVersion    = "0.23.0"
+  val DottyVersion    = "0.27.0-RC1"
   val SilencerVersion = "1.7.1"
 
   def buildInfoSettings(packageName: String) =
