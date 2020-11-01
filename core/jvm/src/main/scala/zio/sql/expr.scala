@@ -54,16 +54,16 @@ trait ExprModule extends NewtypesModule with TypeTagModule with FeaturesModule w
       Expr.Relational(self, that, RelationalOp.LessThanEqual)
 
     def &[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsIntegral[B1]): Expr[F :||: F2, A1, B1] =
-      Expr.Binary(self, that, BinaryOp.AndBit[B1])
+      Expr.Binary(self, that, BinaryOp.AndBit[B1]())
 
     def |[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsIntegral[B1]): Expr[F :||: F2, A1, B1] =
-      Expr.Binary(self, that, BinaryOp.OrBit[B1])
+      Expr.Binary(self, that, BinaryOp.OrBit[B1]())
 
     def unary_~[B1 >: B](implicit ev: IsIntegral[B1]): Expr.Unary[F, A, B1] =
-      Expr.Unary(self, UnaryOp.NotBit[B1])
+      Expr.Unary(self, UnaryOp.NotBit[B1]())
 
     def unary_-[B1 >: B](implicit ev: IsNumeric[B1]): Expr.Unary[F, A, B1] =
-      Expr.Unary(self, UnaryOp.Negate[B1])
+      Expr.Unary(self, UnaryOp.Negate[B1]())
 
     def not[A1 <: A](implicit ev: B <:< Boolean): Expr.Unary[F, A1, Boolean] =
       Expr.Unary(self.widen[Boolean], UnaryOp.NotBool)
