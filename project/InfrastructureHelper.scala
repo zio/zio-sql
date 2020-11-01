@@ -36,7 +36,7 @@ object InfrastructureHelper {
   def startService(db: Database, s: TaskStreams): Unit = {
     val dockerComposeUp = shell :+ s"docker-compose up -d ${db.name}"
     if (dockerComposeUp.! == 0) s.log.success(s"${db.name} started on port ${db.port}")
-    else s.log.error("Postgres was not able to start up")
+    else s.log.error(s"${db.name} was not able to start up")
   }
 
   def stopService(db: Database, s: TaskStreams): Unit = {

@@ -10,10 +10,11 @@ import BuildInfoKeys._
 import scalafix.sbt.ScalafixPlugin.autoImport.scalafixSemanticdb
 
 object BuildHelper {
-  private val Scala211 = "2.11.12"
-  private val Scala212 = "2.12.10"
-  private val Scala213 = "2.13.1"
-  val DottyVersion     = "0.27.0-RC1"
+  val Scala211        = "2.11.12"
+  val Scala212        = "2.12.12"
+  val Scala213        = "2.13.3"
+  val DottyVersion    = "0.27.0-RC1"
+  val SilencerVersion = "1.7.1"
 
   def buildInfoSettings(packageName: String) =
     Seq(
@@ -44,11 +45,7 @@ object BuildHelper {
     sys.props.get(property).map(_.toBoolean).getOrElse(default)
 
   private def customOptions =
-    if (propertyFlag("fatal.warnings", true)) {
-      Seq("-Xfatal-warnings")
-    } else {
-      Nil
-    }
+    Seq("-Xfatal-warnings")
 
   private def optimizerOptions(optimize: Boolean) =
     if (optimize)
@@ -60,7 +57,7 @@ object BuildHelper {
 
   def extraOptions(scalaVersion: String, optimize: Boolean) =
     CrossVersion.partialVersion(scalaVersion) match {
-      case Some((0, _)) =>
+      case Some((0, _))  =>
         Seq(
           "-language:implicitConversions",
           "-Xignore-scala2-macros"
@@ -102,7 +99,7 @@ object BuildHelper {
           "-Xmax-classfile-name",
           "242"
         ) ++ std2xOptions
-      case _ => Seq.empty
+      case _             => Seq.empty
     }
 
   def platformSpecificSources(platform: String, conf: String, baseDirectory: File)(versions: String*) =
@@ -116,9 +113,9 @@ object BuildHelper {
         platformSpecificSources(platform, conf, baseDir)("2.11", "2.x")
       case Some((2, x)) if x >= 12 =>
         platformSpecificSources(platform, conf, baseDir)("2.12+", "2.12", "2.x")
-      case _ if isDotty =>
+      case _ if isDotty            =>
         platformSpecificSources(platform, conf, baseDir)("2.12+", "dotty")
-      case _ =>
+      case _                       =>
         Nil
     }
 
@@ -186,12 +183,14 @@ object BuildHelper {
     scalacOptions := stdOptions ++ extraOptions(scalaVersion.value, optimize = !isSnapshot.value),
     libraryDependencies ++= {
       if (isDotty.value)
-        Seq("com.github.ghik" % "silencer-lib_2.13.1" % "1.6.0" % Provided)
+        Seq(
+          ("com.github.ghik" % s"silencer-lib_$Scala213" % SilencerVersion % Provided)
+            .withDottyCompat(scalaVersion.value)
+        )
       else
         Seq(
-          "com.github.ghik" % "silencer-lib" % "1.4.4" % Provided cross CrossVersion.full,
-          compilerPlugin("com.github.ghik" % "silencer-plugin" % "1.4.4" cross CrossVersion.full),
-          compilerPlugin(scalafixSemanticdb)
+          "com.github.ghik" % "silencer-lib" % SilencerVersion % Provided cross CrossVersion.full,
+          compilerPlugin("com.github.ghik" % "silencer-plugin" % SilencerVersion cross CrossVersion.full)
         )
     },
     parallelExecution in Test := true,
@@ -216,7 +215,7 @@ object BuildHelper {
             CrossType.Full.sharedSrcDir(baseDirectory.value, "main").toList.map(f => file(f.getPath + "-2.x")),
             CrossType.Full.sharedSrcDir(baseDirectory.value, "main").toList.map(f => file(f.getPath + "-2.12-2.13"))
           ).flatten
-        case _ =>
+        case _                       =>
           if (isDotty.value)
             Seq(
               Seq(file(sourceDirectory.value.getPath + "/main/scala-2.12")),
@@ -242,7 +241,7 @@ object BuildHelper {
             Seq(file(sourceDirectory.value.getPath + "/test/scala-2.12+")),
             CrossType.Full.sharedSrcDir(baseDirectory.value, "test").toList.map(f => file(f.getPath + "-2.x"))
           ).flatten
-        case _ =>
+        case _                       =>
           if (isDotty.value)
             Seq(
               Seq(file(sourceDirectory.value.getPath + "/test/scala-2.12+")),
@@ -266,7 +265,7 @@ object BuildHelper {
       CrossVersion.partialVersion(scalaVersion.value) match {
         case Some((2, x)) if x <= 12 =>
           Seq(compilerPlugin(("org.scalamacros" % "paradise" % "2.1.1").cross(CrossVersion.full)))
-        case _ => Seq.empty
+        case _                       => Seq.empty
       }
     }
   )
