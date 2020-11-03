@@ -141,9 +141,9 @@ lazy val jdbc = project
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio"          % zioVersion,
       "dev.zio" %% "zio-streams"  % zioVersion,
-      "dev.zio" %% "zio-test"     % zioVersion % "test",
+      "dev.zio" %% "zio-test"     % zioVersion,
       "dev.zio" %% "zio-test-sbt" % zioVersion % "test"
-      )
+    )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
   .settings(dottySettings)
