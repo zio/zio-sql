@@ -91,7 +91,8 @@ trait ExprModule extends NewtypesModule with TypeTagModule with FeaturesModule w
 
     def desc: Ordering[Expr[F, A, B]] = Ordering.Desc(self)
 
-    def in[B1 >: B <: SelectionSet[_]](set: Read[B1]): Expr[F, A, Boolean] = Expr.In(self.asInstanceOf[Expr[F, A, SelectionSet[_]]], set)
+    def in[B1 >: B <: SelectionSet[_]](set: Read[B1]): Expr[F, A, Boolean] =
+      Expr.In(self.asInstanceOf[Expr[F, A, SelectionSet[_]]], set)
 
     def widen[C](implicit ev: B <:< C): Expr[F, A, C] = {
       val _ = ev
@@ -130,7 +131,8 @@ trait ExprModule extends NewtypesModule with TypeTagModule with FeaturesModule w
     ): Selection[F, A, SelectionSet.Cons[A, B, SelectionSet.Empty]] =
       Selection.computedOption(expr, exprName(expr))
 
-    sealed case class Source[A, B] private[sql] (tableName: TableName, column: Column[B]) extends Expr[Features.Source, A, B]
+    sealed case class Source[A, B] private[sql] (tableName: TableName, column: Column[B])
+        extends Expr[Features.Source, A, B]
 
     sealed case class Unary[F, -A, B](base: Expr[F, A, B], op: UnaryOp[B]) extends Expr[F, A, B]
 
