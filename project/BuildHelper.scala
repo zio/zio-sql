@@ -184,13 +184,14 @@ object BuildHelper {
     libraryDependencies ++= {
       if (isDotty.value)
         Seq(
-          ("com.github.ghik" % s"silencer-lib_$Scala213" % SilencerVersion % Provided)
+          ("com.github.ghik" % s"silencer-lib_12.3.3" % "1.7.1" % Provided)
             .withDottyCompat(scalaVersion.value)
         )
       else
         Seq(
-          "com.github.ghik" % "silencer-lib" % SilencerVersion % Provided cross CrossVersion.full,
-          compilerPlugin("com.github.ghik" % "silencer-plugin" % SilencerVersion cross CrossVersion.full)
+          ("com.github.ghik"                % "silencer-lib"            % SilencerVersion % Provided).cross(CrossVersion.full),
+          compilerPlugin(("com.github.ghik" % "silencer-plugin"         % SilencerVersion).cross(CrossVersion.full)),
+          "org.scala-lang.modules"         %% "scala-collection-compat" % "2.2.0"
         )
     },
     parallelExecution in Test := true,
