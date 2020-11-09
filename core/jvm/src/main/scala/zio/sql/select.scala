@@ -55,9 +55,9 @@ trait SelectModule { self: ExprModule with TableModule =>
         copy(groupBy = groupBy ++ (key :: keys.toList))
       }
 
-      def having(havingExpr2: Expr[_, A, Boolean])(implicit
+      def having(havingExpr2: Expr[_, A, Boolean])/*(implicit
         ev: Features.IsAggregated[F]
-      ): Select[F, A, B] =
+      )*/: Select[F, A, B] =
         copy(havingExpr = self.havingExpr && havingExpr2)
     }
 

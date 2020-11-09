@@ -104,18 +104,18 @@ trait ExprModule extends NewtypesModule with TypeTagModule with FeaturesModule w
     // FIXME!!!!!
     // instanceOf is a quick fix for dotty
     def typeTagOf[A](expr: Expr[_, _, A]): TypeTag[A] = expr match {
-      case a: Literal[A]                    => a.typeTag
-      case Source(_, c)                     => c.typeTag.asInstanceOf[ExprModule.this.TypeTag[A]]
-      case Unary(b, _)                      => typeTagOf(b)
-      case Binary(bl, _, _)                 => typeTagOf(bl)
-      case Property(b, _)                   => ???
-      case Relational(bl, _, _)             => ???
-      case In(v, _)                         => ???
-      case AggregationCall(p, _)            => typeTagOf(p.asInstanceOf[ExprModule.this.Expr[_, _, A]])
-      case FunctionCall1(p, _)              => ???
-      case FunctionCall2(p1, p2, _)         => ???
-      case FunctionCall3(p1, p2, p3, _)     => ???
-      case FunctionCall4(p1, p2, p3, p4, _) => ???
+      case a: Literal[A]                                    => a.typeTag
+      case Source(_, c)                                     => c.typeTag.asInstanceOf[ExprModule.this.TypeTag[A]]
+      case Unary(b, _)                                      => typeTagOf(b)
+      case Binary(bl, _, _)                                 => typeTagOf(bl)
+      case Property(b @ _, _)                               => ???
+      case Relational(bl @ _, _, _)                         => ???
+      case In(v @ _, _)                                     => ???
+      case AggregationCall(p, _)                            => typeTagOf(p.asInstanceOf[ExprModule.this.Expr[_, _, A]])
+      case FunctionCall1(p @ _, _)                          => ???
+      case FunctionCall2(p1 @ _, p2 @ _, _)                 => ???
+      case FunctionCall3(p1 @ _, p2 @ _, p3 @ _, _)         => ???
+      case FunctionCall4(p1 @ _, p2 @ _, p3 @ _, p4 @ _, _) => ???
     }
 
     implicit def literal[A: TypeTag](a: A): Expr[Features.Literal, Any, A] = Expr.Literal(a)
