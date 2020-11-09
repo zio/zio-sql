@@ -2,6 +2,8 @@ package zio.sql.postgresql
 
 import zio.sql.Jdbc
 
+/**
+ */
 trait PostgresModule extends Jdbc { self =>
 
   override def renderRead(read: self.Read[_]): String = {
