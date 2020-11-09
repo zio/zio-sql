@@ -71,7 +71,7 @@ trait SqlServerModule extends Jdbc { self =>
     def buildReadString[A <: SelectionSet[_]](read: self.Read[_]): Unit =
       read match {
         //todo offset (needs orderBy, must use fetch _instead_ of top)
-        case Read.Select(selection, table, whereExpr, groupBy, havingExpr, orderBy, offset, limit) =>
+        case Read.Select(selection, table, whereExpr, groupBy, havingExpr, orderBy, offset@_, limit) =>
           builder.append("select ")
           limit match {
             case Some(limit) =>
