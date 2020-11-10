@@ -202,7 +202,7 @@ trait Jdbc extends zio.sql.Sql {
     private[sql] def getColumns(read: Read[_]): Vector[TypeTag[_]] =
       read match {
         case Read.Select(selection, _, _, _, _, _, _, _) =>
-          selection.value.selectionsUntyped.toVector.map {
+          selection.value.selectionsUntyped.toVector.map(_.asInstanceOf[ColumnSelection[_, _]]).map {
             case t @ ColumnSelection.Constant(_, _) => t.typeTag
             case t @ ColumnSelection.Computed(_, _) => t.typeTag
           }
