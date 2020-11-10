@@ -4,8 +4,6 @@ import java.time.LocalDate
 import java.util.UUID
 
 import zio.Cause
-import zio.sql.postgresql.ShopSchema
-import zio.sql.postgresql.PostgresModule
 import zio.test._
 import zio.test.Assertion._
 
@@ -23,6 +21,8 @@ object PostgresModuleTest
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
       val query = select(customerId ++ fName ++ lName ++ dob) from customers
+
+      println(renderRead(query))
 
       val expected =
         Seq(
@@ -58,7 +58,7 @@ object PostgresModuleTest
           )
         )
 
-      val testResult = new ExecuteBuilder(query)
+      val testResult = execute(query)
         .to[UUID, String, String, LocalDate, Customer] { case row =>
           Customer(row._1, row._2, row._3, row._4)
         }
@@ -74,6 +74,8 @@ object PostgresModuleTest
 
       val query = (select(customerId ++ fName ++ lName ++ dob) from customers).limit(1).offset(1).orderBy(fName)
 
+      println(renderRead(query))
+
       val expected =
         Seq(
           Customer(
@@ -84,7 +86,7 @@ object PostgresModuleTest
           )
         )
 
-      val testResult = new ExecuteBuilder(query)
+      val testResult = execute(query)
         .to[UUID, String, String, LocalDate, Customer] { case row =>
           Customer(row._1, row._2, row._3, row._4)
         }
@@ -112,6 +114,8 @@ object PostgresModuleTest
     // },
     testM("Can select from joined tables (inner join)") {
       val query = select(fName ++ lName ++ orderDate) from (customers join orders).on(fkCustomerId === customerId)
+
+      println(renderRead(query))
 
       case class Row(firstName: String, lastName: String, orderDate: LocalDate)
 
@@ -143,7 +147,7 @@ object PostgresModuleTest
         Row("Mila", "Paterso", LocalDate.parse("2020-04-30"))
       )
 
-      val result = new ExecuteBuilder(query)
+      val result = execute(query)
         .to[String, String, LocalDate, Row] { case row =>
           Row(row._1, row._2, row._3)
         }

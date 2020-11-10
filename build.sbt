@@ -112,11 +112,12 @@ lazy val docs = project
 
 lazy val examples = project
   .in(file("examples"))
-  .settings(dottySettings)
+  .settings(stdSettings("examples"))
   .settings(
     skip in publish := true,
     moduleName := "examples"
   )
+  .settings(dottySettings)
   .dependsOn(sqlserver)
 
 lazy val driver = project
