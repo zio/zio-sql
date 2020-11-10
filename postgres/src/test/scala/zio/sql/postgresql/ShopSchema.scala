@@ -6,9 +6,9 @@ trait ShopSchema extends Jdbc { self =>
   import self.ColumnSet._
 
   object Customers     {
-    val customers = (uuid("id") ++ localDate("dob") ++ string("first_name") ++ string("last_name")).table("customers")
+    val customers = (uuid("id") ++ localDate("dob") ++ string("first_name") ++ string("last_name") ++ boolean("verified")).table("customers")
 
-    val customerId :*: dob :*: fName :*: lName :*: _ = customers.columns
+    val customerId :*: dob :*: fName :*: lName :*: verified :*: _ = customers.columns
   }
   object Orders        {
     val orders = (uuid("id") ++ uuid("customer_id") ++ localDate("order_date")).table("orders")
