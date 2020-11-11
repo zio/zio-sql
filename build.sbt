@@ -100,15 +100,10 @@ lazy val docs = project
     scalacOptions -= "-Xfatal-warnings",
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio" % zioVersion
-    ),
-    //unidocProjectFilter in (ScalaUnidoc, unidoc) := inProjects(root),
-    target in (ScalaUnidoc, unidoc) := (baseDirectory in LocalRootProject).value / "website" / "static" / "api",
-    cleanFiles += (target in (ScalaUnidoc, unidoc)).value,
-    docusaurusCreateSite := docusaurusCreateSite.dependsOn(unidoc in Compile).value,
-    docusaurusPublishGhpages := docusaurusPublishGhpages.dependsOn(unidoc in Compile).value
+    )
   )
   .dependsOn(coreJVM)
-  .enablePlugins(MdocPlugin, DocusaurusPlugin, ScalaUnidocPlugin)
+  .enablePlugins(MdocPlugin, DocusaurusPlugin)
 
 lazy val examples = project
   .in(file("examples"))
