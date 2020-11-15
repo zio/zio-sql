@@ -7,6 +7,8 @@ import zio.Cause
 import zio.test._
 import zio.test.Assertion._
 
+import scala.language.postfixOps
+
 object PostgresModuleTest
     extends DefaultRunnableSpec
     with PostgresIntegrationTestBase
@@ -61,6 +63,35 @@ object PostgresModuleTest
       val testResult = execute(query)
         .to[UUID, String, String, LocalDate, Customer] { case row =>
           Customer(row._1, row._2, row._3, row._4)
+        }
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r)(hasSameElementsDistinct(expected))
+
+      assertion.provideCustomLayer(executorLayer) //.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("Can select with property operator") {
+      case class Customer(id: UUID, fname: String, lname: String, verified: Boolean, dateOfBirth: LocalDate)
+
+      val query = select(customerId ++ fName ++ lName ++ verified ++ dob) from customers where (verified isNotTrue)
+
+      println(renderRead(query))
+
+      val expected =
+        Seq(
+          Customer(
+            UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc"),
+            "Jose",
+            "Wiggins",
+            false,
+            LocalDate.parse("1987-03-23")
+          )
+        )
+
+      val testResult = execute(query)
+        .to[UUID, String, String, Boolean, LocalDate, Customer] { case row =>
+          Customer(row._1, row._2, row._3, row._4, row._5)
         }
 
       val assertion = for {
