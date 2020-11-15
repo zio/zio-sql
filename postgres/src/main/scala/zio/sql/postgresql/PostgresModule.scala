@@ -2,6 +2,8 @@ package zio.sql.postgresql
 
 import zio.sql.Jdbc
 
+/**
+ */
 trait PostgresModule extends Jdbc { self =>
 
   override def renderRead(read: self.Read[_]): String = {
@@ -70,52 +72,59 @@ trait PostgresModule extends Jdbc { self =>
 
     def buildReadString[A <: SelectionSet[_]](read: self.Read[_]): Unit =
       read match {
-        //todo offset (needs orderBy, must use fetch _instead_ of top)
-        case Read.Select(selection, table, whereExpr, groupBy, havingExpr, orderBy, offset, limit) =>
-          builder.append("select ")
+        case read0 @ Read.Select(_, _, _, _, _, _, _, _) =>
+          object Dummy {
+            type F
+            type A
+            type B <: SelectionSet[A]
+          }
+          val read = read0.asInstanceOf[Read.Select[Dummy.F, Dummy.A, Dummy.B]]
+          import read._
+
+          builder.append("SELECT ")
           buildSelection(selection.value)
-          builder.append(" from ")
+          builder.append(" FROM ")
           buildTable(table)
           whereExpr match {
             case Expr.Literal(true) => ()
             case _                  =>
-              builder.append(" where ")
+              builder.append(" WHERE ")
               buildExpr(whereExpr)
           }
           groupBy match {
             case _ :: _ =>
-              builder.append(" group by ")
+              builder.append(" GROUP BY ")
               buildExprList(groupBy)
 
               havingExpr match {
                 case Expr.Literal(true) => ()
                 case _                  =>
-                  builder.append(" having ")
+                  builder.append(" HAVING ")
                   buildExpr(havingExpr)
               }
             case Nil    => ()
           }
           orderBy match {
             case _ :: _ =>
-              builder.append(" order by ")
+              builder.append(" ORDER BY ")
               buildOrderingList(orderBy)
             case Nil    => ()
           }
           limit match {
             case Some(limit) =>
-              builder.append(" limit ").append(limit)
+              builder.append(" LIMIT ").append(limit)
             case None        => ()
           }
           offset match {
             case Some(offset) =>
-              val _ = builder.append(" offset ").append(offset)
+              val _ = builder.append(" OFFSET ").append(offset)
             case None         => ()
           }
 
         case Read.Union(left, right, distinct) =>
           buildReadString(left)
-          builder.append(" union ")
-          if (!distinct) builder.append("all ")
+          builder.append(" UNION ")
+          if (!distinct) builder.append("ALL ")
           buildReadString(right)
 
         case Read.Literal(values) =>
@@ -141,7 +150,7 @@ trait PostgresModule extends Jdbc { self =>
             case Ordering.Asc(value)  => buildExpr(value)
             case Ordering.Desc(value) =>
               buildExpr(value)
-              builder.append(" desc")
+              builder.append(" DESC")
           }
           tail match {
             case _ :: _ =>
@@ -154,15 +163,20 @@ trait PostgresModule extends Jdbc { self =>
 
     def buildSelection[A](selectionSet: SelectionSet[A]): Unit =
       selectionSet match {
-        case SelectionSet.Cons(head, tail) =>
-          buildColumnSelection(head)
-          tail match {
-            case SelectionSet.Empty => ()
-            case _                  =>
-              builder.append(", ")
-              buildSelection(tail)
+        case cons0 @ SelectionSet.Cons(_, _) =>
+          object Dummy {
+            type Source
+            type A
+            type B <: SelectionSet[Source]
           }
-        case SelectionSet.Empty            => ()
+          val cons = cons0.asInstanceOf[SelectionSet.Cons[Dummy.Source, Dummy.A, Dummy.B]]
+          import cons._
+          buildColumnSelection(head)
+          if (tail != SelectionSet.Empty) {
+            builder.append(", ")
+            buildSelection(tail)
+          }
+        case SelectionSet.Empty              => ()
       }
 
     def buildColumnSelection[A, B](columnSelection: ColumnSelection[A, B]): Unit =
@@ -171,7 +185,7 @@ trait PostgresModule extends Jdbc { self =>
           builder.append(value.toString()) //todo fix escaping
           name match {
             case Some(name) =>
-              val _ = builder.append(" as ").append(name)
+              val _ = builder.append(" AS ").append(name)
             case None       => ()
           }
         case ColumnSelection.Computed(expr, name)  =>
@@ -180,7 +194,7 @@ trait PostgresModule extends Jdbc { self =>
             case Some(name) =>
               Expr.exprName(expr) match {
                 case Some(sourceName) if name != sourceName =>
-                  val _ = builder.append(" as ").append(name)
+                  val _ = builder.append(" AS ").append(name)
                 case _                                      => ()
               }
             case _          => () //todo what do we do if we don't have a name?
@@ -194,13 +208,13 @@ trait PostgresModule extends Jdbc { self =>
         case Table.Joined(joinType, left, right, on) =>
           buildTable(left)
           builder.append(joinType match {
-            case JoinType.Inner      => " inner join "
-            case JoinType.LeftOuter  => " left join "
-            case JoinType.RightOuter => " right join "
-            case JoinType.FullOuter  => " outer join "
+            case JoinType.Inner      => " INNER JOIN "
+            case JoinType.LeftOuter  => " LEFT JOIN "
+            case JoinType.RightOuter => " RIGHT JOIN "
+            case JoinType.FullOuter  => " OUTER JOIN "
           })
           buildTable(right)
-          builder.append(" on ")
+          builder.append(" ON ")
           buildExpr(on)
           val _ = builder.append(" ")
       }

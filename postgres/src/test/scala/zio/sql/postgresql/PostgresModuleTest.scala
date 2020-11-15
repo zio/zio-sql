@@ -8,6 +8,8 @@ import zio.sql.postgresql.ShopSchema
 import zio.test._
 import zio.test.Assertion._
 
+import scala.language.postfixOps
+
 object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
 
   import this.Customers._
@@ -18,6 +20,8 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
       val query = select(customerId ++ fName ++ lName ++ dob) from customers
+
+      println(renderRead(query))
 
       val expected =
         Seq(
@@ -53,9 +57,38 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
           )
         )
 
-      val testResult = new ExecuteBuilder(query)
+      val testResult = execute(query)
         .to[UUID, String, String, LocalDate, Customer] { case row =>
           Customer(row._1, row._2, row._3, row._4)
+        }
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r)(hasSameElementsDistinct(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("Can select with property operator") {
+      case class Customer(id: UUID, fname: String, lname: String, verified: Boolean, dateOfBirth: LocalDate)
+
+      val query = select(customerId ++ fName ++ lName ++ verified ++ dob) from customers where (verified isNotTrue)
+
+      println(renderRead(query))
+
+      val expected =
+        Seq(
+          Customer(
+            UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc"),
+            "Jose",
+            "Wiggins",
+            false,
+            LocalDate.parse("1987-03-23")
+          )
+        )
+
+      val testResult = execute(query)
+        .to[UUID, String, String, Boolean, LocalDate, Customer] { case row =>
+          Customer(row._1, row._2, row._3, row._4, row._5)
         }
 
       val assertion = for {
@@ -69,6 +102,8 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
 
       val query = (select(customerId ++ fName ++ lName ++ dob) from customers).limit(1).offset(1).orderBy(fName)
 
+      println(renderRead(query))
+
       val expected =
         Seq(
           Customer(
@@ -79,7 +114,7 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
           )
         )
 
-      val testResult = new ExecuteBuilder(query)
+      val testResult = execute(query)
         .to[UUID, String, String, LocalDate, Customer] { case row =>
           Customer(row._1, row._2, row._3, row._4)
         }
@@ -107,6 +142,8 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
     // },
     testM("Can select from joined tables (inner join)") {
       val query = select(fName ++ lName ++ orderDate) from (customers join orders).on(fkCustomerId === customerId)
+
+      println(renderRead(query))
 
       case class Row(firstName: String, lastName: String, orderDate: LocalDate)
 
@@ -138,7 +175,7 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
         Row("Mila", "Paterso", LocalDate.parse("2020-04-30"))
       )
 
-      val result = new ExecuteBuilder(query)
+      val result = execute(query)
         .to[String, String, LocalDate, Row] { case row =>
           Row(row._1, row._2, row._3)
         }
