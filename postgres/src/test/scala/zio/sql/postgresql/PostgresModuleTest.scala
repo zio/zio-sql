@@ -9,11 +9,7 @@ import zio.test.Assertion._
 
 import scala.language.postfixOps
 
-object PostgresModuleTest
-    extends DefaultRunnableSpec
-    with PostgresIntegrationTestBase
-    with PostgresModule
-    with ShopSchema {
+object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
 
   import this.Customers._
   import this.Orders._
@@ -69,7 +65,7 @@ object PostgresModuleTest
         r <- testResult.runCollect
       } yield assert(r)(hasSameElementsDistinct(expected))
 
-      assertion.provideCustomLayer(executorLayer) //.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     testM("Can select with property operator") {
       case class Customer(id: UUID, fname: String, lname: String, verified: Boolean, dateOfBirth: LocalDate)
@@ -98,7 +94,7 @@ object PostgresModuleTest
         r <- testResult.runCollect
       } yield assert(r)(hasSameElementsDistinct(expected))
 
-      assertion.provideCustomLayer(executorLayer).mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     testM("Can select from single table with limit, offset and order by") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
@@ -126,7 +122,7 @@ object PostgresModuleTest
         r <- testResult.runCollect
       } yield assert(r)(hasSameElementsDistinct(expected))
 
-      assertion.provideCustomLayer(executorLayer).mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     /*
      * This is a failing test for aggregation function.
@@ -187,7 +183,7 @@ object PostgresModuleTest
         r <- result.runCollect
       } yield assert(r)(hasSameElementsDistinct(expected))
 
-      assertion.provideCustomLayer(executorLayer).mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
   )
 
