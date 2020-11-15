@@ -69,12 +69,12 @@ object PostgresModuleTest
         r <- testResult.runCollect
       } yield assert(r)(hasSameElementsDistinct(expected))
 
-      assertion.provideCustomLayer(executorLayer)//.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertion.provideCustomLayer(executorLayer) //.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     testM("Can select with property operator") {
       case class Customer(id: UUID, fname: String, lname: String, verified: Boolean, dateOfBirth: LocalDate)
 
-      val query = select(customerId ++ fName ++ lName ++ verified ++ dob) from customers where(verified isNotTrue)
+      val query = select(customerId ++ fName ++ lName ++ verified ++ dob) from customers where (verified isNotTrue)
 
       println(renderRead(query))
 
