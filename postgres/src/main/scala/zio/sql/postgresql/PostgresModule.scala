@@ -72,8 +72,15 @@ trait PostgresModule extends Jdbc { self =>
 
     def buildReadString[A <: SelectionSet[_]](read: self.Read[_]): Unit =
       read match {
-        //todo offset (needs orderBy, must use fetch _instead_ of top)
-        case Read.Select(selection, table, whereExpr, groupBy, havingExpr, orderBy, offset, limit) =>
+        case read0 @ Read.Select(_, _, _, _, _, _, _, _) =>
+          object Dummy {
+            type F
+            type A
+            type B <: SelectionSet[A]
+          }
+          val read = read0.asInstanceOf[Read.Select[Dummy.F, Dummy.A, Dummy.B]]
+          import read._
+
           builder.append("SELECT ")
           buildSelection(selection.value)
           builder.append(" FROM ")
@@ -156,15 +163,20 @@ trait PostgresModule extends Jdbc { self =>
 
     def buildSelection[A](selectionSet: SelectionSet[A]): Unit =
       selectionSet match {
-        case SelectionSet.Cons(head, tail) =>
-          buildColumnSelection(head)
-          tail match {
-            case SelectionSet.Empty => ()
-            case _                  =>
-              builder.append(", ")
-              buildSelection(tail)
+        case cons0 @ SelectionSet.Cons(_, _) =>
+          object Dummy {
+            type Source
+            type A
+            type B <: SelectionSet[Source]
           }
-        case SelectionSet.Empty            => ()
+          val cons = cons0.asInstanceOf[SelectionSet.Cons[Dummy.Source, Dummy.A, Dummy.B]]
+          import cons._
+          buildColumnSelection(head)
+          if (tail != SelectionSet.Empty) {
+            builder.append(", ")
+            buildSelection(tail)
+          }
+        case SelectionSet.Empty              => ()
       }
 
     def buildColumnSelection[A, B](columnSelection: ColumnSelection[A, B]): Unit =
