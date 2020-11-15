@@ -89,7 +89,7 @@ object PostgresModuleTest
           )
         )
 
-      val testResult = new ExecuteBuilder(query)
+      val testResult = execute(query)
         .to[UUID, String, String, Boolean, LocalDate, Customer] { case row =>
           Customer(row._1, row._2, row._3, row._4, row._5)
         }
