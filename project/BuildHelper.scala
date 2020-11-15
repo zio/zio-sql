@@ -38,14 +38,12 @@ object BuildHelper {
     "-Yrangepos",
     "-Xlint:_,-missing-interpolator,-type-parameter-shadow",
     "-Ywarn-numeric-widen",
-    "-Ywarn-value-discard"
-  ) ++ customOptions
+    "-Ywarn-value-discard",
+    "-Xfatal-warnings"
+  )
 
   private def propertyFlag(property: String, default: Boolean) =
     sys.props.get(property).map(_.toBoolean).getOrElse(default)
-
-  private def customOptions =
-    Seq("-Xfatal-warnings")
 
   private def optimizerOptions(optimize: Boolean) =
     if (optimize)
@@ -64,7 +62,13 @@ object BuildHelper {
         )
       case Some((2, 13)) =>
         Seq(
-          "-Ywarn-unused:params,-implicits"
+          "-Wunused:imports",
+          "-Wvalue-discard",
+          "-Wunused:patvars",
+          "-Wunused:privates",
+          "-Wunused:params",
+          "-Wvalue-discard",
+          "-Wdead-code"
         ) ++ std2xOptions ++ optimizerOptions(optimize)
       case Some((2, 12)) =>
         Seq(
@@ -184,13 +188,14 @@ object BuildHelper {
     libraryDependencies ++= {
       if (isDotty.value)
         Seq(
-          ("com.github.ghik" % s"silencer-lib_$Scala213" % SilencerVersion % Provided)
+          ("com.github.ghik" % s"silencer-lib_2.13.3" % "1.7.1" % Provided)
             .withDottyCompat(scalaVersion.value)
         )
       else
         Seq(
-          "com.github.ghik" % "silencer-lib" % SilencerVersion % Provided cross CrossVersion.full,
-          compilerPlugin("com.github.ghik" % "silencer-plugin" % SilencerVersion cross CrossVersion.full)
+          ("com.github.ghik"                % "silencer-lib"            % SilencerVersion % Provided).cross(CrossVersion.full),
+          compilerPlugin(("com.github.ghik" % "silencer-plugin"         % SilencerVersion).cross(CrossVersion.full)),
+          "org.scala-lang.modules"         %% "scala-collection-compat" % "2.2.0"
         )
     },
     parallelExecution in Test := true,

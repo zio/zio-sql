@@ -36,7 +36,7 @@ object Example1 extends Sql {
       (Arbitrary(age) as "age") ++ (Count(1) as "count")
     } from table) groupBy age
 
-  val deleted = deleteFrom(table).where(age === 3)
+  //val deleted = deleteFrom(table).where(age === 3)
 
   val updated =
     update(table)
