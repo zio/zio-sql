@@ -75,6 +75,6 @@ object Examples extends App with ShopSchema with SqlServerModule {
   /*
    * select users.first_name, users.last_name from users where true and users.first_name is not null
    */
-  val withPropertyOp = select(fName ++ lName) from users where(fName isNotNull)
+  val withPropertyOp = select(fName ++ lName) from users where (fName isNotNull)
   println(renderRead(withPropertyOp))
 }
