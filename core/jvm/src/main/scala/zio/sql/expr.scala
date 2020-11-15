@@ -78,7 +78,7 @@ trait ExprModule extends NewtypesModule with TypeTagModule with FeaturesModule w
       Expr.Property(self, PropertyOp.IsTrue)
 
     def isNotTrue[A1 <: A](implicit ev: B <:< Boolean): Expr[F, A1, Boolean] =
-      Expr.Property(self, PropertyOp.IsNotNull)
+      Expr.Property(self, PropertyOp.IsNotTrue)
 
     def as[B1 >: B](name: String): Selection[F, A, SelectionSet.Cons[A, B1, SelectionSet.Empty]] =
       Selection.computedAs(self, name)
