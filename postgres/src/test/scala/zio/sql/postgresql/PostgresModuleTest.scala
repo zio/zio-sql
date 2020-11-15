@@ -4,7 +4,6 @@ import java.time.LocalDate
 import java.util.UUID
 
 import zio.Cause
-import zio.sql.postgresql.ShopSchema
 import zio.test._
 import zio.test.Assertion._
 
