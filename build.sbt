@@ -100,23 +100,19 @@ lazy val docs = project
     scalacOptions -= "-Xfatal-warnings",
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio" % zioVersion
-    ),
-    //unidocProjectFilter in (ScalaUnidoc, unidoc) := inProjects(root),
-    target in (ScalaUnidoc, unidoc) := (baseDirectory in LocalRootProject).value / "website" / "static" / "api",
-    cleanFiles += (target in (ScalaUnidoc, unidoc)).value,
-    docusaurusCreateSite := docusaurusCreateSite.dependsOn(unidoc in Compile).value,
-    docusaurusPublishGhpages := docusaurusPublishGhpages.dependsOn(unidoc in Compile).value
+    )
   )
   .dependsOn(coreJVM)
-  .enablePlugins(MdocPlugin, DocusaurusPlugin, ScalaUnidocPlugin)
+  .enablePlugins(MdocPlugin, DocusaurusPlugin)
 
 lazy val examples = project
   .in(file("examples"))
-  .settings(dottySettings)
+  .settings(stdSettings("examples"))
   .settings(
     skip in publish := true,
     moduleName := "examples"
   )
+  .settings(dottySettings)
   .dependsOn(sqlserver)
 
 lazy val driver = project
@@ -141,7 +137,7 @@ lazy val jdbc = project
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio"          % zioVersion,
       "dev.zio" %% "zio-streams"  % zioVersion,
-      "dev.zio" %% "zio-test"     % zioVersion % "test",
+      "dev.zio" %% "zio-test"     % zioVersion,
       "dev.zio" %% "zio-test-sbt" % zioVersion % "test"
     )
   )
