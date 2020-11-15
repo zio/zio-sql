@@ -32,7 +32,7 @@ object Examples extends App with ShopSchema with SqlServerModule {
   // execute(selectWithRefinements).to((_, _))
 
   //delete from users where first_name = 'Terrence'
-  val basicDelete = deleteFrom(users).where(fName === "Terrence")
+  //val basicDelete = deleteFrom(users).where(fName === "Terrence")
   //println(renderDelete(basicDelete))
 
   /*
