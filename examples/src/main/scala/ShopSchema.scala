@@ -1,7 +1,5 @@
 package zio.sql
 
-import zio.sql.Jdbc
-
 trait ShopSchema extends Jdbc { self =>
   import self.ColumnSet._
 
