@@ -7,7 +7,7 @@ import zio.sql.Jdbc
 trait PostgresModule extends Jdbc { self =>
 
   object PostgresFunctionDef {
-    val Sind = FunctionDef[Double, Double](FunctionName("sind"))
+    val Sind       = FunctionDef[Double, Double](FunctionName("sind"))
     val StartsWith = FunctionDef[(String, String), Boolean](FunctionName("starts_with"))
   }
 
