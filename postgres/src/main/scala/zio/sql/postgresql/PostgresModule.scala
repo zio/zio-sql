@@ -13,6 +13,7 @@ trait PostgresModule extends Jdbc { self =>
     val Translate = FunctionDef[(String, String, String), String](FunctionName("translate"))
     val Left      = FunctionDef[(String, Int), String](FunctionName("left"))
     val Right     = FunctionDef[(String, Int), String](FunctionName("right"))
+    val Radians   = FunctionDef[Double, Double](FunctionName("radians"))
   }
 
   override def renderRead(read: self.Read[_]): String = {
