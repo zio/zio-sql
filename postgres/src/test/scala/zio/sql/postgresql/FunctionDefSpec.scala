@@ -64,7 +64,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
           r <- testResult.runCollect
         } yield assert(r.head.toString)(
           matchesRegex(
-            "(2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]\\.[0-9]{6}\\+[0-9]{2}:[0-9]{2}"
+            "(2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]\\.[0-9]{6}Z"
           )
         )
 
