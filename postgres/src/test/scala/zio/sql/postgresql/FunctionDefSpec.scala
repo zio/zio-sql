@@ -1,5 +1,7 @@
 package zio.sql.postgresql
 
+import java.time.LocalDateTime
+
 import zio.Cause
 import zio.test._
 import zio.test.Assertion._
@@ -38,7 +40,9 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     testM("date_trunc") {
-      val query = select(DateTrunc("year", "2001-02-16 20:38:40")) from customers
+      val now = LocalDateTime.parse("2001-02-16T00:00:00")
+
+      val query = select(DateTrunc("'year'", now)) from customers
 
       val expected = "2001-01-01 00:00:00"
 
