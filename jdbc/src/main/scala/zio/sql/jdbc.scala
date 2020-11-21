@@ -1,9 +1,8 @@
 package zio.sql
 
 import java.sql._
-
 import java.io.IOException
-
+import java.time.{ OffsetDateTime, OffsetTime, ZoneId, ZoneOffset, ZonedDateTime }
 import zio.{ Chunk, Has, IO, Managed, ZIO, ZLayer, ZManaged }
 import zio.blocking.Blocking
 import zio.stream.{ Stream, ZStream }
@@ -185,15 +184,34 @@ trait Jdbc extends zio.sql.Sql {
             column.fold(resultSet.getTimestamp(_), resultSet.getTimestamp(_)).toLocalDateTime().toLocalTime()
           )
         case TLong               => tryDecode[Long](column.fold(resultSet.getLong(_), resultSet.getLong(_)))
-        case TOffsetDateTime     => ???
-        case TOffsetTime         => ???
+        case TOffsetDateTime     =>
+          tryDecode[OffsetDateTime](
+            column
+              .fold(resultSet.getTimestamp(_), resultSet.getTimestamp(_))
+              .toLocalDateTime()
+              .atOffset(ZoneOffset.of(ZoneId.systemDefault().getId))
+          )
+        case TOffsetTime         =>
+          tryDecode[OffsetTime](
+            column
+              .fold(resultSet.getTimestamp(_), resultSet.getTimestamp(_))
+              .toLocalDateTime()
+              .toLocalTime
+              .atOffset(ZoneOffset.of(ZoneId.systemDefault().getId))
+          )
         case TShort              => tryDecode[Short](column.fold(resultSet.getShort(_), resultSet.getShort(_)))
         case TString             => tryDecode[String](column.fold(resultSet.getString(_), resultSet.getString(_)))
         case TUUID               =>
           tryDecode[java.util.UUID](
             java.util.UUID.fromString(column.fold(resultSet.getString(_), resultSet.getString(_)))
           )
-        case TZonedDateTime      => ???
+        case TZonedDateTime      =>
+          tryDecode[ZonedDateTime](
+            column
+              .fold(resultSet.getTimestamp(_), resultSet.getTimestamp(_))
+              .toLocalDateTime()
+              .atZone(ZoneId.systemDefault())
+          )
         case TDialectSpecific(_) => ???
         case t @ Nullable()      => extractColumn(column, resultSet, t.typeTag, false).map(Option(_))
       }
