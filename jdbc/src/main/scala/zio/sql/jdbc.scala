@@ -84,14 +84,15 @@ trait Jdbc extends zio.sql.Sql with TransactionModule {
               case Transaction.Update(update) => updateS.executeOn(update, conn)
               case Transaction.Delete(delete) => deleteS.executeOn(delete, conn)
               case Transaction.FoldCauseM(tx, k) => {
-                ZIO.effect(conn.setSavepoint())
-                  .bracket(savepoint => blocking.effectBlocking(conn.releaseSavepoint(savepoint)).ignore)(
-                    savepoint =>
+//                ZIO.effect(conn.setSavepoint())
+//                  .bracket(savepoint => blocking.effectBlocking(conn.releaseSavepoint(savepoint)).ignore)(
+//                    savepoint =>
                       loop(tx, conn).foldCauseM(
-                        cause => blocking.effectBlocking(conn.rollback(savepoint)) *> loop(k.onHalt(cause), conn),
+//                        cause => blocking.effectBlocking(conn.rollback(savepoint)) *> loop(k.onHalt(cause), conn),
+                        cause => loop(k.onHalt(cause), conn),
                         success => loop(k.onSuccess(success), conn)
                       )
-                  )
+//                  )
               }
             }
 
