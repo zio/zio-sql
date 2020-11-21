@@ -108,7 +108,21 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
 
     def typeTagOf[A](expr: Expr[_, _, A]): TypeTag[A] = expr.asInstanceOf[InvariantExpr[_, _, A]].typeTag
 
-    implicit def literal[A: TypeTag](a: A): Expr[Features.Literal, Any, A] = Expr.Literal(a)
+    implicit def literal[A](a: A)(implicit typeTag: TypeTag[A]): Expr[Features.Literal, Any, A] =
+      typeTag match {
+        case TypeTag.TBoolean   => Expr.Literal(a)
+        case TypeTag.TByte      => Expr.Literal(a)
+        case TypeTag.TByteArray => Expr.Literal(a) // TODO: not sure about this one
+        case TypeTag.TDouble    => Expr.Literal(a)
+        case TypeTag.TFloat     => Expr.Literal(a)
+        case TypeTag.TInt       => Expr.Literal(a)
+        case TypeTag.TLong      => Expr.Literal(a)
+        case TypeTag.TShort     => Expr.Literal(a)
+        case _                  => literalAsString(a)
+      }
+
+    private def literalAsString[A](a: A) =
+      Expr.Literal(s"'${a.toString}'").asInstanceOf[Expr[Features.Literal, Any, A]]
 
     def exprName[F, A, B](expr: Expr[F, A, B]): Option[String] =
       expr match {
