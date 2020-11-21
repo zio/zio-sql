@@ -10,69 +10,116 @@ trait PostgresModule extends Jdbc { self =>
     val Sind = FunctionDef[Double, Double](FunctionName("sind"))
   }
 
-  override def renderRead(read: self.Read[_]): String = {
+  private def buildExpr[A, B](builder: StringBuilder, expr: self.Expr[_, A, B]): Unit = expr match {
+    case Expr.Source(tableName, column)                               =>
+      val _ = builder.append(tableName).append(".").append(column.name)
+    case Expr.Unary(base, op)                                         =>
+      val _ = builder.append(" ").append(op.symbol)
+      buildExpr(builder, base)
+    case Expr.Property(base, op)                                      =>
+      buildExpr(builder, base)
+      val _ = builder.append(" ").append(op.symbol)
+    case Expr.Binary(left, right, op)                                 =>
+      buildExpr(builder, left)
+      builder.append(" ").append(op.symbol).append(" ")
+      buildExpr(builder, right)
+    case Expr.Relational(left, right, op)                             =>
+      buildExpr(builder, left)
+      builder.append(" ").append(op.symbol).append(" ")
+      buildExpr(builder, right)
+    case Expr.In(value, set)                                          =>
+      buildExpr(builder, value)
+      buildRead(builder, set)
+    case Expr.Literal(value)                                          =>
+      val _ = builder.append(value.toString) //todo fix escaping
+    case Expr.AggregationCall(param, aggregation)                     =>
+      builder.append(aggregation.name.name)
+      builder.append("(")
+      buildExpr(builder, param)
+      val _ = builder.append(")")
+    case Expr.FunctionCall1(param, function)                          =>
+      builder.append(function.name.name)
+      builder.append("(")
+      buildExpr(builder, param)
+      val _ = builder.append(")")
+    case Expr.FunctionCall2(param1, param2, function)                 =>
+      builder.append(function.name.name)
+      builder.append("(")
+      buildExpr(builder, param1)
+      builder.append(",")
+      buildExpr(builder, param2)
+      val _ = builder.append(")")
+    case Expr.FunctionCall3(param1, param2, param3, function)         =>
+      builder.append(function.name.name)
+      builder.append("(")
+      buildExpr(builder, param1)
+      builder.append(",")
+      buildExpr(builder, param2)
+      builder.append(",")
+      buildExpr(builder, param3)
+      val _ = builder.append(")")
+    case Expr.FunctionCall4(param1, param2, param3, param4, function) =>
+      builder.append(function.name.name)
+      builder.append("(")
+      buildExpr(builder, param1)
+      builder.append(",")
+      buildExpr(builder, param2)
+      builder.append(",")
+      buildExpr(builder, param3)
+      builder.append(",")
+      buildExpr(builder, param4)
+      val _ = builder.append(")")
+  }
+
+  override def renderUpdate(update: self.Update[_]): String = {
     val builder = new StringBuilder
 
-    def buildExpr[A, B](expr: self.Expr[_, A, B]): Unit = expr match {
-      case Expr.Source(tableName, column)                               =>
-        val _ = builder.append(tableName).append(".").append(column.name)
-      case Expr.Unary(base, op)                                         =>
-        val _ = builder.append(" ").append(op.symbol)
-        buildExpr(base)
-      case Expr.Property(base, op)                                      =>
-        buildExpr(base)
-        val _ = builder.append(" ").append(op.symbol)
-      case Expr.Binary(left, right, op)                                 =>
-        buildExpr(left)
-        builder.append(" ").append(op.symbol).append(" ")
-        buildExpr(right)
-      case Expr.Relational(left, right, op)                             =>
-        buildExpr(left)
-        builder.append(" ").append(op.symbol).append(" ")
-        buildExpr(right)
-      case Expr.In(value, set)                                          =>
-        buildExpr(value)
-        buildReadString(set)
-      case Expr.Literal(value)                                          =>
-        val _ = builder.append(value.toString) //todo fix escaping
-      case Expr.AggregationCall(param, aggregation)                     =>
-        builder.append(aggregation.name.name)
-        builder.append("(")
-        buildExpr(param)
-        val _ = builder.append(")")
-      case Expr.FunctionCall1(param, function)                          =>
-        builder.append(function.name.name)
-        builder.append("(")
-        buildExpr(param)
-        val _ = builder.append(")")
-      case Expr.FunctionCall2(param1, param2, function)                 =>
-        builder.append(function.name.name)
-        builder.append("(")
-        buildExpr(param1)
-        builder.append(",")
-        buildExpr(param2)
-        val _ = builder.append(")")
-      case Expr.FunctionCall3(param1, param2, param3, function)         =>
-        builder.append(function.name.name)
-        builder.append("(")
-        buildExpr(param1)
-        builder.append(",")
-        buildExpr(param2)
-        builder.append(",")
-        buildExpr(param3)
-        val _ = builder.append(")")
-      case Expr.FunctionCall4(param1, param2, param3, param4, function) =>
-        builder.append(function.name.name)
-        builder.append("(")
-        buildExpr(param1)
-        builder.append(",")
-        buildExpr(param2)
-        builder.append(",")
-        buildExpr(param3)
-        builder.append(",")
-        buildExpr(param4)
-        val _ = builder.append(")")
-    }
+    def buildUpdateString[A <: SelectionSet[_]](update: self.Update[_]): Unit =
+      update match {
+        case Update(table, set, whereExpr) =>
+          builder.append("UPDATE ")
+          buildTable(table)
+          builder.append("SET ")
+          buildSet(set)
+          builder.append("WHERE ")
+          buildExpr(builder, whereExpr)
+      }
+
+    def buildTable(table: Table): Unit =
+      table match {
+        //The outer reference in this type test cannot be checked at run time?!
+        case sourceTable: self.Table.Source =>
+          val _ = builder.append(sourceTable.name)
+        case Table.Joined(_, left, _, _)    =>
+          buildTable(left) //TODO restrict Update to only allow sourceTable
+      }
+
+    def buildSet[A <: SelectionSet[_]](set: List[Set[_, A]]): Unit =
+      set match {
+        case head :: tail =>
+          buildExpr(builder, head.lhs)
+          builder.append(" = ")
+          buildExpr(builder, head.rhs)
+          tail.foreach { setEq =>
+            builder.append(", ")
+            buildExpr(builder, setEq.lhs)
+            builder.append(" = ")
+            buildExpr(builder, setEq.rhs)
+          }
+        case Nil          => //TODO restrict Update to not allow empty set
+      }
+
+    buildUpdateString(update)
+    builder.toString()
+  }
+
+  override def renderRead(read: self.Read[_]): String = {
+    val builder = new StringBuilder
+    buildRead(builder, read)
+    builder.toString()
+  }
+
+  private def buildRead(builder: StringBuilder, read: self.Read[_]): Unit = {
 
     def buildReadString[A <: SelectionSet[_]](read: self.Read[_]): Unit =
       read match {
@@ -93,7 +140,7 @@ trait PostgresModule extends Jdbc { self =>
             case Expr.Literal(true) => ()
             case _                  =>
               builder.append(" WHERE ")
-              buildExpr(whereExpr)
+              buildExpr(builder, whereExpr)
           }
           groupBy match {
             case _ :: _ =>
@@ -104,7 +151,7 @@ trait PostgresModule extends Jdbc { self =>
                 case Expr.Literal(true) => ()
                 case _                  =>
                   builder.append(" HAVING ")
-                  buildExpr(havingExpr)
+                  buildExpr(builder, havingExpr)
               }
             case Nil    => ()
           }
@@ -138,7 +185,7 @@ trait PostgresModule extends Jdbc { self =>
     def buildExprList(expr: List[Expr[_, _, _]]): Unit               =
       expr match {
         case head :: tail =>
-          buildExpr(head)
+          buildExpr(builder, head)
           tail match {
             case _ :: _ =>
               builder.append(", ")
@@ -151,9 +198,9 @@ trait PostgresModule extends Jdbc { self =>
       expr match {
         case head :: tail =>
           head match {
-            case Ordering.Asc(value)  => buildExpr(value)
+            case Ordering.Asc(value)  => buildExpr(builder, value)
             case Ordering.Desc(value) =>
-              buildExpr(value)
+              buildExpr(builder, value)
               builder.append(" DESC")
           }
           tail match {
@@ -193,7 +240,7 @@ trait PostgresModule extends Jdbc { self =>
             case None       => ()
           }
         case ColumnSelection.Computed(expr, name)  =>
-          buildExpr(expr)
+          buildExpr(builder, expr)
           name match {
             case Some(name) =>
               Expr.exprName(expr) match {
@@ -219,10 +266,9 @@ trait PostgresModule extends Jdbc { self =>
           })
           buildTable(right)
           builder.append(" ON ")
-          buildExpr(on)
+          buildExpr(builder, on)
           val _ = builder.append(" ")
       }
     buildReadString(read)
-    builder.toString()
   }
 }

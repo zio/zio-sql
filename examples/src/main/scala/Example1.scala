@@ -5,6 +5,8 @@ object Example1 extends Sql {
 
   def renderRead(read: Example1.Read[_]): String = ???
 
+  def renderUpdate(update: Example1.Update[_]): String = ???
+
   val columnSet = int("age") ++ string("name")
 
   val table = columnSet.table("person")
