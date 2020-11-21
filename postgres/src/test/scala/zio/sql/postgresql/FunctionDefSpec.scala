@@ -11,6 +11,19 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
   import this.FunctionDef._
 
   val spec = suite("Postgres FunctionDef")(
+    testM("abs") {
+      val query = select(Abs(-3.14159)) from customers
+
+      val expected = 3.14159
+
+      val testResult = execute(query).to[Double, Double](identity)
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
     testM("sin") {
       val query = select(Sin(1.0)) from customers
 
