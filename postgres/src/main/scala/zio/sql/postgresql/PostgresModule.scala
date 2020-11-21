@@ -7,7 +7,8 @@ import zio.sql.Jdbc
 trait PostgresModule extends Jdbc { self =>
 
   object PostgresFunctionDef {
-    val Sind = FunctionDef[Double, Double](FunctionName("sind"))
+    val Reverse    = FunctionDef[String, String](FunctionName("reverse"))
+    val Sind       = FunctionDef[Double, Double](FunctionName("sind"))
   }
 
   override def renderRead(read: self.Read[_]): String = {
