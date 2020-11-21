@@ -110,6 +110,27 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
 
     implicit def literal[A: TypeTag](a: A): Expr[Features.Literal, Any, A] = Expr.Literal(a)
 
+//    implicit def literals[A: TypeTag, Seq[A]: TypeTag](as: Seq[A]): Expr[Features.Literal, Any, Seq[A]] = Expr.Literal(as)
+
+//    implicit def tuple2[String: TypeTag](a: (String, String)): Expr[Features.Literal, Any, (String, String)] = {
+//      implicit val f: TypeTag[(String, String)] = TypeTag.Tuple2[String]()
+//      Expr.Literal(a)
+//    }
+
+//    implicit def tuple2[String: TypeTag](a: (String, String)): Expr[Features.Literal, Any, (String, String)] = {
+//      val s1 = literal(a._1)
+//      val s2 = literal(a._1)
+//      s1.
+//    }
+
+    implicit def foo(seq: Seq[FunctionDef.FlatValueOrColumnValue]): Expr[Features.Literal, Any, String] = {
+      val nativeFunctionSqlString: String = seq.map {
+        case FunctionDef.StringValue(v) => s"'${v}'" //Note: the '
+        case FunctionDef.ColumnValue(v) => s"${v}"
+      }.mkString(", ")
+      literal[String](nativeFunctionSqlString)
+    }
+
     def exprName[F, A, B](expr: Expr[F, A, B]): Option[String] =
       expr match {
         case Expr.Source(_, c) => Some(c.name)
@@ -275,8 +296,13 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     case class StringValue(v: String) extends FlatValueOrColumnValue
     case class ColumnValue(v: String) extends FlatValueOrColumnValue
     object FlatValueOrColumnValue {
-      implicit def columnToColumnValue(c: ColumnSet): FlatValueOrColumnValue = ColumnValue(c.toString) // TODO
+      implicit def columnToColumnValue(c: ColumnSet): FlatValueOrColumnValue = c match {
+        case ColumnSet.Empty => ColumnValue("") // TODO: ColumnSet is probably not the right type :/
+        case ColumnSet.Cons(head, _) => ColumnValue(head.name)
+      }
       implicit def stringToStringValue(s: String): FlatValueOrColumnValue = StringValue(s)
+      implicit def convList[S, T](input: List[S])(implicit c: S => T): List[T] =
+        input map c
     }
     val ConcatWs    = FunctionDef[String, String](FunctionName("concat_ws"))
     val Lower       = FunctionDef[String, String](FunctionName("lower"))
