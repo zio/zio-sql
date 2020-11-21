@@ -7,10 +7,12 @@ trait ShopSchema extends Jdbc { self =>
 
   object Customers     {
     val customers =
-      (uuid("id") ++ localDate("dob") ++ string("first_name") ++ string("last_name") ++ boolean("verified"))
+      (uuid("id") ++ localDate("dob") ++ string("first_name") ++ string("last_name") ++ boolean(
+        "verified"
+      ) ++ zonedDateTime("created_timestamp"))
         .table("customers")
 
-    val customerId :*: dob :*: fName :*: lName :*: verified :*: _ = customers.columns
+    val customerId :*: dob :*: fName :*: lName :*: verified :*: createdTimestamp :*: _ = customers.columns
   }
   object Orders        {
     val orders = (uuid("id") ++ uuid("customer_id") ++ localDate("order_date")).table("orders")
@@ -38,5 +40,12 @@ trait ShopSchema extends Jdbc { self =>
         ) //todo fix #3 quantity should be int, unit price should be bigDecimal, numeric operators only support double ATM.
 
     val fkOrderId :*: fkProductId :*: quantity :*: unitPrice :*: _ = orderDetails.columns
+  }
+
+  object TimestampTests {
+    val timestampTests                                   =
+      (uuid("timestamp_id") ++ string("created_timestamp_string") ++ zonedDateTime("created_timestamp"))
+        .table("timestamp_test")
+    val tId :*: createdString :*: createdTimestamp :*: _ = timestampTests.columns
   }
 }
