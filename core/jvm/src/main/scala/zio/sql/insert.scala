@@ -10,9 +10,7 @@ trait InsertModule {
 
   sealed case class Insert[A](table: Table.Aux[A], intoFields: SelectionSet[A], valuesField: List[Expr[_, A, _]]) {
 
-    def values[F: Features.IsSource, Value: TypeTag](newValue: Expr[_, A, Value]): Insert[A] = {
+    def values[F: Features.IsSource, Value: TypeTag](newValue: Expr[_, A, Value]): Insert[A] =
       copy(valuesField = valuesField :+ newValue)
-    }
   }
-
 }
