@@ -5,9 +5,26 @@ import zio.sql.Jdbc
 /**
  */
 trait PostgresModule extends Jdbc { self =>
+  override type InvariantExprExtensionType[F, -A, B] = PostgresExprExtension[F, A, B]
 
-  object PostgresFunctionDef {
-    val Sind = FunctionDef[Double, Double](FunctionName("sind"))
+  sealed trait PostgresExprExtension[F, -A, B]
+  object PostgresExprExtension {
+    //FunctionDef[(String, String, Int, Option[Int]), String](FunctionName("overlay"))
+    sealed case class Overlay[F1, F2, F3, F4, Source, Z: TypeTag](
+      main: Expr[F1, Source, String],
+      replacing: Expr[F2, Source, String],
+      starting: Expr[F3, Source, Int],
+      number: Expr[F4, Source, Option[Int]]
+    ) extends PostgresExprExtension[F1 :||: F2 :||: F3 :||: F4, Source, Z] {
+      def typeTag: TypeTag[Z] = implicitly[TypeTag[Z]]
+
+      //todo val
+      def function: FunctionDef[(String, String, Int, Option[Int]), Z] = ???
+    }
+  }
+  object PostgresFunctionDef   {
+    val Sind    = FunctionDef[Double, Double](FunctionName("sind"))
+    val Overlay = FunctionDef[(String, String, Int, Option[Int]), String](FunctionName("overlay"))
   }
 
   override def renderRead(read: self.Read[_]): String = {
@@ -72,6 +89,11 @@ trait PostgresModule extends Jdbc { self =>
         builder.append(",")
         buildExpr(param4)
         val _ = builder.append(")")
+
+      case Expr.ExprDialectSpecific(expr)                               =>
+        expr match {
+          case PostgresExprExtension.Overlay(_, _, _, _) => ()
+        }
     }
 
     def buildReadString[A <: SelectionSet[_]](read: self.Read[_]): Unit =

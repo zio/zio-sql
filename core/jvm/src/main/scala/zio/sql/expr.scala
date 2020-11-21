@@ -7,6 +7,8 @@ import scala.language.implicitConversions
 trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
   self: SelectModule with TableModule =>
 
+  type InvariantExprExtensionType[F, -A, B]
+
   /**
    * Models a function `A => B`.
    * SELECT product.price + 10
@@ -106,6 +108,13 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
       def typeTag: TypeTag[B]
     }
 
+    sealed case class ExprDialectSpecific[F, -A, B: TypeTag](
+      invariantExpr: InvariantExprExtensionType[F, A, B]
+    ) //todo extend Expr directly?
+        extends InvariantExpr[F, A, B] {
+      override def typeTag: TypeTag[B] = implicitly[TypeTag[B]]
+    }
+
     def typeTagOf[A](expr: Expr[_, _, A]): TypeTag[A] = expr.asInstanceOf[InvariantExpr[_, _, A]].typeTag
 
     implicit def literal[A: TypeTag](a: A): Expr[Features.Literal, Any, A] = Expr.Literal(a)
@@ -189,6 +198,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     ) extends InvariantExpr[Features.Union[F1, Features.Union[F2, Features.Union[F3, F4]]], A, Z] {
       def typeTag: TypeTag[Z] = implicitly[TypeTag[Z]]
     }
+
   }
 
   sealed case class AggregationDef[-A, +B](name: FunctionName) { self =>
@@ -240,6 +250,11 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
         self.narrow[(P1, P2, P3, P4)]: FunctionDef[(P1, P2, P3, P4), B1]
       )
 
+    def apply[F, A1 <: A, B1 >: B](
+      exprExtension: InvariantExprExtensionType[F, A1, B1]
+    ): InvariantExprExtensionType[F, A1, B1] =
+      ???
+
     def narrow[C](implicit ev: C <:< A): FunctionDef[C, B] = {
       val _ = ev
       self.asInstanceOf[FunctionDef[C, B]]
@@ -274,7 +289,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     val Lower       = FunctionDef[String, String](FunctionName("lower"))
     val Ltrim       = FunctionDef[String, String](FunctionName("ltrim"))
     val OctetLength = FunctionDef[String, Int](FunctionName("octet length"))
-    val Overlay     = FunctionDef[(String, String, Int, Option[Int]), String](FunctionName("overlay"))
+    //val Overlay     = FunctionDef[(String, String, Int, Option[Int]), String](FunctionName("overlay"))
     val Position    = FunctionDef[(String, String), Int](FunctionName("position"))
     val Replace     = FunctionDef[(String, String), String](FunctionName("replace"))
     val Rtrim       = FunctionDef[String, String](FunctionName("rtrim"))
