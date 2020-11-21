@@ -114,6 +114,19 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       } yield assert(r.head)(approximatelyEquals(expected, 10.0))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("min_scale") {
+      val query = select(MinScale(8.4100)) from customers
+
+      val expected = 2
+
+      val testResult = execute(query).to[Int, Int](identity)
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
   )
 }
