@@ -38,9 +38,9 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     testM("gcd") {
-      val query = select(GCD(1071D, 462D)) from customers
+      val query = select(GCD(1071d, 462d)) from customers
 
-      val expected = 21D
+      val expected = 21d
 
       val testResult = execute(query).to[Double, Double](identity)
 
@@ -51,9 +51,9 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     testM("lcm") {
-      val query = select(LCM(1071D, 462D)) from customers
+      val query = select(LCM(1071d, 462d)) from customers
 
-      val expected = 23562D
+      val expected = 23562d
 
       val testResult = execute(query).to[Double, Double](identity)
 
@@ -66,7 +66,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
     testM("cbrt") {
       val query = select(CBRT(64.0)) from customers
 
-      val expected = 4D
+      val expected = 4d
 
       val testResult = execute(query).to[Double, Double](identity)
 
@@ -90,9 +90,9 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     testM("div") {
-      val query = select(Div(8D, 4D)) from customers
+      val query = select(Div(8d, 4d)) from customers
 
-      val expected = 2D
+      val expected = 2d
 
       val testResult = execute(query).to[Double, Double](identity)
 
