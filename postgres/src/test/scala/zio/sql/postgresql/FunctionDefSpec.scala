@@ -44,7 +44,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val assertion = for {
         r <- testResult.runCollect
-      } yield assert(r.head)(Assertion.isGreaterThanEqualTo(0D) && Assertion.isLessThanEqualTo(1D))
+      } yield assert(r.head)(Assertion.isGreaterThanEqualTo(0d) && Assertion.isLessThanEqualTo(1d))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
