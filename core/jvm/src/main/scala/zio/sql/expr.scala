@@ -271,6 +271,14 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     val Ascii       = FunctionDef[String, Int](FunctionName("ascii"))
     val CharLength  = FunctionDef[String, Int](FunctionName("character length"))
     val Concat      = FunctionDef[(String, String), String](FunctionName("concat"))
+    sealed trait FlatValueOrColumnValue
+    case class StringValue(v: String) extends FlatValueOrColumnValue
+    case class ColumnValue(v: String) extends FlatValueOrColumnValue
+    object FlatValueOrColumnValue {
+      implicit def columnToColumnValue(c: ColumnSet): FlatValueOrColumnValue = ColumnValue(c.toString) // TODO
+      implicit def stringToStringValue(s: String): FlatValueOrColumnValue = StringValue(s)
+    }
+    val ConcatWs    = FunctionDef[(String, Seq[FlatValueOrColumnValue]), String](FunctionName("concat_ws"))
     val Lower       = FunctionDef[String, String](FunctionName("lower"))
     val Ltrim       = FunctionDef[String, String](FunctionName("ltrim"))
     val OctetLength = FunctionDef[String, Int](FunctionName("octet length"))
