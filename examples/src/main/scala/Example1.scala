@@ -3,7 +3,8 @@ import zio.sql.Sql
 object Example1 extends Sql {
   import ColumnSet._
 
-  def renderRead(read: Example1.Read[_]): String = ???
+  def renderRead(read: this.Read[_]): String          = ???
+  def renderDelete(delete: this.Delete[_, _]): String = ???
 
   val columnSet = int("age") ++ string("name")
 
