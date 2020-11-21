@@ -273,7 +273,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     val Concat      = FunctionDef[(String, String), String](FunctionName("concat"))
     val Lower       = FunctionDef[String, String](FunctionName("lower"))
     val Ltrim       = FunctionDef[String, String](FunctionName("ltrim"))
-    val OctetLength = FunctionDef[String, Int](FunctionName("octet length"))
+    val OctetLength = FunctionDef[String, Int](FunctionName("octet_length"))
     val Overlay     = FunctionDef[(String, String, Int, Option[Int]), String](FunctionName("overlay"))
     val Position    = FunctionDef[(String, String), Int](FunctionName("position"))
     val Replace     = FunctionDef[(String, String), String](FunctionName("replace"))
