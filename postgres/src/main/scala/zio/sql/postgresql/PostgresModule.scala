@@ -1,7 +1,6 @@
 package zio.sql.postgresql
 
-import java.time.LocalDate
-
+import java.time.{ LocalDate, ZonedDateTime }
 import zio.sql.Jdbc
 
 /**
@@ -30,6 +29,7 @@ trait PostgresModule extends Jdbc { self =>
     val Degrees     = FunctionDef[Double, Double](FunctionName("degrees"))
     val Div         = FunctionDef[(Double, Double), Double](FunctionName("div"))
     val Factorial   = FunctionDef[Int, Int](FunctionName("factorial"))
+    val ToTimestamp = FunctionDef[Long, ZonedDateTime](FunctionName("to_timestamp"))
   }
 
   override def renderRead(read: self.Read[_]): String = {

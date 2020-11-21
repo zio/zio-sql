@@ -37,6 +37,12 @@ create table order_details
     unit_price money not null
 );
 
+create table timestamp_test
+(
+    timestamp_id uuid not null,
+    created_timestamp_string varchar not null,
+    created_timestamp timestamp with time zone default now()
+);
 
 insert into customers
     (id, first_name, last_name, verified, dob)
@@ -190,3 +196,11 @@ values
     ('D6D8DDDC-4B0B-4D74-8EDC-A54E9B7F35F7', 'D5137D3A-894A-4109-9986-E982541B434F', 2, 50.00),
     ('2C3FC180-D0DF-4D7B-A271-E6CCD2440393', 'D5137D3A-894A-4109-9986-E982541B434F', 2, 50.00),
     ('5883CB62-D792-4EE3-ACBC-FE85B6BAA998', 'D5137D3A-894A-4109-9986-E982541B434F', 1, 55.00);
+
+insert into timestamp_test
+    (timestamp_id, created_timestamp_string, created_timestamp)
+values
+    ('354ec738-71b6-4166-9c62-aa092ede73c4', '2020-11-21 19:10:25+00', '2020-11-21 19:10:25+00'),
+    ('2f97e2c5-62de-478e-bb30-742f2614f3cd', '2020-11-21 15:10:25-04', '2020-11-21 15:10:25-04'),
+    ('261a4290-2da4-4e3f-bbab-3f0af31d1914', '2020-11-22 02:10:25+07', '2020-11-22 02:10:25+07'),
+    ('2e9d0d70-b947-4126-9149-7a8e6d492171', '2020-11-21 12:10:25-07', '2020-11-21 12:10:25-07')
