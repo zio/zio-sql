@@ -705,6 +705,38 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       } yield assert(r.head)(equalTo(expected))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("lpad") {
+      def runTest(s: String, pad: String) = {
+        val query = select(LPad(postgresStringEscape(s), 5, postgresStringEscape(pad))) from customers
+
+        for {
+          r <- execute(query).to[String, String](identity).runCollect
+        } yield r.head
+      }
+
+      (for {
+        t1 <- assertM(runTest("hi", "xy"))(equalTo("xyxhi"))
+        t2 <- assertM(runTest("hello", "xy"))(equalTo("hello"))
+        t3 <- assertM(runTest("hello world", "xy"))(equalTo("hello"))
+      } yield t1 && t2 && t3).mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("rpad") {
+      def runTest(s: String, pad: String) = {
+        val query = select(RPad(postgresStringEscape(s), 5, postgresStringEscape(pad))) from customers
+
+        for {
+          r <- execute(query).to[String, String](identity).runCollect
+        } yield r.head
+      }
+
+      (for {
+        t1 <- assertM(runTest("hi", "xy"))(equalTo("hixyx"))
+        t2 <- assertM(runTest("hello", "xy"))(equalTo("hello"))
+        t3 <- assertM(runTest("hello world", "xy"))(equalTo("hello"))
+      } yield t1 && t2 && t3).mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
   )
+
+  private def postgresStringEscape(s: String): String = s""" '${s}' """
 }
