@@ -14,6 +14,7 @@ trait PostgresModule extends Jdbc { self =>
     val Left      = FunctionDef[(String, Int), String](FunctionName("left"))
     val Right     = FunctionDef[(String, Int), String](FunctionName("right"))
     val Radians   = FunctionDef[Double, Double](FunctionName("radians"))
+    val MinScale  = FunctionDef[Double, Int](FunctionName("min_scale"))
   }
 
   override def renderRead(read: self.Read[_]): String = {
