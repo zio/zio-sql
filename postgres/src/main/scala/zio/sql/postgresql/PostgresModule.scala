@@ -8,6 +8,7 @@ trait PostgresModule extends Jdbc { self =>
 
   object PostgresFunctionDef {
     val Sind = FunctionDef[Double, Double](FunctionName("sind"))
+    val TrimScale = FunctionDef[Double, Double](FunctionName("trim_scale"))
   }
 
   override def renderRead(read: self.Read[_]): String = {
