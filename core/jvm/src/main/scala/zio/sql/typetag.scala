@@ -34,11 +34,6 @@ trait TypeTagModule {
     implicit case object TZonedDateTime                                          extends NotNull[ZonedDateTime]
     sealed case class TDialectSpecific[A](typeTagExtension: TypeTagExtension[A]) extends NotNull[A]
 
-    //TODO: remove
-//    case class Tuple2[A]() extends NotNull[(A, A)]
-//    implicit def tuple2[A: TypeTag] = new Tuple2[A]
-//    case class Tuple2[String]() extends NotNull[(String, String)]
-
     sealed case class Nullable[A: NotNull]() extends TypeTag[Option[A]] {
       def typeTag: TypeTag[A] = implicitly[TypeTag[A]]
     }

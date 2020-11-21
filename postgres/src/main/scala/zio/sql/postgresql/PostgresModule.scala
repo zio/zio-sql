@@ -72,6 +72,15 @@ trait PostgresModule extends Jdbc { self =>
         builder.append(",")
         buildExpr(param4)
         val _ = builder.append(")")
+      case Expr.FunctionCallN(params, function) =>
+        builder.append(function.name.name)
+        builder.append("(")
+        params.foreach { e =>
+          buildExpr(e)
+          builder.append(",")
+        }
+        builder.deleteCharAt(builder.size-1) // the loop above will leave a trailing ,
+        val _ = builder.append(")")
     }
 
     def buildReadString[A <: SelectionSet[_]](read: self.Read[_]): Unit =

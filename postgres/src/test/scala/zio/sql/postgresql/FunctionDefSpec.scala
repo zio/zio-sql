@@ -9,26 +9,18 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
   import this.Customers._
   import this.PostgresFunctionDef._
   import this.FunctionDef._
-  import this.ColumnSet._
 
   val spec = suite("Postgres FunctionDef")(
     testM("concat_ws #1") {
-      import FlatValueOrColumnValue._
+      import Expr._
 //      val idealApi = ConcatWs(" ", "Person:", string("first_name"), string("last_name"), "!")
 
-//      val foo: Seq[FlatValueOrColumnValue] = string("first_name") :: string("last_name") :: "!" :: Nil
-//      val args: (String, Seq[String]) = (" ", "first_name" :: "last_name" :: "!" :: Nil)
-//      val foo: Expr[_, _, _] = "first_name"
+      //TODO: we shouldn't be forced to provide explicit calls to literal
+      val args_0/*: Seq[Expr[DataTypes, Any, String]]*/ = Seq(literal(" "), literal("Person:")) //Seq(literal(" "), literal("Person:"))
+//      val args_0/*: Seq[Expr[DataTypes, Any, String]]*/ = Seq(Customers.fName, Customers.lName)
+//      val args_0/*: Seq[Expr[Expr.DataSource, Any, String]]*/ = Seq(Customers.fName, literal("!"))
 
-//      val args: Seq[Expr[_,_,_]] = "' '" :: "'Person:'" :: "first_name" :: "last_name" :: Nil
-
-//      val args: Expr[_,_,(String, String)] = ("' '", "'Person:', first_name, last_name")
-
-//      val args_2 = " " :: "Person: " :: string("first_name") :: string("last_name") :: "!" :: Nil
-//      val args_1: List[FlatValueOrColumnValue] = args_2
-//      val args_0: Expr[_, _, String] = args_1
-
-      val args_0: List[FlatValueOrColumnValue] = stringToStringValue(" ") :: stringToStringValue("Person:") :: columnToColumnValue(string("first_name")) :: columnToColumnValue(string("last_name")) :: stringToStringValue("!") :: Nil
+//      val args_0/*: Seq[Expr[DataTypes, Any, String]]*/ = Seq(literal(" "), literal("Person:"), Customers.fName, Customers.lName, literal("!"))
 
       val query = select(ConcatWs(args_0)) from customers
       println(renderRead(query))
