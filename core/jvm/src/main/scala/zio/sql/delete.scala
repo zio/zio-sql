@@ -1,6 +1,6 @@
 package zio.sql
 
-trait DeleteModule { self: ExprModule with TableModule =>
+trait DeleteModule { self: ExprModule with TableModule with SelectModule =>
 
   sealed case class DeleteBuilder[F[_], A, B](table: Table.Aux[A]) {
     def where[F1](expr: Expr[F1, A, Boolean]): Delete[F1, A] = Delete(table, expr)
