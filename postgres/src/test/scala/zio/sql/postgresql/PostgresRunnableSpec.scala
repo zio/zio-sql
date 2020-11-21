@@ -23,10 +23,10 @@ trait PostgresRunnableSpec extends JdbcRunnableSpec with PostgresModule {
 
     val connectionPoolLayer = Blocking.live >+> poolConfigLayer >>> ConnectionPool.live
 
-    (Blocking.live ++ connectionPoolLayer >>> ReadExecutor.live).orDie
+    (Blocking.live ++ connectionPoolLayer >+> ReadExecutor.live >+> UpdateExecutor.live >+> DeleteExecutor.live >+> TransactionExecutor.live).orDie
   }
 
-  override val jdbcTestEnvironment: ZLayer[ZEnv, Nothing, TestEnvironment with ReadExecutor] =
+  override val jdbcTestEnvironment: ZLayer[ZEnv, Nothing, Environment] =
     TestEnvironment.live ++ executorLayer
 
 }
