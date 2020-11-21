@@ -108,28 +108,8 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
 
     def typeTagOf[A](expr: Expr[_, _, A]): TypeTag[A] = expr.asInstanceOf[InvariantExpr[_, _, A]].typeTag
 
+    implicit def literal(str: String): Expr[Features.Literal, Any, String] = Expr.Literal(s"'${str}'")
     implicit def literal[A: TypeTag](a: A): Expr[Features.Literal, Any, A] = Expr.Literal(a)
-
-//    implicit def literals[A: TypeTag, Seq[A]: TypeTag](as: Seq[A]): Expr[Features.Literal, Any, Seq[A]] = Expr.Literal(as)
-
-//    implicit def tuple2[String: TypeTag](a: (String, String)): Expr[Features.Literal, Any, (String, String)] = {
-//      implicit val f: TypeTag[(String, String)] = TypeTag.Tuple2[String]()
-//      Expr.Literal(a)
-//    }
-
-//    implicit def tuple2[String: TypeTag](a: (String, String)): Expr[Features.Literal, Any, (String, String)] = {
-//      val s1 = literal(a._1)
-//      val s2 = literal(a._1)
-//      s1.
-//    }
-
-    implicit def foo(seq: Seq[FunctionDef.FlatValueOrColumnValue]): Expr[Features.Literal, Any, String] = {
-      val nativeFunctionSqlString: String = seq.map {
-        case FunctionDef.StringValue(v) => s"'${v}'" //Note: the '
-        case FunctionDef.ColumnValue(v) => s"${v}"
-      }.mkString(", ")
-      literal[String](nativeFunctionSqlString)
-    }
 
     def exprName[F, A, B](expr: Expr[F, A, B]): Option[String] =
       expr match {
@@ -210,6 +190,11 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     ) extends InvariantExpr[Features.Union[F1, Features.Union[F2, Features.Union[F3, F4]]], A, Z] {
       def typeTag: TypeTag[Z] = implicitly[TypeTag[Z]]
     }
+
+    sealed case class FunctionCallN[F, A, B, Z: TypeTag](param: Seq[Expr[F, A, B]], function: FunctionDef[B, Z])
+      extends InvariantExpr[F, A, Z] {
+      def typeTag: TypeTag[Z] = implicitly[TypeTag[Z]]
+    }
   }
 
   sealed case class AggregationDef[-A, +B](name: FunctionName) { self =>
@@ -261,6 +246,11 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
         self.narrow[(P1, P2, P3, P4)]: FunctionDef[(P1, P2, P3, P4), B1]
       )
 
+    //Features.Source with Features.Literal
+    def apply[F, Source, B1 >: B](params: Seq[Expr[F, Source, A]])
+                      (implicit typeTag: TypeTag[B1]): Expr[F, Source, B1] =
+      Expr.FunctionCallN(params, self: FunctionDef[A, B1])
+
     def narrow[C](implicit ev: C <:< A): FunctionDef[C, B] = {
       val _ = ev
       self.asInstanceOf[FunctionDef[C, B]]
@@ -292,18 +282,6 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     val Ascii       = FunctionDef[String, Int](FunctionName("ascii"))
     val CharLength  = FunctionDef[String, Int](FunctionName("character length"))
     val Concat      = FunctionDef[(String, String), String](FunctionName("concat"))
-    sealed trait FlatValueOrColumnValue
-    case class StringValue(v: String) extends FlatValueOrColumnValue
-    case class ColumnValue(v: String) extends FlatValueOrColumnValue
-    object FlatValueOrColumnValue {
-      implicit def columnToColumnValue(c: ColumnSet): FlatValueOrColumnValue = c match {
-        case ColumnSet.Empty => ColumnValue("") // TODO: ColumnSet is probably not the right type :/
-        case ColumnSet.Cons(head, _) => ColumnValue(head.name)
-      }
-      implicit def stringToStringValue(s: String): FlatValueOrColumnValue = StringValue(s)
-      implicit def convList[S, T](input: List[S])(implicit c: S => T): List[T] =
-        input map c
-    }
     val ConcatWs    = FunctionDef[String, String](FunctionName("concat_ws"))
     val Lower       = FunctionDef[String, String](FunctionName("lower"))
     val Ltrim       = FunctionDef[String, String](FunctionName("ltrim"))

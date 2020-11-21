@@ -195,11 +195,6 @@ trait Jdbc extends zio.sql.Sql {
           )
         case TZonedDateTime      => ???
         case TDialectSpecific(_) => ???
-//        case Tuple2() =>
-//          for {
-//            s1 <- tryDecode[String](column.fold(resultSet.getString(_), resultSet.getString(_)))
-//            s2 <- tryDecode[String](column.fold(resultSet.getString(_), resultSet.getString(_)))
-//          } yield (s1, s2)
         case t @ Nullable()      => extractColumn(column, resultSet, t.typeTag, false).map(Option(_))
       }
     }
