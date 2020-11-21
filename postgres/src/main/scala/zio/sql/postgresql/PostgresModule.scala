@@ -11,6 +11,8 @@ trait PostgresModule extends Jdbc { self =>
     val Trunc     = FunctionDef[Double, Double](FunctionName("trunc"))
     val Length    = FunctionDef[String, Int](FunctionName("length"))
     val Translate = FunctionDef[(String, String, String), String](FunctionName("translate"))
+    val Left      = FunctionDef[(String, Int), String](FunctionName("left"))
+    val Right     = FunctionDef[(String, Int), String](FunctionName("right"))
   }
 
   override def renderRead(read: self.Read[_]): String = {
