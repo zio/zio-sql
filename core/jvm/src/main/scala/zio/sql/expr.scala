@@ -265,7 +265,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     val Sin         = FunctionDef[Double, Double](FunctionName("sin"))
     val Sqrt        = FunctionDef[Double, Double](FunctionName("sqrt"))
     val Tan         = FunctionDef[Double, Double](FunctionName("tan"))
-    val WidthBucket = FunctionDef[(Double, Double, Double, Int), Int](FunctionName("width bucket"))
+    val WidthBucket = FunctionDef[(Double, Double, Double, Int), Int](FunctionName("width_bucket"))
 
     //string functions
     val Ascii       = FunctionDef[String, Int](FunctionName("ascii"))
