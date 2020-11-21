@@ -235,7 +235,7 @@ trait PostgresModule extends Jdbc { self =>
     val Sind = FunctionDef[Double, Double](FunctionName("sind"))
   }
 
-  def renderDelete(delete: self.Delete[_, _]): String = {
+  override def renderDelete(delete: self.Delete[_, _]): String = {
     val renderer = Renderer()
     renderer.buildDeleteString(delete)
     renderer.render()
