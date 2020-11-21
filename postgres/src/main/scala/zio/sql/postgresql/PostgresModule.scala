@@ -7,12 +7,12 @@ import zio.sql.Jdbc
 trait PostgresModule extends Jdbc { self =>
 
   object PostgresFunctionDef {
-    val Sind = FunctionDef[Double, Double](FunctionName("sind"))
-    val GCD = FunctionDef[(Double, Double), Double](FunctionName("gcd"))
-    val LCM = FunctionDef[(Double, Double), Double](FunctionName("lcm"))
-    val CBRT = FunctionDef[Double, Double](FunctionName("cbrt"))
-    val Degrees = FunctionDef[Double, Double](FunctionName("degrees"))
-    val Div = FunctionDef[(Double, Double), Double](FunctionName("div"))
+    val Sind      = FunctionDef[Double, Double](FunctionName("sind"))
+    val GCD       = FunctionDef[(Double, Double), Double](FunctionName("gcd"))
+    val LCM       = FunctionDef[(Double, Double), Double](FunctionName("lcm"))
+    val CBRT      = FunctionDef[Double, Double](FunctionName("cbrt"))
+    val Degrees   = FunctionDef[Double, Double](FunctionName("degrees"))
+    val Div       = FunctionDef[(Double, Double), Double](FunctionName("div"))
     val Factorial = FunctionDef[Int, Int](FunctionName("factorial"))
   }
 
