@@ -278,7 +278,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
       implicit def columnToColumnValue(c: ColumnSet): FlatValueOrColumnValue = ColumnValue(c.toString) // TODO
       implicit def stringToStringValue(s: String): FlatValueOrColumnValue = StringValue(s)
     }
-    val ConcatWs    = FunctionDef[(String, Seq[FlatValueOrColumnValue]), String](FunctionName("concat_ws"))
+    val ConcatWs    = FunctionDef[String, String](FunctionName("concat_ws"))
     val Lower       = FunctionDef[String, String](FunctionName("lower"))
     val Ltrim       = FunctionDef[String, String](FunctionName("ltrim"))
     val OctetLength = FunctionDef[String, Int](FunctionName("octet length"))

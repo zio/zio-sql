@@ -9,15 +9,22 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
   import this.Customers._
   import this.PostgresFunctionDef._
   import this.FunctionDef._
-  import this.ColumnSet._
+//  import this.ColumnSet._
 
   val spec = suite("Postgres FunctionDef")(
     testM("concat_ws") {
-      import FlatValueOrColumnValue._
-      val foo: Seq[FlatValueOrColumnValue] = string("first_name") :: string("last_name") :: "!" :: Nil
-      val query = select(ConcatWs(" ", string("first_name") :: string("last_name") :: "!" :: Nil)) from customers
+//      import FlatValueOrColumnValue._
+//      val foo: Seq[FlatValueOrColumnValue] = string("first_name") :: string("last_name") :: "!" :: Nil
+//      val args: (String, Seq[String]) = (" ", "first_name" :: "last_name" :: "!" :: Nil)
+      val args = "' ', 'Person:', first_name, last_name"
+      val query = select(ConcatWs(args)) from customers
 
-      val expected = Seq("Alice Smith!", "John Smith!")
+      val expected = Seq("Person: Ronald Russell",
+        "Person: Terrence Noel",
+        "Person: Mila Paterso",
+        "Person: Alana Murray",
+        "Person: Jose Wiggins"
+      )
 
       val testResult = execute(query).to[String, String](identity)
 
