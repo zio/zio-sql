@@ -38,16 +38,18 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     testM("timeofday") {
-      val query = select(Sind(30.0)) from customers
+      val query = select(Timeofday()) from customers
 
-      val expected = 0.5
+      val testResult = execute(query).to[String, String](identity)
 
-      val testResult = execute(query).to[Double, Double](identity)
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
+      val assertion =
+        for {
+          r <- testResult.runCollect
+        } yield assert(r.head)(
+          matchesRegex(
+            "[A-Za-z]{3}\\s[A-Za-z]{3}\\s[0-9]{2}\\s(2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9].[0-9]{6}\\s[0-9]{4}\\s[A-Za-z]{3}"
+          )
+        )
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
   )
