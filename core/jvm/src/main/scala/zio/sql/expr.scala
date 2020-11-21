@@ -208,6 +208,13 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     def Max[F, A, B: TypeTag](expr: Expr[F, A, B])       = AggregationDef[B, B](FunctionName("max"))(expr)
   }
 
+  sealed case class TypedBoundFunctionDef[T[_], +B](name: FunctionName) { self =>
+    def apply[F, Source, B1 >: B, A: T](param1: Expr[F, Source, A])(implicit
+      typeTag: TypeTag[B1]
+    ): Expr[F, Source, B1] =
+      Expr.FunctionCall1(param1, new FunctionDef[A, B1](name) {})
+  }
+
   sealed case class FunctionDef[-A, +B](name: FunctionName) { self =>
 
     def apply[F, Source, B1 >: B](param1: Expr[F, Source, A])(implicit typeTag: TypeTag[B1]): Expr[F, Source, B1] =
@@ -262,7 +269,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     val Power       = FunctionDef[(Double, Double), Double](FunctionName("power"))
     val Round       = FunctionDef[(Double, Int), Double](FunctionName("round"))
     val Sign        = FunctionDef[Double, Double](FunctionName("sign"))
-    val Sin         = FunctionDef[Double, Double](FunctionName("sin"))
+    val Sin         = TypedBoundFunctionDef[IsNumeric, Double](FunctionName("sin"))
     val Sqrt        = FunctionDef[Double, Double](FunctionName("sqrt"))
     val Tan         = FunctionDef[Double, Double](FunctionName("tan"))
     val WidthBucket = FunctionDef[(Double, Double, Double, Int), Int](FunctionName("width bucket"))
