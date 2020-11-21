@@ -1,5 +1,7 @@
 package zio.sql.postgresql
 
+import java.time.Instant
+
 import zio.sql.Jdbc
 
 /**
@@ -7,7 +9,8 @@ import zio.sql.Jdbc
 trait PostgresModule extends Jdbc { self =>
 
   object PostgresFunctionDef {
-    val Sind = FunctionDef[Double, Double](FunctionName("sind"))
+    val IsFinite = FunctionDef[Instant, Boolean](FunctionName("isfinite"))
+    val Sind     = FunctionDef[Double, Double](FunctionName("sind"))
   }
 
   override def renderRead(read: self.Read[_]): String = {
