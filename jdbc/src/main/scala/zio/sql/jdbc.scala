@@ -1,14 +1,13 @@
 package zio.sql
 
 import java.sql._
-
 import java.io.IOException
 
-import zio.{ Chunk, Has, IO, Managed, ZIO, ZLayer, ZManaged }
+import zio.{Chunk, Has, IO, Managed, ZIO, ZLayer, ZManaged}
 import zio.blocking.Blocking
-import zio.stream.{ Stream, ZStream }
+import zio.stream.{Stream, ZStream}
 
-trait Jdbc extends zio.sql.Sql {
+trait Jdbc extends zio.sql.Sql with TransactionModule {
   type ConnectionPool = Has[ConnectionPool.Service]
   object ConnectionPool {
     sealed case class Config(url: String, properties: java.util.Properties)
@@ -40,21 +39,80 @@ trait Jdbc extends zio.sql.Sql {
   type DeleteExecutor = Has[DeleteExecutor.Service]
   object DeleteExecutor {
     trait Service {
-      def execute(delete: Delete[_, _]): IO[Exception, Unit]
+      def execute(delete: Delete[_, _]): IO[Exception, Int]
+      def executeOn(delete: Delete[_, _], connection: Connection): IO[Exception, Int]
     }
+
+    val live = ZLayer.succeed(
+      new Service {
+        override def execute(delete: Delete[_, _]): IO[Exception, Int] = ???
+        override def executeOn(delete: Delete[_, _], connection: Connection): IO[Exception, Int] = ???
+      }
+    )
   }
 
   type UpdateExecutor = Has[UpdateExecutor.Service]
   object UpdateExecutor {
     trait Service {
-      def execute(Update: Update[_]): IO[Exception, Long]
+      def execute(update: Update[_]): IO[Exception, Int]
+      def executeOn(update: Update[_], connection: Connection): IO[Exception, Int]
     }
+
+    val live = ZLayer.succeed(
+      new Service {
+        override def execute(update: Update[_]): IO[Exception, Int] = ???
+        override def executeOn(update: Update[_], connection: Connection): IO[Exception, Int] = ???
+      }
+    )
   }
+
+
+  type TransactionExecutor = Has[TransactionExecutor.Service]
+  object TransactionExecutor {
+    trait Service {
+      def execute[R, A](tx: Transaction[R, A]): ZIO[R, Exception, A]
+    }
+
+    val live: ZLayer[ConnectionPool with Blocking with ReadExecutor with UpdateExecutor with DeleteExecutor, Exception, TransactionExecutor] =
+      ZLayer.fromServices[ConnectionPool.Service, Blocking.Service, ReadExecutor.Service, UpdateExecutor.Service, DeleteExecutor.Service, TransactionExecutor.Service] {
+        (pool, blocking, readS, updateS, deleteS) =>
+        new Service {
+          override def execute[R, A](tx: Transaction[R, A]): ZIO[R, Exception, A] = {
+            def loop(tx: Transaction[R, Any], conn: Connection): ZIO[R, Any, Any] = tx match {
+              case Transaction.Effect(zio) => zio
+              case Transaction.Select(read) => ZIO.succeed(readS.executeOn(read, conn))
+              case Transaction.Update(update) => updateS.executeOn(update, conn)
+              case Transaction.Delete(delete) => deleteS.executeOn(delete, conn)
+              case Transaction.FoldCauseM(tx, k) => {
+                ZIO.effect(conn.setSavepoint())
+                  .bracket(savepoint => blocking.effectBlocking(conn.releaseSavepoint(savepoint)).ignore)(
+                    savepoint =>
+                      loop(tx, conn).foldCauseM(
+                        cause => blocking.effectBlocking(conn.rollback(savepoint)) *> loop(k.onHalt(cause), conn),
+                        success => loop(k.onSuccess(success), conn)
+                      )
+                  )
+              }
+            }
+
+            pool.connection.use(
+              conn =>
+                blocking.effectBlocking(conn.setAutoCommit(false)).refineToOrDie[Exception] *>
+                  loop(tx, conn).asInstanceOf[ZIO[R, Exception, A]]
+            )
+          }
+        }
+      }
+  }
+
+  def execute[R, A](tx: Transaction[R, A]): ZIO[R with TransactionExecutor, Exception, A] =
+    ZIO.accessM[R with TransactionExecutor](_.get.execute(tx))
 
   type ReadExecutor = Has[ReadExecutor.Service]
   object ReadExecutor {
     trait Service {
       def execute[A <: SelectionSet[_], Target](read: Read[A])(to: read.ResultType => Target): Stream[Exception, Target]
+      def executeOn[A <: SelectionSet[_]](read: Read[A], conn: Connection): Stream[Exception, read.ResultType]
     }
 
     val live: ZLayer[ConnectionPool with Blocking, Nothing, ReadExecutor] =
@@ -66,35 +124,40 @@ trait Jdbc extends zio.sql.Sql {
           )(to: read.ResultType => Target): Stream[Exception, Target] =
             ZStream
               .managed(pool.connection)
-              .flatMap(conn =>
-                Stream.unwrap {
-                  blocking.effectBlocking {
-                    val schema = getColumns(read).zipWithIndex.map { case (value, index) =>
-                      (value, index + 1)
-                    } // SQL is 1-based indexing
+              .flatMap(conn => executeOn(read, conn)).map(to)
 
-                    val query = renderRead(read)
+          def executeOn[A <: SelectionSet[_]](
+            read: Read[A],
+            conn: Connection): Stream[Exception, read.ResultType] =
+          Stream.unwrap {
+            blocking.effectBlocking {
+              val schema = getColumns(read).zipWithIndex.map { case (value, index) =>
+                (value, index + 1)
+              } // SQL is 1-based indexing
 
-                    val statement = conn.createStatement()
+              val query = renderRead(read)
 
-                    val _ = statement.execute(query) // TODO: Check boolean return value
+              val statement = conn.createStatement()
 
-                    val resultSet = statement.getResultSet()
+              val _ = statement.execute(query) // TODO: Check boolean return value
 
-                    ZStream.unfoldM(resultSet) { rs =>
-                      if (rs.next()) {
-                        try unsafeExtractRow[read.ResultType](resultSet, schema) match {
-                          case Left(error)  => ZIO.fail(error)
-                          case Right(value) => ZIO.succeed(Some((to(value), rs)))
-                        } catch {
-                          case e: SQLException => ZIO.fail(e)
-                        }
-                      } else ZIO.succeed(None)
-                    }
+              val resultSet = statement.getResultSet()
 
-                  }.refineToOrDie[Exception]
-                }
-              )
+              ZStream.unfoldM(resultSet) { rs =>
+                if (rs.next()) {
+                  try unsafeExtractRow[read.ResultType](resultSet, schema) match {
+                    case Left(error)  => ZIO.fail(error)
+                    case Right(value) => ZIO.succeed(Some((value, rs)))
+                  } catch {
+                    case e: SQLException => ZIO.fail(e)
+                  }
+                } else ZIO.succeed(None)
+              }
+
+            }.refineToOrDie[Exception]
+          }
+
+
         }
       }
 

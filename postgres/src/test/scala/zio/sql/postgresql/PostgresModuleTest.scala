@@ -56,6 +56,8 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
           )
         )
 
+//      execute(query ++ query ++ query ++ query)
+
       val testResult = execute(query)
         .to[UUID, String, String, LocalDate, Customer] { case row =>
           Customer(row._1, row._2, row._3, row._4)
@@ -184,6 +186,21 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
       } yield assert(r)(hasSameElementsDistinct(expected))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("transactions are returning last value") {
+      val query = select(customerId) from customers
+
+      val result = execute(
+        Transaction.Select(query) *> Transaction.Select(query)
+      )
+
+//      val result = execute(
+//        Transaction.Select(query)
+//      )
+      val assertion = assertM(result.flatMap(_.runCollect))(hasSize(Assertion.equalTo(5))).orDie
+
+      assertion
+//        .mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
   )
 
