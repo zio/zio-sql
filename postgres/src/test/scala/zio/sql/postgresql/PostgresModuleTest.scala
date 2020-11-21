@@ -190,14 +190,19 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
     testM("transactions are returning last value") {
       val query = select(customerId) from customers
 
+//      val result = execute(
+//        Transaction.Select(query) *> Transaction.Select(query)
+//      )
+
       val result = execute(
-        Transaction.Select(query) *> Transaction.Select(query)
+        Transaction.Select(query)
       )
+      val assertion = assertM(result.flatMap(_.runCollect))(hasSize(Assertion.equalTo(5))).orDie
 
 //      val result = execute(
-//        Transaction.Select(query)
-//      )
-      val assertion = assertM(result.flatMap(_.runCollect))(hasSize(Assertion.equalTo(5))).orDie
+//        query
+//      ).to[UUID, UUID](a => a)
+//      val assertion = assertM(result.runCollect)(hasSize(Assertion.equalTo(5)))
 
       assertion
 //        .mapErrorCause(cause => Cause.stackless(cause.untraced))
