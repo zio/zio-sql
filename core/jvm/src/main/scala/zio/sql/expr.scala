@@ -53,6 +53,9 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     def <=[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.LessThanEqual)
 
+    def like[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
+      Expr.Relational(self, that, RelationalOp.Like)
+
     def &[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsIntegral[B1]): Expr[F :||: F2, A1, B1] =
       Expr.Binary(self, that, BinaryOp.AndBit[B1]())
 
