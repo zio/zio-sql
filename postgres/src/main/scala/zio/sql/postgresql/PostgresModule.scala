@@ -7,7 +7,8 @@ import zio.sql.Jdbc
 trait PostgresModule extends Jdbc { self =>
 
   object PostgresFunctionDef {
-    val Sind = FunctionDef[Double, Double](FunctionName("sind"))
+    val Sind   = FunctionDef[Double, Double](FunctionName("sind"))
+    val Random = FunctionDef[Nothing, Double](FunctionName("random"))
   }
 
   override def renderRead(read: self.Read[_]): String = {
@@ -44,6 +45,10 @@ trait PostgresModule extends Jdbc { self =>
         builder.append(function.name.name)
         builder.append("(")
         buildExpr(param)
+        val _ = builder.append(")")
+      case Expr.FunctionCall0(function) =>
+        builder.append(function.name.name)
+        builder.append("(")
         val _ = builder.append(")")
       case Expr.FunctionCall2(param1, param2, function)                 =>
         builder.append(function.name.name)
