@@ -13,10 +13,16 @@ trait PostgresModule extends Jdbc { self =>
     val MinScale   = FunctionDef[Double, Int](FunctionName("min_scale"))
     val Radians    = FunctionDef[Double, Double](FunctionName("radians"))
     val Right      = FunctionDef[(String, Int), String](FunctionName("right"))
-    val Sind       = FunctionDef[Double, Double](FunctionName("sind"))
     val StartsWith = FunctionDef[(String, String), Boolean](FunctionName("starts_with"))
     val Translate  = FunctionDef[(String, String, String), String](FunctionName("translate"))
     val Trunc      = FunctionDef[Double, Double](FunctionName("trunc"))
+    val Sind       = FunctionDef[Double, Double](FunctionName("sind"))
+    val GCD        = FunctionDef[(Double, Double), Double](FunctionName("gcd"))
+    val LCM        = FunctionDef[(Double, Double), Double](FunctionName("lcm"))
+    val CBRT       = FunctionDef[Double, Double](FunctionName("cbrt"))
+    val Degrees    = FunctionDef[Double, Double](FunctionName("degrees"))
+    val Div        = FunctionDef[(Double, Double), Double](FunctionName("div"))
+    val Factorial  = FunctionDef[Int, Int](FunctionName("factorial"))
   }
 
   override def renderRead(read: self.Read[_]): String = {
