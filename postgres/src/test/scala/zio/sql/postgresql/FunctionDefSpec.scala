@@ -13,24 +13,24 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
   val spec = suite("Postgres FunctionDef")(
     testM("concat_ws #1") {
       import Expr._
-//      val idealApi = ConcatWs(" ", "Person:", string("first_name"), string("last_name"), "!")
 
       //TODO: we shouldn't be forced to provide explicit calls to literal
-      val args_0/*: Seq[Expr[DataTypes, Any, String]]*/ = Seq(literal(" "), literal("Person:")) //Seq(literal(" "), literal("Person:"))
+//      val args_0/*: Seq[Expr[DataTypes, Any, String]]*/ = Seq(literal(" "), literal("Person:"))
 //      val args_0/*: Seq[Expr[DataTypes, Any, String]]*/ = Seq(Customers.fName, Customers.lName)
 //      val args_0/*: Seq[Expr[Expr.DataSource, Any, String]]*/ = Seq(Customers.fName, literal("!"))
 
-//      val args_0/*: Seq[Expr[DataTypes, Any, String]]*/ = Seq(literal(" "), literal("Person:"), Customers.fName, Customers.lName, literal("!"))
+//      val args_0/*: Seq[Expr[DataTypes, Any, String]]*/ = Seq(literal(" "), literal("Person:"), Customers.fName, Customers.lName)
 
-      val query = select(ConcatWs(args_0)) from customers
+      val query = select(ConcatWs4(literal(" "), literal("Person:"), Customers.fName, Customers.lName)) from customers
+//      val query = select(ConcatWs(args_0)) from customers
       println(renderRead(query))
 
       val expected = Seq(
-        "Person: Ronald Russell !",
-        "Person: Terrence Noel !",
-        "Person: Mila Paterso !",
-        "Person: Alana Murray !",
-        "Person: Jose Wiggins !"
+        "Person: Ronald Russell",
+        "Person: Terrence Noel",
+        "Person: Mila Paterso",
+        "Person: Alana Murray",
+        "Person: Jose Wiggins"
       )
 
       val testResult = execute(query).to[String, String](identity)
