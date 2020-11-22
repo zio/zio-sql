@@ -6,7 +6,6 @@ import zio.sql.TestContainer
 import zio.test.environment.TestEnvironment
 
 import java.util.Properties
-import zio.sql.mysql.MysqlModule
 import zio.sql.JdbcRunnableSpec
 
 trait MysqlRunnableSpec extends JdbcRunnableSpec with MysqlModule {
