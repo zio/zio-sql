@@ -7,7 +7,8 @@ import zio.sql.Jdbc
 trait PostgresModule extends Jdbc { self =>
 
   object PostgresFunctionDef {
-    val Sind = FunctionDef[Double, Double](FunctionName("sind"))
+    val Sind       = FunctionDef[Double, Double](FunctionName("sind"))
+    val StartsWith = FunctionDef[(String, String), Boolean](FunctionName("starts_with"))
   }
 
   override def renderRead(read: self.Read[_]): String = {
@@ -186,7 +187,7 @@ trait PostgresModule extends Jdbc { self =>
     def buildColumnSelection[A, B](columnSelection: ColumnSelection[A, B]): Unit =
       columnSelection match {
         case ColumnSelection.Constant(value, name) =>
-          builder.append(value.toString()) //todo fix escaping
+          builder.append(value.toString) //todo fix escaping
           name match {
             case Some(name) =>
               val _ = builder.append(" AS ").append(name)
