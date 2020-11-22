@@ -277,7 +277,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
 
     //string functions
     val Ascii       = FunctionDef[String, Int](FunctionName("ascii"))
-    val CharLength  = FunctionDef[String, Int](FunctionName("character length"))
+    val CharLength  = FunctionDef[String, Int](FunctionName("character_length"))
     val Concat      = FunctionDef[(String, String), String](FunctionName("concat"))
     val Lower       = FunctionDef[String, String](FunctionName("lower"))
     val Ltrim       = FunctionDef[String, String](FunctionName("ltrim"))
