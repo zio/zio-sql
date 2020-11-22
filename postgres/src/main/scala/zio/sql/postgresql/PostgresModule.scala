@@ -1,6 +1,7 @@
 package zio.sql.postgresql
 
 import zio.sql.Jdbc
+
 import scala.language.implicitConversions
 
 /**
@@ -9,6 +10,7 @@ trait PostgresModule extends Jdbc { self =>
   override type ExprExtensionType[F, -A, B] = PostgresExprExtension[F, A, B]
 
   sealed trait PostgresExprExtension[F, -A, B]
+
   object PostgresExprExtension {
     implicit def postgresExpr2Expr[F, A, B: TypeTag](pgExpr: PostgresExprExtension[F, A, B]) =
       Expr.ExprDialectSpecific(pgExpr)
@@ -56,6 +58,37 @@ trait PostgresModule extends Jdbc { self =>
         buildExpr(value)
         buildReadString(set)
       case Expr.Literal(value)                                          =>
+        /*
+        found   : PostgresModule.this.TypeTag.TZonedDateTime.type
+[error]  required: PostgresModule.this.TypeTag[Any]
+[error] Note: java.time.ZonedDateTime <: Any (and PostgresModule.this.TypeTag.TZonedDateTime.type <: PostgresModule.this.TypeTag.NotNull[java.time.ZonedDateTime]), but trait TypeTag is invariant in type A.
+
+        import self.TypeTag._
+        lit.typeTag match {
+          //case tt @ TUUID => tt.cast(value) //why doesn't this work? it's still `Any`
+          case TBigDecimal     => val _ = builder.append(value)
+          case TBoolean        => val _ = builder.append(value)
+          case TByte           => val _ = builder.append(value)
+          case TByteArray      => val _ = builder.append(value)
+          case TChar           => val _ = builder.append(value)
+          case TDouble         => val _ = builder.append(value)
+          case TFloat          => val _ = builder.append(value)
+          case TInstant        => val _ = builder.append(value)
+          case TInt            => val _ = builder.append(value)
+          case TLocalDate      => val _ = builder.append(value)
+          case TLocalDateTime  => val _ = builder.append(value)
+          case TLocalTime      => val _ = builder.append(value)
+          case TLong           => val _ = builder.append(value)
+          case TOffsetDateTime => val _ = builder.append(value)
+          case TOffsetTime     => val _ = builder.append(value)
+          case TShort          => val _ = builder.append(value)
+          case TString         =>
+            builder.append("'")
+            builder.append(value) //todo escape
+            val _ = builder.append("'")
+          case TUUID           => val _ = builder.append(value)
+          case TZonedDateTime  => val _ = builder.append(value)
+        }*/
         val _ = builder.append(value.toString) //todo fix escaping
       case Expr.AggregationCall(param, aggregation)                     =>
         builder.append(aggregation.name.name)
@@ -97,7 +130,16 @@ trait PostgresModule extends Jdbc { self =>
 
       case Expr.ExprDialectSpecific(expr)                               =>
         expr match {
-          case PostgresExprExtension.Overlay(_, _, _, _) => ()
+          case PostgresExprExtension.Overlay(main, replacing, starting, number) =>
+            builder.append("overlay(")
+            buildExpr(main)
+            builder.append(" placing ")
+            buildExpr(replacing)
+            builder.append(" from ")
+            buildExpr(starting)
+            builder.append(" for ")
+            buildExpr(number)
+            val _ = builder.append(")")
         }
     }
 
