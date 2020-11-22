@@ -190,11 +190,6 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     ) extends InvariantExpr[Features.Union[F1, Features.Union[F2, Features.Union[F3, F4]]], A, Z] {
       def typeTag: TypeTag[Z] = implicitly[TypeTag[Z]]
     }
-
-    sealed case class FunctionCallN[F, A, B, Z: TypeTag](param: Seq[Expr[F, A, B]], function: FunctionDef[B, Z])
-      extends InvariantExpr[F, A, Z] {
-      def typeTag: TypeTag[Z] = implicitly[TypeTag[Z]]
-    }
   }
 
   sealed case class AggregationDef[-A, +B](name: FunctionName) { self =>
@@ -245,11 +240,6 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
         param4,
         self.narrow[(P1, P2, P3, P4)]: FunctionDef[(P1, P2, P3, P4), B1]
       )
-
-    //Features.Source with Features.Literal
-    def apply[F, Source, B1 >: B](params: Seq[Expr[F, Source, A]])
-                      (implicit typeTag: TypeTag[B1]): Expr[F, Source, B1] =
-      Expr.FunctionCallN(params, self: FunctionDef[A, B1])
 
     def narrow[C](implicit ev: C <:< A): FunctionDef[C, B] = {
       val _ = ev
