@@ -157,6 +157,19 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       } yield assert(r)(hasSameElementsDistinct(expected))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    }
+    },
+    testM("upper") {
+      val query = (select(Upper("first_name")) from customers).limit(1)
+
+      val expected = "RONALD"
+
+      val testResult = execute(query).to[String, String](identity)
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+      
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
   )
 }
