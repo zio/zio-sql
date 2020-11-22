@@ -16,7 +16,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
   val spec = suite("Postgres FunctionDef")(
     suite("String functions") {
       testM("CharLength") {
-        val query    = select(CharLength("hello")) from customers
+        val query    = select(Length("hello")) from customers
         val expected = 5
 
         val testResult = execute(query).to[Int, Int](identity)
@@ -29,7 +29,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       }
     },
     testM("repeat") {
-      val query = select(Repeat("'Zio'", 3)) from customers
+      val query = select(Repeat("Zio", 3)) from customers
 
       val expected = "ZioZioZio"
 
@@ -55,7 +55,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     testM("reverse") {
-      val query = select(Reverse("'abcd'")) from customers
+      val query = select(Reverse("abcd")) from customers
 
       val expected = "dcba"
 
@@ -120,7 +120,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     testM("initcap") {
-      val query = select(Initcap("'hi THOMAS'")) from customers
+      val query = select(Initcap("hi THOMAS")) from customers
 
       val expected = "Hi Thomas"
 
@@ -237,7 +237,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     testM("length") {
-      val query = select(Length("'hello'")) from customers
+      val query = select(Length("hello")) from customers
 
       val expected = 5
 
@@ -263,7 +263,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     testM("translate") {
-      val query = select(Translate("'12345'", "'143'", "'ax'")) from customers
+      val query = select(Translate("12345", "143", "ax")) from customers
 
       val expected = "a2x5"
 
@@ -276,7 +276,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     testM("left") {
-      val query = select(Left("'abcde'", 2)) from customers
+      val query = select(Left("abcde", 2)) from customers
 
       val expected = "ab"
 
@@ -289,7 +289,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     testM("right") {
-      val query = select(Right("'abcde'", 2)) from customers
+      val query = select(Right("abcde", 2)) from customers
 
       val expected = "de"
 
@@ -331,7 +331,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       case class Customer(id: UUID, fname: String, lname: String, verified: Boolean, dateOfBirth: LocalDate)
 
       val query =
-        (select(customerId ++ fName ++ lName ++ verified ++ dob) from customers).where(StartsWith(fName, """'R'"""))
+        (select(customerId ++ fName ++ lName ++ verified ++ dob) from customers).where(StartsWith(fName, "R"))
 
       val expected =
         Seq(
@@ -356,7 +356,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     testM("lower") {
-      val query = select(Lower("first_name")) from customers limit (1)
+      val query = select(Lower(fName)) from customers limit (1)
 
       val expected = "ronald"
 
@@ -369,7 +369,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     testM("octet_length") {
-      val query = select(OctetLength("'josé'")) from customers
+      val query = select(OctetLength("josé")) from customers
 
       val expected = 5
 
@@ -382,7 +382,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     testM("ascii") {
-      val query = select(Ascii("""'x'""")) from customers
+      val query = select(Ascii("""x""")) from customers
 
       val expected = 120
 
@@ -395,7 +395,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     testM("upper") {
-      val query = (select(Upper("first_name")) from customers).limit(1)
+      val query = (select(Upper("ronald")) from customers).limit(1)
 
       val expected = "RONALD"
 
