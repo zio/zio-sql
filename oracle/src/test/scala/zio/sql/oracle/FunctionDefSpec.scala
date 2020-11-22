@@ -9,7 +9,7 @@ object FunctionDefSpec extends OracleRunnableSpec with ShopSchema {
   import this.Customers._
   import this.FunctionDef._
 
-  val spec = suite("Mysql FunctionDef")(
+  val spec = suite("Oracle FunctionDef")(
     testM("sin") {
       val query = select(Sin(1.0)) from customers
 
