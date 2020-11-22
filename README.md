@@ -4,6 +4,7 @@
 | --- | --- |
 | [![Build Status][badge-ci]][link-ci] | [![badge-discord]][link-discord] |
 
+## What is ZIO SQL?
 ZIO SQL lets you write type-safe, type-inferred, and composable SQL queries in ordinary Scala, helping you prevent persistence bugs before they happen, and leverage your IDE to make writing SQL productive, safe, and fun. 
 
  * **Type-safety**. ZIO SQL queries are type-safe by construction. Most classes of bugs can be detected at compile-time, shortening your feedback loop and helping you use your IDE to write correct queries.
@@ -20,12 +21,27 @@ For the JDBC module:
 
 ZIO SQL does not offer Language Integrated Queries (LINQ) or similar functionality. It is intended only as a data model for representing SQL queries and an accompanying lightweight JDBC-based executor.
 
-If you want to learn more, please check out:
-
- - [ZIO SQL Homepage](https://zio.github.io/zio-sql)
- - [ZIO SQL Discord](https://discord.gg/2ccFBr4)
-
 [badge-ci]: https://circleci.com/gh/zio/zio-sql/tree/master.svg?style=svg
 [badge-discord]: https://img.shields.io/discord/629491597070827530?logo=discord "chat on discord"
 [link-ci]: https://circleci.com/gh/zio/zio-sql/tree/master
 [link-discord]: https://discord.gg/2ccFBr4 "Discord"
+
+## Setup
+Prerequisites (installed):
+
+ | Technology   |   Version        |  
+ | ------------ | ---------------- |
+ | sbt          |    1.4.3         |
+ | Docker       |    3.1           |
+ 
+To set up the project follow below steps:
+1. Fork the repository.
+2. Setup the upstream (Extended instructions can be followed [here](https://docs.github.com/en/free-pro-team@latest/github/getting-started-with-github/fork-a-repo)).
+3. Make sure you have installed `sbt` and `Docker`.
+4. In project directory execute `sbt test`.
+5. Pick up an issue & you are ready to go!
+
+If you want to learn more, please check out:
+
+ - [ZIO SQL Homepage](https://zio.github.io/zio-sql)
+ - [ZIO SQL Discord](https://discord.gg/2ccFBr4)
