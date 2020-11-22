@@ -8,7 +8,11 @@ import zio.test.environment.TestEnvironment
 
 trait JdbcRunnableSpec extends AbstractRunnableSpec with Jdbc {
 
-  override type Environment = TestEnvironment with ReadExecutor with UpdateExecutor with DeleteExecutor with TransactionExecutor
+  override type Environment = TestEnvironment
+    with ReadExecutor
+    with UpdateExecutor
+    with DeleteExecutor
+    with TransactionExecutor
   override type Failure     = Any
 
   override def aspects: List[TestAspect[Nothing, TestEnvironment, Nothing, Any]] =
