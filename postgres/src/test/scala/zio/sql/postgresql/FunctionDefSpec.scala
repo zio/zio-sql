@@ -57,6 +57,32 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       val query = select(Trunc(42.8)) from customers
 
       val expected = 42d
+      
+      val testResult = execute(query).to[Double, Double](identity)
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("round") {
+      val query = select(Round(10.8124, 2)) from customers
+
+      val expected = 10.81
+      
+      val testResult = execute(query).to[Double, Double](identity)
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("power") {
+      val query = select(Power(7.0, 3.0)) from customers
+
+      val expected = 343.000000000000000
 
       val testResult = execute(query).to[Double, Double](identity)
 
@@ -72,6 +98,19 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       val expected = 5
 
       val testResult = execute(query).to[Int, Int](identity)
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("mod") {
+      val query = select(Mod(-15.0, -4.0)) from customers
+
+      val expected = -3.0
+      
+      val testResult = execute(query).to[Double, Double](identity)
 
       val assertion = for {
         r <- testResult.runCollect
