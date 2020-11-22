@@ -250,6 +250,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
   }
 
   object FunctionDef {
+
     //math functions
     val Abs         = FunctionDef[Double, Double](FunctionName("abs"))
     val Acos        = FunctionDef[Double, Double](FunctionName("acos"))
@@ -264,11 +265,11 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     val Mod         = FunctionDef[(Double, Double), Double](FunctionName("mod"))
     val Power       = FunctionDef[(Double, Double), Double](FunctionName("power"))
     val Round       = FunctionDef[(Double, Int), Double](FunctionName("round"))
-    val Sign        = FunctionDef[Double, Double](FunctionName("sign"))
+    val Sign        = FunctionDef[Double, Int](FunctionName("sign"))
     val Sin         = FunctionDef[Double, Double](FunctionName("sin"))
     val Sqrt        = FunctionDef[Double, Double](FunctionName("sqrt"))
     val Tan         = FunctionDef[Double, Double](FunctionName("tan"))
-    val WidthBucket = FunctionDef[(Double, Double, Double, Int), Int](FunctionName("width bucket"))
+    val WidthBucket = FunctionDef[(Double, Double, Double, Int), Int](FunctionName("width_bucket"))
 
     //string functions
     val Ascii       = FunctionDef[String, Int](FunctionName("ascii"))
@@ -276,7 +277,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     val Concat      = FunctionDef[(String, String), String](FunctionName("concat"))
     val Lower       = FunctionDef[String, String](FunctionName("lower"))
     val Ltrim       = FunctionDef[String, String](FunctionName("ltrim"))
-    val OctetLength = FunctionDef[String, Int](FunctionName("octet length"))
+    val OctetLength = FunctionDef[String, Int](FunctionName("octet_length"))
     val Overlay     = FunctionDef[(String, String, Int, Option[Int]), String](FunctionName("overlay"))
     val Position    = FunctionDef[(String, String), Int](FunctionName("position"))
     val Replace     = FunctionDef[(String, String), String](FunctionName("replace"))
