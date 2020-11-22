@@ -11,16 +11,16 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
   import this.PostgresFunctionDef._
   import this.FunctionDef._
 
-
-  private def collectAndCompare(expected: Seq[String],
-                                testResult: ZStream[FunctionDefSpec.ReadExecutor, Exception, String]): zio.ZIO[FunctionDefSpec.Environment, Any, TestResult] = {
+  private def collectAndCompare(
+    expected: Seq[String],
+    testResult: ZStream[FunctionDefSpec.ReadExecutor, Exception, String]
+  ): zio.ZIO[FunctionDefSpec.Environment, Any, TestResult] = {
     val assertion = for {
       r <- testResult.runCollect
     } yield assert(r.toList)(equalTo(expected))
 
     assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
   }
-
 
   val spec = suite("Postgres FunctionDef")(
     testM("concat_ws #1 - combine flat values") {
@@ -80,10 +80,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       import Expr._
 
       val query = select(
-        ConcatWs3(" and ",
-          Concat("Name: ", Customers.fName),
-          Concat("Surname: ", Customers.lName)
-        )
+        ConcatWs3(" and ", Concat("Name: ", Customers.fName), Concat("Surname: ", Customers.lName))
       ) from customers
       println(renderRead(query))
 
