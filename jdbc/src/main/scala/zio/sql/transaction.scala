@@ -6,95 +6,60 @@ trait TransactionModule { self : SelectModule with DeleteModule with UpdateModul
 
   import Transaction._
 
-  sealed trait Transaction[-R, +A] { self =>
+  sealed trait Transaction[-R, +E, +A] { self =>
 
-    def map[B](f: A => B): Transaction[R, B] =
+    def map[B](f: A => B): Transaction[R, E, B] =
       self.flatMap(f andThen Transaction.succeed)
 
-    def flatMap[B, R1 <: R](f: A => Transaction[R1, B]): Transaction[R1, B] =
-      FoldCauseM(self, K[R1, Exception, A, B](e => fail(new Exception(e.toString)), f))
+    def flatMap[R1 <: R, E1 >: E, B](f: A => Transaction[R1, E1, B]): Transaction[R1, E1, B] =
+      FoldCauseM(self, K[R1, E1, A, B](e => halt(e), f))
 
-    def zip[B, R1 <: R](tx: Transaction[R1, B]): Transaction[R1, (A, B)] =
-      zipWith[R1, B, (A, B)](tx)((_, _))
+    def zip[R1 <: R, E1 >: E, B](tx: Transaction[R1, E1, B]): Transaction[R1, E1, (A, B)] =
+      zipWith[R1, E1, B, (A, B)](tx)((_, _))
 
-    def zipWith[R1 <: R, B, C](tx: Transaction[R1, B])(f: (A, B) => C): Transaction[R1, C] =
+    def zipWith[R1 <: R, E1 >: E, B, C](tx: Transaction[R1, E1, B])(f: (A, B) => C): Transaction[R1, E1, C] =
       for {
         a <- self
         b <- tx
       } yield f(a, b)
 
-    def *>[B, R1 <: R](tx: Transaction[R1, B]): Transaction[R1, B] =
+    def *>[R1 <: R, E1 >: E, B](tx: Transaction[R1, E1, B]): Transaction[R1, E1, B] =
       self.flatMap(_ => tx)
 
     // named alias for *>
-    def zipRight[B, R1 <: R](tx: Transaction[R1, B]): Transaction[R1, B] =
+    def zipRight[R1 <: R, E1 >: E, B](tx: Transaction[R1, E1, B]): Transaction[R1, E1, B] =
       self *> tx
 
-    def <*[B, R1 <: R](tx: Transaction[R1, B]): Transaction[R1, A] =
+    def <*[R1 <: R, E1 >: E, B](tx: Transaction[R1, E1, B]): Transaction[R1, E1, A] =
       self.flatMap(a => tx.map(_ => a))
 
     // named alias for <*
-    def zipLeft[B, R1 <: R](tx: Transaction[R1, B]): Transaction[R1, A] =
+    def zipLeft[R1 <: R, E1 >: E, B](tx: Transaction[R1, E1, B]): Transaction[R1, E1, A] =
       self <* tx
 
-    def catchAllCause[A1 >: A, R1 <: R](f: Throwable => Transaction[R1, A1]): Transaction[R, A] = ???
+    def catchAllCause[R1 <: R, E1 >: E, A1 >: A](f: Throwable => Transaction[R1, E1, A1]): Transaction[R, E1, A] = ???
 
   }
 
   object Transaction {
-    case class Effect[R, A](zio: ZIO[R, Throwable, A]) extends Transaction[R, A]
-    case class Select[A <: SelectionSet[_]](read: Read[A]) extends Transaction[Any, zio.stream.Stream[Exception, A]]
-    case class Update(read: self.Update[_]) extends Transaction[Any, Int]
-    case class Delete(read: self.Delete[_, _]) extends Transaction[Any, Int]
-    // catchAll and flatMap
-    case class FoldCauseM[R, E, A, B](tx: Transaction[R, A], k: K[R, E, A, B]) extends Transaction[R, B]
+    case class Effect[R, E, A](zio: ZIO[R, E, A]) extends Transaction[R, E, A]
+    case class Select[A <: SelectionSet[_]](read: self.Read[A]) extends Transaction[Any, Exception, zio.stream.Stream[Exception, A]]
+    case class Update[A](read: self.Update[A]) extends Transaction[Any, Exception, A]
+    case class Delete[A](read: self.Delete[_, A]) extends Transaction[Any, Exception, A]
+    case class FoldCauseM[R, E, A, B](tx: Transaction[R, E, A], k: K[R, E, A, B]) extends Transaction[R, E, B]
 
-//    final case class MakeSavePoint[R, A, B](tx: Transaction[R, A]) extends Transaction[R, B]
-//    final case class RollbackSavePoint[R, A, B](tx: Transaction[R, A]) extends Transaction[R, B]
+    case class K[R, E, A, B](onHalt: Cause[E] => Transaction[R, E, B], onSuccess: A => Transaction[R, E, B])
 
-    case class K[R, E, A, B](onHalt: Cause[E] => Transaction[R, B], onSuccess: A => Transaction[R, B])
+    def succeed[A](a: A): Transaction[Any, Nothing, A] = Effect(ZIO.succeed(a))
+    def fail[E](e: E): Transaction[Any, E, Nothing] = Effect(ZIO.fail(e))
+    def halt[E](e: Cause[E]): Transaction[Any, E, Nothing] = Effect(ZIO.halt(e))
 
-    def succeed[A](a: A): Transaction[Any, A] = Effect(ZIO.succeed(a))
-    def fail[E <: Throwable](e: E): Transaction[Any, Nothing] = Effect(ZIO.fail(e))
-
-//    def savepoint[R, A](sp: Transaction[Any, Nothing] => Transaction[R, A]): Transaction[R, A] = ???
-
-
-    def select[A <: SelectionSet[_]](read: Read[A]): Transaction[Any, A] = ???
-    def update(read: self.Update[_]): Transaction[Any, Long] = ???
-    def delete(read: self.Delete[_, _]): Transaction[Any, Long] = ???
+    def select[A <: SelectionSet[_]](read: self.Read[A]): Transaction[Any, Exception, zio.stream.Stream[Exception, A]] =
+      Transaction.Select(read)
+    def update[A](update: self.Update[A]): Transaction[Any, Exception, A] =
+      Update(update)
+    def delete[A](delete: self.Delete[_, A]): Transaction[Any, Exception, A] =
+      Delete(delete)
 
   }
-
-
-
-//  val query: Read[String] = ???
-//  val del: self.Delete[_, _] = ???
-
-//  import Transaction._
-
-//  savepoint(rollback => for {
-//   s <- select(query)
-//   _ <- delete(del).zipRight( rollback )
-//  } yield s)
-
-
-//  (for { // SP1
-//   s <- select(query)
-//   s2 <- select(query)
-//   // SP2
-//   _ <- delete(del).catchAll(_ => succeed(1))
-//   _ <- delete(del)
-////   _ <- Transaction.when(_ > 5)(fail(???))
-//  } yield s).catchAll(_ => fail("Asdfasd"))
-
-//1
-//2
-//  sp
-//3
-//
-//4
-//5
-//
-
 }

@@ -39,14 +39,14 @@ trait Jdbc extends zio.sql.Sql with TransactionModule {
   type DeleteExecutor = Has[DeleteExecutor.Service]
   object DeleteExecutor {
     trait Service {
-      def execute(delete: Delete[_, _]): IO[Exception, Int]
-      def executeOn(delete: Delete[_, _], connection: Connection): IO[Exception, Int]
+      def execute[A](delete: Delete[_, A]): IO[Exception, A]
+      def executeOn[A](delete: Delete[_, A], connection: Connection): IO[Exception, A]
     }
 
     val live = ZLayer.succeed(
       new Service {
-        override def execute(delete: Delete[_, _]): IO[Exception, Int] = ???
-        override def executeOn(delete: Delete[_, _], connection: Connection): IO[Exception, Int] = ???
+        override def execute[A](delete: Delete[_, A]): IO[Exception, A] = ???
+        override def executeOn[A](delete: Delete[_, A], connection: Connection): IO[Exception, A] = ???
       }
     )
   }
@@ -54,14 +54,14 @@ trait Jdbc extends zio.sql.Sql with TransactionModule {
   type UpdateExecutor = Has[UpdateExecutor.Service]
   object UpdateExecutor {
     trait Service {
-      def execute(update: Update[_]): IO[Exception, Int]
-      def executeOn(update: Update[_], connection: Connection): IO[Exception, Int]
+      def execute[A](update: Update[A]): IO[Exception, A]
+      def executeOn[A](update: Update[A], connection: Connection): IO[Exception, A]
     }
 
     val live = ZLayer.succeed(
       new Service {
-        override def execute(update: Update[_]): IO[Exception, Int] = ???
-        override def executeOn(update: Update[_], connection: Connection): IO[Exception, Int] = ???
+        override def execute[A](update: Update[A]): IO[Exception, A] = ???
+        override def executeOn[A](update: Update[A], connection: Connection): IO[Exception, A] = ???
       }
     )
   }
@@ -70,15 +70,15 @@ trait Jdbc extends zio.sql.Sql with TransactionModule {
   type TransactionExecutor = Has[TransactionExecutor.Service]
   object TransactionExecutor {
     trait Service {
-      def execute[R, A](tx: Transaction[R, A]): ZIO[R, Exception, A]
+      def execute[R, E >: Exception, A](tx: Transaction[R, E, A]): ZIO[R, E, A]
     }
 
     val live: ZLayer[ConnectionPool with Blocking with ReadExecutor with UpdateExecutor with DeleteExecutor, Exception, TransactionExecutor] =
       ZLayer.fromServices[ConnectionPool.Service, Blocking.Service, ReadExecutor.Service, UpdateExecutor.Service, DeleteExecutor.Service, TransactionExecutor.Service] {
         (pool, blocking, readS, updateS, deleteS) =>
         new Service {
-          override def execute[R, A](tx: Transaction[R, A]): ZIO[R, Exception, A] = {
-            def loop(tx: Transaction[R, Any], conn: Connection): ZIO[R, Any, Any] = tx match {
+          override def execute[R, E >: Exception, A](tx: Transaction[R, E, A]): ZIO[R, E, A] = {
+            def loop(tx: Transaction[R, E, Any], conn: Connection): ZIO[R, E, Any] = tx match {
               case Transaction.Effect(zio) => zio
               // This does not work because of `org.postgresql.util.PSQLException: This connection has been closed.`
               // case Transaction.Select(read) => ZIO.succeed(readS.executeOn(read, conn))
@@ -88,7 +88,7 @@ trait Jdbc extends zio.sql.Sql with TransactionModule {
               case Transaction.Delete(delete) => deleteS.executeOn(delete, conn)
               case Transaction.FoldCauseM(tx, k) => {
                 loop(tx, conn).foldCauseM(
-                  cause => loop(k.onHalt(cause), conn),
+                  cause => loop(k.asInstanceOf[Transaction.K[R, E, Any, Any]].onHalt(cause), conn),
                   success => loop(k.onSuccess(success), conn)
                 )
               }
@@ -100,14 +100,14 @@ trait Jdbc extends zio.sql.Sql with TransactionModule {
                   loop(tx, conn).tapBoth(
                     _ => blocking.effectBlocking(conn.rollback()),
                     _ => blocking.effectBlocking(conn.commit())
-                  ).asInstanceOf[ZIO[R, Exception, A]]
+                  ).asInstanceOf[ZIO[R, E, A]]
             )
           }
         }
       }
   }
 
-  def execute[R, A](tx: Transaction[R, A]): ZIO[R with TransactionExecutor, Exception, A] =
+  def execute[R, E >: Exception, A](tx: Transaction[R, E, A]): ZIO[R with TransactionExecutor, E, A] =
     ZIO.accessM[R with TransactionExecutor](_.get.execute(tx))
 
   type ReadExecutor = Has[ReadExecutor.Service]
