@@ -1,30 +1,35 @@
 package zio.sql.postgresql
 
 import zio.sql.Jdbc
+import scala.language.implicitConversions
 
 /**
  */
 trait PostgresModule extends Jdbc { self =>
-  override type InvariantExprExtensionType[F, -A, B] = PostgresExprExtension[F, A, B]
+  override type ExprExtensionType[F, -A, B] = PostgresExprExtension[F, A, B]
 
   sealed trait PostgresExprExtension[F, -A, B]
   object PostgresExprExtension {
-    //FunctionDef[(String, String, Int, Option[Int]), String](FunctionName("overlay"))
-    sealed case class Overlay[F1, F2, F3, F4, Source, Z: TypeTag](
+    implicit def postgresExpr2Expr[F, A, B: TypeTag](pgExpr: PostgresExprExtension[F, A, B]) =
+      Expr.ExprDialectSpecific(pgExpr)
+
+    implicit def postgresExpr2Selection[F, A, B: TypeTag](
+      pgExpr: PostgresExprExtension[F, A, B]
+    ): Selection[F, A, SelectionSet.Cons[A, B, SelectionSet.Empty]] =
+      Selection.computedOption(pgExpr, Expr.exprName(pgExpr))
+
+    sealed case class Overlay[F1, F2, F3, F4, Source, String](
       main: Expr[F1, Source, String],
       replacing: Expr[F2, Source, String],
       starting: Expr[F3, Source, Int],
-      number: Expr[F4, Source, Option[Int]]
-    ) extends PostgresExprExtension[F1 :||: F2 :||: F3 :||: F4, Source, Z] {
-      def typeTag: TypeTag[Z] = implicitly[TypeTag[Z]]
-
-      //todo val
-      def function: FunctionDef[(String, String, Int, Option[Int]), Z] = ???
+      number: Expr[F4, Source, Int]
+    ) extends PostgresExprExtension[F1 :||: F2 :||: F3 :||: F4, Source, String] {
+      val functionName = "overlay"
     }
   }
   object PostgresFunctionDef   {
     val Sind    = FunctionDef[Double, Double](FunctionName("sind"))
-    val Overlay = FunctionDef[(String, String, Int, Option[Int]), String](FunctionName("overlay"))
+    val Overlay = PostgresExprExtension.Overlay
   }
 
   override def renderRead(read: self.Read[_]): String = {

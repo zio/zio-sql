@@ -7,7 +7,7 @@ import scala.language.implicitConversions
 trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
   self: SelectModule with TableModule =>
 
-  type InvariantExprExtensionType[F, -A, B]
+  type ExprExtensionType[F, -A, B]
 
   /**
    * Models a function `A => B`.
@@ -109,7 +109,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     }
 
     sealed case class ExprDialectSpecific[F, -A, B: TypeTag](
-      invariantExpr: InvariantExprExtensionType[F, A, B]
+      dialectExpr: ExprExtensionType[F, A, B]
     ) //todo extend Expr directly?
         extends InvariantExpr[F, A, B] {
       override def typeTag: TypeTag[B] = implicitly[TypeTag[B]]
@@ -249,11 +249,6 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
         param4,
         self.narrow[(P1, P2, P3, P4)]: FunctionDef[(P1, P2, P3, P4), B1]
       )
-
-    def apply[F, A1 <: A, B1 >: B](
-      exprExtension: InvariantExprExtensionType[F, A1, B1]
-    ): InvariantExprExtensionType[F, A1, B1] =
-      ???
 
     def narrow[C](implicit ev: C <:< A): FunctionDef[C, B] = {
       val _ = ev
