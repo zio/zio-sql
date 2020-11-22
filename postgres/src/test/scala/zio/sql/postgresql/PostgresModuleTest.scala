@@ -187,22 +187,22 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("transactions are returning last value") {
+    testM("Transactions is returning the last value") {
       val query = select(customerId) from customers
 
-//      val result = execute(
-//        Transaction.Select(query) *> Transaction.Select(query)
-//      )
-
       val result = execute(
-        Transaction.Select(query)
+        Transaction.Select(query) *> Transaction.Select(query)
       )
+
+//      val result = execute(
+//        Transaction.Select(query)
+//      )
       val assertion = assertM(result.flatMap(_.runCollect))(hasSize(Assertion.equalTo(5))).orDie
 
-//      val result = execute(
+//      val result2 = execute(
 //        query
 //      ).to[UUID, UUID](a => a)
-//      val assertion = assertM(result.runCollect)(hasSize(Assertion.equalTo(5)))
+//      val assertion2 = assertM(result2.runCollect)(hasSize(Assertion.equalTo(5)))
 
       assertion
 //        .mapErrorCause(cause => Cause.stackless(cause.untraced))
