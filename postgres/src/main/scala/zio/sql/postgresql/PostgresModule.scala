@@ -52,8 +52,38 @@ trait PostgresModule extends Jdbc { self =>
       case Expr.In(value, set)                                          =>
         buildExpr(value)
         buildReadString(set)
-      case Expr.Literal(value)                                          =>
-        val _ = builder.append(value.toString) //todo fix escaping
+      case lit @ Expr.Literal(value)                                    =>
+        import TypeTag._
+        lit.typeTag match {
+          case tt @ TByteArray      => val _ = builder.append(tt.cast(value)) // todo still broken
+          //something like? val _ = builder.append(tt.cast(value).map("\\\\%03o" format _).mkString("E\'", "", "\'"))
+          case tt @ TChar           =>
+            val _ = builder.append("'")
+            builder.append(tt.cast(value)) //todo is this the same as a string? fix escaping
+            val _ = builder.append("'")
+          case tt @ TInstant        => val _ = builder.append(tt.cast(value)) // todo still broken
+          case tt @ TLocalDate      => val _ = builder.append(tt.cast(value)) // todo still broken
+          case tt @ TLocalDateTime  => val _ = builder.append(tt.cast(value)) // todo still broken
+          case tt @ TLocalTime      => val _ = builder.append(tt.cast(value)) // todo still broken
+          case tt @ TOffsetDateTime => val _ = builder.append(tt.cast(value)) // todo still broken
+          case tt @ TOffsetTime     => val _ = builder.append(tt.cast(value)) // todo still broken
+          case tt @ TUUID           => val _ = builder.append(tt.cast(value)) // todo still broken
+          case tt @ TZonedDateTime  => val _ = builder.append(tt.cast(value)) // todo still broken
+
+          case TByte       => val _ = builder.append(value.toString)
+          case TBigDecimal => val _ = builder.append(value.toString)
+          case TBoolean    => val _ = builder.append(value.toString)
+          case TDouble     => val _ = builder.append(value.toString)
+          case TFloat      => val _ = builder.append(value.toString)
+          case TInt        => val _ = builder.append(value.toString)
+          case TLong       => val _ = builder.append(value.toString)
+          case TShort      => val _ = builder.append(value.toString)
+          case TString     =>
+            builder.append("'")
+            builder.append(value) //todo fix escaping
+            val _ = builder.append("'")
+          case _           => val _ = builder.append(value.toString)
+        }
       case Expr.AggregationCall(param, aggregation)                     =>
         builder.append(aggregation.name.name)
         builder.append("(")
