@@ -22,6 +22,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     def *[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =
       Expr.Binary(self, that, BinaryOp.Mul[B1]())
 
+    //todo do something special for divide by 0? also Mod/log/whatever else is really a partial function.. PartialExpr?
     def /[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =
       Expr.Binary(self, that, BinaryOp.Div[B1]())
 
@@ -269,8 +270,8 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     val WidthBucket = FunctionDef[(Double, Double, Double, Int), Int](FunctionName("width_bucket"))
 
     //string functions
-    val Ascii       = FunctionDef[String, Int](FunctionName("ascii"))
-    val CharLength  = FunctionDef[String, Int](FunctionName("character length"))
+    val Ascii = FunctionDef[String, Int](FunctionName("ascii"))
+
     val Concat      = FunctionDef[(String, String), String](FunctionName("concat"))
     val Lower       = FunctionDef[String, String](FunctionName("lower"))
     val Ltrim       = FunctionDef[String, String](FunctionName("ltrim"))
