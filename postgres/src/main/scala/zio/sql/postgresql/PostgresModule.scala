@@ -7,7 +7,23 @@ import zio.sql.Jdbc
 trait PostgresModule extends Jdbc { self =>
 
   object PostgresFunctionDef {
-    val Sind = FunctionDef[Double, Double](FunctionName("sind"))
+    val TrimScale  = FunctionDef[Double, Double](FunctionName("trim_scale"))
+    val Hex        = FunctionDef[Int, String](FunctionName("to_hex"))
+    val Left       = FunctionDef[(String, Int), String](FunctionName("left"))
+    val Length     = FunctionDef[String, Int](FunctionName("length"))
+    val MinScale   = FunctionDef[Double, Int](FunctionName("min_scale"))
+    val Radians    = FunctionDef[Double, Double](FunctionName("radians"))
+    val Right      = FunctionDef[(String, Int), String](FunctionName("right"))
+    val StartsWith = FunctionDef[(String, String), Boolean](FunctionName("starts_with"))
+    val Translate  = FunctionDef[(String, String, String), String](FunctionName("translate"))
+    val Trunc      = FunctionDef[Double, Double](FunctionName("trunc"))
+    val Sind       = FunctionDef[Double, Double](FunctionName("sind"))
+    val GCD        = FunctionDef[(Double, Double), Double](FunctionName("gcd"))
+    val LCM        = FunctionDef[(Double, Double), Double](FunctionName("lcm"))
+    val CBRT       = FunctionDef[Double, Double](FunctionName("cbrt"))
+    val Degrees    = FunctionDef[Double, Double](FunctionName("degrees"))
+    val Div        = FunctionDef[(Double, Double), Double](FunctionName("div"))
+    val Factorial  = FunctionDef[Int, Int](FunctionName("factorial"))
   }
 
   override def renderRead(read: self.Read[_]): String = {
@@ -186,7 +202,7 @@ trait PostgresModule extends Jdbc { self =>
     def buildColumnSelection[A, B](columnSelection: ColumnSelection[A, B]): Unit =
       columnSelection match {
         case ColumnSelection.Constant(value, name) =>
-          builder.append(value.toString()) //todo fix escaping
+          builder.append(value.toString) //todo fix escaping
           name match {
             case Some(name) =>
               val _ = builder.append(" AS ").append(name)
