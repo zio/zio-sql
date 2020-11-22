@@ -80,26 +80,27 @@ trait Jdbc extends zio.sql.Sql with TransactionModule {
           override def execute[R, A](tx: Transaction[R, A]): ZIO[R, Exception, A] = {
             def loop(tx: Transaction[R, Any], conn: Connection): ZIO[R, Any, Any] = tx match {
               case Transaction.Effect(zio) => zio
-              case Transaction.Select(read) => ZIO.succeed(readS.executeOn(read, conn))
+              // This does not work because of `org.postgresql.util.PSQLException: This connection has been closed.`
+              // case Transaction.Select(read) => ZIO.succeed(readS.executeOn(read, conn))
+              // This works and it is eagerly running the Stream
+              case Transaction.Select(read) => readS.executeOn(read, conn).runCollect.map(a => ZStream.fromIterator(a.iterator))
               case Transaction.Update(update) => updateS.executeOn(update, conn)
               case Transaction.Delete(delete) => deleteS.executeOn(delete, conn)
               case Transaction.FoldCauseM(tx, k) => {
-//                ZIO.effect(conn.setSavepoint())
-//                  .bracket(savepoint => blocking.effectBlocking(conn.releaseSavepoint(savepoint)).ignore)(
-//                    savepoint =>
-                      loop(tx, conn).foldCauseM(
-//                        cause => blocking.effectBlocking(conn.rollback(savepoint)) *> loop(k.onHalt(cause), conn),
-                        cause => loop(k.onHalt(cause), conn),
-                        success => loop(k.onSuccess(success), conn)
-                      )
-//                  )
+                loop(tx, conn).foldCauseM(
+                  cause => loop(k.onHalt(cause), conn),
+                  success => loop(k.onSuccess(success), conn)
+                )
               }
             }
 
             pool.connection.use(
               conn =>
                 blocking.effectBlocking(conn.setAutoCommit(false)).refineToOrDie[Exception] *>
-                  loop(tx, conn).asInstanceOf[ZIO[R, Exception, A]]
+                  loop(tx, conn).tapBoth(
+                    _ => blocking.effectBlocking(conn.rollback()),
+                    _ => blocking.effectBlocking(conn.commit())
+                  ).asInstanceOf[ZIO[R, Exception, A]]
             )
           }
         }

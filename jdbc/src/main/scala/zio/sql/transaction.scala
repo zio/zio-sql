@@ -88,4 +88,13 @@ trait TransactionModule { self : SelectModule with DeleteModule with UpdateModul
 ////   _ <- Transaction.when(_ > 5)(fail(???))
 //  } yield s).catchAll(_ => fail("Asdfasd"))
 
+//1
+//2
+//  sp
+//3
+//
+//4
+//5
+//
+
 }
