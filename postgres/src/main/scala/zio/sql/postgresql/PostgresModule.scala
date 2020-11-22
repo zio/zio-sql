@@ -7,6 +7,7 @@ import zio.sql.Jdbc
 trait PostgresModule extends Jdbc { self =>
 
   object PostgresFunctionDef {
+    val Hex        = FunctionDef[Int, String](FunctionName("to_hex"))
     val Left       = FunctionDef[(String, Int), String](FunctionName("left"))
     val Length     = FunctionDef[String, Int](FunctionName("length"))
     val MinScale   = FunctionDef[Double, Int](FunctionName("min_scale"))
