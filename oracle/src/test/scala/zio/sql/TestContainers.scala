@@ -4,7 +4,6 @@ import com.dimafeng.testcontainers.SingleContainer
 import com.dimafeng.testcontainers.OracleContainer
 import zio._
 import zio.blocking.{ effectBlocking, Blocking }
-
 object TestContainer {
 
   def container[C <: SingleContainer[_]: Tag](c: C): ZLayer[Blocking, Throwable, Has[C]] =
@@ -22,6 +21,7 @@ object TestContainer {
           dockerImageName = imageName
         ).configure { a =>
           a.withInitScript("shop_schema.sql")
+          a.addEnv("TZ", "America/New_York")
           ()
         }
         c.start()

@@ -6,7 +6,6 @@ import zio.sql.TestContainer
 import zio.test.environment.TestEnvironment
 
 import java.util.Properties
-import zio.sql.oracle.OracleModule
 import zio.sql.JdbcRunnableSpec
 
 trait OracleRunnableSpec extends JdbcRunnableSpec with OracleModule {
