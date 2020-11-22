@@ -93,7 +93,10 @@ trait Jdbc extends zio.sql.Sql with TransactionModule {
               // case Transaction.Select(read) => ZIO.succeed(readS.executeOn(read, conn))
               // This works and it is eagerly running the Stream
               case Transaction.Select(read)      =>
-                readS.executeOn(read, conn).runCollect.map(a => ZStream.fromIterator(a.iterator))
+                readS
+                  .executeOn(read.asInstanceOf[Read[SelectionSet[_]]], conn)
+                  .runCollect
+                  .map(a => ZStream.fromIterator(a.iterator))
               case Transaction.Update(update)    => updateS.executeOn(update, conn)
               case Transaction.Delete(delete)    => deleteS.executeOn(delete, conn)
               case Transaction.FoldCauseM(tx, k) =>
