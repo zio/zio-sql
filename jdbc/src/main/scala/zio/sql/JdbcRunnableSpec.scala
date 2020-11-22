@@ -1,4 +1,4 @@
-package zio.sql.postgresql
+package zio.sql
 
 import zio.{ ZEnv, ZLayer }
 import zio.duration._
