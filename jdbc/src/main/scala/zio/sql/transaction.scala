@@ -7,18 +7,38 @@ trait TransactionModule { self : SelectModule with DeleteModule with UpdateModul
   import Transaction._
 
   sealed trait Transaction[-R, +A] { self =>
-    def map[B](f: A => B): Transaction[R, B] = ???
+
+    def map[B](f: A => B): Transaction[R, B] =
+      self.flatMap(f andThen Transaction.succeed)
+
     def flatMap[B, R1 <: R](f: A => Transaction[R1, B]): Transaction[R1, B] =
       FoldCauseM(self, K[R1, Exception, A, B](e => fail(new Exception(e.toString)), f))
-//    def zip[B](t: Transaction[R, B]): Transaction[R, (A, B)] = ???
-    def zipWith = ???
-    def zipLeft = ???
-    def zipRight = ???
 
-    def catchAllCause[A1 >: A, R1 <: R](f: Throwable => Transaction[R1, A1]): Transaction[R, A] = ???
+    def zip[B, R1 <: R](tx: Transaction[R1, B]): Transaction[R1, (A, B)] =
+      zipWith[R1, B, (A, B)](tx)((_, _))
+
+    def zipWith[R1 <: R, B, C](tx: Transaction[R1, B])(f: (A, B) => C): Transaction[R1, C] =
+      for {
+        a <- self
+        b <- tx
+      } yield f(a, b)
 
     def *>[B, R1 <: R](tx: Transaction[R1, B]): Transaction[R1, B] =
       self.flatMap(_ => tx)
+
+    // named alias for *>
+    def zipRight[B, R1 <: R](tx: Transaction[R1, B]): Transaction[R1, B] =
+      self *> tx
+
+    def <*[B, R1 <: R](tx: Transaction[R1, B]): Transaction[R1, A] =
+      self.flatMap(a => tx.map(_ => a))
+
+    // named alias for <*
+    def zipLeft[B, R1 <: R](tx: Transaction[R1, B]): Transaction[R1, A] =
+      self <* tx
+
+    def catchAllCause[A1 >: A, R1 <: R](f: Throwable => Transaction[R1, A1]): Transaction[R, A] = ???
+
   }
 
   object Transaction {
@@ -34,7 +54,7 @@ trait TransactionModule { self : SelectModule with DeleteModule with UpdateModul
 
     case class K[R, E, A, B](onHalt: Cause[E] => Transaction[R, B], onSuccess: A => Transaction[R, B])
 
-    def succeed[A] : Transaction[Any, A] = ???
+    def succeed[A](a: A): Transaction[Any, A] = Effect(ZIO.succeed(a))
     def fail[E <: Throwable](e: E): Transaction[Any, Nothing] = Effect(ZIO.fail(e))
 
 //    def savepoint[R, A](sp: Transaction[Any, Nothing] => Transaction[R, A]): Transaction[R, A] = ???
