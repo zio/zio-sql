@@ -1,6 +1,7 @@
 package zio.sql.postgresql
 
 import zio.Cause
+import zio.stream.ZStream
 import zio.test._
 import zio.test.Assertion._
 
@@ -10,19 +11,58 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
   import this.PostgresFunctionDef._
   import this.FunctionDef._
 
+
+  private def collectAndCompare(expected: Seq[String],
+                                testResult: ZStream[FunctionDefSpec.ReadExecutor, Exception, String]): zio.ZIO[FunctionDefSpec.Environment, Any, TestResult] = {
+    val assertion = for {
+      r <- testResult.runCollect
+    } yield assert(r.toList)(equalTo(expected))
+
+    assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+  }
+
+
   val spec = suite("Postgres FunctionDef")(
-    testM("concat_ws #1") {
+    testM("concat_ws #1 - combine flat values") {
       import Expr._
 
-      //TODO: we shouldn't be forced to provide explicit calls to literal
-//      val args_0/*: Seq[Expr[DataTypes, Any, String]]*/ = Seq(literal(" "), literal("Person:"))
-//      val args_0/*: Seq[Expr[DataTypes, Any, String]]*/ = Seq(Customers.fName, Customers.lName)
-//      val args_0/*: Seq[Expr[Expr.DataSource, Any, String]]*/ = Seq(Customers.fName, literal("!"))
+      //note: a plain number (3) would and should not compile
+      val query = select(ConcatWs4("+", "1", "2", "3")) from customers
+      println(renderRead(query))
 
-//      val args_0/*: Seq[Expr[DataTypes, Any, String]]*/ = Seq(literal(" "), literal("Person:"), Customers.fName, Customers.lName)
+      val expected = Seq( // note: one for each row
+        "1+2+3",
+        "1+2+3",
+        "1+2+3",
+        "1+2+3",
+        "1+2+3"
+      )
 
-      val query = select(ConcatWs4(literal(" "), literal("Person:"), Customers.fName, Customers.lName)) from customers
-//      val query = select(ConcatWs(args_0)) from customers
+      val testResult = execute(query).to[String, String](identity)
+      collectAndCompare(expected, testResult)
+    },
+    testM("concat_ws #2 - combine columns") {
+      import Expr._
+
+      // note: you can't use customerId here as it is a UUID, hence not a string in our book
+      val query = select(ConcatWs3(Customers.fName, Customers.fName, Customers.lName)) from customers
+      println(renderRead(query))
+
+      val expected = Seq(
+        "RonaldRonaldRussell",
+        "TerrenceTerrenceNoel",
+        "MilaMilaPaterso",
+        "AlanaAlanaMurray",
+        "JoseJoseWiggins"
+      )
+
+      val testResult = execute(query).to[String, String](identity)
+      collectAndCompare(expected, testResult)
+    },
+    testM("concat_ws #3 - combine columns and flat values") {
+      import Expr._
+
+      val query = select(ConcatWs4(" ", "Person:", Customers.fName, Customers.lName)) from customers
       println(renderRead(query))
 
       val expected = Seq(
@@ -34,12 +74,29 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       )
 
       val testResult = execute(query).to[String, String](identity)
+      collectAndCompare(expected, testResult)
+    },
+    testM("concat_ws #3 - combine function calls together") {
+      import Expr._
 
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.toList)(equalTo(expected))
+      val query = select(
+        ConcatWs3(" and ",
+          Concat("Name: ", Customers.fName),
+          Concat("Surname: ", Customers.lName)
+        )
+      ) from customers
+      println(renderRead(query))
 
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      val expected = Seq(
+        "Name: Ronald and Surname: Russell",
+        "Name: Terrence and Surname: Noel",
+        "Name: Mila and Surname: Paterso",
+        "Name: Alana and Surname: Murray",
+        "Name: Jose and Surname: Wiggins"
+      )
+
+      val testResult = execute(query).to[String, String](identity)
+      collectAndCompare(expected, testResult)
     },
     testM("sin") {
       val query = select(Sin(1.0)) from customers
