@@ -7,6 +7,7 @@ import zio.sql.Jdbc
 trait PostgresModule extends Jdbc { self =>
 
   object PostgresFunctionDef {
+    val Initcap    = FunctionDef[String, String](FunctionName("initcap"))
     val Repeat     = FunctionDef[(String, Int), String](FunctionName("repeat"))
     val Reverse    = FunctionDef[String, String](FunctionName("reverse"))
     val TrimScale  = FunctionDef[Double, Double](FunctionName("trim_scale"))
