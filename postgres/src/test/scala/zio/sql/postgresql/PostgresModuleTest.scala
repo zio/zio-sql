@@ -193,19 +193,20 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
       val result = execute(
         Transaction.Select(query) *> Transaction.Select(query)
       )
-
-//      val result = execute(
-//        Transaction.Select(query)
-//      )
       val assertion = assertM(result.flatMap(_.runCollect))(hasSize(Assertion.equalTo(5))).orDie
 
-//      val result2 = execute(
-//        query
-//      ).to[UUID, UUID](a => a)
-//      val assertion2 = assertM(result2.runCollect)(hasSize(Assertion.equalTo(5)))
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("Transactions is failing") {
+      val query = select(customerId) from customers
+
+      val result = execute(
+        Transaction.Select(query) *> Transaction.fail(new Exception("failing")) *> Transaction.Select(query)
+      ).mapError(_.getMessage)
+
+      val assertion = assertM(result.flip)(equalTo("failing"))
 
       assertion
-//        .mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
   )
 
