@@ -4,14 +4,14 @@ import java.time.LocalDate
 import java.util.UUID
 
 import zio.Cause
-import zio.test._
 import zio.test.Assertion._
+import zio.test._
 
 object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
-  import this.Customers._
-  import this.PostgresFunctionDef._
-  import this.FunctionDef._
+  import Customers._
+  import FunctionDef._
+  import PostgresFunctionDef._
 
   val spec = suite("Postgres FunctionDef")(
     testM("repeat") {
@@ -522,6 +522,25 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       val assertion = for {
         r <- result.runCollect
       } yield assert(r)(hasSameElements(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("replace") {
+      val lastNameReplaced = Replace(lName, "'ll'", "'_'") as "lastNameReplaced"
+      val computedReplace  = Replace("'special ::ąę::'", "'ąę'", "'__'") as "computedReplace"
+
+      val query = select(lastNameReplaced ++ computedReplace) from customers
+
+      val expected = ("Russe_", "special ::__::")
+
+      val testResult =
+        execute(query).to[String, String, (String, String)] { case row =>
+          (row._1, row._2)
+        }
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
