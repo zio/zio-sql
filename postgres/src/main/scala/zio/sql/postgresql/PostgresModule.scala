@@ -246,7 +246,7 @@ trait PostgresModule extends Jdbc { self =>
         val _ = builder.append(" (").append(values.mkString(",")).append(") ") //todo fix needs escaping
     }
 
-  private def buildDeleteString(delete: self.Delete[_, _], builder: StringBuilder): Unit = {
+  private def buildDeleteString(delete: self.Delete[_], builder: StringBuilder): Unit = {
     import delete._
 
     builder.append("DELETE FROM ")
@@ -259,7 +259,7 @@ trait PostgresModule extends Jdbc { self =>
     }
   }
 
-  override def renderDelete(delete: self.Delete[_, _]): String = {
+  override def renderDelete(delete: self.Delete[_]): String = {
     val builder = new StringBuilder()
 
     buildDeleteString(delete, builder)

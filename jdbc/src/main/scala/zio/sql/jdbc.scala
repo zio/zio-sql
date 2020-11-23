@@ -40,13 +40,13 @@ trait Jdbc extends zio.sql.Sql {
   type DeleteExecutor = Has[DeleteExecutor.Service]
   object DeleteExecutor {
     trait Service {
-      def execute(delete: Delete[_, _]): IO[Exception, Int]
+      def execute(delete: Delete[_]): IO[Exception, Int]
     }
 
     val live: ZLayer[ConnectionPool with Blocking, Nothing, DeleteExecutor] =
       ZLayer.fromServices[ConnectionPool.Service, Blocking.Service, DeleteExecutor.Service] { (pool, blocking) =>
         new Service {
-          def execute(delete: Delete[_, _]): IO[Exception, Int] = pool.connection.use { conn =>
+          def execute(delete: Delete[_]): IO[Exception, Int] = pool.connection.use { conn =>
             blocking.effectBlocking {
               val query     = renderDelete(delete)
               val statement = conn.createStatement()
@@ -244,7 +244,7 @@ trait Jdbc extends zio.sql.Sql {
 
   def execute[A <: SelectionSet[_]](read: Read[A]): ExecuteBuilder[A, read.ResultType] = new ExecuteBuilder(read)
 
-  def execute(delete: Delete[_, _]): ZIO[DeleteExecutor, Exception, Int] = ZIO.accessM[DeleteExecutor](
+  def execute(delete: Delete[_]): ZIO[DeleteExecutor, Exception, Int] = ZIO.accessM[DeleteExecutor](
     _.get.execute(delete)
   )
 

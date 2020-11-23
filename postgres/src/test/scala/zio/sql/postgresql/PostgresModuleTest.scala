@@ -186,7 +186,7 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
     // testM("Can delete all from a single table") { TODO: Does not work on 2.12 yet
-    //   val query = deleteFrom(customers).all
+    //   val query = deleteFrom(customers)
     //   println(renderDelete(query))
 
     //   val result = execute(query)
