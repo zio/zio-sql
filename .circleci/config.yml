@@ -276,28 +276,28 @@ workflows:
           filters:
             <<: *filter_tags
       - mdoc:
-          requires:
-            - lint
+          # requires:
+          #   - lint
           filters:
             <<: *filter_tags
       - test_212_jdk8_jvm:
-          requires:
-            - lint
+          # requires:
+          #   - lint
           filters:
             <<: *filter_tags
       - test_213_jdk8_jvm:
-          requires:
-            - lint
+          # requires:
+          #   - lint
           filters:
             <<: *filter_tags
       - test_212_jdk11_jvm:
-          requires:
-            - lint
+          # requires:
+          #   - lint
           filters:
             <<: *filter_tags
       - test_213_jdk11_jvm:
-          requires:
-            - lint
+          # requires:
+          #   - lint
           filters:
             <<: *filter_tags
       - release:
