@@ -161,6 +161,10 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
       def typeTag: TypeTag[Z] = implicitly[TypeTag[Z]]
     }
 
+    sealed case class FunctionCall0[F, A, B, Z: TypeTag](function: FunctionDef[B, Z]) extends InvariantExpr[F, A, Z] {
+      def typeTag: TypeTag[Z] = implicitly[TypeTag[Z]]
+    }
+
     sealed case class FunctionCall1[F, A, B, Z: TypeTag](param: Expr[F, A, B], function: FunctionDef[B, Z])
         extends InvariantExpr[F, A, Z] {
       def typeTag: TypeTag[Z] = implicitly[TypeTag[Z]]
@@ -212,6 +216,9 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
   }
 
   sealed case class FunctionDef[-A, +B](name: FunctionName) { self =>
+
+    def apply[Source, B1 >: B]()(implicit typeTag: TypeTag[B1]): Expr[Unit, Source, B1] =
+      Expr.FunctionCall0(self: FunctionDef[A, B1])
 
     def apply[F, Source, B1 >: B](param1: Expr[F, Source, A])(implicit typeTag: TypeTag[B1]): Expr[F, Source, B1] =
       Expr.FunctionCall1(param1, self: FunctionDef[A, B1])
@@ -273,7 +280,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
 
     //string functions
     val Ascii       = FunctionDef[String, Int](FunctionName("ascii"))
-    val CharLength  = FunctionDef[String, Int](FunctionName("character length"))
+    val CharLength  = FunctionDef[String, Int](FunctionName("character_length"))
     val Concat      = FunctionDef[(String, String), String](FunctionName("concat"))
     val Lower       = FunctionDef[String, String](FunctionName("lower"))
     val Ltrim       = FunctionDef[String, String](FunctionName("ltrim"))
