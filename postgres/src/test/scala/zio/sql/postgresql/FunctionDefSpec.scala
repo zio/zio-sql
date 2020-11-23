@@ -529,12 +529,9 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       val lastNameReplaced = Replace(lName, "'ll'", "'_'") as "lastNameReplaced"
       val computedReplace  = Replace("'special ::ąę::'", "'ąę'", "'__'") as "computedReplace"
 
-      val customerUUID = "'60b01fc9-c902-4468-8d49-3c0f989def37'"
-      val query        = select(lastNameReplaced ++ computedReplace) from customers where (customerId === customerUUID)
+      val query = select(lastNameReplaced ++ computedReplace) from customers
 
-      println(renderRead(query))
-
-      val expected = Seq(("Russe_", "special ::__::"))
+      val expected = ("Russe_", "special ::__::")
 
       val testResult =
         execute(query).to[String, String, (String, String)] { case row =>
@@ -543,7 +540,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val assertion = for {
         r <- testResult.runCollect
-      } yield assert(r)(hasSameElementsDistinct(expected))
+      } yield assert(r.head)(equalTo(expected))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     }

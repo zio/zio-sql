@@ -110,9 +110,6 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
 
     implicit def literal[A: TypeTag](a: A): Expr[Features.Literal, Any, A] = Expr.Literal(a)
 
-    private def literalAsString[A](a: A) =
-      Expr.Literal(s"'${a.toString}'").asInstanceOf[Expr[Features.Literal, Any, A]]
-
     def exprName[F, A, B](expr: Expr[F, A, B]): Option[String] =
       expr match {
         case Expr.Source(_, c) => Some(c.name)
