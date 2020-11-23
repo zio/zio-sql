@@ -69,7 +69,7 @@ trait PostgresModule extends Jdbc { self =>
         val _ = builder.append(")")
       case Expr.FunctionCall0(function)                                     =>
         val _ = builder.append(function.name.name)
-        /*builder.append("(")
+      /*builder.append("(")
         val _ = builder.append(")")*/
       case Expr.FunctionCall1(param, function)                              =>
         builder.append(function.name.name)
