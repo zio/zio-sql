@@ -1,9 +1,3 @@
-create table simple
-(
-    id int not null primary key,
-    message varchar(255) not null
-);
-
 create table customers
 (
     id varchar(36) not null primary key,
@@ -27,12 +21,6 @@ create table products
     description varchar(255) not null,
     image_url varchar(255)
 );
-
-insert into simple
-    (id, message)
-values
-    (1, "Test message"),
-    (2, "Another test");
 
 insert into customers
     (id, first_name, last_name, verified, dob)
