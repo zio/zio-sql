@@ -1,6 +1,6 @@
 package zio.sql.postgresql
 
-import zio.sql.Jdbc
+import zio.sql.{ Jdbc, Renderer }
 
 /**
  */
@@ -30,191 +30,186 @@ trait PostgresModule extends Jdbc { self =>
   }
 
   override def renderRead(read: self.Read[_]): String = {
-    val builder = new StringBuilder
+    implicit val render: Renderer = Renderer()
+    PostgresRenderModule.renderReadImpl(read)
+    render.toString
+  }
 
-    def buildExpr[A, B](expr: self.Expr[_, A, B]): Unit = expr match {
-      case Expr.Source(tableName, column)                               =>
-        val _ = builder.append(tableName).append(".").append(column.name)
-      case Expr.Unary(base, op)                                         =>
-        val _ = builder.append(" ").append(op.symbol)
-        buildExpr(base)
-      case Expr.Property(base, op)                                      =>
-        buildExpr(base)
-        val _ = builder.append(" ").append(op.symbol)
-      case Expr.Binary(left, right, op)                                 =>
-        buildExpr(left)
-        builder.append(" ").append(op.symbol).append(" ")
-        buildExpr(right)
-      case Expr.Relational(left, right, op)                             =>
-        buildExpr(left)
-        builder.append(" ").append(op.symbol).append(" ")
-        buildExpr(right)
-      case Expr.In(value, set)                                          =>
-        buildExpr(value)
-        buildReadString(set)
-      case lit @ Expr.Literal(value)                                    =>
-        import TypeTag._
-        lit.typeTag match {
-          case tt @ TByteArray      => val _ = builder.append(tt.cast(value)) // todo still broken
-          //something like? val _ = builder.append(tt.cast(value).map("\\\\%03o" format _).mkString("E\'", "", "\'"))
-          case tt @ TChar           =>
-            builder.append("'")
-            builder.append(tt.cast(value)) //todo is this the same as a string? fix escaping
-            val _ = builder.append("'")
-          case tt @ TInstant        => val _ = builder.append(tt.cast(value)) // todo still broken
-          case tt @ TLocalDate      => val _ = builder.append(tt.cast(value)) // todo still broken
-          case tt @ TLocalDateTime  => val _ = builder.append(tt.cast(value)) // todo still broken
-          case tt @ TLocalTime      => val _ = builder.append(tt.cast(value)) // todo still broken
-          case tt @ TOffsetDateTime => val _ = builder.append(tt.cast(value)) // todo still broken
-          case tt @ TOffsetTime     => val _ = builder.append(tt.cast(value)) // todo still broken
-          case tt @ TUUID           => val _ = builder.append(tt.cast(value)) // todo still broken
-          case tt @ TZonedDateTime  => val _ = builder.append(tt.cast(value)) // todo still broken
+  object PostgresRenderModule { //todo split out
 
-          case TByte       => val _ = builder.append(value.toString)
-          case TBigDecimal => val _ = builder.append(value.toString)
-          case TBoolean    => val _ = builder.append(value.toString)
-          case TDouble     => val _ = builder.append(value.toString)
-          case TFloat      => val _ = builder.append(value.toString)
-          case TInt        => val _ = builder.append(value.toString)
-          case TLong       => val _ = builder.append(value.toString)
-          case TShort      => val _ = builder.append(value.toString)
-          case TString     =>
-            builder.append("'")
-            builder.append(value) //todo fix escaping
-            val _ = builder.append("'")
-          case _           => val _ = builder.append(value.toString)
-        }
-      case Expr.AggregationCall(param, aggregation)                     =>
-        builder.append(aggregation.name.name)
-        builder.append("(")
-        buildExpr(param)
-        val _ = builder.append(")")
-      case Expr.FunctionCall1(param, function)                          =>
-        builder.append(function.name.name)
-        builder.append("(")
-        buildExpr(param)
-        val _ = builder.append(")")
-      case Expr.FunctionCall2(param1, param2, function)                 =>
-        builder.append(function.name.name)
-        builder.append("(")
-        buildExpr(param1)
-        builder.append(",")
-        buildExpr(param2)
-        val _ = builder.append(")")
-      case Expr.FunctionCall3(param1, param2, param3, function)         =>
-        builder.append(function.name.name)
-        builder.append("(")
-        buildExpr(param1)
-        builder.append(",")
-        buildExpr(param2)
-        builder.append(",")
-        buildExpr(param3)
-        val _ = builder.append(")")
-      case Expr.FunctionCall4(param1, param2, param3, param4, function) =>
-        builder.append(function.name.name)
-        builder.append("(")
-        buildExpr(param1)
-        builder.append(",")
-        buildExpr(param2)
-        builder.append(",")
-        buildExpr(param3)
-        builder.append(",")
-        buildExpr(param4)
-        val _ = builder.append(")")
+    private[zio] def renderLit[A, B](lit: self.Expr.Literal[_])(implicit render: Renderer): Unit = {
+      import TypeTag._
+      lit.typeTag match {
+        case tt @ TByteArray      => render(tt.cast(lit.value)) // todo still broken
+        //something like? render(tt.cast(lit.value).map("\\\\%03o" format _).mkString("E\'", "", "\'"))
+        case tt @ TChar           =>
+          render("'")
+          render(tt.cast(lit.value)) //todo is this the same as a string? fix escaping
+          render("'")
+        case tt @ TInstant        => render(tt.cast(lit.value)) // todo still broken
+        case tt @ TLocalDate      => render(tt.cast(lit.value)) // todo still broken
+        case tt @ TLocalDateTime  => render(tt.cast(lit.value)) // todo still broken
+        case tt @ TLocalTime      => render(tt.cast(lit.value)) // todo still broken
+        case tt @ TOffsetDateTime => render(tt.cast(lit.value)) // todo still broken
+        case tt @ TOffsetTime     => render(tt.cast(lit.value)) // todo still broken
+        case tt @ TUUID           => render(tt.cast(lit.value)) // todo still broken
+        case tt @ TZonedDateTime  => render(tt.cast(lit.value)) // todo still broken
+
+        case TByte       => render(lit.value)           //default toString is probably ok
+        case TBigDecimal => render(lit.value)           //default toString is probably ok
+        case TBoolean    => render(lit.value)           //default toString is probably ok
+        case TDouble     => render(lit.value)           //default toString is probably ok
+        case TFloat      => render(lit.value)           //default toString is probably ok
+        case TInt        => render(lit.value)           //default toString is probably ok
+        case TLong       => render(lit.value)           //default toString is probably ok
+        case TShort      => render(lit.value)           //default toString is probably ok
+        case TString     => render("'", lit.value, "'") //todo fix escaping
+
+        case _ => render(lit.value) //todo fix add TypeTag.Nullable[_] =>
+      }
     }
 
-    def buildReadString[A <: SelectionSet[_]](read: self.Read[_]): Unit =
+    private[zio] def renderExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
+      case Expr.Source(tableName, column)         => render(tableName, ".", column.name)
+      case Expr.Unary(base, op)                   =>
+        render(" ", op.symbol)
+        renderExpr(base)
+      case Expr.Property(base, op)                =>
+        renderExpr(base)
+        render(" ", op.symbol)
+      case Expr.Binary(left, right, op)           =>
+        renderExpr(left)
+        render(" ", op.symbol, " ")
+        renderExpr(right)
+      case Expr.Relational(left, right, op)       =>
+        renderExpr(left)
+        render(" ", op.symbol, " ")
+        renderExpr(right)
+      case Expr.In(value, set)                    =>
+        renderExpr(value)
+        renderReadImpl(set)
+      case lit: Expr.Literal[_]                   => renderLit(lit)
+      case Expr.AggregationCall(p, aggregation)   =>
+        render(aggregation.name.name, "(")
+        renderExpr(p)
+        render(")")
+      case Expr.FunctionCall1(p, fn)              =>
+        render(fn.name.name, "(")
+        renderExpr(p)
+        render(")")
+      case Expr.FunctionCall2(p1, p2, fn)         =>
+        render(fn.name.name, "(")
+        renderExpr(p1)
+        render(",")
+        renderExpr(p2)
+        render(")")
+      case Expr.FunctionCall3(p1, p2, p3, fn)     =>
+        render(fn.name.name, "(")
+        renderExpr(p1)
+        render(",")
+        renderExpr(p2)
+        render(",")
+        renderExpr(p3)
+        render(")")
+      case Expr.FunctionCall4(p1, p2, p3, p4, fn) =>
+        render(fn.name.name, "(")
+        renderExpr(p1)
+        render(",")
+        renderExpr(p2)
+        render(",")
+        renderExpr(p3)
+        render(",")
+        renderExpr(p4)
+        render(")")
+    }
+
+    private[zio] def renderReadImpl[A <: SelectionSet[_]](read: self.Read[_])(implicit render: Renderer): Unit =
       read match {
         case read0 @ Read.Select(_, _, _, _, _, _, _, _) =>
-          object Dummy {
-            type F
-            type A
-            type B <: SelectionSet[A]
-          }
+          object Dummy { type F; type A; type B <: SelectionSet[A] }
           val read = read0.asInstanceOf[Read.Select[Dummy.F, Dummy.A, Dummy.B]]
           import read._
 
-          builder.append("SELECT ")
-          buildSelection(selection.value)
-          builder.append(" FROM ")
-          buildTable(table)
+          render("SELECT ")
+          renderSelection(selection.value)
+          render(" FROM ")
+          renderTable(table)
           whereExpr match {
             case Expr.Literal(true) => ()
             case _                  =>
-              builder.append(" WHERE ")
-              buildExpr(whereExpr)
+              render(" WHERE ")
+              renderExpr(whereExpr)
           }
           groupBy match {
             case _ :: _ =>
-              builder.append(" GROUP BY ")
-              buildExprList(groupBy)
+              render(" GROUP BY ")
+              renderExprList(groupBy)
 
               havingExpr match {
                 case Expr.Literal(true) => ()
                 case _                  =>
-                  builder.append(" HAVING ")
-                  buildExpr(havingExpr)
+                  render(" HAVING ")
+                  renderExpr(havingExpr)
               }
             case Nil    => ()
           }
           orderBy match {
             case _ :: _ =>
-              builder.append(" ORDER BY ")
-              buildOrderingList(orderBy)
+              render(" ORDER BY ")
+              renderOrderingList(orderBy)
             case Nil    => ()
           }
           limit match {
-            case Some(limit) =>
-              builder.append(" LIMIT ").append(limit)
+            case Some(limit) => render(" LIMIT ", limit)
             case None        => ()
           }
           offset match {
-            case Some(offset) =>
-              val _ = builder.append(" OFFSET ").append(offset)
+            case Some(offset) => render(" OFFSET ", offset)
             case None         => ()
           }
 
         case Read.Union(left, right, distinct) =>
-          buildReadString(left)
-          builder.append(" UNION ")
-          if (!distinct) builder.append("ALL ")
-          buildReadString(right)
+          renderReadImpl(left)
+          render(" UNION ")
+          if (!distinct) render("ALL ")
+          renderReadImpl(right)
 
         case Read.Literal(values) =>
-          val _ = builder.append(" (").append(values.mkString(",")).append(") ") //todo fix needs escaping
+          render(" (", values.mkString(","), ") ") //todo fix needs escaping
       }
 
-    def buildExprList(expr: List[Expr[_, _, _]]): Unit               =
+    def renderExprList(expr: List[Expr[_, _, _]])(implicit render: Renderer): Unit =
       expr match {
         case head :: tail =>
-          buildExpr(head)
+          renderExpr(head)
           tail match {
             case _ :: _ =>
-              builder.append(", ")
-              buildExprList(tail)
+              render(", ")
+              renderExprList(tail)
             case Nil    => ()
           }
         case Nil          => ()
       }
-    def buildOrderingList(expr: List[Ordering[Expr[_, _, _]]]): Unit =
+
+    def renderOrderingList(expr: List[Ordering[Expr[_, _, _]]])(implicit render: Renderer): Unit =
       expr match {
         case head :: tail =>
           head match {
-            case Ordering.Asc(value)  => buildExpr(value)
+            case Ordering.Asc(value)  => renderExpr(value)
             case Ordering.Desc(value) =>
-              buildExpr(value)
-              builder.append(" DESC")
+              renderExpr(value)
+              render(" DESC")
           }
           tail match {
             case _ :: _ =>
-              builder.append(", ")
-              buildOrderingList(tail)
+              render(", ")
+              renderOrderingList(tail)
             case Nil    => ()
           }
         case Nil          => ()
       }
 
-    def buildSelection[A](selectionSet: SelectionSet[A]): Unit =
+    def renderSelection[A](selectionSet: SelectionSet[A])(implicit render: Renderer): Unit =
       selectionSet match {
         case cons0 @ SelectionSet.Cons(_, _) =>
           object Dummy {
@@ -224,54 +219,50 @@ trait PostgresModule extends Jdbc { self =>
           }
           val cons = cons0.asInstanceOf[SelectionSet.Cons[Dummy.Source, Dummy.A, Dummy.B]]
           import cons._
-          buildColumnSelection(head)
+          renderColumnSelection(head)
           if (tail != SelectionSet.Empty) {
-            builder.append(", ")
-            buildSelection(tail)
+            render(", ")
+            renderSelection(tail)
           }
         case SelectionSet.Empty              => ()
       }
 
-    def buildColumnSelection[A, B](columnSelection: ColumnSelection[A, B]): Unit =
+    def renderColumnSelection[A, B](columnSelection: ColumnSelection[A, B])(implicit render: Renderer): Unit =
       columnSelection match {
         case ColumnSelection.Constant(value, name) =>
-          builder.append(value.toString) //todo fix escaping
+          render(value) //todo fix escaping
           name match {
-            case Some(name) =>
-              val _ = builder.append(" AS ").append(name)
+            case Some(name) => render(" AS ", name)
             case None       => ()
           }
         case ColumnSelection.Computed(expr, name)  =>
-          buildExpr(expr)
+          renderExpr(expr)
           name match {
             case Some(name) =>
               Expr.exprName(expr) match {
-                case Some(sourceName) if name != sourceName =>
-                  val _ = builder.append(" AS ").append(name)
+                case Some(sourceName) if name != sourceName => render(" AS ", name)
                 case _                                      => ()
               }
             case _          => () //todo what do we do if we don't have a name?
           }
       }
-    def buildTable(table: Table): Unit                                           =
+
+    def renderTable(table: Table)(implicit render: Renderer): Unit =
       table match {
         //The outer reference in this type test cannot be checked at run time?!
-        case sourceTable: self.Table.Source          =>
-          val _ = builder.append(sourceTable.name)
+        case sourceTable: self.Table.Source          => render(sourceTable.name)
         case Table.Joined(joinType, left, right, on) =>
-          buildTable(left)
-          builder.append(joinType match {
+          renderTable(left)
+          render(joinType match {
             case JoinType.Inner      => " INNER JOIN "
             case JoinType.LeftOuter  => " LEFT JOIN "
             case JoinType.RightOuter => " RIGHT JOIN "
             case JoinType.FullOuter  => " OUTER JOIN "
           })
-          buildTable(right)
-          builder.append(" ON ")
-          buildExpr(on)
-          val _ = builder.append(" ")
+          renderTable(right)
+          render(" ON ")
+          renderExpr(on)
+          render(" ")
       }
-    buildReadString(read)
-    builder.toString()
   }
 }
