@@ -58,7 +58,7 @@ trait PostgresModule extends Jdbc { self =>
           case tt @ TByteArray      => val _ = builder.append(tt.cast(value)) // todo still broken
           //something like? val _ = builder.append(tt.cast(value).map("\\\\%03o" format _).mkString("E\'", "", "\'"))
           case tt @ TChar           =>
-            val _ = builder.append("'")
+            builder.append("'")
             builder.append(tt.cast(value)) //todo is this the same as a string? fix escaping
             val _ = builder.append("'")
           case tt @ TInstant        => val _ = builder.append(tt.cast(value)) // todo still broken
