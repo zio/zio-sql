@@ -4,7 +4,7 @@ import java.time.LocalDate
 import java.util.UUID
 
 import zio.Cause
-import zio.random.Random
+import zio.random.{ Random => ZioRandom }
 import zio.test.Assertion._
 import zio.test._
 
@@ -198,10 +198,10 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     testM("parseIdent removes quoting of individual identifiers") {
-      val someString: Gen[Random with Sized, String]    = Gen.anyString
+      val someString: Gen[ZioRandom with Sized, String]    = Gen.anyString
         .filter(x => x.length < 50 && x.length > 1)
       //NOTE: I don't know if property based testing is worth doing here, I just wanted to try it
-      val genTestString: Gen[Random with Sized, String] =
+      val genTestString: Gen[ZioRandom with Sized, String] =
         for {
           string1 <- someString
           string2 <- someString
