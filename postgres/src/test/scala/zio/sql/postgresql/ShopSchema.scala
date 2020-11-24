@@ -6,13 +6,15 @@ trait ShopSchema extends Jdbc { self =>
   import self.ColumnSet._
 
   object Customers     {
+    //https://github.com/zio/zio-sql/issues/320 Once Insert is supported, we can remove created_timestamp_string
     val customers =
       (uuid("id") ++ localDate("dob") ++ string("first_name") ++ string("last_name") ++ boolean(
         "verified"
-      ) ++ zonedDateTime("created_timestamp"))
+      ) ++ string("created_timestamp_string") ++ zonedDateTime("created_timestamp"))
         .table("customers")
 
-    val customerId :*: dob :*: fName :*: lName :*: verified :*: createdTimestamp :*: _ = customers.columns
+    val customerId :*: dob :*: fName :*: lName :*: verified :*: createdString :*: createdTimestamp :*: _ =
+      customers.columns
   }
   object Orders        {
     val orders = (uuid("id") ++ uuid("customer_id") ++ localDate("order_date")).table("orders")
@@ -40,12 +42,5 @@ trait ShopSchema extends Jdbc { self =>
         ) //todo fix #3 quantity should be int, unit price should be bigDecimal, numeric operators only support double ATM.
 
     val fkOrderId :*: fkProductId :*: quantity :*: unitPrice :*: _ = orderDetails.columns
-  }
-
-  object TimestampTests {
-    val timestampTests                                   =
-      (uuid("timestamp_id") ++ string("created_timestamp_string") ++ zonedDateTime("created_timestamp"))
-        .table("timestamp_test")
-    val tId :*: createdString :*: createdTimestamp :*: _ = timestampTests.columns
   }
 }
