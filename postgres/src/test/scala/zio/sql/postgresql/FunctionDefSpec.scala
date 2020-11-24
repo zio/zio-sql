@@ -525,23 +525,22 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     testM("to_timestamp") {
-      import this.TimestampTests._
-
       val query      = select(ToTimestamp(1284352323L)) from customers
       val expected   = ZonedDateTime.of(2010, 9, 13, 4, 32, 3, 0, ZoneId.of(ZoneOffset.UTC.getId))
       val testResult = execute(query).to[ZonedDateTime, ZonedDateTime](identity)
 
       val expectedRoundTripTimestamp = ZonedDateTime.of(2020, 11, 21, 19, 10, 25, 0, ZoneId.of(ZoneOffset.UTC.getId))
       val roundTripQuery             =
-        select(createdString ++ createdTimestamp) from timestampTests
-      val roundTripResults           = execute(roundTripQuery).to[String, ZonedDateTime, (String, ZonedDateTime)] { case row =>
-        row
+        select(createdString ++ createdTimestamp) from customers
+      val roundTripResults           = execute(roundTripQuery).to[String, ZonedDateTime, (String, ZonedDateTime, ZonedDateTime)] {
+        case row =>
+          (row._1, ZonedDateTime.parse(row._1), row._2)
       }
       val roundTripExpected          = List(
-        ("2020-11-21 19:10:25+00", expectedRoundTripTimestamp),
-        ("2020-11-21 15:10:25-04", expectedRoundTripTimestamp),
-        ("2020-11-22 02:10:25+07", expectedRoundTripTimestamp),
-        ("2020-11-21 12:10:25-07", expectedRoundTripTimestamp)
+        ("2020-11-21T19:10:25+00:00", ZonedDateTime.parse("2020-11-21T19:10:25+00:00"), expectedRoundTripTimestamp),
+        ("2020-11-21T15:10:25-04:00", ZonedDateTime.parse("2020-11-21T15:10:25-04:00"), expectedRoundTripTimestamp),
+        ("2020-11-22T02:10:25+07:00", ZonedDateTime.parse("2020-11-22T02:10:25+07:00"), expectedRoundTripTimestamp),
+        ("2020-11-21T12:10:25-07:00", ZonedDateTime.parse("2020-11-21T12:10:25-07:00"), expectedRoundTripTimestamp)
       )
 
       val assertion = for {
