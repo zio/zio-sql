@@ -31,6 +31,7 @@ trait PostgresModule extends Jdbc { self =>
     val Degrees     = FunctionDef[Double, Double](FunctionName("degrees"))
     val Div         = FunctionDef[(Double, Double), Double](FunctionName("div"))
     val Factorial   = FunctionDef[Int, Int](FunctionName("factorial"))
+    val Random      = FunctionDef[Nothing, Double](FunctionName("random"))
     val LPad        = FunctionDef[(String, Int, String), String](FunctionName("lpad"))
     val RPad        = FunctionDef[(String, Int, String), String](FunctionName("rpad"))
     val ToTimestamp = FunctionDef[Long, ZonedDateTime](FunctionName("to_timestamp"))
@@ -40,47 +41,55 @@ trait PostgresModule extends Jdbc { self =>
     val builder = new StringBuilder
 
     def buildExpr[A, B](expr: self.Expr[_, A, B]): Unit = expr match {
-      case Expr.Source(tableName, column)                               =>
+      case Expr.Source(tableName, column)                                            =>
         val _ = builder.append(tableName).append(".").append(column.name)
-      case Expr.Unary(base, op)                                         =>
+      case Expr.Unary(base, op)                                                      =>
         val _ = builder.append(" ").append(op.symbol)
         buildExpr(base)
-      case Expr.Property(base, op)                                      =>
+      case Expr.Property(base, op)                                                   =>
         buildExpr(base)
         val _ = builder.append(" ").append(op.symbol)
-      case Expr.Binary(left, right, op)                                 =>
+      case Expr.Binary(left, right, op)                                              =>
         buildExpr(left)
         builder.append(" ").append(op.symbol).append(" ")
         buildExpr(right)
-      case Expr.Relational(left, right, op)                             =>
+      case Expr.Relational(left, right, op)                                          =>
         buildExpr(left)
         builder.append(" ").append(op.symbol).append(" ")
         buildExpr(right)
-      case Expr.In(value, set)                                          =>
+      case Expr.In(value, set)                                                       =>
         buildExpr(value)
         buildReadString(set)
-      case Expr.Literal(value)                                          =>
+      case Expr.Literal(value)                                                       =>
         val _ = builder.append(value.toString) //todo fix escaping
-      case Expr.AggregationCall(param, aggregation)                     =>
+      case Expr.AggregationCall(param, aggregation)                                  =>
         builder.append(aggregation.name.name)
         builder.append("(")
         buildExpr(param)
         val _ = builder.append(")")
-      case Expr.FunctionCall0(function)                                 =>
+      case Expr.FunctionCall0(function) if function.name.name == "current_date"      =>
         val _ = builder.append(function.name.name)
-      case Expr.FunctionCall1(param, function)                          =>
+      case Expr.FunctionCall0(function) if function.name.name == "current_timestamp" =>
+        val _ = builder.append(function.name.name)
+      case Expr.FunctionCall0(function)                                              =>
+        builder.append(function.name.name)
+        builder.append("(")
+        val _ = builder.append(")")
+      /*builder.append("(")
+        val _ = builder.append(")")*/
+      case Expr.FunctionCall1(param, function)                                       =>
         builder.append(function.name.name)
         builder.append("(")
         buildExpr(param)
         val _ = builder.append(")")
-      case Expr.FunctionCall2(param1, param2, function)                 =>
+      case Expr.FunctionCall2(param1, param2, function)                              =>
         builder.append(function.name.name)
         builder.append("(")
         buildExpr(param1)
         builder.append(",")
         buildExpr(param2)
         val _ = builder.append(")")
-      case Expr.FunctionCall3(param1, param2, param3, function)         =>
+      case Expr.FunctionCall3(param1, param2, param3, function)                      =>
         builder.append(function.name.name)
         builder.append("(")
         buildExpr(param1)
@@ -89,7 +98,7 @@ trait PostgresModule extends Jdbc { self =>
         builder.append(",")
         buildExpr(param3)
         val _ = builder.append(")")
-      case Expr.FunctionCall4(param1, param2, param3, param4, function) =>
+      case Expr.FunctionCall4(param1, param2, param3, param4, function)              =>
         builder.append(function.name.name)
         builder.append("(")
         buildExpr(param1)

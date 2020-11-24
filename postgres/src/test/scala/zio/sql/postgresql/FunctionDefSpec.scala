@@ -3,7 +3,7 @@ package zio.sql.postgresql
 import java.time.{ LocalDate, ZoneId, ZoneOffset, ZonedDateTime }
 import java.util.UUID
 import zio.Cause
-import zio.random.Random
+import zio.random.{ Random => ZioRandom }
 import zio.test.Assertion._
 import zio.test._
 
@@ -197,10 +197,10 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     testM("parseIdent removes quoting of individual identifiers") {
-      val someString: Gen[Random with Sized, String]    = Gen.anyString
+      val someString: Gen[ZioRandom with Sized, String]    = Gen.anyString
         .filter(x => x.length < 50 && x.length > 1)
       //NOTE: I don't know if property based testing is worth doing here, I just wanted to try it
-      val genTestString: Gen[Random with Sized, String] =
+      val genTestString: Gen[ZioRandom with Sized, String] =
         for {
           string1 <- someString
           string2 <- someString
@@ -655,6 +655,17 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       val assertion = for {
         r <- testResult.runCollect
       } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("random") {
+      val query = select(Random()) from customers
+
+      val testResult = execute(query).to[Double, Double](identity)
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(Assertion.isGreaterThanEqualTo(0d) && Assertion.isLessThanEqualTo(1d))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
