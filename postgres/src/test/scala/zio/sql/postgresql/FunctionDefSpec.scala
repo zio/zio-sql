@@ -4,6 +4,7 @@ import java.time.LocalDate
 import java.util.UUID
 
 import zio.Cause
+import zio.random.Random
 import zio.test.Assertion._
 import zio.test._
 
@@ -193,6 +194,37 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       val assertion = for {
         r <- testResult.runCollect
       } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("parseIdent removes quoting of individual identifiers") {
+      val someString: Gen[Random with Sized, String]    = Gen.anyString
+        .filter(x => x.length < 50 && x.length > 1)
+      //NOTE: I don't know if property based testing is worth doing here, I just wanted to try it
+      val genTestString: Gen[Random with Sized, String] =
+        for {
+          string1 <- someString
+          string2 <- someString
+        } yield s"""'"${string1}".${string2}'"""
+
+      val assertion = checkM(genTestString) { (testString) =>
+        val query      = select(ParseIdent(testString)) from customers
+        val testResult = execute(query).to[String, String](identity)
+
+        for {
+          r <- testResult.runCollect
+        } yield assert(r.head)(not(containsString("'")) && not(containsString("\"")))
+
+      }
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("parseIdent fails with invalid identifier") {
+      val query      = select(ParseIdent("\'\"SomeSchema\".someTable.\'")) from customers
+      val testResult = execute(query).to[String, String](identity)
+
+      val assertion = for {
+        r <- testResult.runCollect.run
+      } yield assert(r)(fails(anything))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
