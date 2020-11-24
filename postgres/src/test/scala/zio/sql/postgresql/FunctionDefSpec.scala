@@ -1,8 +1,7 @@
 package zio.sql.postgresql
 
-import java.time.LocalDate
+import java.time.{ LocalDate, ZoneId, ZoneOffset, ZonedDateTime }
 import java.util.UUID
-
 import zio.Cause
 import zio.random.{ Random => ZioRandom }
 import zio.test.Assertion._
@@ -698,6 +697,33 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
+    testM("to_timestamp") {
+      val query      = select(ToTimestamp(1284352323L)) from customers
+      val expected   = ZonedDateTime.of(2010, 9, 13, 4, 32, 3, 0, ZoneId.of(ZoneOffset.UTC.getId))
+      val testResult = execute(query).to[ZonedDateTime, ZonedDateTime](identity)
+
+      val expectedRoundTripTimestamp = ZonedDateTime.of(2020, 11, 21, 19, 10, 25, 0, ZoneId.of(ZoneOffset.UTC.getId))
+      val roundTripQuery             =
+        select(createdString ++ createdTimestamp) from customers
+      val roundTripResults           = execute(roundTripQuery).to[String, ZonedDateTime, (String, ZonedDateTime, ZonedDateTime)] {
+        case row =>
+          (row._1, ZonedDateTime.parse(row._1), row._2)
+      }
+      val roundTripExpected          = List(
+        ("2020-11-21T19:10:25+00:00", ZonedDateTime.parse("2020-11-21T19:10:25+00:00"), expectedRoundTripTimestamp),
+        ("2020-11-21T15:10:25-04:00", ZonedDateTime.parse("2020-11-21T15:10:25-04:00"), expectedRoundTripTimestamp),
+        ("2020-11-22T02:10:25+07:00", ZonedDateTime.parse("2020-11-22T02:10:25+07:00"), expectedRoundTripTimestamp),
+        ("2020-11-21T12:10:25-07:00", ZonedDateTime.parse("2020-11-21T12:10:25-07:00"), expectedRoundTripTimestamp)
+      )
+
+      val assertion = for {
+        single    <- testResult.runCollect
+        roundTrip <- roundTripResults.runCollect
+      } yield assert(single.head)(equalTo(expected)) &&
+        assert(roundTrip)(hasSameElementsDistinct(roundTripExpected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
     testM("replace") {
       val lastNameReplaced = Replace(lName, "'ll'", "'_'") as "lastNameReplaced"
       val computedReplace  = Replace("'special ::ąę::'", "'ąę'", "'__'") as "computedReplace"
@@ -716,6 +742,38 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       } yield assert(r.head)(equalTo(expected))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("lpad") {
+      def runTest(s: String, pad: String) = {
+        val query = select(LPad(postgresStringEscape(s), 5, postgresStringEscape(pad))) from customers
+
+        for {
+          r <- execute(query).to[String, String](identity).runCollect
+        } yield r.head
+      }
+
+      (for {
+        t1 <- assertM(runTest("hi", "xy"))(equalTo("xyxhi"))
+        t2 <- assertM(runTest("hello", "xy"))(equalTo("hello"))
+        t3 <- assertM(runTest("hello world", "xy"))(equalTo("hello"))
+      } yield t1 && t2 && t3).mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("rpad") {
+      def runTest(s: String, pad: String) = {
+        val query = select(RPad(postgresStringEscape(s), 5, postgresStringEscape(pad))) from customers
+
+        for {
+          r <- execute(query).to[String, String](identity).runCollect
+        } yield r.head
+      }
+
+      (for {
+        t1 <- assertM(runTest("hi", "xy"))(equalTo("hixyx"))
+        t2 <- assertM(runTest("hello", "xy"))(equalTo("hello"))
+        t3 <- assertM(runTest("hello world", "xy"))(equalTo("hello"))
+      } yield t1 && t2 && t3).mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
   )
+
+  private def postgresStringEscape(s: String): String = s""" '${s}' """
 }
