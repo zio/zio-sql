@@ -31,6 +31,8 @@ trait PostgresModule extends Jdbc { self =>
     val Degrees     = FunctionDef[Double, Double](FunctionName("degrees"))
     val Div         = FunctionDef[(Double, Double), Double](FunctionName("div"))
     val Factorial   = FunctionDef[Int, Int](FunctionName("factorial"))
+    val LPad        = FunctionDef[(String, Int, String), String](FunctionName("lpad"))
+    val RPad        = FunctionDef[(String, Int, String), String](FunctionName("rpad"))
     val ToTimestamp = FunctionDef[Long, ZonedDateTime](FunctionName("to_timestamp"))
   }
 
