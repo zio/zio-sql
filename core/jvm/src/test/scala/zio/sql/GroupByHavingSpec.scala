@@ -16,6 +16,7 @@ object GroupByHavingSpec extends DefaultRunnableSpec {
 
 object AggregatedProductSchema {
   val sqldsl = new Sql {
+    override def renderDelete(delete: this.Delete[_]): String = ???
     override def renderRead(read: this.Read[_]): String  = ???
     override def renderUpdate(update: Update[_]): String = ???
   }

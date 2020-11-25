@@ -7,6 +7,7 @@ object TestBasicSelect {
   val userSql = new Sql { self =>
     import self.ColumnSet._
 
+    override def renderDelete(delete: this.Delete[_]): String = ???
     override def renderRead(read: this.Read[_]): String       = ???
     override def renderUpdate(update: this.Update[_]): String = ???
 
