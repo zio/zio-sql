@@ -42,6 +42,48 @@ trait PostgresModule extends Jdbc { self =>
     val ToTimestamp                 = FunctionDef[Long, ZonedDateTime](FunctionName("to_timestamp"))
   }
 
+  override def renderUpdate(update: self.Update[_]): String = {
+    val builder = new StringBuilder
+
+    def buildUpdateString[A <: SelectionSet[_]](update: self.Update[_]): Unit =
+      update match {
+        case Update(table, set, whereExpr) =>
+          builder.append("UPDATE ")
+          buildTable(table)
+          builder.append("SET ")
+          buildSet(set)
+          builder.append("WHERE ")
+          buildExpr(whereExpr, builder)
+      }
+
+    def buildTable(table: Table): Unit =
+      table match {
+        //The outer reference in this type test cannot be checked at run time?!
+        case sourceTable: self.Table.Source =>
+          val _ = builder.append(sourceTable.name)
+        case Table.Joined(_, left, _, _)    =>
+          buildTable(left) //TODO restrict Update to only allow sourceTable
+      }
+
+    def buildSet[A <: SelectionSet[_]](set: List[Set[_, A]]): Unit =
+      set match {
+        case head :: tail =>
+          buildExpr(head.lhs, builder)
+          builder.append(" = ")
+          buildExpr(head.rhs, builder)
+          tail.foreach { setEq =>
+            builder.append(", ")
+            buildExpr(setEq.lhs, builder)
+            builder.append(" = ")
+            buildExpr(setEq.rhs, builder)
+          }
+        case Nil          => //TODO restrict Update to not allow empty set
+      }
+
+    buildUpdateString(update)
+    builder.toString()
+  }
+
   private def buildExpr[A, B](expr: self.Expr[_, A, B], builder: StringBuilder): Unit = expr match {
     case Expr.Source(tableName, column)                                            =>
       val _ = builder.append(tableName).append(".").append(column.name)
