@@ -8,6 +8,7 @@ import zio.sql.Jdbc
 trait PostgresModule extends Jdbc { self =>
 
   object PostgresFunctionDef {
+    val Md5         = FunctionDef[String, String](FunctionName("md5"))
     val ParseIdent  = FunctionDef[String, String](FunctionName("parse_ident"))
     val Chr         = FunctionDef[Int, String](FunctionName("chr"))
     val CurrentDate = FunctionDef[Nothing, LocalDate](FunctionName("current_date"))
