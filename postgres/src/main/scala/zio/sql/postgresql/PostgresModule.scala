@@ -1,6 +1,6 @@
 package zio.sql.postgresql
 
-import java.time.{ LocalDate, ZonedDateTime }
+import java.time.{ Instant, LocalDate, LocalTime, ZonedDateTime }
 import zio.sql.Jdbc
 
 /**
@@ -8,34 +8,38 @@ import zio.sql.Jdbc
 trait PostgresModule extends Jdbc { self =>
 
   object PostgresFunctionDef {
-    val Md5         = FunctionDef[String, String](FunctionName("md5"))
-    val ParseIdent  = FunctionDef[String, String](FunctionName("parse_ident"))
-    val Chr         = FunctionDef[Int, String](FunctionName("chr"))
-    val CurrentDate = FunctionDef[Nothing, LocalDate](FunctionName("current_date"))
-    val Initcap     = FunctionDef[String, String](FunctionName("initcap"))
-    val Repeat      = FunctionDef[(String, Int), String](FunctionName("repeat"))
-    val Reverse     = FunctionDef[String, String](FunctionName("reverse"))
-    val TrimScale   = FunctionDef[Double, Double](FunctionName("trim_scale"))
-    val Hex         = FunctionDef[Int, String](FunctionName("to_hex"))
-    val Left        = FunctionDef[(String, Int), String](FunctionName("left"))
-    val Length      = FunctionDef[String, Int](FunctionName("length"))
-    val MinScale    = FunctionDef[Double, Int](FunctionName("min_scale"))
-    val Radians     = FunctionDef[Double, Double](FunctionName("radians"))
-    val Right       = FunctionDef[(String, Int), String](FunctionName("right"))
-    val StartsWith  = FunctionDef[(String, String), Boolean](FunctionName("starts_with"))
-    val Translate   = FunctionDef[(String, String, String), String](FunctionName("translate"))
-    val Trunc       = FunctionDef[Double, Double](FunctionName("trunc"))
-    val Sind        = FunctionDef[Double, Double](FunctionName("sind"))
-    val GCD         = FunctionDef[(Double, Double), Double](FunctionName("gcd"))
-    val LCM         = FunctionDef[(Double, Double), Double](FunctionName("lcm"))
-    val CBRT        = FunctionDef[Double, Double](FunctionName("cbrt"))
-    val Degrees     = FunctionDef[Double, Double](FunctionName("degrees"))
-    val Div         = FunctionDef[(Double, Double), Double](FunctionName("div"))
-    val Factorial   = FunctionDef[Int, Int](FunctionName("factorial"))
-    val Random      = FunctionDef[Nothing, Double](FunctionName("random"))
-    val LPad        = FunctionDef[(String, Int, String), String](FunctionName("lpad"))
-    val RPad        = FunctionDef[(String, Int, String), String](FunctionName("rpad"))
-    val ToTimestamp = FunctionDef[Long, ZonedDateTime](FunctionName("to_timestamp"))
+    val Localtime                   = FunctionDef[Nothing, LocalTime](FunctionName("localtime"))
+    val LocaltimeWithPrecision      = FunctionDef[Int, LocalTime](FunctionName("localtime"))
+    val Localtimestamp              = FunctionDef[Nothing, Instant](FunctionName("localtimestamp"))
+    val LocaltimestampWithPrecision = FunctionDef[Int, Instant](FunctionName("localtimestamp"))
+    val Md5                         = FunctionDef[String, String](FunctionName("md5"))
+    val ParseIdent                  = FunctionDef[String, String](FunctionName("parse_ident"))
+    val Chr                         = FunctionDef[Int, String](FunctionName("chr"))
+    val CurrentDate                 = FunctionDef[Nothing, LocalDate](FunctionName("current_date"))
+    val Initcap                     = FunctionDef[String, String](FunctionName("initcap"))
+    val Repeat                      = FunctionDef[(String, Int), String](FunctionName("repeat"))
+    val Reverse                     = FunctionDef[String, String](FunctionName("reverse"))
+    val TrimScale                   = FunctionDef[Double, Double](FunctionName("trim_scale"))
+    val Hex                         = FunctionDef[Int, String](FunctionName("to_hex"))
+    val Left                        = FunctionDef[(String, Int), String](FunctionName("left"))
+    val Length                      = FunctionDef[String, Int](FunctionName("length"))
+    val MinScale                    = FunctionDef[Double, Int](FunctionName("min_scale"))
+    val Radians                     = FunctionDef[Double, Double](FunctionName("radians"))
+    val Right                       = FunctionDef[(String, Int), String](FunctionName("right"))
+    val StartsWith                  = FunctionDef[(String, String), Boolean](FunctionName("starts_with"))
+    val Translate                   = FunctionDef[(String, String, String), String](FunctionName("translate"))
+    val Trunc                       = FunctionDef[Double, Double](FunctionName("trunc"))
+    val Sind                        = FunctionDef[Double, Double](FunctionName("sind"))
+    val GCD                         = FunctionDef[(Double, Double), Double](FunctionName("gcd"))
+    val LCM                         = FunctionDef[(Double, Double), Double](FunctionName("lcm"))
+    val CBRT                        = FunctionDef[Double, Double](FunctionName("cbrt"))
+    val Degrees                     = FunctionDef[Double, Double](FunctionName("degrees"))
+    val Div                         = FunctionDef[(Double, Double), Double](FunctionName("div"))
+    val Factorial                   = FunctionDef[Int, Int](FunctionName("factorial"))
+    val Random                      = FunctionDef[Nothing, Double](FunctionName("random"))
+    val LPad                        = FunctionDef[(String, Int, String), String](FunctionName("lpad"))
+    val RPad                        = FunctionDef[(String, Int, String), String](FunctionName("rpad"))
+    val ToTimestamp                 = FunctionDef[Long, ZonedDateTime](FunctionName("to_timestamp"))
   }
 
   override def renderRead(read: self.Read[_]): String = {
@@ -68,6 +72,10 @@ trait PostgresModule extends Jdbc { self =>
         builder.append("(")
         buildExpr(param)
         val _ = builder.append(")")
+      case Expr.FunctionCall0(function) if function.name.name == "localtime"         =>
+        val _ = builder.append(function.name.name)
+      case Expr.FunctionCall0(function) if function.name.name == "localtimestamp"    =>
+        val _ = builder.append(function.name.name)
       case Expr.FunctionCall0(function) if function.name.name == "current_date"      =>
         val _ = builder.append(function.name.name)
       case Expr.FunctionCall0(function) if function.name.name == "current_timestamp" =>
