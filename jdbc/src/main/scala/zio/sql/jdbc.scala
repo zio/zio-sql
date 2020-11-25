@@ -60,8 +60,27 @@ trait Jdbc extends zio.sql.Sql {
   type UpdateExecutor = Has[UpdateExecutor.Service]
   object UpdateExecutor {
     trait Service {
-      def execute(Update: Update[_]): IO[Exception, Long]
+      def execute(update: Update[_]): IO[Exception, Int]
     }
+
+    val live: ZLayer[ConnectionPool with Blocking, Nothing, UpdateExecutor] =
+      ZLayer.fromServices[ConnectionPool.Service, Blocking.Service, UpdateExecutor.Service] { (pool, blocking) =>
+        new Service {
+          def execute(update: Update[_]): IO[Exception, Int] =
+            pool.connection
+              .use(conn =>
+                blocking.effectBlocking {
+
+                  val query = renderUpdate(update)
+
+                  val statement = conn.createStatement()
+
+                  statement.executeUpdate(query)
+
+                }.refineToOrDie[Exception]
+              )
+        }
+      }
   }
 
   type ReadExecutor = Has[ReadExecutor.Service]
