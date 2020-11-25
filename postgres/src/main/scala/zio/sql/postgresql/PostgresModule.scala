@@ -1,5 +1,6 @@
 package zio.sql.postgresql
 
+import java.time.{ Instant, LocalDate, LocalTime, ZonedDateTime }
 import zio.sql.Jdbc
 
 /**
@@ -7,52 +8,97 @@ import zio.sql.Jdbc
 trait PostgresModule extends Jdbc { self =>
 
   object PostgresFunctionDef {
-    val Sind = FunctionDef[Double, Double](FunctionName("sind"))
+    val Localtime                   = FunctionDef[Nothing, LocalTime](FunctionName("localtime"))
+    val LocaltimeWithPrecision      = FunctionDef[Int, LocalTime](FunctionName("localtime"))
+    val Localtimestamp              = FunctionDef[Nothing, Instant](FunctionName("localtimestamp"))
+    val LocaltimestampWithPrecision = FunctionDef[Int, Instant](FunctionName("localtimestamp"))
+    val Md5                         = FunctionDef[String, String](FunctionName("md5"))
+    val ParseIdent                  = FunctionDef[String, String](FunctionName("parse_ident"))
+    val Chr                         = FunctionDef[Int, String](FunctionName("chr"))
+    val CurrentDate                 = FunctionDef[Nothing, LocalDate](FunctionName("current_date"))
+    val Initcap                     = FunctionDef[String, String](FunctionName("initcap"))
+    val Repeat                      = FunctionDef[(String, Int), String](FunctionName("repeat"))
+    val Reverse                     = FunctionDef[String, String](FunctionName("reverse"))
+    val TrimScale                   = FunctionDef[Double, Double](FunctionName("trim_scale"))
+    val Hex                         = FunctionDef[Int, String](FunctionName("to_hex"))
+    val Left                        = FunctionDef[(String, Int), String](FunctionName("left"))
+    val Length                      = FunctionDef[String, Int](FunctionName("length"))
+    val MinScale                    = FunctionDef[Double, Int](FunctionName("min_scale"))
+    val Radians                     = FunctionDef[Double, Double](FunctionName("radians"))
+    val Right                       = FunctionDef[(String, Int), String](FunctionName("right"))
+    val StartsWith                  = FunctionDef[(String, String), Boolean](FunctionName("starts_with"))
+    val Translate                   = FunctionDef[(String, String, String), String](FunctionName("translate"))
+    val Trunc                       = FunctionDef[Double, Double](FunctionName("trunc"))
+    val Sind                        = FunctionDef[Double, Double](FunctionName("sind"))
+    val GCD                         = FunctionDef[(Double, Double), Double](FunctionName("gcd"))
+    val LCM                         = FunctionDef[(Double, Double), Double](FunctionName("lcm"))
+    val CBRT                        = FunctionDef[Double, Double](FunctionName("cbrt"))
+    val Degrees                     = FunctionDef[Double, Double](FunctionName("degrees"))
+    val Div                         = FunctionDef[(Double, Double), Double](FunctionName("div"))
+    val Factorial                   = FunctionDef[Int, Int](FunctionName("factorial"))
+    val Random                      = FunctionDef[Nothing, Double](FunctionName("random"))
+    val LPad                        = FunctionDef[(String, Int, String), String](FunctionName("lpad"))
+    val RPad                        = FunctionDef[(String, Int, String), String](FunctionName("rpad"))
+    val ToTimestamp                 = FunctionDef[Long, ZonedDateTime](FunctionName("to_timestamp"))
   }
 
   override def renderRead(read: self.Read[_]): String = {
     val builder = new StringBuilder
 
     def buildExpr[A, B](expr: self.Expr[_, A, B]): Unit = expr match {
-      case Expr.Source(tableName, column)                               =>
+      case Expr.Source(tableName, column)                                            =>
         val _ = builder.append(tableName).append(".").append(column.name)
-      case Expr.Unary(base, op)                                         =>
+      case Expr.Unary(base, op)                                                      =>
         val _ = builder.append(" ").append(op.symbol)
         buildExpr(base)
-      case Expr.Property(base, op)                                      =>
+      case Expr.Property(base, op)                                                   =>
         buildExpr(base)
         val _ = builder.append(" ").append(op.symbol)
-      case Expr.Binary(left, right, op)                                 =>
+      case Expr.Binary(left, right, op)                                              =>
         buildExpr(left)
         builder.append(" ").append(op.symbol).append(" ")
         buildExpr(right)
-      case Expr.Relational(left, right, op)                             =>
+      case Expr.Relational(left, right, op)                                          =>
         buildExpr(left)
         builder.append(" ").append(op.symbol).append(" ")
         buildExpr(right)
-      case Expr.In(value, set)                                          =>
+      case Expr.In(value, set)                                                       =>
         buildExpr(value)
         buildReadString(set)
-      case Expr.Literal(value)                                          =>
+      case Expr.Literal(value)                                                       =>
         val _ = builder.append(value.toString) //todo fix escaping
-      case Expr.AggregationCall(param, aggregation)                     =>
+      case Expr.AggregationCall(param, aggregation)                                  =>
         builder.append(aggregation.name.name)
         builder.append("(")
         buildExpr(param)
         val _ = builder.append(")")
-      case Expr.FunctionCall1(param, function)                          =>
+      case Expr.FunctionCall0(function) if function.name.name == "localtime"         =>
+        val _ = builder.append(function.name.name)
+      case Expr.FunctionCall0(function) if function.name.name == "localtimestamp"    =>
+        val _ = builder.append(function.name.name)
+      case Expr.FunctionCall0(function) if function.name.name == "current_date"      =>
+        val _ = builder.append(function.name.name)
+      case Expr.FunctionCall0(function) if function.name.name == "current_timestamp" =>
+        val _ = builder.append(function.name.name)
+      case Expr.FunctionCall0(function)                                              =>
+        builder.append(function.name.name)
+        builder.append("(")
+        val _ = builder.append(")")
+      /*builder.append("(")
+        val _ = builder.append(")")*/
+      case Expr.FunctionCall1(param, function)                                       =>
         builder.append(function.name.name)
         builder.append("(")
         buildExpr(param)
         val _ = builder.append(")")
-      case Expr.FunctionCall2(param1, param2, function)                 =>
+      case Expr.FunctionCall2(param1, param2, function)                              =>
         builder.append(function.name.name)
         builder.append("(")
         buildExpr(param1)
         builder.append(",")
         buildExpr(param2)
         val _ = builder.append(")")
-      case Expr.FunctionCall3(param1, param2, param3, function)         =>
+      case Expr.FunctionCall3(param1, param2, param3, function)                      =>
         builder.append(function.name.name)
         builder.append("(")
         buildExpr(param1)
@@ -61,7 +107,7 @@ trait PostgresModule extends Jdbc { self =>
         builder.append(",")
         buildExpr(param3)
         val _ = builder.append(")")
-      case Expr.FunctionCall4(param1, param2, param3, param4, function) =>
+      case Expr.FunctionCall4(param1, param2, param3, param4, function)              =>
         builder.append(function.name.name)
         builder.append("(")
         buildExpr(param1)
@@ -186,7 +232,7 @@ trait PostgresModule extends Jdbc { self =>
     def buildColumnSelection[A, B](columnSelection: ColumnSelection[A, B]): Unit =
       columnSelection match {
         case ColumnSelection.Constant(value, name) =>
-          builder.append(value.toString()) //todo fix escaping
+          builder.append(value.toString) //todo fix escaping
           name match {
             case Some(name) =>
               val _ = builder.append(" AS ").append(name)
