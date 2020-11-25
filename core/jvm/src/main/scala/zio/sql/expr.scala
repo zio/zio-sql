@@ -287,7 +287,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     val OctetLength = FunctionDef[String, Int](FunctionName("octet_length"))
     val Overlay     = FunctionDef[(String, String, Int, Option[Int]), String](FunctionName("overlay"))
     val Position    = FunctionDef[(String, String), Int](FunctionName("position"))
-    val Replace     = FunctionDef[(String, String), String](FunctionName("replace"))
+    val Replace     = FunctionDef[(String, String, String), String](FunctionName("replace"))
     val Rtrim       = FunctionDef[String, String](FunctionName("rtrim"))
     val Substring   = FunctionDef[(String, Int, Option[Int]), String](FunctionName("substring"))
     //TODO substring regex
