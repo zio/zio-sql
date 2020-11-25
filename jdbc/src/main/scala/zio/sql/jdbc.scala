@@ -2,7 +2,7 @@ package zio.sql
 
 import java.sql._
 import java.io.IOException
-import java.time.{ OffsetDateTime, OffsetTime, ZoneId, ZoneOffset, ZonedDateTime }
+import java.time.{ OffsetDateTime, OffsetTime, ZoneId, ZoneOffset }
 
 import zio.{ Chunk, Has, IO, Managed, ZIO, ZLayer, ZManaged }
 import zio.blocking.Blocking
