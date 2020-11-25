@@ -1,9 +1,8 @@
 package zio.sql
 
 import java.sql._
-
 import java.io.IOException
-
+import java.time.{ ZoneId, ZoneOffset }
 import zio.{ Chunk, Has, IO, Managed, ZIO, ZLayer, ZManaged }
 import zio.blocking.Blocking
 import zio.stream.{ Stream, ZStream }
@@ -193,7 +192,14 @@ trait Jdbc extends zio.sql.Sql {
           tryDecode[java.util.UUID](
             java.util.UUID.fromString(column.fold(resultSet.getString(_), resultSet.getString(_)))
           )
-        case TZonedDateTime      => ???
+        case TZonedDateTime      =>
+          tryDecode[java.time.ZonedDateTime](
+            java.time.ZonedDateTime
+              .ofInstant(
+                column.fold(resultSet.getTimestamp(_), resultSet.getTimestamp(_)).toInstant,
+                ZoneId.of(ZoneOffset.UTC.getId)
+              )
+          )
         case TDialectSpecific(_) => ???
         case t @ Nullable()      => extractColumn(column, resultSet, t.typeTag, false).map(Option(_))
       }

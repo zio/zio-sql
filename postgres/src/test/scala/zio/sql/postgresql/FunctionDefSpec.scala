@@ -1,9 +1,9 @@
 package zio.sql.postgresql
 
-import java.time.LocalDate
+import java.time._
 import java.util.UUID
-
 import zio.Cause
+import zio.random.{ Random => ZioRandom }
 import zio.test.Assertion._
 import zio.test._
 
@@ -14,6 +14,45 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
   import PostgresFunctionDef._
 
   val spec = suite("Postgres FunctionDef")(
+    testM("abs") {
+      val query = select(Abs(-3.14159)) from customers
+
+      val expected = 3.14159
+
+      val testResult = execute(query).to[Double, Double](identity)
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("log") {
+      val query = select(Log(2.0, 32.0)) from customers
+
+      val expected: Double = 5
+
+      val testResult = execute(query).to[Double, Double](identity)
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("acos") {
+      val query = select(Acos(-1.0)) from customers
+
+      val expected = 3.141592653589793
+
+      val testResult = execute(query).to[Double, Double](identity)
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
     testM("repeat") {
       val query = select(Repeat("'Zio'", 3)) from customers
 
@@ -27,10 +66,36 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
+    testM("asin") {
+      val query = select(Asin(0.5)) from customers
+
+      val expected = 0.5235987755982989
+
+      val testResult = execute(query).to[Double, Double](identity)
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
     testM("ln") {
       val query = select(Ln(3.0)) from customers
 
       val expected = 1.0986122886681097
+
+      val testResult = execute(query).to[Double, Double](identity)
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("atan") {
+      val query = select(Atan(10.0)) from customers
+
+      val expected = 1.4711276743037347
 
       val testResult = execute(query).to[Double, Double](identity)
 
@@ -53,10 +118,36 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
+    testM("cos") {
+      val query = select(Cos(3.141592653589793)) from customers
+
+      val expected = -1.0
+
+      val testResult = execute(query).to[Double, Double](identity)
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
     testM("exp") {
       val query = select(Exp(1.0)) from customers
 
       val expected = 2.718281828459045
+
+      val testResult = execute(query).to[Double, Double](identity)
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("floor") {
+      val query = select(Floor(-3.14159)) from customers
+
+      val expected = -4.0
 
       val testResult = execute(query).to[Double, Double](identity)
 
@@ -98,6 +189,134 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       val expected = 0.5
 
       val testResult = execute(query).to[Double, Double](identity)
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("localtime") {
+      val query = select(Localtime()) from customers
+
+      val testResult = execute(query).to[LocalTime, LocalTime](identity)
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head.toString)(Assertion.matchesRegex("([0-9]{2}):[0-9]{2}:[0-9]{2}\\.[0-9]{3}"))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("localtime with precision") {
+      val precision = 0
+      val query     = select(LocaltimeWithPrecision(precision)) from customers
+
+      val testResult = execute(query).to[LocalTime, LocalTime](identity)
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head.toString)(Assertion.matchesRegex(s"([0-9]{2}):[0-9]{2}:[0-9].[0-9]{$precision}"))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("localtimestamp") {
+      val query = select(Localtimestamp()) from customers
+
+      val testResult = execute(query).to[Instant, Instant](identity)
+
+      val assertion =
+        for {
+          r <- testResult.runCollect
+        } yield assert(r.head.toString)(
+          Assertion.matchesRegex("([0-9]{4})-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{6}Z")
+        )
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("localtimestamp with precision") {
+      val precision = 2
+
+      val millis =
+        if (precision == 0) ""
+        else if (precision <= 3) List.fill(3)("[0-9]").mkString(".", "", "")
+        else List.fill(6)("[0-9]").mkString(".", "", "")
+
+      val query = select(LocaltimestampWithPrecision(precision)) from customers
+
+      val testResult = execute(query).to[Instant, Instant](identity)
+
+      val assertion =
+        for {
+          r <- testResult.runCollect
+        } yield assert(r.head.toString)(
+          Assertion.matchesRegex(s"([0-9]{4})-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}${millis}Z")
+        )
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("md5") {
+      val query = select(Md5("'hello, world!'")) from customers
+
+      val expected = "3adbbad1791fbae3ec908894c4963870"
+
+      val testResult = execute(query).to[String, String](identity)
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("parseIdent removes quoting of individual identifiers") {
+      val someString: Gen[ZioRandom with Sized, String]    = Gen.anyString
+        .filter(x => x.length < 50 && x.length > 1)
+      //NOTE: I don't know if property based testing is worth doing here, I just wanted to try it
+      val genTestString: Gen[ZioRandom with Sized, String] =
+        for {
+          string1 <- someString
+          string2 <- someString
+        } yield s"""'"${string1}".${string2}'"""
+
+      val assertion = checkM(genTestString) { (testString) =>
+        val query      = select(ParseIdent(testString)) from customers
+        val testResult = execute(query).to[String, String](identity)
+
+        for {
+          r <- testResult.runCollect
+        } yield assert(r.head)(not(containsString("'")) && not(containsString("\"")))
+
+      }
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("parseIdent fails with invalid identifier") {
+      val query      = select(ParseIdent("\'\"SomeSchema\".someTable.\'")) from customers
+      val testResult = execute(query).to[String, String](identity)
+
+      val assertion = for {
+        r <- testResult.runCollect.run
+      } yield assert(r)(fails(anything))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("sqrt") {
+      val query = select(Sqrt(121.0)) from customers
+
+      val expected = 11.0
+
+      val testResult = execute(query).to[Double, Double](identity)
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("chr") {
+      val query = select(Chr(65)) from customers
+
+      val expected = "A"
+
+      val testResult = execute(query).to[String, String](identity)
 
       val assertion = for {
         r <- testResult.runCollect
@@ -419,6 +638,19 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
+    testM("tan") {
+      val query = select(Tan(0.7853981634)) from customers
+
+      val expected = 1.0000000000051035
+
+      val testResult = execute(query).to[Double, Double](identity)
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
     testM("gcd") {
       val query = select(GCD(1071d, 462d)) from customers
 
@@ -497,6 +729,17 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
+    testM("random") {
+      val query = select(Random()) from customers
+
+      val testResult = execute(query).to[Double, Double](identity)
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(Assertion.isGreaterThanEqualTo(0d) && Assertion.isLessThanEqualTo(1d))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
     testM("Can concat strings with concat function") {
 
       val query = select(Concat("first_name", "last_name") as "fullname") from customers
@@ -525,6 +768,33 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
+    testM("to_timestamp") {
+      val query      = select(ToTimestamp(1284352323L)) from customers
+      val expected   = ZonedDateTime.of(2010, 9, 13, 4, 32, 3, 0, ZoneId.of(ZoneOffset.UTC.getId))
+      val testResult = execute(query).to[ZonedDateTime, ZonedDateTime](identity)
+
+      val expectedRoundTripTimestamp = ZonedDateTime.of(2020, 11, 21, 19, 10, 25, 0, ZoneId.of(ZoneOffset.UTC.getId))
+      val roundTripQuery             =
+        select(createdString ++ createdTimestamp) from customers
+      val roundTripResults           = execute(roundTripQuery).to[String, ZonedDateTime, (String, ZonedDateTime, ZonedDateTime)] {
+        case row =>
+          (row._1, ZonedDateTime.parse(row._1), row._2)
+      }
+      val roundTripExpected          = List(
+        ("2020-11-21T19:10:25+00:00", ZonedDateTime.parse("2020-11-21T19:10:25+00:00"), expectedRoundTripTimestamp),
+        ("2020-11-21T15:10:25-04:00", ZonedDateTime.parse("2020-11-21T15:10:25-04:00"), expectedRoundTripTimestamp),
+        ("2020-11-22T02:10:25+07:00", ZonedDateTime.parse("2020-11-22T02:10:25+07:00"), expectedRoundTripTimestamp),
+        ("2020-11-21T12:10:25-07:00", ZonedDateTime.parse("2020-11-21T12:10:25-07:00"), expectedRoundTripTimestamp)
+      )
+
+      val assertion = for {
+        single    <- testResult.runCollect
+        roundTrip <- roundTripResults.runCollect
+      } yield assert(single.head)(equalTo(expected)) &&
+        assert(roundTrip)(hasSameElementsDistinct(roundTripExpected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
     testM("replace") {
       val lastNameReplaced = Replace(lName, "'ll'", "'_'") as "lastNameReplaced"
       val computedReplace  = Replace("'special ::ąę::'", "'ąę'", "'__'") as "computedReplace"
@@ -543,6 +813,38 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       } yield assert(r.head)(equalTo(expected))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("lpad") {
+      def runTest(s: String, pad: String) = {
+        val query = select(LPad(postgresStringEscape(s), 5, postgresStringEscape(pad))) from customers
+
+        for {
+          r <- execute(query).to[String, String](identity).runCollect
+        } yield r.head
+      }
+
+      (for {
+        t1 <- assertM(runTest("hi", "xy"))(equalTo("xyxhi"))
+        t2 <- assertM(runTest("hello", "xy"))(equalTo("hello"))
+        t3 <- assertM(runTest("hello world", "xy"))(equalTo("hello"))
+      } yield t1 && t2 && t3).mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("rpad") {
+      def runTest(s: String, pad: String) = {
+        val query = select(RPad(postgresStringEscape(s), 5, postgresStringEscape(pad))) from customers
+
+        for {
+          r <- execute(query).to[String, String](identity).runCollect
+        } yield r.head
+      }
+
+      (for {
+        t1 <- assertM(runTest("hi", "xy"))(equalTo("hixyx"))
+        t2 <- assertM(runTest("hello", "xy"))(equalTo("hello"))
+        t3 <- assertM(runTest("hello world", "xy"))(equalTo("hello"))
+      } yield t1 && t2 && t3).mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
   )
+
+  private def postgresStringEscape(s: String): String = s""" '${s}' """
 }
