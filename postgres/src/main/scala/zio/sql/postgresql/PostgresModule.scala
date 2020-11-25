@@ -40,6 +40,7 @@ trait PostgresModule extends Jdbc { self =>
     val LPad                        = FunctionDef[(String, Int, String), String](FunctionName("lpad"))
     val RPad                        = FunctionDef[(String, Int, String), String](FunctionName("rpad"))
     val ToTimestamp                 = FunctionDef[Long, ZonedDateTime](FunctionName("to_timestamp"))
+    val PgClientEncoding            = FunctionDef[Nothing, String](FunctionName("pg_client_encoding"))
   }
 
   override def renderUpdate(update: self.Update[_]): String = {
