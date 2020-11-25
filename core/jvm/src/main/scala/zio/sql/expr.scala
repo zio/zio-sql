@@ -267,8 +267,8 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     val Cos         = FunctionDef[Double, Double](FunctionName("cos"))
     val Exp         = FunctionDef[Double, Double](FunctionName("exp"))
     val Floor       = FunctionDef[Double, Double](FunctionName("floor"))
-    //val Log = FunctionDef[Double, Double](FunctionName("log")) //not part of SQL 2011 spec
     val Ln          = FunctionDef[Double, Double](FunctionName("ln"))
+    val Log         = FunctionDef[(Double, Double), Double](FunctionName("log"))
     val Mod         = FunctionDef[(Double, Double), Double](FunctionName("mod"))
     val Power       = FunctionDef[(Double, Double), Double](FunctionName("power"))
     val Round       = FunctionDef[(Double, Int), Double](FunctionName("round"))
