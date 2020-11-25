@@ -4,15 +4,46 @@ import java.time.LocalDate
 import java.util.UUID
 
 import zio.Cause
-import zio.test._
 import zio.test.Assertion._
+import zio.test._
 
 import scala.language.postfixOps
 
 object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
 
-  import this.Customers._
-  import this.Orders._
+  import Customers._
+  import Orders._
+
+  private def customerSelectJoseAssertion(condition: Expr[_, customers.TableType, Boolean]) = {
+    case class Customer(id: UUID, fname: String, lname: String, verified: Boolean, dateOfBirth: LocalDate)
+
+    val query =
+      select(customerId ++ fName ++ lName ++ verified ++ dob) from customers where (condition)
+
+    println(renderRead(query))
+
+    val expected =
+      Seq(
+        Customer(
+          UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc"),
+          "Jose",
+          "Wiggins",
+          false,
+          LocalDate.parse("1987-03-23")
+        )
+      )
+
+    val testResult = execute(query)
+      .to[UUID, String, String, Boolean, LocalDate, Customer] { case row =>
+        Customer(row._1, row._2, row._3, row._4, row._5)
+      }
+
+    val assertion = for {
+      r <- testResult.runCollect
+    } yield assert(r)(hasSameElementsDistinct(expected))
+
+    assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+  }
 
   val spec = suite("Postgres module")(
     testM("Can select from single table") {
@@ -67,35 +98,63 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("Can select with property operator") {
-      case class Customer(id: UUID, fname: String, lname: String, verified: Boolean, dateOfBirth: LocalDate)
-
-      val query = select(customerId ++ fName ++ lName ++ verified ++ dob) from customers where (verified isNotTrue)
-
-      println(renderRead(query))
-
-      val expected =
-        Seq(
-          Customer(
-            UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc"),
-            "Jose",
-            "Wiggins",
-            false,
-            LocalDate.parse("1987-03-23")
-          )
-        )
-
-      val testResult = execute(query)
-        .to[UUID, String, String, Boolean, LocalDate, Customer] { case row =>
-          Customer(row._1, row._2, row._3, row._4, row._5)
-        }
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r)(hasSameElementsDistinct(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    testM("Can select with property unary operator") {
+      customerSelectJoseAssertion(verified isNotTrue)
     },
+// TODO: uncomment when #311 (rendering literals) will be fixed
+//    testM("Can select with property binary operator with UUID") {
+//      customerSelectJoseAssertion(customerId === UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc"))
+//    },
+//    testM("Can select with property binary operator with String") {
+//      customerSelectJoseAssertion(fName === "Jose")
+//    },
+//    testM("Can select with property binary operator with LocalDate") {
+//      customerSelectJoseAssertion(dob === LocalDate.parse("1987-03-23"))
+//    },
+//    testM("Can select with property binary operator with LocalDateTime") {
+//      customerSelectJoseAssertion(dob === LocalDateTime.parse("1987-03-23T00:00:00"))
+//    },
+//    testM("Can select with property binary operator with OffsetDateTime") {
+//      customerSelectJoseAssertion(dob === OffsetDateTime.parse("1987-03-23T00:00:00Z"))
+//    },
+//    testM("Can select with property binary operator with ZonedLocalDate") {
+//      customerSelectJoseAssertion(dob === ZonedDateTime.parse("1987-03-23T00:00:00Z"))
+//    },
+//    testM("Can select with property binary operator with Instant") {
+//      customerSelectJoseAssertion(dob === Instant.parse("1987-03-23T00:00:00Z"))
+//    },
+//    testM("Can select with property binary operator with numbers") {
+//      case class OrderDetails(orderId: UUID, product_id: UUID, quantity: Int, unitPrice: BigDecimal)
+//
+//      val orderDetailQuantity  = 3
+//      val orderDetailUnitPrice = BigDecimal(80.0)
+//      val condition            = (quantity === orderDetailQuantity) && (unitPrice === orderDetailUnitPrice)
+//      val query                =
+//        select(fkOrderId ++ fkProductId ++ quantity ++ unitPrice) from orderDetails where (condition)
+//
+//      println(renderRead(query))
+//
+//      val expected =
+//        Seq(
+//          OrderDetails(
+//            UUID.fromString("763a7c39-833f-4ee8-9939-e80dfdbfc0fc"),
+//            UUID.fromString("105a2701-ef93-4e25-81ab-8952cc7d9daa"),
+//            orderDetailQuantity,
+//            orderDetailUnitPrice
+//          )
+//        )
+//
+//      val testResult = execute(query)
+//        .to[UUID, UUID, Int, BigDecimal, OrderDetails] { case row =>
+//          OrderDetails(row._1, row._2, row._3, row._4)
+//        }
+//
+//      val assertion = for {
+//        r <- testResult.runCollect
+//      } yield assert(r)(hasSameElementsDistinct(expected))
+//
+//      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+//    },
     testM("Can select from single table with limit, offset and order by") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
@@ -184,6 +243,32 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
       } yield assert(r)(hasSameElementsDistinct(expected))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("Can select using like") {
+      case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
+
+      val query = select(customerId ++ fName ++ lName ++ dob) from customers where (fName like "'Jo%'")
+
+      println(renderRead(query))
+      val expected = Seq(
+        Customer(
+          UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc"),
+          "Jose",
+          "Wiggins",
+          LocalDate.parse("1987-03-23")
+        )
+      )
+
+      val testResult = execute(query)
+        .to[UUID, String, String, LocalDate, Customer] { case row =>
+          Customer(row._1, row._2, row._3, row._4)
+        }
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r)(hasSameElementsDistinct(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
     // testM("Can delete all from a single table") { TODO: Does not work on 2.12 yet
     //   val query = deleteFrom(customers)
@@ -210,5 +295,4 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
     //   assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     // }
   )
-
 }

@@ -53,6 +53,9 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     def <=[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.LessThanEqual)
 
+    def like[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
+      Expr.Relational(self, that, RelationalOp.Like)
+
     def &[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsIntegral[B1]): Expr[F :||: F2, A1, B1] =
       Expr.Binary(self, that, BinaryOp.AndBit[B1]())
 
@@ -264,8 +267,8 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     val Cos         = FunctionDef[Double, Double](FunctionName("cos"))
     val Exp         = FunctionDef[Double, Double](FunctionName("exp"))
     val Floor       = FunctionDef[Double, Double](FunctionName("floor"))
-    //val Log = FunctionDef[Double, Double](FunctionName("log")) //not part of SQL 2011 spec
     val Ln          = FunctionDef[Double, Double](FunctionName("ln"))
+    val Log         = FunctionDef[(Double, Double), Double](FunctionName("log"))
     val Mod         = FunctionDef[(Double, Double), Double](FunctionName("mod"))
     val Power       = FunctionDef[(Double, Double), Double](FunctionName("power"))
     val Round       = FunctionDef[(Double, Int), Double](FunctionName("round"))
@@ -284,7 +287,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     val OctetLength = FunctionDef[String, Int](FunctionName("octet_length"))
     val Overlay     = FunctionDef[(String, String, Int, Option[Int]), String](FunctionName("overlay"))
     val Position    = FunctionDef[(String, String), Int](FunctionName("position"))
-    val Replace     = FunctionDef[(String, String), String](FunctionName("replace"))
+    val Replace     = FunctionDef[(String, String, String), String](FunctionName("replace"))
     val Rtrim       = FunctionDef[String, String](FunctionName("rtrim"))
     val Substring   = FunctionDef[(String, Int, Option[Int]), String](FunctionName("substring"))
     //TODO substring regex
