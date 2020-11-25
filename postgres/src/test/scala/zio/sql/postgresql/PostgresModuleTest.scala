@@ -191,13 +191,14 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
       val query = select(customerId ++ fName ++ lName ++ dob) from customers where (fName like "'Jo%'")
 
       println(renderRead(query))
-      val expected =
-            UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc"),
-            "Jose",
-            "Wiggins",
-            LocalDate.parse("1987-03-23")
-          )
+      val expected = Seq(
+        Customer(
+          UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc"),
+          "Jose",
+          "Wiggins",
+          LocalDate.parse("1987-03-23")
         )
+      )
 
       val testResult = execute(query)
         .to[UUID, String, String, LocalDate, Customer] { case row =>
