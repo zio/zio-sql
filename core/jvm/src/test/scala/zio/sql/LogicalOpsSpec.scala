@@ -34,6 +34,10 @@ class LogicalOpsSpec extends DefaultRunnableSpec {
     test("not works on boolean column") {
       val selectNotDeleted = selectAll.where(deleted.not)
       assert(selectNotDeleted)(anything)
+    },
+    test("like works on a string column") {
+      val query = selectAll.where(name like "%")
+      assert(query)(anything)
     }
   )
 }

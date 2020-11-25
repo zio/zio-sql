@@ -243,7 +243,32 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
       } yield assert(r)(hasSameElementsDistinct(expected))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("Can select using like") {
+      case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
+
+      val query = select(customerId ++ fName ++ lName ++ dob) from customers where (fName like "'Jo%'")
+
+      println(renderRead(query))
+      val expected = Seq(
+        Customer(
+          UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc"),
+          "Jose",
+          "Wiggins",
+          LocalDate.parse("1987-03-23")
+        )
+      )
+
+      val testResult = execute(query)
+        .to[UUID, String, String, LocalDate, Customer] { case row =>
+          Customer(row._1, row._2, row._3, row._4)
+        }
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r)(hasSameElementsDistinct(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
   )
-
 }
