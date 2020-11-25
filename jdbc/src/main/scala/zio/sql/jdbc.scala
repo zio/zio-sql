@@ -190,15 +190,14 @@ trait Jdbc extends zio.sql.Sql {
             column
               .fold(resultSet.getTimestamp(_), resultSet.getTimestamp(_))
               .toLocalDateTime()
-              .atOffset(ZoneOffset.of(ZoneId.systemDefault().getId))
+              .atOffset(ZoneOffset.UTC)
           )
         case TOffsetTime         =>
           tryDecode[OffsetTime](
             column
-              .fold(resultSet.getTimestamp(_), resultSet.getTimestamp(_))
-              .toLocalDateTime()
+              .fold(resultSet.getTime(_), resultSet.getTime(_))
               .toLocalTime
-              .atOffset(ZoneOffset.of(ZoneId.systemDefault().getId))
+              .atOffset(ZoneOffset.UTC)
           )
         case TShort              => tryDecode[Short](column.fold(resultSet.getShort(_), resultSet.getShort(_)))
         case TString             => tryDecode[String](column.fold(resultSet.getString(_), resultSet.getString(_)))
