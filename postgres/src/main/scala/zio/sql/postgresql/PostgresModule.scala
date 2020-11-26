@@ -2,40 +2,109 @@ package zio.sql.postgresql
 
 import zio.sql.{ Jdbc, Renderer }
 
+import java.time.{ Instant, LocalDate, LocalTime, ZonedDateTime }
+
 /**
  */
 trait PostgresModule extends Jdbc { self =>
 
   object PostgresFunctionDef {
-    val Initcap    = FunctionDef[String, String](FunctionName("initcap"))
-    val Repeat     = FunctionDef[(String, Int), String](FunctionName("repeat"))
-    val Reverse    = FunctionDef[String, String](FunctionName("reverse"))
-    val TrimScale  = FunctionDef[Double, Double](FunctionName("trim_scale"))
-    val Hex        = FunctionDef[Int, String](FunctionName("to_hex"))
-    val Left       = FunctionDef[(String, Int), String](FunctionName("left"))
-    val Length     = FunctionDef[String, Int](FunctionName("length"))
-    val MinScale   = FunctionDef[Double, Int](FunctionName("min_scale"))
-    val Radians    = FunctionDef[Double, Double](FunctionName("radians"))
-    val Right      = FunctionDef[(String, Int), String](FunctionName("right"))
-    val StartsWith = FunctionDef[(String, String), Boolean](FunctionName("starts_with"))
-    val Translate  = FunctionDef[(String, String, String), String](FunctionName("translate"))
-    val Trunc      = FunctionDef[Double, Double](FunctionName("trunc"))
-    val Sind       = FunctionDef[Double, Double](FunctionName("sind"))
-    val GCD        = FunctionDef[(Double, Double), Double](FunctionName("gcd"))
-    val LCM        = FunctionDef[(Double, Double), Double](FunctionName("lcm"))
-    val CBRT       = FunctionDef[Double, Double](FunctionName("cbrt"))
-    val Degrees    = FunctionDef[Double, Double](FunctionName("degrees"))
-    val Div        = FunctionDef[(Double, Double), Double](FunctionName("div"))
-    val Factorial  = FunctionDef[Int, Int](FunctionName("factorial"))
+    val CharLength                  = FunctionDef[String, Int](FunctionName("character_length"))
+    val Localtime                   = FunctionDef[Any, LocalTime](FunctionName("localtime"))
+    val LocaltimeWithPrecision      = FunctionDef[Int, LocalTime](FunctionName("localtime"))
+    val Localtimestamp              = FunctionDef[Any, Instant](FunctionName("localtimestamp"))
+    val LocaltimestampWithPrecision = FunctionDef[Int, Instant](FunctionName("localtimestamp"))
+    val Md5                         = FunctionDef[String, String](FunctionName("md5"))
+    val ParseIdent                  = FunctionDef[String, String](FunctionName("parse_ident"))
+    val Chr                         = FunctionDef[Int, String](FunctionName("chr"))
+    val CurrentDate                 = FunctionDef[Any, LocalDate](FunctionName("current_date"))
+    val Initcap                     = FunctionDef[String, String](FunctionName("initcap"))
+    val Repeat                      = FunctionDef[(String, Int), String](FunctionName("repeat"))
+    val Reverse                     = FunctionDef[String, String](FunctionName("reverse"))
+    val TrimScale                   = FunctionDef[Double, Double](FunctionName("trim_scale"))
+    val Hex                         = FunctionDef[Int, String](FunctionName("to_hex"))
+    val Left                        = FunctionDef[(String, Int), String](FunctionName("left"))
+    val Length                      = FunctionDef[String, Int](FunctionName("length"))
+    val MinScale                    = FunctionDef[Double, Int](FunctionName("min_scale"))
+    val Radians                     = FunctionDef[Double, Double](FunctionName("radians"))
+    val Right                       = FunctionDef[(String, Int), String](FunctionName("right"))
+    val StartsWith                  = FunctionDef[(String, String), Boolean](FunctionName("starts_with"))
+    val Translate                   = FunctionDef[(String, String, String), String](FunctionName("translate"))
+    val Trunc                       = FunctionDef[Double, Double](FunctionName("trunc"))
+    val Sind                        = FunctionDef[Double, Double](FunctionName("sind"))
+    val GCD                         = FunctionDef[(Double, Double), Double](FunctionName("gcd"))
+    val LCM                         = FunctionDef[(Double, Double), Double](FunctionName("lcm"))
+    val CBRT                        = FunctionDef[Double, Double](FunctionName("cbrt"))
+    val Degrees                     = FunctionDef[Double, Double](FunctionName("degrees"))
+    val Div                         = FunctionDef[(Double, Double), Double](FunctionName("div"))
+    val Factorial                   = FunctionDef[Int, Int](FunctionName("factorial"))
+    val Random                      = FunctionDef[Any, Double](FunctionName("random"))
+    val LPad                        = FunctionDef[(String, Int, String), String](FunctionName("lpad"))
+    val RPad                        = FunctionDef[(String, Int, String), String](FunctionName("rpad"))
+    val ToTimestamp                 = FunctionDef[Long, ZonedDateTime](FunctionName("to_timestamp"))
+    val PgClientEncoding            = FunctionDef[Any, String](FunctionName("pg_client_encoding"))
   }
 
   override def renderRead(read: self.Read[_]): String = {
     implicit val render: Renderer = Renderer()
     PostgresRenderModule.renderReadImpl(read)
+    println(render.toString)
     render.toString
   }
 
-  object PostgresRenderModule { //todo split out
+  def renderUpdate(update: Update[_]): String = {
+    implicit val render: Renderer = Renderer()
+    PostgresRenderModule.renderUpdateImpl(update)
+    println(render.toString)
+    render.toString
+  }
+
+  override def renderDelete(delete: Delete[_]): String = {
+    implicit val render: Renderer = Renderer()
+    PostgresRenderModule.renderDeleteImpl(delete)
+    println(render.toString)
+    render.toString
+  }
+
+  object PostgresRenderModule {
+    //todo split out to separate module
+
+    def renderDeleteImpl(delete: Delete[_])(implicit render: Renderer) = {
+      render("DELETE FROM ")
+      renderTable(delete.table)
+      delete.whereExpr match {
+        case Expr.Literal(true) => ()
+        case _                  =>
+          render(" WHERE ")
+          renderExpr(delete.whereExpr)
+      }
+    }
+
+    def renderUpdateImpl(update: Update[_])(implicit render: Renderer) =
+      update match {
+        case Update(table, set, whereExpr) =>
+          render("UPDATE ")
+          renderTable(table)
+          render(" SET ")
+          renderSet(set)
+          render(" WHERE ")
+          renderExpr(whereExpr)
+      }
+
+    def renderSet[A <: SelectionSet[_]](set: List[Set[_, A]])(implicit render: Renderer): Unit =
+      set match {
+        case head :: tail =>
+          renderExpr(head.lhs)
+          render(" = ")
+          renderExpr(head.rhs)
+          tail.foreach { setEq =>
+            render(", ")
+            renderExpr(setEq.lhs)
+            render(" = ")
+            renderExpr(setEq.rhs)
+          }
+        case Nil          => //TODO restrict Update to not allow empty set
+      }
 
     private[zio] def renderLit[A, B](lit: self.Expr.Literal[_])(implicit render: Renderer): Unit = {
       import TypeTag._
@@ -43,9 +112,7 @@ trait PostgresModule extends Jdbc { self =>
         case tt @ TByteArray      => render(tt.cast(lit.value)) // todo still broken
         //something like? render(tt.cast(lit.value).map("\\\\%03o" format _).mkString("E\'", "", "\'"))
         case tt @ TChar           =>
-          render("'")
-          render(tt.cast(lit.value)) //todo is this the same as a string? fix escaping
-          render("'")
+          render("'", tt.cast(lit.value), "'") //todo is this the same as a string? fix escaping
         case tt @ TInstant        => render(tt.cast(lit.value)) // todo still broken
         case tt @ TLocalDate      => render(tt.cast(lit.value)) // todo still broken
         case tt @ TLocalDateTime  => render(tt.cast(lit.value)) // todo still broken
@@ -93,6 +160,7 @@ trait PostgresModule extends Jdbc { self =>
         render(aggregation.name.name, "(")
         renderExpr(p)
         render(")")
+      case Expr.FunctionCall0(fn)                 => render(fn.name.name) //todo parens or no parens?
       case Expr.FunctionCall1(p, fn)              =>
         render(fn.name.name, "(")
         renderExpr(p)
