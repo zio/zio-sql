@@ -1,7 +1,7 @@
 package zio.sql
 
 class Renderer(val builder: StringBuilder) extends AnyVal {
-  //not vararg to avoid allocating `Seq`s
+  //not using vararg to avoid allocating `Seq`s
   def apply(s1: Any): Unit = {
     val _ = builder.append(s1)
   }
