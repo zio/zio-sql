@@ -4,6 +4,10 @@ import zio.sql.Jdbc
 
 trait SqlServerModule extends Jdbc { self =>
 
+  override def renderDelete(delete: Delete[_]): String = ??? // TODO: https://github.com/zio/zio-sql/issues/159
+
+  override def renderUpdate(update: self.Update[_]): String = ???
+
   override def renderRead(read: self.Read[_]): String = {
     val builder = new StringBuilder
 
@@ -34,6 +38,8 @@ trait SqlServerModule extends Jdbc { self =>
         builder.append("(")
         buildExpr(param)
         val _ = builder.append(")")
+      case Expr.FunctionCall0(function)                                 =>
+        val _ = builder.append(function.name.name)
       case Expr.FunctionCall1(param, function)                          =>
         builder.append(function.name.name)
         builder.append("(")
