@@ -22,11 +22,14 @@ trait MysqlRunnableSpec extends JdbcRunnableSpec with MysqlModule {
       .mysql()
       .map(a => Has(ConnectionPool.Config(a.get.jdbcUrl, connProperties(a.get.username, a.get.password))))
 
-    val connectionPoolLayer = ZLayer.identity[Blocking] >+> poolConfigLayer >>> ConnectionPool.live
-    (ZLayer.identity[Blocking] ++ connectionPoolLayer >+> ReadExecutor.live >+> DeleteExecutor.live).orDie
+    val connectionPoolLayer = Blocking.live >+> poolConfigLayer >>> ConnectionPool.live
+
+    (ZLayer.identity[
+      Blocking
+    ] ++ connectionPoolLayer >+> ReadExecutor.live >+> UpdateExecutor.live >+> DeleteExecutor.live >+> TransactionExecutor.live).orDie
   }
 
-  override val jdbcTestEnvironment: ZLayer[ZEnv, Nothing, TestEnvironment with ReadExecutor with DeleteExecutor] =
-    TestEnvironment.live ++ executorLayer
+  override val jdbcTestEnvironment: ZLayer[ZEnv, Nothing, Environment] =
+    TestEnvironment.live >+> executorLayer
 
 }
