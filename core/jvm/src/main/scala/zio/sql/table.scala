@@ -46,7 +46,6 @@ trait TableModule { self: ExprModule with SelectModule =>
 
       def table(name0: TableName): Table.Source.Aux_[ColumnsRepr, A :*: B] =
         new Table.Source[ColumnsRepr] {
-          //type Repr[C] = ColumnsRepr[C]
           type Cols = A :*: B
           val name: TableName                      = name0
           val columnSchema: ColumnSchema[A :*: B]  = ColumnSchema(self)
@@ -135,8 +134,8 @@ trait TableModule { self: ExprModule with SelectModule =>
     trait Insanity {
       def ahhhhhhhhhhhhh[A]: A
     }
+    // NOTE: Moving Repr[_] from a type parameter to a type member breaks deleteFrom compilation on 2.12
     sealed trait Source[Repr[_]] extends Table with Insanity {
-      // type Repr[_]
       type Cols
       val name: TableName
       val columnSchema: ColumnSchema[Cols]
@@ -146,11 +145,9 @@ trait TableModule { self: ExprModule with SelectModule =>
     }
     object Source {
       type Aux_[F[_], B]   = Table.Source[F] {
-        //type Repr[X] = F[X]
         type Cols = B
       }
       type Aux[F[_], A, B] = Table.Source[F] {
-        //type Repr[X]   = F[X]
         type TableType = A
         type Cols      = B
       }
