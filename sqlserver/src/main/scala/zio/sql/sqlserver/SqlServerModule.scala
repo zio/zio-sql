@@ -34,8 +34,12 @@ trait SqlServerModule extends Jdbc { self =>
         builder.append("(")
         buildExpr(param)
         val _ = builder.append(")")
+      case Expr.ParenlessFunctionCall0(function)                        =>
+        val _ = builder.append(function)
       case Expr.FunctionCall0(function)                                 =>
-        val _ = builder.append(function.name.name)
+        builder.append(function)
+        builder.append("(")
+        val _ = builder.append(")")
       case Expr.FunctionCall1(param, function)                          =>
         builder.append(function.name.name)
         builder.append("(")
