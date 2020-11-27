@@ -2,7 +2,8 @@ package zio.sql
 
 import java.sql._
 import java.io.IOException
-import java.time.{ ZoneId, ZoneOffset }
+import java.time.{ OffsetDateTime, OffsetTime, ZoneId, ZoneOffset }
+
 import zio.{ Chunk, Has, IO, Managed, ZIO, ZLayer, ZManaged }
 import zio.blocking.Blocking
 import zio.stream.{ Stream, ZStream }
@@ -39,15 +40,47 @@ trait Jdbc extends zio.sql.Sql {
   type DeleteExecutor = Has[DeleteExecutor.Service]
   object DeleteExecutor {
     trait Service {
-      def execute(delete: Delete[_, _]): IO[Exception, Unit]
+      def execute(delete: Delete[_]): IO[Exception, Int]
     }
+
+    val live: ZLayer[ConnectionPool with Blocking, Nothing, DeleteExecutor] =
+      ZLayer.fromServices[ConnectionPool.Service, Blocking.Service, DeleteExecutor.Service] { (pool, blocking) =>
+        new Service {
+          def execute(delete: Delete[_]): IO[Exception, Int] = pool.connection.use { conn =>
+            blocking.effectBlocking {
+              val query     = renderDelete(delete)
+              val statement = conn.createStatement()
+              statement.executeUpdate(query)
+            }.refineToOrDie[Exception]
+          }
+        }
+      }
   }
 
   type UpdateExecutor = Has[UpdateExecutor.Service]
   object UpdateExecutor {
     trait Service {
-      def execute(Update: Update[_]): IO[Exception, Long]
+      def execute(update: Update[_]): IO[Exception, Int]
     }
+
+    val live: ZLayer[ConnectionPool with Blocking, Nothing, UpdateExecutor] =
+      ZLayer.fromServices[ConnectionPool.Service, Blocking.Service, UpdateExecutor.Service] { (pool, blocking) =>
+        new Service {
+          def execute(update: Update[_]): IO[Exception, Int] =
+            pool.connection
+              .use(conn =>
+                blocking.effectBlocking {
+
+                  val query = renderUpdate(update)
+
+                  val statement = conn.createStatement()
+
+                  statement.executeUpdate(query)
+
+                }.refineToOrDie[Exception]
+              )
+        }
+      }
   }
 
   type ReadExecutor = Has[ReadExecutor.Service]
@@ -184,8 +217,20 @@ trait Jdbc extends zio.sql.Sql {
             column.fold(resultSet.getTimestamp(_), resultSet.getTimestamp(_)).toLocalDateTime().toLocalTime()
           )
         case TLong               => tryDecode[Long](column.fold(resultSet.getLong(_), resultSet.getLong(_)))
-        case TOffsetDateTime     => ???
-        case TOffsetTime         => ???
+        case TOffsetDateTime     =>
+          tryDecode[OffsetDateTime](
+            column
+              .fold(resultSet.getTimestamp(_), resultSet.getTimestamp(_))
+              .toLocalDateTime()
+              .atOffset(ZoneOffset.UTC)
+          )
+        case TOffsetTime         =>
+          tryDecode[OffsetTime](
+            column
+              .fold(resultSet.getTime(_), resultSet.getTime(_))
+              .toLocalTime
+              .atOffset(ZoneOffset.UTC)
+          )
         case TShort              => tryDecode[Short](column.fold(resultSet.getShort(_), resultSet.getShort(_)))
         case TString             => tryDecode[String](column.fold(resultSet.getString(_), resultSet.getString(_)))
         case TUUID               =>
@@ -236,6 +281,10 @@ trait Jdbc extends zio.sql.Sql {
   }
 
   def execute[A <: SelectionSet[_]](read: Read[A]): ExecuteBuilder[A, read.ResultType] = new ExecuteBuilder(read)
+
+  def execute(delete: Delete[_]): ZIO[DeleteExecutor, Exception, Int] = ZIO.accessM[DeleteExecutor](
+    _.get.execute(delete)
+  )
 
   class ExecuteBuilder[Set <: SelectionSet[_], Output](val read: Read.Aux[Output, Set]) {
     import zio.stream._
