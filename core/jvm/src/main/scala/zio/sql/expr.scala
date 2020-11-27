@@ -158,7 +158,8 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
       def typeTag: TypeTag[Z] = implicitly[TypeTag[Z]]
     }
 
-    sealed case class ParenlessFunctionCall0[Z: TypeTag](function: Z) extends InvariantExpr[Features.Function0, Any, Z] {
+    sealed case class ParenlessFunctionCall0[Z: TypeTag](function: Z)
+        extends InvariantExpr[Features.Function0, Any, Z] {
       def typeTag: TypeTag[Z] = implicitly[TypeTag[Z]]
     }
 
