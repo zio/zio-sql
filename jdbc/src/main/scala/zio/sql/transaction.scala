@@ -46,7 +46,7 @@ trait TransactionModule { self: SelectModule with DeleteModule with UpdateModule
     case class Select[A <: SelectionSet[_]](read: self.Read[A])
         extends Transaction[Any, Exception, zio.stream.Stream[Exception, A]]
     case class Update[A](read: self.Update[A])                                    extends Transaction[Any, Exception, A]
-    case class Delete[A](read: self.Delete[_, A])                                 extends Transaction[Any, Exception, A]
+    case class Delete[A](read: self.Delete[_])                                    extends Transaction[Any, Exception, A]
     case class FoldCauseM[R, E, A, B](tx: Transaction[R, E, A], k: K[R, E, A, B]) extends Transaction[R, E, B]
 
     case class K[R, E, A, B](onHalt: Cause[E] => Transaction[R, E, B], onSuccess: A => Transaction[R, E, B])
@@ -59,7 +59,7 @@ trait TransactionModule { self: SelectModule with DeleteModule with UpdateModule
       Transaction.Select(read)
     def update[A](update: self.Update[A]): Transaction[Any, Exception, A]                                              =
       Update(update)
-    def delete[A](delete: self.Delete[_, A]): Transaction[Any, Exception, A]                                           =
+    def delete[A](delete: self.Delete[_]): Transaction[Any, Exception, A]                                              =
       Delete(delete)
 
   }
