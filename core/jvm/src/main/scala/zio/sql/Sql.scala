@@ -18,6 +18,8 @@ trait Sql extends SelectModule with DeleteModule with UpdateModule with ExprModu
     SelectBuilder(selection)
 
   def deleteFrom[F[_], A, B](table: Table.Source.Aux[F, A, B]): Delete[A] = Delete(table, true)
+  // def deleteFrom[F[_], A, B, C](table: C)(implicit ev: C =:= Table.Source.Aux[F, A, B]): Delete[A] =
+  //   Delete(table, true)
 
   def update[A](table: Table.Aux[A]): UpdateBuilder[A] = UpdateBuilder(table)
 

@@ -60,9 +60,9 @@ trait PostgresModule extends Jdbc { self =>
     def buildTable(table: Table): Unit =
       table match {
         //The outer reference in this type test cannot be checked at run time?!
-        case sourceTable: self.Table.Source =>
+        case sourceTable: self.Table.Source[_] =>
           val _ = builder.append(sourceTable.name)
-        case Table.Joined(_, left, _, _)    =>
+        case Table.Joined(_, left, _, _)       =>
           buildTable(left) //TODO restrict Update to only allow sourceTable
       }
 
@@ -232,7 +232,7 @@ trait PostgresModule extends Jdbc { self =>
   private def buildTable(table: Table, builder: StringBuilder): Unit =
     table match {
       //The outer reference in this type test cannot be checked at run time?!
-      case sourceTable: self.Table.Source          =>
+      case sourceTable: self.Table.Source[_]       =>
         val _ = builder.append(sourceTable.name)
       case Table.Joined(joinType, left, right, on) =>
         buildTable(left, builder)

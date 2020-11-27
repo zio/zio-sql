@@ -203,7 +203,7 @@ trait SqlServerModule extends Jdbc { self =>
     def buildTable(table: Table): Unit                                           =
       table match {
         //The outer reference in this type test cannot be checked at run time?!
-        case sourceTable: self.Table.Source          =>
+        case sourceTable: self.Table.Source[_]       =>
           val _ = builder.append(sourceTable.name)
         case Table.Joined(joinType, left, right, on) =>
           buildTable(left)
