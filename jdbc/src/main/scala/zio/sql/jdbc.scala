@@ -2,7 +2,7 @@ package zio.sql
 
 import java.sql._
 import java.io.IOException
-import java.time.format.DateTimeFormatter
+import java.time.{ OffsetDateTime, OffsetTime, ZoneOffset }
 
 import zio.{ Chunk, Has, IO, Managed, ZIO, ZLayer, ZManaged }
 import zio.blocking.Blocking
@@ -185,11 +185,19 @@ trait Jdbc extends zio.sql.Sql {
             column.fold(resultSet.getTimestamp(_), resultSet.getTimestamp(_)).toLocalDateTime().toLocalTime()
           )
         case TLong               => tryDecode[Long](column.fold(resultSet.getLong(_), resultSet.getLong(_)))
-        case TOffsetDateTime     => ???
+        case TOffsetDateTime     =>
+          tryDecode[OffsetDateTime](
+            column
+              .fold(resultSet.getTimestamp(_), resultSet.getTimestamp(_))
+              .toLocalDateTime()
+              .atOffset(ZoneOffset.UTC)
+          )
         case TOffsetTime         =>
-          val format = DateTimeFormatter.ofPattern("HH:mm:ss.SSSSSSx")
-          tryDecode[java.time.OffsetTime](
-            java.time.OffsetTime.parse(column.fold(resultSet.getString(_), resultSet.getString(_)), format)
+          tryDecode[OffsetTime](
+            column
+              .fold(resultSet.getTime(_), resultSet.getTime(_))
+              .toLocalTime
+              .atOffset(ZoneOffset.UTC)
           )
         case TShort              => tryDecode[Short](column.fold(resultSet.getShort(_), resultSet.getShort(_)))
         case TString             => tryDecode[String](column.fold(resultSet.getString(_), resultSet.getString(_)))
