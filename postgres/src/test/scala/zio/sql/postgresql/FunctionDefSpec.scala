@@ -843,6 +843,17 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
         t2 <- assertM(runTest("hello", "xy"))(equalTo("hello"))
         t3 <- assertM(runTest("hello world", "xy"))(equalTo("hello"))
       } yield t1 && t2 && t3).mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("pg_client_encoding") {
+      val query = select(PgClientEncoding()) from customers
+
+      val testResult = execute(query).to[String, String](identity)
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo("UTF8"))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
   )
 
