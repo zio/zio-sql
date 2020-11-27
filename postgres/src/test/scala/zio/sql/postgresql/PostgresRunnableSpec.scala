@@ -21,12 +21,14 @@ trait PostgresRunnableSpec extends JdbcRunnableSpec with PostgresModule {
       .postgres("postgres:alpine:13")
       .map(a => Has(ConnectionPool.Config(a.get.jdbcUrl, connProperties(a.get.username, a.get.password))))
 
-    val connectionPoolLayer = Blocking.live >+> poolConfigLayer >>> ConnectionPool.live
+    val connectionPoolLayer = ZLayer.identity[Blocking] >+> poolConfigLayer >>> ConnectionPool.live
 
-    (Blocking.live ++ connectionPoolLayer >+> ReadExecutor.live >+> UpdateExecutor.live >+> DeleteExecutor.live >+> TransactionExecutor.live).orDie
+    (ZLayer.identity[
+      Blocking
+    ] ++ connectionPoolLayer >+> ReadExecutor.live >+> UpdateExecutor.live >+> DeleteExecutor.live >+> TransactionExecutor.live).orDie
   }
 
   override val jdbcTestEnvironment: ZLayer[ZEnv, Nothing, Environment] =
-    TestEnvironment.live ++ executorLayer
+    TestEnvironment.live >+> executorLayer
 
 }
