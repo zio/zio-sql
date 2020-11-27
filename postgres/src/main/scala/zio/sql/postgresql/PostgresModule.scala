@@ -109,18 +109,18 @@ trait PostgresModule extends Jdbc { self =>
     private[zio] def renderLit[A, B](lit: self.Expr.Literal[_])(implicit render: Renderer): Unit = {
       import TypeTag._
       lit.typeTag match {
-        case tt @ TByteArray      => render(tt.cast(lit.value)) // todo still broken
+        case tt @ TByteArray      => render(tt.cast(lit.value))                     // todo still broken
         //something like? render(tt.cast(lit.value).map("\\\\%03o" format _).mkString("E\'", "", "\'"))
         case tt @ TChar           =>
           render("'", tt.cast(lit.value), "'") //todo is this the same as a string? fix escaping
-        case tt @ TInstant        => render(tt.cast(lit.value)) // todo still broken
-        case tt @ TLocalDate      => render(tt.cast(lit.value)) // todo still broken
-        case tt @ TLocalDateTime  => render(tt.cast(lit.value)) // todo still broken
-        case tt @ TLocalTime      => render(tt.cast(lit.value)) // todo still broken
-        case tt @ TOffsetDateTime => render(tt.cast(lit.value)) // todo still broken
-        case tt @ TOffsetTime     => render(tt.cast(lit.value)) // todo still broken
-        case tt @ TUUID           => render(tt.cast(lit.value)) // todo still broken
-        case tt @ TZonedDateTime  => render(tt.cast(lit.value)) // todo still broken
+        case tt @ TInstant        => render("TIMESTAMP '", tt.cast(lit.value), "'") //todo test
+        case tt @ TLocalDate      => render(tt.cast(lit.value))                     // todo still broken
+        case tt @ TLocalDateTime  => render(tt.cast(lit.value))                     // todo still broken
+        case tt @ TLocalTime      => render(tt.cast(lit.value))                     // todo still broken
+        case tt @ TOffsetDateTime => render(tt.cast(lit.value))                     // todo still broken
+        case tt @ TOffsetTime     => render(tt.cast(lit.value))                     // todo still broken
+        case tt @ TUUID           => render(tt.cast(lit.value))                     // todo still broken
+        case tt @ TZonedDateTime  => render(tt.cast(lit.value))                     // todo still broken
 
         case TByte       => render(lit.value)           //default toString is probably ok
         case TBigDecimal => render(lit.value)           //default toString is probably ok
