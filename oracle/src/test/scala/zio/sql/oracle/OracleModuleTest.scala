@@ -7,8 +7,8 @@ package zio.sql.oracle
 //import zio.test.Assertion._
 
 /* NOTE: Test is failing due to Oracle TestContainer timeZone issue
-* Ref: https://github.com/testcontainers/testcontainers-java/issues/2313
-* */
+ * Ref: https://github.com/testcontainers/testcontainers-java/issues/2313
+ * */
 
 object OracleModuleTest { //extends OracleRunnableSpec with ShopSchema {
 
