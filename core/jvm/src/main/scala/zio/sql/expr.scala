@@ -158,7 +158,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
       def typeTag: TypeTag[Z] = implicitly[TypeTag[Z]]
     }
 
-    sealed case class ParenlessFunctionCall0[Z: TypeTag](function: Z)
+    sealed case class ParenlessFunctionCall0[Z: TypeTag](function: ParenlessDef[Z])
         extends InvariantExpr[Features.Function0, Any, Z] {
       def typeTag: TypeTag[Z] = implicitly[TypeTag[Z]]
     }
@@ -199,6 +199,12 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     ) extends InvariantExpr[Features.Union[F1, Features.Union[F2, Features.Union[F3, F4]]], A, Z] {
       def typeTag: TypeTag[Z] = implicitly[TypeTag[Z]]
     }
+  }
+
+  sealed case class ParenlessDef[+B](name: FunctionName) { self =>
+
+    def apply[B1 >: B]()(implicit typeTag: TypeTag[B1]): Expr[Features.Function0, Any, B1] =
+      Expr.ParenlessFunctionCall0(self: ParenlessDef[B1])
   }
 
   sealed case class AggregationDef[-A, +B](name: FunctionName) { self =>

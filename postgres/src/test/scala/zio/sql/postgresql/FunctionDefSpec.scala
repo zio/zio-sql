@@ -40,7 +40,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     testM("timeofday") {
-      val query = select(Timeofday) from customers
+      val query = select(Timeofday()) from customers
 
       val testResult = execute(query).to[String, String](identity)
 

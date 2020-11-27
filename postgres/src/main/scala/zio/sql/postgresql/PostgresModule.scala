@@ -10,8 +10,8 @@ trait PostgresModule extends Jdbc { self =>
 
   object PostgresFunctionDef {
     val Sind        = FunctionDef[Double, Double](FunctionName("sind"))
-    val Timeofday   = Expr.ParenlessFunctionCall0[String]("timeofday")
-    val CurrentTime = FunctionDef[Any, OffsetTime](FunctionName("current_time"))
+    val Timeofday   = FunctionDef[Any, String](FunctionName("timeofday"))
+    val CurrentTime = ParenlessDef[OffsetTime](FunctionName("current_time"))
   }
 
   override def renderRead(read: self.Read[_]): String = {
@@ -45,9 +45,9 @@ trait PostgresModule extends Jdbc { self =>
         buildExpr(param)
         val _ = builder.append(")")
       case Expr.ParenlessFunctionCall0(function)                        =>
-        val _ = builder.append(function)
+        val _ = builder.append(function.name.name)
       case Expr.FunctionCall0(function)                                 =>
-        builder.append(function)
+        builder.append(function.name.name)
         builder.append("(")
         val _ = builder.append(")")
       case Expr.FunctionCall1(param, function)                          =>
