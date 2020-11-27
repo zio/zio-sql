@@ -1,3 +1,6 @@
+-- TODO: currently id fields are storing a UUID.   varchar is a rather slow and inefficient way to store a UUID
+--  (though easier to bootstrap a test).  Consider a more efficient method of storage as referenced in
+--  https://mysqlserverteam.com/storing-uuid-values-in-mysql-tables/
 create table customers
 (
     id varchar(36) not null primary key,
