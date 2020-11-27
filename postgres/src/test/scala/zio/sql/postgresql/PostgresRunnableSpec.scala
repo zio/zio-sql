@@ -17,17 +17,16 @@ trait PostgresRunnableSpec extends JdbcRunnableSpec with PostgresModule {
     props
   }
 
-  private val executorLayer = {
+  private val executorLayer: ZLayer[Blocking, Nothing, ReadExecutor with DeleteExecutor] = {
     val poolConfigLayer = TestContainer
       .postgres("postgres:alpine:13")
       .map(a => Has(ConnectionPool.Config(a.get.jdbcUrl, connProperties(a.get.username, a.get.password))))
 
-    val connectionPoolLayer = Blocking.live >+> poolConfigLayer >>> ConnectionPool.live
-
-    (Blocking.live ++ connectionPoolLayer >>> ReadExecutor.live).orDie
+    val connectionPoolLayer = ZLayer.identity[Blocking] >+> poolConfigLayer >>> ConnectionPool.live
+    (ZLayer.identity[Blocking] ++ connectionPoolLayer >+> ReadExecutor.live >+> DeleteExecutor.live).orDie
   }
 
-  override val jdbcTestEnvironment: ZLayer[ZEnv, Nothing, TestEnvironment with ReadExecutor] =
+  override val jdbcTestEnvironment: ZLayer[ZEnv, Nothing, TestEnvironment with ReadExecutor with DeleteExecutor] =
     TestEnvironment.live ++ executorLayer
 
 }

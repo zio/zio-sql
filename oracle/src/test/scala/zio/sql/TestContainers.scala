@@ -17,8 +17,8 @@ object TestContainer {
   /* NOTE: TestContainer is not building remotely: Caused by: java.sql.SQLException: ORA-00604: error occurred at recursive SQL level 1
   [info] ORA-01882: timezone region not found.
   This happens only on Oracle DB container testing.
-  */
-  
+   */
+
   def oracle(imageName: String): ZLayer[Blocking, Throwable, Has[OracleContainer]] =
     ZManaged.make {
       effectBlocking {
