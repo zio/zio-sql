@@ -5,6 +5,9 @@ import zio.sql.Jdbc
 trait MysqlModule extends Jdbc { self =>
   object MysqlFunctionDef {}
 
+  override def renderUpdate(update: Update[_]): String = ???
+  override def renderDelete(delete: Delete[_]): String = ???
+
   override def renderRead(read: self.Read[_]): String = {
     val builder = new StringBuilder
 
