@@ -6,8 +6,8 @@ import zio.test.Assertion._
 
 object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
-  import this.Customers._
-  import this.FunctionDef._
+  import Customers._
+  import FunctionDef._
 
   val spec = suite("Mysql FunctionDef")(
     testM("sin") {
