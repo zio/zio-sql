@@ -1,12 +1,14 @@
 package zio.sql.postgresql
 
-import zio.sql.{ Jdbc, Renderer }
+import zio.sql.{ Jdbc, Renderer, Rendering }
 
 import java.time.{ Instant, LocalDate, LocalTime, ZonedDateTime }
 
 /**
  */
 trait PostgresModule extends Jdbc { self =>
+
+  override type Renderer
 
   object PostgresFunctionDef {
     val CharLength                  = FunctionDef[String, Int](FunctionName("character_length"))
@@ -136,59 +138,60 @@ trait PostgresModule extends Jdbc { self =>
       }
     }
 
-    private[zio] def renderExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
-      case Expr.Source(tableName, column)         => render(tableName, ".", column.name)
-      case Expr.Unary(base, op)                   =>
-        render(" ", op.symbol)
-        renderExpr(base)
-      case Expr.Property(base, op)                =>
-        renderExpr(base)
-        render(" ", op.symbol)
-      case Expr.Binary(left, right, op)           =>
-        renderExpr(left)
-        render(" ", op.symbol, " ")
-        renderExpr(right)
-      case Expr.Relational(left, right, op)       =>
-        renderExpr(left)
-        render(" ", op.symbol, " ")
-        renderExpr(right)
-      case Expr.In(value, set)                    =>
-        renderExpr(value)
-        renderReadImpl(set)
-      case lit: Expr.Literal[_]                   => renderLit(lit)
-      case Expr.AggregationCall(p, aggregation)   =>
-        render(aggregation.name.name, "(")
-        renderExpr(p)
-        render(")")
-      case Expr.FunctionCall0(fn)                 => render(fn.name.name) //todo parens or no parens?
-      case Expr.FunctionCall1(p, fn)              =>
-        render(fn.name.name, "(")
-        renderExpr(p)
-        render(")")
-      case Expr.FunctionCall2(p1, p2, fn)         =>
-        render(fn.name.name, "(")
-        renderExpr(p1)
-        render(",")
-        renderExpr(p2)
-        render(")")
-      case Expr.FunctionCall3(p1, p2, p3, fn)     =>
-        render(fn.name.name, "(")
-        renderExpr(p1)
-        render(",")
-        renderExpr(p2)
-        render(",")
-        renderExpr(p3)
-        render(")")
-      case Expr.FunctionCall4(p1, p2, p3, p4, fn) =>
-        render(fn.name.name, "(")
-        renderExpr(p1)
-        render(",")
-        renderExpr(p2)
-        render(",")
-        renderExpr(p3)
-        render(",")
-        renderExpr(p4)
-        render(")")
+    implicit case object UpdateRendering extends Rendering[Expr[_, _, _]] {
+      override def rendering(expr: Expr[_, _, _])(implicit render: Renderer): Unit = expr match {
+        case Expr.Source(tableName, column)         => render(tableName, ".", column.name)
+        case Expr.Unary(base, op)                   =>
+          render(" ", op.symbol, base)
+        case Expr.Property(base, op)                =>
+          renderExpr(base)
+          render(" ", op.symbol)
+        case Expr.Binary(left, right, op)           =>
+          renderExpr(left)
+          render(" ", op.symbol, " ")
+          renderExpr(right)
+        case Expr.Relational(left, right, op)       =>
+          renderExpr(left)
+          render(" ", op.symbol, " ")
+          renderExpr(right)
+        case Expr.In(value, set)                    =>
+          renderExpr(value)
+          renderReadImpl(set)
+        case lit: Expr.Literal[_]                   => renderLit(lit)
+        case Expr.AggregationCall(p, aggregation)   =>
+          render(aggregation.name.name, "(")
+          renderExpr(p)
+          render(")")
+        case Expr.FunctionCall0(fn)                 => render(fn.name.name) //todo parens or no parens?
+        case Expr.FunctionCall1(p, fn)              =>
+          render(fn.name.name, "(")
+          renderExpr(p)
+          render(")")
+        case Expr.FunctionCall2(p1, p2, fn)         =>
+          render(fn.name.name, "(")
+          renderExpr(p1)
+          render(",")
+          renderExpr(p2)
+          render(")")
+        case Expr.FunctionCall3(p1, p2, p3, fn)     =>
+          render(fn.name.name, "(")
+          renderExpr(p1)
+          render(",")
+          renderExpr(p2)
+          render(",")
+          renderExpr(p3)
+          render(")")
+        case Expr.FunctionCall4(p1, p2, p3, p4, fn) =>
+          render(fn.name.name, "(")
+          renderExpr(p1)
+          render(",")
+          renderExpr(p2)
+          render(",")
+          renderExpr(p3)
+          render(",")
+          renderExpr(p4)
+          render(")")
+      }
     }
 
     private[zio] def renderReadImpl[A <: SelectionSet[_]](read: self.Read[_])(implicit render: Renderer): Unit =
