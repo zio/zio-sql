@@ -249,7 +249,7 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
     testM("Can select using like") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
-      val query = select(customerId ++ fName ++ lName ++ dob) from customers where (fName like "'Jo%'")
+      val query = select(customerId ++ fName ++ lName ++ dob) from customers where (fName like "Jo%")
 
       println(renderRead(query))
       val expected = Seq(

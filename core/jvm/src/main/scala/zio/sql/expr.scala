@@ -22,6 +22,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     def *[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =
       Expr.Binary(self, that, BinaryOp.Mul[B1]())
 
+    //todo do something special for divide by 0? also Mod/log/whatever else is really a partial function.. PartialExpr?
     def /[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =
       Expr.Binary(self, that, BinaryOp.Div[B1]())
 
@@ -161,7 +162,8 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
       def typeTag: TypeTag[Z] = implicitly[TypeTag[Z]]
     }
 
-    sealed case class FunctionCall0[F, A, B, Z: TypeTag](function: FunctionDef[B, Z]) extends InvariantExpr[F, A, Z] {
+    sealed case class FunctionCall0[Z: TypeTag](function: FunctionDef[Any, Z])
+        extends InvariantExpr[Features.Function0, Any, Z] {
       def typeTag: TypeTag[Z] = implicitly[TypeTag[Z]]
     }
 
@@ -217,8 +219,8 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
 
   sealed case class FunctionDef[-A, +B](name: FunctionName) { self =>
 
-    def apply[Source, B1 >: B]()(implicit typeTag: TypeTag[B1]): Expr[Unit, Source, B1] =
-      Expr.FunctionCall0(self: FunctionDef[A, B1])
+    def apply[B1 >: B]()(implicit typeTag: TypeTag[B1]): Expr[Features.Function0, Any, B1] =
+      Expr.FunctionCall0(self.asInstanceOf[FunctionDef[Any, B1]])
 
     def apply[F, Source, B1 >: B](param1: Expr[F, Source, A])(implicit typeTag: TypeTag[B1]): Expr[F, Source, B1] =
       Expr.FunctionCall1(param1, self: FunctionDef[A, B1])
@@ -280,8 +282,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
 
     //string functions
     val Ascii       = FunctionDef[String, Int](FunctionName("ascii"))
-    val CharLength  = FunctionDef[String, Int](FunctionName("character_length"))
-    val Concat      = FunctionDef[(String, String), String](FunctionName("concat"))
+    val Concat      = FunctionDef[(String, String), String](FunctionName("concat")) //todo varargs
     val Lower       = FunctionDef[String, String](FunctionName("lower"))
     val Ltrim       = FunctionDef[String, String](FunctionName("ltrim"))
     val OctetLength = FunctionDef[String, Int](FunctionName("octet_length"))
