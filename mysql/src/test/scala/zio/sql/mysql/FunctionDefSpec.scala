@@ -1,12 +1,13 @@
 package zio.sql.mysql
 
 import zio.Cause
-import zio.test.Assertion._
 import zio.test._
+import zio.test.Assertion._
 
 object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
-  import this.Customers._
-  import this.FunctionDef._
+
+  import Customers._
+  import FunctionDef._
 
   val spec = suite("Mysql FunctionDef")(
     testM("lower") {
@@ -26,6 +27,19 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
       val query = select(Sin(1.0)) from customers
 
       val expected = 0.8414709848078965
+
+      val testResult = execute(query).to[Double, Double](identity)
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("abs") {
+      val query = select(Abs(-32.0)) from customers
+
+      val expected = 32.0
 
       val testResult = execute(query).to[Double, Double](identity)
 
