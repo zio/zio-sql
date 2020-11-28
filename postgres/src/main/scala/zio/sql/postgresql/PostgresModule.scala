@@ -2,7 +2,7 @@ package zio.sql.postgresql
 
 import java.time._
 
-import zio.sql.{ Jdbc, Renderer }
+import zio.sql.{ Jdbc, Renderer, Rendering }
 
 import scala.language.implicitConversions
 
@@ -12,6 +12,8 @@ trait PostgresModule extends Jdbc { self =>
   override type ExprExtensionType[F, -A, B] = PostgresExprExtension[F, A, B]
 
   sealed trait PostgresExprExtension[F, -A, B]
+
+  override type Renderer
 
   object PostgresExprExtension {
     implicit def postgresExpr2Expr[F, A, B: TypeTag](pgExpr: PostgresExprExtension[F, A, B]) =
@@ -70,6 +72,7 @@ trait PostgresModule extends Jdbc { self =>
     val ToTimestamp                 = FunctionDef[Long, ZonedDateTime](FunctionName("to_timestamp"))
     val PgClientEncoding            = FunctionDef[Any, String](FunctionName("pg_client_encoding"))
   }
+
   override def renderRead(read: self.Read[_]): String = {
     implicit val render: Renderer = Renderer()
     PostgresRenderModule.renderReadImpl(read)
