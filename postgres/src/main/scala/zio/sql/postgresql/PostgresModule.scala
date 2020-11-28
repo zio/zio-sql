@@ -9,6 +9,7 @@ import zio.sql.{ Jdbc, Renderer }
 trait PostgresModule extends Jdbc { self =>
 
   object PostgresFunctionDef {
+    val IsFinite                    = FunctionDef[Instant, Boolean](FunctionName("isfinite"))
     val TimeOfDay                   = FunctionDef[Any, String](FunctionName("timeofday"))
     val CurrentTime                 = Expr.ParenlessFunctionCall0[OffsetTime](FunctionName("current_time"))
     val CharLength                  = FunctionDef[String, Int](FunctionName("character_length"))
