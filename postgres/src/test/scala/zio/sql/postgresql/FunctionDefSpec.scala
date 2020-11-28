@@ -228,7 +228,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     testM("localtime") {
-      val query = select(Localtime()) from customers
+      val query = select(Localtime) from customers
 
       val testResult = execute(query).to[LocalTime, LocalTime](identity)
 
@@ -251,7 +251,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     testM("localtimestamp") {
-      val query = select(Localtimestamp()) from customers
+      val query = select(Localtimestamp) from customers
 
       val testResult = execute(query).to[Instant, Instant](identity)
 
@@ -374,7 +374,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     testM("current_date") {
-      val query = select(CurrentDate()) from customers
+      val query = select(CurrentDate) from customers
 
       val expected = LocalDate.now()
 
