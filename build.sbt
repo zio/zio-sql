@@ -160,7 +160,7 @@ lazy val mysql = project
       "org.testcontainers" % "mysql"                      % testcontainersVersion % Test,
       "org.testcontainers" % "jdbc"                       % testcontainersVersion % Test,
       "mysql"              % "mysql-connector-java"       % "8.0.22"              % Test,
-      "com.dimafeng"      %% "testcontainers-scala-mysql" % "0.38.6"              % Test
+      "com.dimafeng"      %% "testcontainers-scala-mysql" % "0.38.7"              % Test
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
@@ -181,7 +181,7 @@ lazy val oracle = project
       "org.testcontainers"       % "oracle-xe"                      % testcontainersVersion % Test,
       "org.testcontainers"       % "jdbc"                           % testcontainersVersion % Test,
       "com.oracle.database.jdbc" % "ojdbc8"                         % "19.8.0.0"            % Test,
-      "com.dimafeng"            %% "testcontainers-scala-oracle-xe" % "0.38.6"              % Test
+      "com.dimafeng"            %% "testcontainers-scala-oracle-xe" % "0.38.7"              % Test
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
