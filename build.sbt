@@ -20,7 +20,8 @@ inThisBuild(
   )
 )
 
-addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")
+addCommandAlias("fmtOnce", "all scalafmtSbt scalafmt test:scalafmt")
+addCommandAlias("fmt", "fmtOnce;fmtOnce")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
 val zioVersion            = "1.0.3"
@@ -100,23 +101,19 @@ lazy val docs = project
     scalacOptions -= "-Xfatal-warnings",
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio" % zioVersion
-    ),
-    //unidocProjectFilter in (ScalaUnidoc, unidoc) := inProjects(root),
-    target in (ScalaUnidoc, unidoc) := (baseDirectory in LocalRootProject).value / "website" / "static" / "api",
-    cleanFiles += (target in (ScalaUnidoc, unidoc)).value,
-    docusaurusCreateSite := docusaurusCreateSite.dependsOn(unidoc in Compile).value,
-    docusaurusPublishGhpages := docusaurusPublishGhpages.dependsOn(unidoc in Compile).value
+    )
   )
   .dependsOn(coreJVM)
-  .enablePlugins(MdocPlugin, DocusaurusPlugin, ScalaUnidocPlugin)
+  .enablePlugins(MdocPlugin, DocusaurusPlugin)
 
 lazy val examples = project
   .in(file("examples"))
-  .settings(dottySettings)
+  .settings(stdSettings("examples"))
   .settings(
     skip in publish := true,
     moduleName := "examples"
   )
+  .settings(dottySettings)
   .dependsOn(sqlserver)
 
 lazy val driver = project
@@ -141,7 +138,7 @@ lazy val jdbc = project
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio"          % zioVersion,
       "dev.zio" %% "zio-streams"  % zioVersion,
-      "dev.zio" %% "zio-test"     % zioVersion % "test",
+      "dev.zio" %% "zio-test"     % zioVersion,
       "dev.zio" %% "zio-test-sbt" % zioVersion % "test"
     )
   )
@@ -155,9 +152,15 @@ lazy val mysql = project
   .settings(buildInfoSettings("zio.sql.mysql"))
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio" %% "zio"          % zioVersion,
-      "dev.zio" %% "zio-test"     % zioVersion % "test",
-      "dev.zio" %% "zio-test-sbt" % zioVersion % "test"
+      "dev.zio"           %% "zio"                        % zioVersion,
+      "dev.zio"           %% "zio-test"                   % zioVersion            % "test",
+      "dev.zio"           %% "zio-test-sbt"               % zioVersion            % "test",
+      "org.testcontainers" % "testcontainers"             % testcontainersVersion % Test,
+      "org.testcontainers" % "database-commons"           % testcontainersVersion % Test,
+      "org.testcontainers" % "mysql"                      % testcontainersVersion % Test,
+      "org.testcontainers" % "jdbc"                       % testcontainersVersion % Test,
+      "mysql"              % "mysql-connector-java"       % "8.0.22"              % Test,
+      "com.dimafeng"      %% "testcontainers-scala-mysql" % "0.38.6"              % Test
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
@@ -170,9 +173,15 @@ lazy val oracle = project
   .settings(buildInfoSettings("zio.sql.oracle"))
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio" %% "zio"          % zioVersion,
-      "dev.zio" %% "zio-test"     % zioVersion % "test",
-      "dev.zio" %% "zio-test-sbt" % zioVersion % "test"
+      "dev.zio"                 %% "zio"                            % zioVersion,
+      "dev.zio"                 %% "zio-test"                       % zioVersion            % "test",
+      "dev.zio"                 %% "zio-test-sbt"                   % zioVersion            % "test",
+      "org.testcontainers"       % "testcontainers"                 % testcontainersVersion % Test,
+      "org.testcontainers"       % "database-commons"               % testcontainersVersion % Test,
+      "org.testcontainers"       % "oracle-xe"                      % testcontainersVersion % Test,
+      "org.testcontainers"       % "jdbc"                           % testcontainersVersion % Test,
+      "com.oracle.database.jdbc" % "ojdbc8"                         % "19.8.0.0"            % Test,
+      "com.dimafeng"            %% "testcontainers-scala-oracle-xe" % "0.38.6"              % Test
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
@@ -206,9 +215,13 @@ lazy val sqlserver = project
   .settings(buildInfoSettings("zio.sql.sqlserver"))
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio" %% "zio"          % zioVersion,
-      "dev.zio" %% "zio-test"     % zioVersion % "test",
-      "dev.zio" %% "zio-test-sbt" % zioVersion % "test"
+      "dev.zio"           %% "zio"              % zioVersion,
+      "dev.zio"           %% "zio-test"         % zioVersion            % "test",
+      "dev.zio"           %% "zio-test-sbt"     % zioVersion            % "test",
+      "org.testcontainers" % "testcontainers"   % testcontainersVersion % Test,
+      "org.testcontainers" % "database-commons" % testcontainersVersion % Test,
+      "org.testcontainers" % "mssqlserver"      % testcontainersVersion % Test,
+      "org.testcontainers" % "jdbc"             % testcontainersVersion % Test
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
