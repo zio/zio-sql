@@ -1,12 +1,12 @@
 package zio.sql.mysql
 
+import java.util.Properties
+
 import zio.{ Has, ZEnv, ZLayer }
 import zio.blocking.Blocking
+import zio.sql.JdbcRunnableSpec
 import zio.sql.TestContainer
 import zio.test.environment.TestEnvironment
-
-import java.util.Properties
-import zio.sql.JdbcRunnableSpec
 
 trait MysqlRunnableSpec extends JdbcRunnableSpec with MysqlModule {
 
