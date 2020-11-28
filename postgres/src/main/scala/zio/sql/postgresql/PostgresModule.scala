@@ -163,11 +163,11 @@ trait PostgresModule extends Jdbc { self =>
         renderExpr(p)
         render(")")
       case Expr.ParenlessFunctionCall0(fn)        =>
-        val _ = builder.append(fn.name)
+        val _ = render(fn.name)
       case Expr.FunctionCall0(fn)                 =>
-        builder.append(fn.name.name)
-        builder.append("(")
-        val _ = builder.append(")")
+        render(fn.name.name)
+        render("(")
+        val _ = render(")")
       case Expr.FunctionCall1(p, fn)              =>
         render(fn.name.name, "(")
         renderExpr(p)
