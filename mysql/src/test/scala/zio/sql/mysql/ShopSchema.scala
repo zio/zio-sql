@@ -29,7 +29,8 @@ trait ShopSchema extends Jdbc { self =>
 
     val fkProductId :*: effective :*: price :*: _ = productPrices.columns
   }
-  object OrderDetails  {
+
+  object OrderDetails {
     val orderDetails =
       (int("order_id") ++ int("product_id") ++ double("quantity") ++ double("unit_price"))
         .table(
