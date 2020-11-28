@@ -3,7 +3,7 @@ package zio.sql.postgresql
 import java.time.LocalDate
 import java.util.UUID
 
-import zio.Cause
+import zio.{ Cause, ZIO }
 import zio.test.Assertion._
 import zio.test._
 
@@ -272,27 +272,64 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("Transactions is returning the last value") {
+    testM("Transaction is returning the last value") {
       val query = select(customerId) from customers
 
       val result    = execute(
-        Transaction.Select(query) *> Transaction.Select(query)
+        ZTransaction.Select(query) *> ZTransaction.Select(query)
       )
-      val assertion = assertM(result.flatMap(_.runCollect))(hasSize(Assertion.equalTo(5))).orDie
+      val assertion = assertM(result.flatMap(_.runCount))(equalTo(5L)).orDie
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("Transactions is failing") {
+    testM("Transaction is failing") {
       val query = select(customerId) from customers
 
       val result = execute(
-        Transaction.Select(query) *> Transaction.fail(new Exception("failing")) *> Transaction.Select(query)
+        ZTransaction.Select(query) *> ZTransaction.fail(new Exception("failing")) *> ZTransaction.Select(query)
       ).mapError(_.getMessage)
 
-      val assertion = assertM(result.flip)(equalTo("failing"))
+      assertM(result.flip)(equalTo("failing")).mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("Transaction succeeded and deleted rows") {
+      val query       = select(customerId) from customers
+      val deleteQuery = deleteFrom(customers).where(verified === false)
 
-      assertion
+      (for {
+        allCustomersCount       <- execute(query).to(identity[UUID](_)).runCount
+        _                       <- execute(ZTransaction.Delete(deleteQuery))
+        remainingCustomersCount <- execute(query).to(identity[UUID](_)).runCount
+      } yield assert(allCustomersCount)(equalTo(5L)) &&
+        assert(remainingCustomersCount)(equalTo(4L))).mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("Transaction failed and didn't deleted rows") {
+      val query       = select(customerId) from customers
+      val deleteQuery = deleteFrom(customers).where(verified === false)
+
+      (for {
+        allCustomersCount       <- execute(query).to(identity[UUID](_)).runCount
+        _                       <- execute(ZTransaction.Delete(deleteQuery) *> ZTransaction.fail("this is error")).catchAllCause(_ =>
+                                     ZIO.succeed("continue")
+                                   )
+        remainingCustomersCount <- execute(query).to(identity[UUID](_)).runCount
+      } yield assert(allCustomersCount)(equalTo(5L)) &&
+        assert(remainingCustomersCount)(equalTo(5L)))
     }
+//    // this does not work yet
+//    testM("Transaction recovered and committed") {
+//      val query = select(customerId) from customers
+//      val deleteQuery = deleteFrom(customers).where(verified === false)
+//
+//      val tx = ZTransaction.Delete(deleteQuery) *> ZTransaction.fail("this is error")
+//
+//      (for {
+//        allCustomersCount <- execute(query).to(identity[UUID](_)).runCount
+//        _ <- execute(tx.catchAllCause((_: Serializable) => ZTransaction.succeed("recover")))
+//        remainingCustomersCount <- execute(query).to(identity[UUID](_)).runCount
+//      } yield
+//        assert(allCustomersCount)(equalTo(5L)) &&
+//          assert(remainingCustomersCount)(equalTo(5L)))
+//    }
     // testM("Can delete all from a single table") { TODO: Does not work on 2.12 yet
     //   val query = deleteFrom(customers)
     //   println(renderDelete(query))
