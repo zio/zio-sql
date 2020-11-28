@@ -110,6 +110,9 @@ trait OpsModule extends TypeTagModule {
     case object NotEqual         extends RelationalOp {
       override val symbol: String = "<>"
     }
+    case object Like             extends RelationalOp {
+      override val symbol: String = "like"
+    }
   }
 
 }
