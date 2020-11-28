@@ -4,8 +4,8 @@ import java.time._
 
 import scala.language.implicitConversions
 
-trait ExprModule extends NewtypesModule with TypeTagModule with FeaturesModule with OpsModule {
-  self: SelectModule with TableModule with TypeTagModule =>
+trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
+  self: SelectModule with TableModule =>
 
   /**
    * Models a function `A => B`.
@@ -22,6 +22,7 @@ trait ExprModule extends NewtypesModule with TypeTagModule with FeaturesModule w
     def *[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =
       Expr.Binary(self, that, BinaryOp.Mul[B1]())
 
+    //todo do something special for divide by 0? also Mod/log/whatever else is really a partial function.. PartialExpr?
     def /[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =
       Expr.Binary(self, that, BinaryOp.Div[B1]())
 
@@ -53,6 +54,9 @@ trait ExprModule extends NewtypesModule with TypeTagModule with FeaturesModule w
     def <=[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.LessThanEqual)
 
+    def like[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
+      Expr.Relational(self, that, RelationalOp.Like)
+
     def &[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsIntegral[B1]): Expr[F :||: F2, A1, B1] =
       Expr.Binary(self, that, BinaryOp.AndBit[B1]())
 
@@ -78,7 +82,7 @@ trait ExprModule extends NewtypesModule with TypeTagModule with FeaturesModule w
       Expr.Property(self, PropertyOp.IsTrue)
 
     def isNotTrue[A1 <: A](implicit ev: B <:< Boolean): Expr[F, A1, Boolean] =
-      Expr.Property(self, PropertyOp.IsNotNull)
+      Expr.Property(self, PropertyOp.IsNotTrue)
 
     def as[B1 >: B](name: String): Selection[F, A, SelectionSet.Cons[A, B1, SelectionSet.Empty]] =
       Selection.computedAs(self, name)
@@ -101,22 +105,12 @@ trait ExprModule extends NewtypesModule with TypeTagModule with FeaturesModule w
   }
 
   object Expr {
-    // FIXME!!!!!
-    // instanceOf is a quick fix for dotty
-    def typeTagOf[A](expr: Expr[_, _, A]): TypeTag[A] = expr match {
-      case a: Literal[A]                                    => a.typeTag
-      case Source(_, c)                                     => c.typeTag.asInstanceOf[ExprModule.this.TypeTag[A]]
-      case Unary(b, _)                                      => typeTagOf(b)
-      case Binary(bl, _, _)                                 => typeTagOf(bl)
-      case Property(b @ _, _)                               => ???
-      case Relational(bl @ _, _, _)                         => ???
-      case In(v @ _, _)                                     => ???
-      case AggregationCall(p, _)                            => typeTagOf(p.asInstanceOf[ExprModule.this.Expr[_, _, A]])
-      case FunctionCall1(p @ _, _)                          => ???
-      case FunctionCall2(p1 @ _, p2 @ _, _)                 => ???
-      case FunctionCall3(p1 @ _, p2 @ _, p3 @ _, _)         => ???
-      case FunctionCall4(p1 @ _, p2 @ _, p3 @ _, p4 @ _, _) => ???
+
+    sealed trait InvariantExpr[F, -A, B] extends Expr[F, A, B] {
+      def typeTag: TypeTag[B]
     }
+
+    def typeTagOf[A](expr: Expr[_, _, A]): TypeTag[A] = expr.asInstanceOf[InvariantExpr[_, _, A]].typeTag
 
     implicit def literal[A: TypeTag](a: A): Expr[Features.Literal, Any, A] = Expr.Literal(a)
 
@@ -132,89 +126,136 @@ trait ExprModule extends NewtypesModule with TypeTagModule with FeaturesModule w
       Selection.computedOption(expr, exprName(expr))
 
     sealed case class Source[A, B] private[sql] (tableName: TableName, column: Column[B])
-        extends Expr[Features.Source, A, B]
+        extends InvariantExpr[Features.Source, A, B] {
+      def typeTag: TypeTag[B] = column.typeTag
+    }
 
-    sealed case class Unary[F, -A, B](base: Expr[F, A, B], op: UnaryOp[B]) extends Expr[F, A, B]
+    sealed case class Unary[F, -A, B](base: Expr[F, A, B], op: UnaryOp[B]) extends InvariantExpr[F, A, B] {
+      def typeTag: TypeTag[B] = typeTagOf(base)
+    }
 
-    sealed case class Property[F, -A, +B](base: Expr[F, A, B], op: PropertyOp) extends Expr[F, A, Boolean]
+    sealed case class Property[F, -A, +B](base: Expr[F, A, B], op: PropertyOp) extends InvariantExpr[F, A, Boolean] {
+      def typeTag: TypeTag[Boolean] = TypeTag.TBoolean
+    }
 
     sealed case class Binary[F1, F2, A, B](left: Expr[F1, A, B], right: Expr[F2, A, B], op: BinaryOp[B])
-        extends Expr[Features.Union[F1, F2], A, B]
+        extends InvariantExpr[Features.Union[F1, F2], A, B] {
+      def typeTag: TypeTag[B] = typeTagOf(left)
+    }
 
     sealed case class Relational[F1, F2, A, B](left: Expr[F1, A, B], right: Expr[F2, A, B], op: RelationalOp)
-        extends Expr[Features.Union[F1, F2], A, Boolean]
+        extends InvariantExpr[Features.Union[F1, F2], A, Boolean] {
+      def typeTag: TypeTag[Boolean] = TypeTag.TBoolean
+    }
 
-    sealed case class In[F, A, B <: SelectionSet[_]](value: Expr[F, A, B], set: Read[B]) extends Expr[F, A, Boolean]
+    sealed case class In[F, A, B <: SelectionSet[_]](value: Expr[F, A, B], set: Read[B])
+        extends InvariantExpr[F, A, Boolean] {
+      def typeTag: TypeTag[Boolean] = TypeTag.TBoolean
+    }
 
-    sealed case class Literal[B: TypeTag](value: B) extends Expr[Features.Literal, Any, B] {
+    sealed case class Literal[B: TypeTag](value: B) extends InvariantExpr[Features.Literal, Any, B] {
       def typeTag: TypeTag[B] = implicitly[TypeTag[B]]
     }
 
-    sealed case class AggregationCall[F, A, B, Z](param: Expr[F, A, B], aggregation: AggregationDef[B, Z])
-        extends Expr[Features.Aggregated[F], A, Z]
+    sealed case class AggregationCall[F, A, B, Z: TypeTag](param: Expr[F, A, B], aggregation: AggregationDef[B, Z])
+        extends InvariantExpr[Features.Aggregated[F], A, Z] {
+      def typeTag: TypeTag[Z] = implicitly[TypeTag[Z]]
+    }
 
-    sealed case class FunctionCall1[F, A, B, Z](param: Expr[F, A, B], function: FunctionDef[B, Z]) extends Expr[F, A, Z]
+    sealed case class ParenlessFunctionCall0[Z: TypeTag](function: FunctionName)
+        extends InvariantExpr[Features.Function0, Any, Z] {
+      def typeTag: TypeTag[Z] = implicitly[TypeTag[Z]]
+    }
 
-    sealed case class FunctionCall2[F1, F2, A, B, C, Z](
+    sealed case class FunctionCall0[Z: TypeTag](function: FunctionDef[Any, Z])
+        extends InvariantExpr[Features.Function0, Any, Z] {
+      def typeTag: TypeTag[Z] = implicitly[TypeTag[Z]]
+    }
+
+    sealed case class FunctionCall1[F, A, B, Z: TypeTag](param: Expr[F, A, B], function: FunctionDef[B, Z])
+        extends InvariantExpr[F, A, Z] {
+      def typeTag: TypeTag[Z] = implicitly[TypeTag[Z]]
+    }
+
+    sealed case class FunctionCall2[F1, F2, A, B, C, Z: TypeTag](
       param1: Expr[F1, A, B],
       param2: Expr[F2, A, C],
       function: FunctionDef[(B, C), Z]
-    ) extends Expr[Features.Union[F1, F2], A, Z]
+    ) extends InvariantExpr[Features.Union[F1, F2], A, Z] {
+      def typeTag: TypeTag[Z] = implicitly[TypeTag[Z]]
+    }
 
-    sealed case class FunctionCall3[F1, F2, F3, A, B, C, D, Z](
+    sealed case class FunctionCall3[F1, F2, F3, A, B, C, D, Z: TypeTag](
       param1: Expr[F1, A, B],
       param2: Expr[F2, A, C],
       param3: Expr[F3, A, D],
       function: FunctionDef[(B, C, D), Z]
-    ) extends Expr[Features.Union[F1, Features.Union[F2, F3]], A, Z]
+    ) extends InvariantExpr[Features.Union[F1, Features.Union[F2, F3]], A, Z] {
+      def typeTag: TypeTag[Z] = implicitly[TypeTag[Z]]
+    }
 
-    sealed case class FunctionCall4[F1, F2, F3, F4, A, B, C, D, E, Z](
+    sealed case class FunctionCall4[F1, F2, F3, F4, A, B, C, D, E, Z: TypeTag](
       param1: Expr[F1, A, B],
       param2: Expr[F2, A, C],
       param3: Expr[F3, A, D],
       param4: Expr[F4, A, E],
       function: FunctionDef[(B, C, D, E), Z]
-    ) extends Expr[Features.Union[F1, Features.Union[F2, Features.Union[F3, F4]]], A, Z]
+    ) extends InvariantExpr[Features.Union[F1, Features.Union[F2, Features.Union[F3, F4]]], A, Z] {
+      def typeTag: TypeTag[Z] = implicitly[TypeTag[Z]]
+    }
   }
 
   sealed case class AggregationDef[-A, +B](name: FunctionName) { self =>
 
-    def apply[F, Source](expr: Expr[F, Source, A]): Expr[Features.Aggregated[F], Source, B] =
-      Expr.AggregationCall(expr, self)
+    def apply[F, Source, B1 >: B](expr: Expr[F, Source, A])(implicit
+      typeTag: TypeTag[B1]
+    ): Expr[Features.Aggregated[F], Source, B1] =
+      Expr.AggregationCall[F, Source, A, B1](expr, self)
   }
 
   object AggregationDef {
-    val Count     = AggregationDef[Any, Long](FunctionName("count"))
-    val Sum       = AggregationDef[Double, Double](FunctionName("sum"))
-    val Arbitrary = AggregationDef[Any, Any](FunctionName("arbitrary"))
-    val Avg       = AggregationDef[Double, Double](FunctionName("avg"))
-    val Min       = AggregationDef[Any, Any](FunctionName("min"))
-    val Max       = AggregationDef[Any, Any](FunctionName("max"))
+    val Count                                            = AggregationDef[Any, Long](FunctionName("count"))
+    val Sum                                              = AggregationDef[Double, Double](FunctionName("sum"))
+    def Arbitrary[F, A, B: TypeTag](expr: Expr[F, A, B]) = AggregationDef[B, B](FunctionName("arbitrary"))(expr)
+    val Avg                                              = AggregationDef[Double, Double](FunctionName("avg"))
+    def Min[F, A, B: TypeTag](expr: Expr[F, A, B])       = AggregationDef[B, B](FunctionName("min"))(expr)
+    def Max[F, A, B: TypeTag](expr: Expr[F, A, B])       = AggregationDef[B, B](FunctionName("max"))(expr)
   }
 
   sealed case class FunctionDef[-A, +B](name: FunctionName) { self =>
 
-    def apply[F, Source](param1: Expr[F, Source, A]): Expr[F, Source, B] = Expr.FunctionCall1(param1, self)
+    def apply[B1 >: B]()(implicit ev: Any <:< A, typeTag: TypeTag[B1]): Expr[Features.Function0, Any, B1] =
+      Expr.FunctionCall0(self.asInstanceOf[FunctionDef[Any, B1]])
 
-    def apply[F1, F2, Source, P1, P2](param1: Expr[F1, Source, P1], param2: Expr[F2, Source, P2])(implicit
-      ev: (P1, P2) <:< A
-    ): Expr[F1 :||: F2, Source, B] =
-      Expr.FunctionCall2(param1, param2, self.narrow[(P1, P2)])
+    def apply[F, Source, B1 >: B](param1: Expr[F, Source, A])(implicit typeTag: TypeTag[B1]): Expr[F, Source, B1] =
+      Expr.FunctionCall1(param1, self: FunctionDef[A, B1])
 
-    def apply[F1, F2, F3, Source, P1, P2, P3](
+    def apply[F1, F2, Source, P1, P2, B1 >: B](param1: Expr[F1, Source, P1], param2: Expr[F2, Source, P2])(implicit
+      ev: (P1, P2) <:< A,
+      typeTag: TypeTag[B1]
+    ): Expr[F1 :||: F2, Source, B1] =
+      Expr.FunctionCall2(param1, param2, self.narrow[(P1, P2)]: FunctionDef[(P1, P2), B1])
+
+    def apply[F1, F2, F3, Source, P1, P2, P3, B1 >: B](
       param1: Expr[F1, Source, P1],
       param2: Expr[F2, Source, P2],
       param3: Expr[F3, Source, P3]
-    )(implicit ev: (P1, P2, P3) <:< A): Expr[F1 :||: F2 :||: F3, Source, B] =
-      Expr.FunctionCall3(param1, param2, param3, self.narrow[(P1, P2, P3)])
+    )(implicit ev: (P1, P2, P3) <:< A, typeTag: TypeTag[B1]): Expr[F1 :||: F2 :||: F3, Source, B1] =
+      Expr.FunctionCall3(param1, param2, param3, self.narrow[(P1, P2, P3)]: FunctionDef[(P1, P2, P3), B1])
 
-    def apply[F1, F2, F3, F4, Source, P1, P2, P3, P4](
+    def apply[F1, F2, F3, F4, Source, P1, P2, P3, P4, B1 >: B](
       param1: Expr[F1, Source, P1],
       param2: Expr[F2, Source, P2],
       param3: Expr[F3, Source, P3],
       param4: Expr[F4, Source, P4]
-    )(implicit ev: (P1, P2, P3, P4) <:< A): Expr[F1 :||: F2 :||: F3 :||: F4, Source, B] =
-      Expr.FunctionCall4(param1, param2, param3, param4, self.narrow[(P1, P2, P3, P4)])
+    )(implicit ev: (P1, P2, P3, P4) <:< A, typeTag: TypeTag[B1]): Expr[F1 :||: F2 :||: F3 :||: F4, Source, B1] =
+      Expr.FunctionCall4(
+        param1,
+        param2,
+        param3,
+        param4,
+        self.narrow[(P1, P2, P3, P4)]: FunctionDef[(P1, P2, P3, P4), B1]
+      )
 
     def narrow[C](implicit ev: C <:< A): FunctionDef[C, B] = {
       val _ = ev
@@ -223,6 +264,7 @@ trait ExprModule extends NewtypesModule with TypeTagModule with FeaturesModule w
   }
 
   object FunctionDef {
+
     //math functions
     val Abs         = FunctionDef[Double, Double](FunctionName("abs"))
     val Acos        = FunctionDef[Double, Double](FunctionName("acos"))
@@ -232,27 +274,26 @@ trait ExprModule extends NewtypesModule with TypeTagModule with FeaturesModule w
     val Cos         = FunctionDef[Double, Double](FunctionName("cos"))
     val Exp         = FunctionDef[Double, Double](FunctionName("exp"))
     val Floor       = FunctionDef[Double, Double](FunctionName("floor"))
-    //val Log = FunctionDef[Double, Double](FunctionName("log")) //not part of SQL 2011 spec
     val Ln          = FunctionDef[Double, Double](FunctionName("ln"))
+    val Log         = FunctionDef[(Double, Double), Double](FunctionName("log"))
     val Mod         = FunctionDef[(Double, Double), Double](FunctionName("mod"))
     val Power       = FunctionDef[(Double, Double), Double](FunctionName("power"))
     val Round       = FunctionDef[(Double, Int), Double](FunctionName("round"))
-    val Sign        = FunctionDef[Double, Double](FunctionName("sign"))
+    val Sign        = FunctionDef[Double, Int](FunctionName("sign"))
     val Sin         = FunctionDef[Double, Double](FunctionName("sin"))
     val Sqrt        = FunctionDef[Double, Double](FunctionName("sqrt"))
     val Tan         = FunctionDef[Double, Double](FunctionName("tan"))
-    val WidthBucket = FunctionDef[(Double, Double, Double, Int), Int](FunctionName("width bucket"))
+    val WidthBucket = FunctionDef[(Double, Double, Double, Int), Int](FunctionName("width_bucket"))
 
     //string functions
     val Ascii       = FunctionDef[String, Int](FunctionName("ascii"))
-    val CharLength  = FunctionDef[String, Int](FunctionName("character length"))
-    val Concat      = FunctionDef[(String, String), String](FunctionName("concat"))
+    val Concat      = FunctionDef[(String, String), String](FunctionName("concat")) //todo varargs
     val Lower       = FunctionDef[String, String](FunctionName("lower"))
     val Ltrim       = FunctionDef[String, String](FunctionName("ltrim"))
-    val OctetLength = FunctionDef[String, Int](FunctionName("octet length"))
+    val OctetLength = FunctionDef[String, Int](FunctionName("octet_length"))
     val Overlay     = FunctionDef[(String, String, Int, Option[Int]), String](FunctionName("overlay"))
     val Position    = FunctionDef[(String, String), Int](FunctionName("position"))
-    val Replace     = FunctionDef[(String, String), String](FunctionName("replace"))
+    val Replace     = FunctionDef[(String, String, String), String](FunctionName("replace"))
     val Rtrim       = FunctionDef[String, String](FunctionName("rtrim"))
     val Substring   = FunctionDef[(String, Int, Option[Int]), String](FunctionName("substring"))
     //TODO substring regex

@@ -11,6 +11,7 @@ trait FeaturesModule {
     type Union[_, _]
     type Source
     type Literal
+    type Function0
 
     sealed trait IsAggregated[A]
 
