@@ -5,7 +5,7 @@ import java.util.UUID
 
 import zio.Chunk
 
-trait TableModule { self: ExprModule with SelectModule with TypeTagModule =>
+trait TableModule { self: ExprModule with SelectModule =>
 
   sealed case class ColumnSchema[A](value: A)
 

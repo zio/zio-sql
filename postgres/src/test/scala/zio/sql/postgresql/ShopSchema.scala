@@ -6,9 +6,15 @@ trait ShopSchema extends Jdbc { self =>
   import self.ColumnSet._
 
   object Customers     {
-    val customers = (uuid("id") ++ localDate("dob") ++ string("first_name") ++ string("last_name")).table("customers")
+    //https://github.com/zio/zio-sql/issues/320 Once Insert is supported, we can remove created_timestamp_string
+    val customers =
+      (uuid("id") ++ localDate("dob") ++ string("first_name") ++ string("last_name") ++ boolean(
+        "verified"
+      ) ++ string("created_timestamp_string") ++ zonedDateTime("created_timestamp"))
+        .table("customers")
 
-    val customerId :*: dob :*: fName :*: lName :*: _ = customers.columns
+    val customerId :*: dob :*: fName :*: lName :*: verified :*: createdString :*: createdTimestamp :*: _ =
+      customers.columns
   }
   object Orders        {
     val orders = (uuid("id") ++ uuid("customer_id") ++ localDate("order_date")).table("orders")
@@ -17,23 +23,23 @@ trait ShopSchema extends Jdbc { self =>
   }
   object Products      {
     val products =
-      (int("id") ++ string("name") ++ string("description") ++ string("image_url")).table("products")
+      (uuid("id") ++ string("name") ++ string("description") ++ string("image_url")).table("products")
 
     val productId :*: description :*: imageURL :*: _ = products.columns
   }
   object ProductPrices {
     val productPrices =
-      (int("product_id") ++ offsetDateTime("effective") ++ bigDecimal("price")).table("product_prices")
+      (uuid("product_id") ++ offsetDateTime("effective") ++ bigDecimal("price")).table("product_prices")
 
     val fkProductId :*: effective :*: price :*: _ = productPrices.columns
   }
 
   object OrderDetails {
     val orderDetails =
-      (int("order_id") ++ int("product_id") ++ double("quantity") ++ double("unit_price"))
+      (uuid("order_id") ++ uuid("product_id") ++ int("quantity") ++ bigDecimal("unit_price"))
         .table(
           "order_details"
-        ) //todo fix #3 quantity should be int, unit price should be bigDecimal, numeric operators only support double ATM.
+        )
 
     val fkOrderId :*: fkProductId :*: quantity :*: unitPrice :*: _ = orderDetails.columns
   }
