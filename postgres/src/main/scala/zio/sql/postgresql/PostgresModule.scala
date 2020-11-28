@@ -1,23 +1,25 @@
 package zio.sql.postgresql
 
-import zio.sql.{ Jdbc, Renderer }
+import java.time._
 
-import java.time.{ Instant, LocalDate, LocalTime, ZonedDateTime }
+import zio.sql.{ Jdbc, Renderer }
 
 /**
  */
 trait PostgresModule extends Jdbc { self =>
 
   object PostgresFunctionDef {
+    val TimeOfDay                   = FunctionDef[Any, String](FunctionName("timeofday"))
+    val CurrentTime                 = Expr.ParenlessFunctionCall0[OffsetTime](FunctionName("current_time"))
     val CharLength                  = FunctionDef[String, Int](FunctionName("character_length"))
-    val Localtime                   = FunctionDef[Any, LocalTime](FunctionName("localtime"))
+    val Localtime                   = Expr.ParenlessFunctionCall0[LocalTime](FunctionName("localtime"))
     val LocaltimeWithPrecision      = FunctionDef[Int, LocalTime](FunctionName("localtime"))
-    val Localtimestamp              = FunctionDef[Any, Instant](FunctionName("localtimestamp"))
+    val Localtimestamp              = Expr.ParenlessFunctionCall0[Instant](FunctionName("localtimestamp"))
     val LocaltimestampWithPrecision = FunctionDef[Int, Instant](FunctionName("localtimestamp"))
     val Md5                         = FunctionDef[String, String](FunctionName("md5"))
     val ParseIdent                  = FunctionDef[String, String](FunctionName("parse_ident"))
     val Chr                         = FunctionDef[Int, String](FunctionName("chr"))
-    val CurrentDate                 = FunctionDef[Any, LocalDate](FunctionName("current_date"))
+    val CurrentDate                 = Expr.ParenlessFunctionCall0[LocalDate](FunctionName("current_date"))
     val Initcap                     = FunctionDef[String, String](FunctionName("initcap"))
     val Repeat                      = FunctionDef[(String, Int), String](FunctionName("repeat"))
     val Reverse                     = FunctionDef[String, String](FunctionName("reverse"))
@@ -160,7 +162,12 @@ trait PostgresModule extends Jdbc { self =>
         render(aggregation.name.name, "(")
         renderExpr(p)
         render(")")
-      case Expr.FunctionCall0(fn)                 => render(fn.name.name) //todo parens or no parens?
+      case Expr.ParenlessFunctionCall0(fn)        =>
+        val _ = render(fn.name)
+      case Expr.FunctionCall0(fn)                 =>
+        render(fn.name.name)
+        render("(")
+        val _ = render(")")
       case Expr.FunctionCall1(p, fn)              =>
         render(fn.name.name, "(")
         renderExpr(p)
