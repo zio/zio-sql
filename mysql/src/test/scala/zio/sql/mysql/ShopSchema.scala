@@ -7,13 +7,13 @@ trait ShopSchema extends Jdbc { self =>
 
   object Customers     {
     val customers =
-      (string("id") ++ localDate("dob") ++ string("first_name") ++ string("last_name") ++ boolean("verified"))
+      (uuid("id") ++ localDate("dob") ++ string("first_name") ++ string("last_name") ++ boolean("verified"))
         .table("customers")
 
     val customerId :*: dob :*: fName :*: lName :*: verified :*: _ = customers.columns
   }
   object Orders        {
-    val orders = (string("id") ++ uuid("customer_id") ++ localDate("order_date")).table("orders")
+    val orders = (uuid("id") ++ uuid("customer_id") ++ localDate("order_date")).table("orders")
 
     val orderId :*: fkCustomerId :*: orderDate :*: _ = orders.columns
   }
