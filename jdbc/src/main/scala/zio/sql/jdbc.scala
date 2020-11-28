@@ -2,12 +2,13 @@ package zio.sql
 
 import java.sql._
 import java.io.IOException
-import java.time.{ ZoneId, ZoneOffset }
+import java.time.{ OffsetDateTime, OffsetTime, ZoneId, ZoneOffset }
+
 import zio.{ Chunk, Has, IO, Managed, ZIO, ZLayer, ZManaged }
 import zio.blocking.Blocking
 import zio.stream.{ Stream, ZStream }
 
-trait Jdbc extends zio.sql.Sql {
+trait Jdbc extends zio.sql.Sql with TransactionModule {
   type ConnectionPool = Has[ConnectionPool.Service]
   object ConnectionPool {
     sealed case class Config(url: String, properties: java.util.Properties)
@@ -39,21 +40,114 @@ trait Jdbc extends zio.sql.Sql {
   type DeleteExecutor = Has[DeleteExecutor.Service]
   object DeleteExecutor {
     trait Service {
-      def execute(delete: Delete[_, _]): IO[Exception, Unit]
+      def execute(delete: Delete[_]): IO[Exception, Int]
+      def executeOn(delete: Delete[_], conn: Connection): IO[Exception, Int]
     }
+
+    val live: ZLayer[ConnectionPool with Blocking, Nothing, DeleteExecutor] =
+      ZLayer.fromServices[ConnectionPool.Service, Blocking.Service, DeleteExecutor.Service] { (pool, blocking) =>
+        new Service {
+          def execute(delete: Delete[_]): IO[Exception, Int]                     = pool.connection.use { conn =>
+            executeOn(delete, conn)
+          }
+          def executeOn(delete: Delete[_], conn: Connection): IO[Exception, Int] =
+            blocking.effectBlocking {
+              val query     = renderDelete(delete)
+              val statement = conn.createStatement()
+              statement.executeUpdate(query)
+            }.refineToOrDie[Exception]
+        }
+      }
   }
 
   type UpdateExecutor = Has[UpdateExecutor.Service]
   object UpdateExecutor {
     trait Service {
-      def execute(Update: Update[_]): IO[Exception, Long]
+      def execute(update: Update[_]): IO[Exception, Int]
+      def executeOn(update: Update[_], conn: Connection): IO[Exception, Int]
     }
+
+    val live: ZLayer[ConnectionPool with Blocking, Nothing, UpdateExecutor] =
+      ZLayer.fromServices[ConnectionPool.Service, Blocking.Service, UpdateExecutor.Service] { (pool, blocking) =>
+        new Service {
+          def execute(update: Update[_]): IO[Exception, Int]                     =
+            pool.connection
+              .use(conn => executeOn(update, conn))
+          def executeOn(update: Update[_], conn: Connection): IO[Exception, Int] =
+            blocking.effectBlocking {
+
+              val query = renderUpdate(update)
+
+              val statement = conn.createStatement()
+
+              statement.executeUpdate(query)
+
+            }.refineToOrDie[Exception]
+        }
+      }
   }
+
+  type TransactionExecutor = Has[TransactionExecutor.Service]
+  object TransactionExecutor {
+    trait Service {
+      def execute[R, E >: Exception, A](tx: Transaction[R, E, A]): ZIO[R, E, A]
+    }
+
+    val live: ZLayer[
+      ConnectionPool with Blocking with ReadExecutor with UpdateExecutor with DeleteExecutor,
+      Exception,
+      TransactionExecutor
+    ] =
+      ZLayer.fromServices[
+        ConnectionPool.Service,
+        Blocking.Service,
+        ReadExecutor.Service,
+        UpdateExecutor.Service,
+        DeleteExecutor.Service,
+        TransactionExecutor.Service
+      ] { (pool, blocking, readS, updateS, deleteS) =>
+        new Service {
+          override def execute[R, E >: Exception, A](tx: Transaction[R, E, A]): ZIO[R, E, A] = {
+            def loop(tx: Transaction[R, E, Any], conn: Connection): ZIO[R, E, Any] = tx match {
+              case Transaction.Effect(zio)       => zio
+              // This does not work because of `org.postgresql.util.PSQLException: This connection has been closed.`
+              // case Transaction.Select(read) => ZIO.succeed(readS.executeOn(read, conn))
+              // This works and it is eagerly running the Stream
+              case Transaction.Select(read)      =>
+                readS
+                  .executeOn(read.asInstanceOf[Read[SelectionSet[_]]], conn)
+                  .runCollect
+                  .map(a => ZStream.fromIterator(a.iterator))
+              case Transaction.Update(update)    => updateS.executeOn(update, conn)
+              case Transaction.Delete(delete)    => deleteS.executeOn(delete, conn)
+              case Transaction.FoldCauseM(tx, k) =>
+                loop(tx, conn).foldCauseM(
+                  cause => loop(k.asInstanceOf[Transaction.K[R, E, Any, Any]].onHalt(cause), conn),
+                  success => loop(k.onSuccess(success), conn)
+                )
+            }
+
+            pool.connection.use(conn =>
+              blocking.effectBlocking(conn.setAutoCommit(false)).refineToOrDie[Exception] *>
+                loop(tx, conn)
+                  .tapBoth(
+                    _ => blocking.effectBlocking(conn.rollback()),
+                    _ => blocking.effectBlocking(conn.commit())
+                  )
+                  .asInstanceOf[ZIO[R, E, A]]
+            )
+          }
+        }
+      }
+  }
+  def execute[R, E >: Exception, A](tx: Transaction[R, E, A]): ZIO[R with TransactionExecutor, E, A] =
+    ZIO.accessM[R with TransactionExecutor](_.get.execute(tx))
 
   type ReadExecutor = Has[ReadExecutor.Service]
   object ReadExecutor {
     trait Service {
       def execute[A <: SelectionSet[_], Target](read: Read[A])(to: read.ResultType => Target): Stream[Exception, Target]
+      def executeOn[A <: SelectionSet[_]](read: Read[A], conn: Connection): Stream[Exception, read.ResultType]
     }
 
     val live: ZLayer[ConnectionPool with Blocking, Nothing, ReadExecutor] =
@@ -65,35 +159,38 @@ trait Jdbc extends zio.sql.Sql {
           )(to: read.ResultType => Target): Stream[Exception, Target] =
             ZStream
               .managed(pool.connection)
-              .flatMap(conn =>
-                Stream.unwrap {
-                  blocking.effectBlocking {
-                    val schema = getColumns(read).zipWithIndex.map { case (value, index) =>
-                      (value, index + 1)
-                    } // SQL is 1-based indexing
+              .flatMap(conn => executeOn(read, conn))
+              .map(to)
 
-                    val query = renderRead(read)
+          def executeOn[A <: SelectionSet[_]](read: Read[A], conn: Connection): Stream[Exception, read.ResultType] =
+            Stream.unwrap {
+              blocking.effectBlocking {
+                val schema = getColumns(read).zipWithIndex.map { case (value, index) =>
+                  (value, index + 1)
+                } // SQL is 1-based indexing
 
-                    val statement = conn.createStatement()
+                val query = renderRead(read)
 
-                    val _ = statement.execute(query) // TODO: Check boolean return value
+                val statement = conn.createStatement()
 
-                    val resultSet = statement.getResultSet()
+                val _ = statement.execute(query) // TODO: Check boolean return value
 
-                    ZStream.unfoldM(resultSet) { rs =>
-                      if (rs.next()) {
-                        try unsafeExtractRow[read.ResultType](resultSet, schema) match {
-                          case Left(error)  => ZIO.fail(error)
-                          case Right(value) => ZIO.succeed(Some((to(value), rs)))
-                        } catch {
-                          case e: SQLException => ZIO.fail(e)
-                        }
-                      } else ZIO.succeed(None)
+                val resultSet = statement.getResultSet()
+
+                ZStream.unfoldM(resultSet) { rs =>
+                  if (rs.next()) {
+                    try unsafeExtractRow[read.ResultType](resultSet, schema) match {
+                      case Left(error)  => ZIO.fail(error)
+                      case Right(value) => ZIO.succeed(Some((value, rs)))
+                    } catch {
+                      case e: SQLException => ZIO.fail(e)
                     }
-
-                  }.refineToOrDie[Exception]
+                  } else ZIO.succeed(None)
                 }
-              )
+
+              }.refineToOrDie[Exception]
+            }
+
         }
       }
 
@@ -184,8 +281,20 @@ trait Jdbc extends zio.sql.Sql {
             column.fold(resultSet.getTimestamp(_), resultSet.getTimestamp(_)).toLocalDateTime().toLocalTime()
           )
         case TLong               => tryDecode[Long](column.fold(resultSet.getLong(_), resultSet.getLong(_)))
-        case TOffsetDateTime     => ???
-        case TOffsetTime         => ???
+        case TOffsetDateTime     =>
+          tryDecode[OffsetDateTime](
+            column
+              .fold(resultSet.getTimestamp(_), resultSet.getTimestamp(_))
+              .toLocalDateTime()
+              .atOffset(ZoneOffset.UTC)
+          )
+        case TOffsetTime         =>
+          tryDecode[OffsetTime](
+            column
+              .fold(resultSet.getTime(_), resultSet.getTime(_))
+              .toLocalTime
+              .atOffset(ZoneOffset.UTC)
+          )
         case TShort              => tryDecode[Short](column.fold(resultSet.getShort(_), resultSet.getShort(_)))
         case TString             => tryDecode[String](column.fold(resultSet.getString(_), resultSet.getString(_)))
         case TUUID               =>
@@ -236,6 +345,10 @@ trait Jdbc extends zio.sql.Sql {
   }
 
   def execute[A <: SelectionSet[_]](read: Read[A]): ExecuteBuilder[A, read.ResultType] = new ExecuteBuilder(read)
+
+  def execute(delete: Delete[_]): ZIO[DeleteExecutor, Exception, Int] = ZIO.accessM[DeleteExecutor](
+    _.get.execute(delete)
+  )
 
   class ExecuteBuilder[Set <: SelectionSet[_], Output](val read: Read.Aux[Output, Set]) {
     import zio.stream._
