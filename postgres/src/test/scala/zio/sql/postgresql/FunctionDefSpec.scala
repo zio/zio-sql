@@ -13,7 +13,7 @@ import zio.duration._
 object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
   import Customers._
-  import FunctionDef.{CharLength => _, _}
+  import FunctionDef.{ CharLength => _, _ }
   import PostgresFunctionDef._
 
   private def collectAndCompare(
