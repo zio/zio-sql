@@ -1,52 +1,53 @@
+-- TODO: currently id fields are storing a UUID.   varchar is a rather slow and inefficient way to store a UUID
+--  (though easier to bootstrap a test).  Consider a more efficient method of storage as referenced in
+--  https://mysqlserverteam.com/storing-uuid-values-in-mysql-tables/
 create table customers
 (
-    id uuid not null primary key,
-    first_name varchar not null,
-    last_name varchar not null,
+    id varchar(36) not null primary key,
+    first_name varchar(255) not null,
+    last_name varchar(255) not null,
     verified boolean not null,
-    dob date not null,
-    created_timestamp_string varchar not null,
-    created_timestamp timestamp with time zone default now()
+    dob date not null
 );
 
 create table orders
 (
-    id uuid not null primary key,
-    customer_id uuid not null,
+    id varchar(36) not null primary key,
+    customer_id varchar(36) not null,
     order_date date not null
 );
 
 create table products
 (
-    id uuid not null primary key,
-    name varchar,
-    description varchar not null,
-    image_url varchar
+    id varchar(36) not null primary key,
+    name varchar(100),
+    description text not null,
+    image_url text
 );
 
 create table product_prices
 (
-    product_id uuid not null,
+    product_id varchar(36) not null,
     effective date not null,
-    price money not null
+    price decimal(15,2) not null
 );
 
 create table order_details
 (
-    order_id uuid not null,
-    product_id uuid not null,
+    order_id varchar(36) not null,
+    product_id varchar(36) not null,
     quantity integer not null,
-    unit_price money not null
+    unit_price decimal(15,2) not null
 );
 
 insert into customers
-    (id, first_name, last_name, verified, dob, created_timestamp_string, created_timestamp)
+    (id, first_name, last_name, verified, dob)
 values
-    ('60b01fc9-c902-4468-8d49-3c0f989def37', 'Ronald', 'Russell', true, '1983-01-05', '2020-11-21T19:10:25+00:00', '2020-11-21 19:10:25+00'),
-    ('f76c9ace-be07-4bf3-bd4c-4a9c62882e64', 'Terrence', 'Noel', true, '1999-11-02', '2020-11-21T15:10:25-04:00', '2020-11-21 15:10:25-04'),
-    ('784426a5-b90a-4759-afbb-571b7a0ba35e', 'Mila', 'Paterso', true, '1990-11-16', '2020-11-22T02:10:25+07:00', '2020-11-22 02:10:25+07'),
-    ('df8215a2-d5fd-4c6c-9984-801a1b3a2a0b', 'Alana', 'Murray', true, '1995-11-12', '2020-11-21T12:10:25-07:00', '2020-11-21 12:10:25-07'),
-    ('636ae137-5b1a-4c8c-b11f-c47c624d9cdc', 'Jose', 'Wiggins', false, '1987-03-23', '2020-11-21T19:10:25+00:00', '2020-11-21 19:10:25+00');
+    ('60b01fc9-c902-4468-8d49-3c0f989def37', 'Ronald', 'Russell', true, '1983-01-05'),
+    ('f76c9ace-be07-4bf3-bd4c-4a9c62882e64', 'Terrence', 'Noel', true, '1999-11-02'),
+    ('784426a5-b90a-4759-afbb-571b7a0ba35e', 'Mila', 'Paterso', true, '1990-11-16'),
+    ('df8215a2-d5fd-4c6c-9984-801a1b3a2a0b', 'Alana', 'Murray', true, '1995-11-12'),
+    ('636ae137-5b1a-4c8c-b11f-c47c624d9cdc', 'Jose', 'Wiggins', false, '1987-03-23');
 
 insert into products
     (id, name, description, image_url)

@@ -4,6 +4,38 @@
 | --- | --- |
 | [![Build Status][badge-ci]][link-ci] | [![badge-discord]][link-discord] |
 
+## Current status: pre-0.1 (no release yet)
+
+### Progress report towards 0.1
+
+:heavy_check_mark: - good to go
+
+:white_check_mark: - some more work needed
+
+#### General features:
+Feature | Progress
+:------------ | :-------------
+Type-safe schema | :heavy_check_mark:
+Type-safe DSL | :white_check_mark:
+Running Reads | :heavy_check_mark:
+Running Deletes | :heavy_check_mark:
+Running Updates | :heavy_check_mark:
+Running Inserts | 
+Transactions |
+Connection pool | 
+
+#### Db-specific features:
+
+Feature | PostgreSQL | SQL Server | Oracle | MySQL
+:------------ | :-------------| :-------------| :-------------| :-------------
+Render Read | :white_check_mark: | :white_check_mark: | |
+Render Delete | :white_check_mark: | | | 
+Render Update | :white_check_mark: | | |
+Render Insert | | | |
+Functions     | :white_check_mark: | | |
+Types         | | | |
+Operators     | | | |
+
 ## What is ZIO SQL?
 ZIO SQL lets you write type-safe, type-inferred, and composable SQL queries in ordinary Scala, helping you prevent persistence bugs before they happen, and leverage your IDE to make writing SQL productive, safe, and fun. 
 

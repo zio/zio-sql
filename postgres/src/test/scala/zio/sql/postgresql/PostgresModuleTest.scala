@@ -87,6 +87,8 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
           )
         )
 
+//      execute(query ++ query ++ query ++ query)
+
       val testResult = execute(query)
         .to[UUID, String, String, LocalDate, Customer] { case row =>
           Customer(row._1, row._2, row._3, row._4)
@@ -243,7 +245,77 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
       } yield assert(r)(hasSameElementsDistinct(expected))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    }
-  )
+    },
+    testM("Can select using like") {
+      case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
+      val query = select(customerId ++ fName ++ lName ++ dob) from customers where (fName like "Jo%")
+
+      println(renderRead(query))
+      val expected = Seq(
+        Customer(
+          UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc"),
+          "Jose",
+          "Wiggins",
+          LocalDate.parse("1987-03-23")
+        )
+      )
+
+      val testResult = execute(query)
+        .to[UUID, String, String, LocalDate, Customer] { case row =>
+          Customer(row._1, row._2, row._3, row._4)
+        }
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r)(hasSameElementsDistinct(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("Transactions is returning the last value") {
+      val query = select(customerId) from customers
+
+      val result    = execute(
+        Transaction.Select(query) *> Transaction.Select(query)
+      )
+      val assertion = assertM(result.flatMap(_.runCollect))(hasSize(Assertion.equalTo(5))).orDie
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("Transactions is failing") {
+      val query = select(customerId) from customers
+
+      val result = execute(
+        Transaction.Select(query) *> Transaction.fail(new Exception("failing")) *> Transaction.Select(query)
+      ).mapError(_.getMessage)
+
+      val assertion = assertM(result.flip)(equalTo("failing"))
+
+      assertion
+    }
+    // testM("Can delete all from a single table") { TODO: Does not work on 2.12 yet
+    //   val query = deleteFrom(customers)
+    //   println(renderDelete(query))
+
+    //   val result = execute(query)
+
+    //   val assertion = for {
+    //     r <- result
+    //   } yield assert(r)(equalTo(5))
+
+    //   assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    // },
+    // testM("Can delete from single table with a condition") {
+    //   val query = deleteFrom(customers) where (verified isNotTrue)
+    //   println(renderDelete(query))
+
+    //   val result = execute(query)
+
+    //   val assertion = for {
+    //     r <- result
+    //   } yield assert(r)(equalTo(1))
+
+    //   assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    // }
+  )
 }
