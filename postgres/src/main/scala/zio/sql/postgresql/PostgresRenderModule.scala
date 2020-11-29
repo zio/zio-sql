@@ -1,14 +1,34 @@
 package zio.sql.postgresql
 
-import zio.sql.rendering.{ Builder, LowPriorityRenderingImplicits, Rendering }
+import zio.sql.rendering.{ Builder, LowPriorityRendering, Rendering }
 
 trait PostgresRenderModule { self: PostgresModule =>
   trait PostgresRendering[-A] extends Rendering[A]
   //todo split out to separate module
-  object PostgresRendering {
-
-    implicit case object DeleteRendering extends PostgresRendering[self.Delete[_]] {
-      override def apply(delete: self.Delete[_])(implicit builder: Builder): Unit = {
+  object PostgresRendering    extends LowPriorityRendering {
+    implicit case object ColumnSelectionRendering extends PostgresRendering[ColumnSelection[_, _]] {
+      override def apply(columnSelection: ColumnSelection[_, _])(implicit builder: Builder): Unit =
+        columnSelection match {
+          case ColumnSelection.Constant(value, name) =>
+            render(value) //todo fix escaping
+            name match {
+              case Some(name) => render(" AS ", name)
+              case None       => ()
+            }
+          case ColumnSelection.Computed(expr, name)  =>
+            render(expr)
+            name match {
+              case Some(name) =>
+                Expr.exprName(expr) match {
+                  case Some(sourceName) if name != sourceName => render(" AS ", name)
+                  case _                                      => ()
+                }
+              case _          => () //todo what do we do if we don't have a name?
+            }
+        }
+    }
+    implicit case object DeleteRendering          extends PostgresRendering[Delete[_]]             {
+      override def apply(delete: Delete[_])(implicit builder: Builder): Unit = {
         render("DELETE FROM ", delete.table)
         delete.whereExpr match {
           case Expr.Literal(true) => ()
@@ -16,16 +36,37 @@ trait PostgresRenderModule { self: PostgresModule =>
         }
       }
     }
-
-    implicit case object UpdateRendering extends PostgresRendering[Update[_]] {
-      override def apply(update: self.Update[_])(implicit builder: Builder): Unit = update match {
-        case Update(table, set, whereExpr) =>
-          render("UPDATE ", table, " SET ", set, " WHERE ", whereExpr)
+    implicit case object ExprListRendering        extends PostgresRendering[List[Expr[_, _, _]]]   {
+      override def apply(expr: List[Expr[_, _, _]])(implicit builder: Builder): Unit = expr match {
+        case head :: tail =>
+          render(head)
+          tail match {
+            case _ :: _ => render(", ", tail)
+            case Nil    => ()
+          }
+        case Nil          => ()
       }
     }
-
-    implicit case object LiteralRendering extends PostgresRendering[self.Expr.Literal[_]] {
-      override def apply(lit: self.Expr.Literal[_])(implicit builder: Builder): Unit = {
+    implicit case object ExprRendering            extends PostgresRendering[Expr[_, _, _]]         {
+      override def apply(expr: Expr[_, _, _])(implicit builder: Builder): Unit = expr match {
+        case Expr.Source(tableName, column)         => render(tableName.toString, ".", column.name)
+        case Expr.Unary(base, op)                   => render(" ", op.symbol, base)
+        case Expr.Property(base, op)                => render(base, " ", op.symbol)
+        case Expr.Binary(left, right, op)           => render(left, " ", op.symbol, " ", right)
+        case Expr.Relational(left, right, op)       => render(left, " ", op.symbol, " ", right)
+        case Expr.In(value, set)                    => render(value, set)
+        case lit: Expr.Literal[_]                   => render(lit)
+        case Expr.AggregationCall(p, aggregation)   => render(aggregation.name.name, "(", p, ")")
+        case Expr.ParenlessFunctionCall0(fn)        => render(fn.name)
+        case Expr.FunctionCall0(fn)                 => render(fn.name.name, "()")
+        case Expr.FunctionCall1(p, fn)              => render(fn.name.name, "(", p, ")")
+        case Expr.FunctionCall2(p1, p2, fn)         => render(fn.name.name, "(", p1, ",", p2, ")")
+        case Expr.FunctionCall3(p1, p2, p3, fn)     => render(fn.name.name, "(", p1, ",", p2, ",", p3, ")")
+        case Expr.FunctionCall4(p1, p2, p3, p4, fn) => render(fn.name.name, "(", p1, ",", p2, ",", p3, ",", p4, ")")
+      }
+    }
+    implicit case object LiteralRendering         extends PostgresRendering[Expr.Literal[_]]       {
+      override def apply(lit: Expr.Literal[_])(implicit builder: Builder): Unit = {
         import TypeTag._
         lit.typeTag match {
           case tt @ TByteArray      => render(tt.cast(lit.value).toString())          // todo still broken
@@ -55,45 +96,7 @@ trait PostgresRenderModule { self: PostgresModule =>
         }
       }
     }
-    implicit case object ExprRendering    extends PostgresRendering[self.Expr[_, _, _]]   {
-      override def apply(expr: Expr[_, _, _])(implicit builder: Builder): Unit = expr match {
-        case Expr.Source(tableName, column)         => render(tableName.toString, ".", column.name)
-        case Expr.Unary(base, op)                   => render(" ", op.symbol, base)
-        case Expr.Property(base, op)                => render(base, " ", op.symbol)
-        case Expr.Binary(left, right, op)           => render(left, " ", op.symbol, " ", right)
-        case Expr.Relational(left, right, op)       => render(left, " ", op.symbol, " ", right)
-        case Expr.In(value, set)                    => render(value, set)
-        case lit: Expr.Literal[_]                   => render(lit)
-        case Expr.AggregationCall(p, aggregation)   => render(aggregation.name.name, "(", p, ")")
-        case Expr.ParenlessFunctionCall0(fn)        => render(fn.name)
-        case Expr.FunctionCall0(fn)                 => render(fn.name.name, "()")
-        case Expr.FunctionCall1(p, fn)              => render(fn.name.name, "(", p, ")")
-        case Expr.FunctionCall2(p1, p2, fn)         => render(fn.name.name, "(", p1, ",", p2, ")")
-        case Expr.FunctionCall3(p1, p2, p3, fn)     => render(fn.name.name, "(", p1, ",", p2, ",", p3, ")")
-        case Expr.FunctionCall4(p1, p2, p3, p4, fn) => render(fn.name.name, "(", p1, ",", p2, ",", p3, ",", p4, ")")
-      }
-    }
-
-    implicit case object SetListRendering         extends PostgresRendering[List[Set[_, _]]]            {
-      override def apply(set: List[Set[_, _]])(implicit builder: Builder): Unit = set match {
-        case head :: tail =>
-          render(head.lhs, " = ", head.rhs)
-          tail.foreach(setEq => render(", ", setEq.lhs, " = ", setEq.rhs))
-        case Nil          => //TODO restrict Update to not allow empty set
-      }
-    }
-    implicit case object ExprListRendering        extends PostgresRendering[List[Expr[_, _, _]]]        {
-      override def apply(expr: List[Expr[_, _, _]])(implicit builder: Builder): Unit = expr match {
-        case head :: tail =>
-          render(head)
-          tail match {
-            case _ :: _ => render(", ", tail)
-            case Nil    => ()
-          }
-        case Nil          => ()
-      }
-    }
-    implicit case object OrderingListRendering    extends PostgresRendering[List[Expr[_, _, _]]]        {
+    implicit case object OrderingListRendering    extends PostgresRendering[List[Expr[_, _, _]]]   {
       override def apply(expr: List[Ordering[Expr[_, _, _]]])(implicit builder: Builder): Unit = expr match {
         case head :: tail =>
           head match {
@@ -108,7 +111,15 @@ trait PostgresRenderModule { self: PostgresModule =>
         case Nil          => ()
       }
     }
-    implicit case object ReadRendering            extends PostgresRendering[Read[_]]                    {
+    implicit case object SetListRendering         extends PostgresRendering[List[Set[_, _]]]       {
+      override def apply(set: List[Set[_, _]])(implicit builder: Builder): Unit = set match {
+        case head :: tail =>
+          render(head.lhs, " = ", head.rhs)
+          tail.foreach(setEq => render(", ", setEq.lhs, " = ", setEq.rhs))
+        case Nil          => //TODO restrict Update to not allow empty set
+      }
+    }
+    implicit case object ReadRendering            extends PostgresRendering[Read[_]]               {
       override def apply(read: Read[_])(implicit builder: Builder): Unit = read match {
         case read0 @ Read.Select(_, _, _, _, _, _, _, _) =>
           object Dummy { type F; type A; type B <: SelectionSet[A] }
@@ -151,39 +162,18 @@ trait PostgresRenderModule { self: PostgresModule =>
           render(" (", values.mkString(","), ") ") //todo fix needs escaping
       }
     }
-    implicit case object SelectionSetRendering    extends PostgresRendering[self.SelectionSet[_]]       {
+    implicit case object SelectionSetRendering    extends PostgresRendering[SelectionSet[_]]       {
       override def apply(selectionSet: SelectionSet[_])(implicit builder: Builder): Unit = selectionSet match {
-        case cons: SelectionSet.Cons[_, _, _] =>
+        case cons: SelectionSet.Cons[source, a, b] =>
           render(cons.head)
           if (cons.tail != SelectionSet.Empty) render(", ", cons.tail)
-        case SelectionSet.Empty               => ()
+        case SelectionSet.Empty                    => ()
       }
     }
-    implicit case object ColumnSelectionRendering extends PostgresRendering[self.ColumnSelection[_, _]] {
-      override def apply(columnSelection: ColumnSelection[_, _])(implicit builder: Builder): Unit =
-        columnSelection match {
-          case ColumnSelection.Constant(value, name) =>
-            render(value) //todo fix escaping
-            name match {
-              case Some(name) => render(" AS ", name)
-              case None       => ()
-            }
-          case ColumnSelection.Computed(expr, name)  =>
-            render(expr)
-            name match {
-              case Some(name) =>
-                Expr.exprName(expr) match {
-                  case Some(sourceName) if name != sourceName => render(" AS ", name)
-                  case _                                      => ()
-                }
-              case _          => () //todo what do we do if we don't have a name?
-            }
-        }
-    }
-    implicit case object TableRendering           extends PostgresRendering[self.Table]                 {
+    implicit case object TableRendering           extends PostgresRendering[Table]                 {
       override def apply(table: Table)(implicit builder: Builder): Unit = table match {
         //The outer reference in this type test cannot be checked at run time?!
-        case sourceTable: self.Table.Source          => render(sourceTable.name.toString)
+        case sourceTable: Table.Source               => render(sourceTable.name.toString)
         case Table.Joined(joinType, left, right, on) =>
           render(left)
           render(joinType match {
@@ -193,6 +183,12 @@ trait PostgresRenderModule { self: PostgresModule =>
             case JoinType.FullOuter  => " OUTER JOIN "
           })
           render(right, " ON ", on, " ")
+      }
+    }
+    implicit case object UpdateRendering          extends PostgresRendering[Update[_]]             {
+      override def apply(update: Update[_])(implicit builder: Builder): Unit = update match {
+        case Update(table, set, whereExpr) =>
+          render("UPDATE ", table, " SET ", set, " WHERE ", whereExpr)
       }
     }
   }

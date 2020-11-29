@@ -10,7 +10,7 @@ import scala.language.implicitConversions
  */
 trait PostgresModule extends Jdbc with PostgresRenderModule { self =>
 
-  override type SqlRenderer[A] = PostgresRendering[A]
+  override type SqlRendering[A] = PostgresRendering[A]
 
   override type ExprExtensionType[F, -A, B] = PostgresExprExtension[F, A, B]
 

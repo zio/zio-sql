@@ -4,17 +4,17 @@ import zio.sql.Sql
 
 trait RenderModule { self: Sql =>
   //not using vararg to avoid allocating `Seq`s
-  def render[A](a: A)(implicit r: SqlRenderer[A], builder: Builder): Unit = r.apply(a)(builder)
+  def render[A](a: A)(implicit r: SqlRendering[A], builder: Builder): Unit = r.apply(a)(builder)
 
-  def render[A, B](a: A, b: B)(implicit ra: SqlRenderer[A], rb: SqlRenderer[B], builder: Builder): Unit = {
+  def render[A, B](a: A, b: B)(implicit ra: SqlRendering[A], rb: SqlRendering[B], builder: Builder): Unit = {
     render(a)
     render(b)
   }
 
   def render[A, B, C](a: A, b: B, c: C)(implicit
-    ra: SqlRenderer[A],
-    rb: SqlRenderer[B],
-    rc: SqlRenderer[C],
+    ra: SqlRendering[A],
+    rb: SqlRendering[B],
+    rc: SqlRendering[C],
     builder: Builder
   ): Unit = {
     render(a)
@@ -23,10 +23,10 @@ trait RenderModule { self: Sql =>
   }
 
   def render[A, B, C, D](a: A, b: B, c: C, d: D)(implicit
-    ra: SqlRenderer[A],
-    rb: SqlRenderer[B],
-    rc: SqlRenderer[C],
-    rd: SqlRenderer[D],
+    ra: SqlRendering[A],
+    rb: SqlRendering[B],
+    rc: SqlRendering[C],
+    rd: SqlRendering[D],
     builder: Builder
   ): Unit = {
     render(a)
@@ -35,11 +35,11 @@ trait RenderModule { self: Sql =>
     render(d)
   }
   def render[A, B, C, D, E](a: A, b: B, c: C, d: D, e: E)(implicit
-    ra: SqlRenderer[A],
-    rb: SqlRenderer[B],
-    rc: SqlRenderer[C],
-    rd: SqlRenderer[D],
-    re: SqlRenderer[E],
+    ra: SqlRendering[A],
+    rb: SqlRendering[B],
+    rc: SqlRendering[C],
+    rd: SqlRendering[D],
+    re: SqlRendering[E],
     builder: Builder
   ): Unit = {
     render(a)
@@ -49,12 +49,12 @@ trait RenderModule { self: Sql =>
     render(e)
   }
   def render[A, B, C, D, E, F](a: A, b: B, c: C, d: D, e: E, f: F)(implicit
-    ra: SqlRenderer[A],
-    rb: SqlRenderer[B],
-    rc: SqlRenderer[C],
-    rd: SqlRenderer[D],
-    re: SqlRenderer[E],
-    rf: SqlRenderer[F],
+    ra: SqlRendering[A],
+    rb: SqlRendering[B],
+    rc: SqlRendering[C],
+    rd: SqlRendering[D],
+    re: SqlRendering[E],
+    rf: SqlRendering[F],
     builder: Builder
   ): Unit = {
     render(a)
@@ -65,13 +65,13 @@ trait RenderModule { self: Sql =>
     render(f)
   }
   def render[A, B, C, D, E, F, G](a: A, b: B, c: C, d: D, e: E, f: F, g: G)(implicit
-    ra: SqlRenderer[A],
-    rb: SqlRenderer[B],
-    rc: SqlRenderer[C],
-    rd: SqlRenderer[D],
-    re: SqlRenderer[E],
-    rf: SqlRenderer[F],
-    rg: SqlRenderer[G],
+    ra: SqlRendering[A],
+    rb: SqlRendering[B],
+    rc: SqlRendering[C],
+    rd: SqlRendering[D],
+    re: SqlRendering[E],
+    rf: SqlRendering[F],
+    rg: SqlRendering[G],
     builder: Builder
   ): Unit = {
     render(a)
@@ -83,14 +83,14 @@ trait RenderModule { self: Sql =>
     render(g)
   }
   def render[A, B, C, D, E, F, G, H, I](a: A, b: B, c: C, d: D, e: E, f: F, g: G, h: H)(implicit
-    ra: SqlRenderer[A],
-    rb: SqlRenderer[B],
-    rc: SqlRenderer[C],
-    rd: SqlRenderer[D],
-    re: SqlRenderer[E],
-    rf: SqlRenderer[F],
-    rg: SqlRenderer[G],
-    rh: SqlRenderer[H],
+    ra: SqlRendering[A],
+    rb: SqlRendering[B],
+    rc: SqlRendering[C],
+    rd: SqlRendering[D],
+    re: SqlRendering[E],
+    rf: SqlRendering[F],
+    rg: SqlRendering[G],
+    rh: SqlRendering[H],
     builder: Builder
   ): Unit = {
     render(a)
@@ -103,15 +103,15 @@ trait RenderModule { self: Sql =>
     render(h)
   }
   def render[A, B, C, D, E, F, G, H, I](a: A, b: B, c: C, d: D, e: E, f: F, g: G, h: H, i: I)(implicit
-    ra: SqlRenderer[A],
-    rb: SqlRenderer[B],
-    rc: SqlRenderer[C],
-    rd: SqlRenderer[D],
-    re: SqlRenderer[E],
-    rf: SqlRenderer[F],
-    rg: SqlRenderer[G],
-    rh: SqlRenderer[H],
-    ri: SqlRenderer[I],
+    ra: SqlRendering[A],
+    rb: SqlRendering[B],
+    rc: SqlRendering[C],
+    rd: SqlRendering[D],
+    re: SqlRendering[E],
+    rf: SqlRendering[F],
+    rg: SqlRendering[G],
+    rh: SqlRendering[H],
+    ri: SqlRendering[I],
     builder: Builder
   ): Unit = {
     render(a)
@@ -125,16 +125,16 @@ trait RenderModule { self: Sql =>
     render(i)
   }
   def render[A, B, C, D, E, F, G, H, I, J](a: A, b: B, c: C, d: D, e: E, f: F, g: G, h: H, i: I, j: J)(implicit
-    ra: SqlRenderer[A],
-    rb: SqlRenderer[B],
-    rc: SqlRenderer[C],
-    rd: SqlRenderer[D],
-    re: SqlRenderer[E],
-    rf: SqlRenderer[F],
-    rg: SqlRenderer[G],
-    rh: SqlRenderer[H],
-    ri: SqlRenderer[I],
-    rj: SqlRenderer[J],
+    ra: SqlRendering[A],
+    rb: SqlRendering[B],
+    rc: SqlRendering[C],
+    rd: SqlRendering[D],
+    re: SqlRendering[E],
+    rf: SqlRendering[F],
+    rg: SqlRendering[G],
+    rh: SqlRendering[H],
+    ri: SqlRendering[I],
+    rj: SqlRendering[J],
     builder: Builder
   ): Unit = {
     render(a)
