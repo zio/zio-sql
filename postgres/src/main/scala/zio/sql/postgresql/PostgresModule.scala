@@ -8,166 +8,9 @@ import scala.language.implicitConversions
 
 /**
  */
-trait PostgresModule extends Jdbc with PostgressRenderModule { self =>
+trait PostgresModule extends Jdbc with PostgresRenderModule { self =>
 
-  override type SqlRenderer[-A] = PostgresRenderer[A]
-
-  def renderSet[A <: SelectionSet[_]](set: List[Set[_, A]])(implicit render: Builder): Unit =
-    set match {
-      case head :: tail =>
-        renderExpr(head.lhs)
-        render(" = ")
-        renderExpr(head.rhs)
-        tail.foreach { setEq =>
-          render(", ")
-          renderExpr(setEq.lhs)
-          render(" = ")
-          renderExpr(setEq.rhs)
-        }
-      case Nil          => //TODO restrict Update to not allow empty set
-    }
-
-  private[zio] def renderReadImpl[A <: SelectionSet[_]](read: self.Read[_])(implicit render: Builder): Unit =
-    read match {
-      case read0 @ Read.Select(_, _, _, _, _, _, _, _) =>
-        object Dummy { type F; type A; type B <: SelectionSet[A] }
-        val read = read0.asInstanceOf[Read.Select[Dummy.F, Dummy.A, Dummy.B]]
-        import read._
-
-        render("SELECT ")
-        renderSelection(selection.value)
-        render(" FROM ")
-        renderTable(table)
-        whereExpr match {
-          case Expr.Literal(true) => ()
-          case _                  =>
-            render(" WHERE ")
-            renderExpr(whereExpr)
-        }
-        groupBy match {
-          case _ :: _ =>
-            render(" GROUP BY ")
-            renderExprList(groupBy)
-
-            havingExpr match {
-              case Expr.Literal(true) => ()
-              case _                  =>
-                render(" HAVING ")
-                renderExpr(havingExpr)
-            }
-          case Nil    => ()
-        }
-        orderBy match {
-          case _ :: _ =>
-            render(" ORDER BY ")
-            renderOrderingList(orderBy)
-          case Nil    => ()
-        }
-        limit match {
-          case Some(limit) => render(" LIMIT ", limit)
-          case None        => ()
-        }
-        offset match {
-          case Some(offset) => render(" OFFSET ", offset)
-          case None         => ()
-        }
-
-      case Read.Union(left, right, distinct) =>
-        renderReadImpl(left)
-        render(" UNION ")
-        if (!distinct) render("ALL ")
-        renderReadImpl(right)
-
-      case Read.Literal(values) =>
-        render(" (", values.mkString(","), ") ") //todo fix needs escaping
-    }
-
-  def renderExprList(expr: List[Expr[_, _, _]])(implicit render: Builder): Unit =
-    expr match {
-      case head :: tail =>
-        renderExpr(head)
-        tail match {
-          case _ :: _ =>
-            render(", ")
-            renderExprList(tail)
-          case Nil    => ()
-        }
-      case Nil          => ()
-    }
-
-  def renderOrderingList(expr: List[Ordering[Expr[_, _, _]]])(implicit render: Builder): Unit =
-    expr match {
-      case head :: tail =>
-        head match {
-          case Ordering.Asc(value)  => renderExpr(value)
-          case Ordering.Desc(value) =>
-            renderExpr(value)
-            render(" DESC")
-        }
-        tail match {
-          case _ :: _ =>
-            render(", ")
-            renderOrderingList(tail)
-          case Nil    => ()
-        }
-      case Nil          => ()
-    }
-
-  def renderSelection[A](selectionSet: SelectionSet[A])(implicit render: Builder): Unit =
-    selectionSet match {
-      case cons0 @ SelectionSet.Cons(_, _) =>
-        object Dummy {
-          type Source
-          type A
-          type B <: SelectionSet[Source]
-        }
-        val cons = cons0.asInstanceOf[SelectionSet.Cons[Dummy.Source, Dummy.A, Dummy.B]]
-        import cons._
-        renderColumnSelection(head)
-        if (tail != SelectionSet.Empty) {
-          render(", ")
-          renderSelection(tail)
-        }
-      case SelectionSet.Empty              => ()
-    }
-
-  def renderColumnSelection[A, B](columnSelection: ColumnSelection[A, B])(implicit render: Builder): Unit =
-    columnSelection match {
-      case ColumnSelection.Constant(value, name) =>
-        render(value) //todo fix escaping
-        name match {
-          case Some(name) => render(" AS ", name)
-          case None       => ()
-        }
-      case ColumnSelection.Computed(expr, name)  =>
-        renderExpr(expr)
-        name match {
-          case Some(name) =>
-            Expr.exprName(expr) match {
-              case Some(sourceName) if name != sourceName => render(" AS ", name)
-              case _                                      => ()
-            }
-          case _          => () //todo what do we do if we don't have a name?
-        }
-    }
-
-  def renderTable(table: Table)(implicit render: Builder): Unit =
-    table match {
-      //The outer reference in this type test cannot be checked at run time?!
-      case sourceTable: self.Table.Source          => render(sourceTable.name)
-      case Table.Joined(joinType, left, right, on) =>
-        renderTable(left)
-        render(joinType match {
-          case JoinType.Inner      => " INNER JOIN "
-          case JoinType.LeftOuter  => " LEFT JOIN "
-          case JoinType.RightOuter => " RIGHT JOIN "
-          case JoinType.FullOuter  => " OUTER JOIN "
-        })
-        renderTable(right)
-        render(" ON ")
-        renderExpr(on)
-        render(" ")
-    }
+  override type SqlRenderer[A] = PostgresRendering[A]
 
   override type ExprExtensionType[F, -A, B] = PostgresExprExtension[F, A, B]
 
@@ -231,24 +74,24 @@ trait PostgresModule extends Jdbc with PostgressRenderModule { self =>
   }
 
   override def renderRead(read: self.Read[_]): String = {
-    implicit val render: Builder = Builder()
-    PostgresRenderer.renderReadImpl(read)
-    println(render.toString)
-    render.toString
+    implicit val builder: Builder = Builder()
+    render(read)
+    println(builder.toString)
+    builder.toString
   }
 
   def renderUpdate(update: Update[_]): String = {
-    implicit val render: Builder = Builder()
-    PostgresRenderer.renderUpdateImpl(update)
-    println(render.toString)
-    render.toString
+    implicit val builder: Builder = Builder()
+    render(update)
+    println(builder.toString)
+    builder.toString
   }
 
   override def renderDelete(delete: Delete[_]): String = {
-    implicit val render: Builder = Builder()
-    PostgresRenderer.renderDeleteImpl(delete)
-    println(render.toString)
-    render.toString
+    implicit val builder: Builder = Builder()
+    render(delete)
+    println(builder.toString)
+    builder.toString
   }
 
 }
