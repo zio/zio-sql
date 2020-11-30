@@ -3,10 +3,18 @@ package zio.sql.postgresql
 import zio.sql.rendering.{ Builder, LowPriorityRendering, Rendering }
 
 trait PostgresRenderModule { self: PostgresModule =>
+
+  override type RenderingLower[-A] = PostgresRendering[A]
+
   trait PostgresRendering[-A] extends Rendering[A]
-  //todo split out to separate module
-  object PostgresRendering    extends LowPriorityRendering {
-    implicit case object ColumnSelectionRendering extends PostgresRendering[ColumnSelection[_, _]] {
+  object PostgresRendering {
+    implicit case object StringRenderer           extends PostgresRendering[String]                        {
+      override def apply(a: String)(implicit builder: Builder): Unit = println(a)
+    }
+    implicit case object LongRenderer             extends PostgresRendering[Long]                          {
+      override def apply(a: Long)(implicit builder: Builder): Unit = println(a)
+    }
+    implicit case object ColumnSelectionRendering extends PostgresRendering[ColumnSelection[_, _]]         {
       override def apply(columnSelection: ColumnSelection[_, _])(implicit builder: Builder): Unit =
         columnSelection match {
           case ColumnSelection.Constant(value, name) =>
@@ -27,7 +35,7 @@ trait PostgresRenderModule { self: PostgresModule =>
             }
         }
     }
-    implicit case object DeleteRendering          extends PostgresRendering[Delete[_]]             {
+    implicit case object DeleteRendering          extends PostgresRendering[Delete[_]]                     {
       override def apply(delete: Delete[_])(implicit builder: Builder): Unit = {
         render("DELETE FROM ", delete.table)
         delete.whereExpr match {
@@ -36,7 +44,7 @@ trait PostgresRenderModule { self: PostgresModule =>
         }
       }
     }
-    implicit case object ExprListRendering        extends PostgresRendering[List[Expr[_, _, _]]]   {
+    implicit case object ExprListRendering        extends PostgresRendering[List[Expr[_, _, _]]]           {
       override def apply(expr: List[Expr[_, _, _]])(implicit builder: Builder): Unit = expr match {
         case head :: tail =>
           render(head)
@@ -47,7 +55,7 @@ trait PostgresRenderModule { self: PostgresModule =>
         case Nil          => ()
       }
     }
-    implicit case object ExprRendering            extends PostgresRendering[Expr[_, _, _]]         {
+    implicit case object ExprRendering            extends PostgresRendering[Expr[_, _, _]]                 {
       override def apply(expr: Expr[_, _, _])(implicit builder: Builder): Unit = expr match {
         case Expr.Source(tableName, column)         => render(tableName.toString, ".", column.name)
         case Expr.Unary(base, op)                   => render(" ", op.symbol, base)
@@ -65,7 +73,7 @@ trait PostgresRenderModule { self: PostgresModule =>
         case Expr.FunctionCall4(p1, p2, p3, p4, fn) => render(fn.name.name, "(", p1, ",", p2, ",", p3, ",", p4, ")")
       }
     }
-    implicit case object LiteralRendering         extends PostgresRendering[Expr.Literal[_]]       {
+    implicit case object LiteralRendering         extends PostgresRendering[Expr.Literal[_]]               {
       override def apply(lit: Expr.Literal[_])(implicit builder: Builder): Unit = {
         import TypeTag._
         lit.typeTag match {
@@ -96,7 +104,7 @@ trait PostgresRenderModule { self: PostgresModule =>
         }
       }
     }
-    implicit case object OrderingListRendering    extends PostgresRendering[List[Expr[_, _, _]]]   {
+    implicit case object OrderingListRendering    extends PostgresRendering[List[Ordering[Expr[_, _, _]]]] {
       override def apply(expr: List[Ordering[Expr[_, _, _]]])(implicit builder: Builder): Unit = expr match {
         case head :: tail =>
           head match {
@@ -111,7 +119,7 @@ trait PostgresRenderModule { self: PostgresModule =>
         case Nil          => ()
       }
     }
-    implicit case object SetListRendering         extends PostgresRendering[List[Set[_, _]]]       {
+    implicit case object SetListRendering         extends PostgresRendering[List[Set[_, _]]]               {
       override def apply(set: List[Set[_, _]])(implicit builder: Builder): Unit = set match {
         case head :: tail =>
           render(head.lhs, " = ", head.rhs)
@@ -119,14 +127,11 @@ trait PostgresRenderModule { self: PostgresModule =>
         case Nil          => //TODO restrict Update to not allow empty set
       }
     }
-    implicit case object ReadRendering            extends PostgresRendering[Read[_]]               {
-      override def apply(read: Read[_])(implicit builder: Builder): Unit = read match {
-        case read0 @ Read.Select(_, _, _, _, _, _, _, _) =>
-          object Dummy { type F; type A; type B <: SelectionSet[A] }
-          val read = read0.asInstanceOf[Read.Select[Dummy.F, Dummy.A, Dummy.B]]
+    implicit case object ReadRendering            extends PostgresRendering[Read[Any]]                     {
+      override def apply(read: Read[Any])(implicit builder: Builder): Unit = read match {
+        case read: Read.Select[_, _, _] =>
           import read._
-
-          render("SELECT ", selection.value, " FROM ", table)
+          render("SELECT ", selection.value.asInstanceOf[SelectionSet[Any]], " FROM ", table)
           whereExpr match {
             case Expr.Literal(true) => ()
             case _                  => render(" WHERE ", whereExpr)
@@ -162,15 +167,16 @@ trait PostgresRenderModule { self: PostgresModule =>
           render(" (", values.mkString(","), ") ") //todo fix needs escaping
       }
     }
-    implicit case object SelectionSetRendering    extends PostgresRendering[SelectionSet[_]]       {
+    implicit case object SelectionSetRendering    extends PostgresRendering[SelectionSet[_]]               {
       override def apply(selectionSet: SelectionSet[_])(implicit builder: Builder): Unit = selectionSet match {
-        case cons: SelectionSet.Cons[source, a, b] =>
+        case cons: SelectionSet.Cons[_, _, _] =>
           render(cons.head)
-          if (cons.tail != SelectionSet.Empty) render(", ", cons.tail)
-        case SelectionSet.Empty                    => ()
+          if (cons.tail != SelectionSet.Empty) render(", ")
+          render(cons.tail.asInstanceOf[SelectionSet[_]])
+        case SelectionSet.Empty               => ()
       }
     }
-    implicit case object TableRendering           extends PostgresRendering[Table]                 {
+    implicit case object TableRendering           extends PostgresRendering[Table]                         {
       override def apply(table: Table)(implicit builder: Builder): Unit = table match {
         //The outer reference in this type test cannot be checked at run time?!
         case sourceTable: Table.Source               => render(sourceTable.name.toString)
@@ -185,11 +191,12 @@ trait PostgresRenderModule { self: PostgresModule =>
           render(right, " ON ", on, " ")
       }
     }
-    implicit case object UpdateRendering          extends PostgresRendering[Update[_]]             {
+    implicit case object UpdateRendering          extends PostgresRendering[Update[_]]                     {
       override def apply(update: Update[_])(implicit builder: Builder): Unit = update match {
         case Update(table, set, whereExpr) =>
           render("UPDATE ", table, " SET ", set, " WHERE ", whereExpr)
       }
     }
+
   }
 }

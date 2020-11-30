@@ -18,7 +18,9 @@ trait Sql extends SelectModule with DeleteModule with UpdateModule with ExprModu
    * SELECT ARBITRARY(age), COUNT(*) FROM person GROUP BY age
    */
 
-  type SqlRendering[-A] <: Rendering[A]
+  type RenderingLower[-A] <: Rendering[A]
+
+  type SqlRendering[A] >: RenderingLower[A] <: Rendering[A]
 
   def select[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]): SelectBuilder[F, A, B] =
     SelectBuilder(selection)

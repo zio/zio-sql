@@ -10,8 +10,6 @@ import scala.language.implicitConversions
  */
 trait PostgresModule extends Jdbc with PostgresRenderModule { self =>
 
-  override type SqlRendering[A] = PostgresRendering[A]
-
   override type ExprExtensionType[F, -A, B] = PostgresExprExtension[F, A, B]
 
   sealed trait PostgresExprExtension[F, -A, B]
@@ -73,7 +71,7 @@ trait PostgresModule extends Jdbc with PostgresRenderModule { self =>
     val PgClientEncoding            = FunctionDef[Any, String](FunctionName("pg_client_encoding"))
   }
 
-  override def renderRead(read: self.Read[_]): String = {
+  override def renderRead[A](read: Read[A]): String = {
     implicit val builder: Builder = Builder()
     render(read)
     println(builder.toString)

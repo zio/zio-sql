@@ -3,6 +3,7 @@ package zio.sql.rendering
 import zio.sql.Sql
 
 trait RenderModule { self: Sql =>
+
   //not using vararg to avoid allocating `Seq`s
   def render[A](a: A)(implicit r: SqlRendering[A], builder: Builder): Unit = r.apply(a)(builder)
 
