@@ -2,7 +2,7 @@ package zio.sql.postgresql
 
 import java.time._
 import zio.sql.Jdbc
-import zio.sql.rendering.{ Builder, RenderModule, Rendering }
+import zio.sql.rendering.{Builder, RenderModule, Rendering}
 
 import scala.language.implicitConversions
 

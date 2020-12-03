@@ -62,7 +62,7 @@ trait PostgresRenderModule { self: PostgresModule =>
         case Expr.Property(base, op)                => render(base, " ", op.symbol)
         case Expr.Binary(left, right, op)           => render(left, " ", op.symbol, " ", right)
         case Expr.Relational(left, right, op)       => render(left, " ", op.symbol, " ", right)
-        case Expr.In(value, set)                    => render(value, set)
+        case Expr.In(value, set)                    => render(value, set.asInstanceOf[Read[Any]])
         case lit: Expr.Literal[_]                   => render(lit)
         case Expr.AggregationCall(p, aggregation)   => render(aggregation.name.name, "(", p, ")")
         case Expr.ParenlessFunctionCall0(fn)        => render(fn.name)
@@ -77,28 +77,28 @@ trait PostgresRenderModule { self: PostgresModule =>
       override def apply(lit: Expr.Literal[_])(implicit builder: Builder): Unit = {
         import TypeTag._
         lit.typeTag match {
-          case tt @ TByteArray      => render(tt.cast(lit.value).toString())          // todo still broken
+          case tt @ TByteArray      => render(tt.cast(lit.value).toString())                   // todo still broken
           //something like? render(tt.cast(lit.value).map("\\\\%03o" format _).mkString("E\'", "", "\'"))
           case tt @ TChar           =>
             render("'", tt.cast(lit.value).toString, "'") //todo is this the same as a string? fix escaping
-          case tt @ TInstant        => render("TIMESTAMP '", tt.cast(lit.value), "'") //todo test
-          case tt @ TLocalDate      => render(tt.cast(lit.value).toString)            // todo still broken
-          case tt @ TLocalDateTime  => render(tt.cast(lit.value).toString)            // todo still broken
-          case tt @ TLocalTime      => render(tt.cast(lit.value).toString)            // todo still broken
-          case tt @ TOffsetDateTime => render(tt.cast(lit.value).toString)            // todo still broken
-          case tt @ TOffsetTime     => render(tt.cast(lit.value).toString)            // todo still broken
-          case tt @ TUUID           => render(tt.cast(lit.value).toString)            // todo still broken
-          case tt @ TZonedDateTime  => render(tt.cast(lit.value).toString)            // todo still broken
+          case tt @ TInstant        => render("TIMESTAMP '", tt.cast(lit.value).toString, "'") //todo test
+          case tt @ TLocalDate      => render(tt.cast(lit.value).toString)                     // todo still broken
+          case tt @ TLocalDateTime  => render(tt.cast(lit.value).toString)                     // todo still broken
+          case tt @ TLocalTime      => render(tt.cast(lit.value).toString)                     // todo still broken
+          case tt @ TOffsetDateTime => render(tt.cast(lit.value).toString)                     // todo still broken
+          case tt @ TOffsetTime     => render(tt.cast(lit.value).toString)                     // todo still broken
+          case tt @ TUUID           => render(tt.cast(lit.value).toString)                     // todo still broken
+          case tt @ TZonedDateTime  => render(tt.cast(lit.value).toString)                     // todo still broken
 
-          case TByte       => render(lit.value.toString)  //default toString is probably ok
-          case TBigDecimal => render(lit.value.toString)  //default toString is probably ok
-          case TBoolean    => render(lit.value.toString)  //default toString is probably ok
-          case TDouble     => render(lit.value.toString)  //default toString is probably ok
-          case TFloat      => render(lit.value.toString)  //default toString is probably ok
-          case TInt        => render(lit.value.toString)  //default toString is probably ok
-          case TLong       => render(lit.value.toString)  //default toString is probably ok
-          case TShort      => render(lit.value.toString)  //default toString is probably ok
-          case TString     => render("'", lit.value, "'") //todo fix escaping
+          case TByte       => render(lit.value.toString)           //default toString is probably ok
+          case TBigDecimal => render(lit.value.toString)           //default toString is probably ok
+          case TBoolean    => render(lit.value.toString)           //default toString is probably ok
+          case TDouble     => render(lit.value.toString)           //default toString is probably ok
+          case TFloat      => render(lit.value.toString)           //default toString is probably ok
+          case TInt        => render(lit.value.toString)           //default toString is probably ok
+          case TLong       => render(lit.value.toString)           //default toString is probably ok
+          case TShort      => render(lit.value.toString)           //default toString is probably ok
+          case TString     => render("'", lit.value.toString, "'") //todo fix escaping
 
           case _ => render(lit.value.toString) //todo fix add TypeTag.Nullable[_] =>
         }
@@ -119,15 +119,7 @@ trait PostgresRenderModule { self: PostgresModule =>
         case Nil          => ()
       }
     }
-    implicit case object SetListRendering         extends PostgresRendering[List[Set[_, _]]]               {
-      override def apply(set: List[Set[_, _]])(implicit builder: Builder): Unit = set match {
-        case head :: tail =>
-          render(head.lhs, " = ", head.rhs)
-          tail.foreach(setEq => render(", ", setEq.lhs, " = ", setEq.rhs))
-        case Nil          => //TODO restrict Update to not allow empty set
-      }
-    }
-    implicit case object ReadRendering            extends PostgresRendering[Read[Any]]                     {
+    implicit case object ReadRendering            extends PostgresRendering[Read[_]]                       {
       override def apply(read: Read[Any])(implicit builder: Builder): Unit = read match {
         case read: Read.Select[_, _, _] =>
           import read._
@@ -174,6 +166,14 @@ trait PostgresRenderModule { self: PostgresModule =>
           if (cons.tail != SelectionSet.Empty) render(", ")
           render(cons.tail.asInstanceOf[SelectionSet[_]])
         case SelectionSet.Empty               => ()
+      }
+    }
+    implicit case object SetListRendering         extends PostgresRendering[List[Set[_, _]]]               {
+      override def apply(set: List[Set[_, _]])(implicit builder: Builder): Unit = set match {
+        case head :: tail =>
+          render(head.lhs, " = ", head.rhs)
+          tail.foreach(setEq => render(", ", setEq.lhs, " = ", setEq.rhs))
+        case Nil          => //TODO restrict Update to not allow empty set
       }
     }
     implicit case object TableRendering           extends PostgresRendering[Table]                         {
