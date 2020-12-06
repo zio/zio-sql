@@ -86,7 +86,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     def isNotTrue[A1 <: A](implicit ev: B <:< Boolean): Expr[F, A1, Boolean] =
       Expr.Property(self, PropertyOp.IsNotTrue)
 
-    def as[B1 >: B](name: String): Selection[F, A, SelectionSet.Cons[A, B1, SelectionSet.Empty]] =
+    def as[B1 >: B](name: ColumnName): Selection[F, A, SelectionSet.Cons[A, B1, SelectionSet.Empty]] =
       Selection.computedAs(self, name)
 
     def ascending: Ordering[Expr[F, A, B]] = Ordering.Asc(self)
@@ -123,7 +123,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
 
     implicit def literal[A: TypeTag](a: A): Expr[Features.Literal, Any, A] = Expr.Literal(a)
 
-    def exprName[F, A, B](expr: Expr[F, A, B]): Option[String] =
+    def exprName[F, A, B](expr: Expr[F, A, B]): Option[ColumnName] =
       expr match {
         case Expr.Source(_, c) => Some(c.name)
         case _                 => None

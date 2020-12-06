@@ -59,25 +59,25 @@ trait TableModule { self: ExprModule with SelectModule =>
         (Expr.Source(name, head), tail.mkColumns(name))
     }
 
-    def bigDecimal(name: String): Singleton[BigDecimal]         = singleton[BigDecimal](name)
-    def boolean(name: String): Singleton[Boolean]               = singleton[Boolean](name)
-    def byteArray(name: String): Singleton[Chunk[Byte]]         = singleton[Chunk[Byte]](name)
-    def char(name: String): Singleton[Char]                     = singleton[Char](name)
-    def double(name: String): Singleton[Double]                 = singleton[Double](name)
-    def float(name: String): Singleton[Float]                   = singleton[Float](name)
-    def instant(name: String): Singleton[Instant]               = singleton[Instant](name)
-    def int(name: String): Singleton[Int]                       = singleton[Int](name)
-    def localDate(name: String): Singleton[LocalDate]           = singleton[LocalDate](name)
-    def localDateTime(name: String): Singleton[LocalDateTime]   = singleton[LocalDateTime](name)
-    def localTime(name: String): Singleton[LocalTime]           = singleton[LocalTime](name)
-    def long(name: String): Singleton[Long]                     = singleton[Long](name)
-    def offsetDateTime(name: String): Singleton[OffsetDateTime] = singleton[OffsetDateTime](name)
-    def offsetTime(name: String): Singleton[OffsetTime]         = singleton[OffsetTime](name)
-    def short(name: String): Singleton[Short]                   = singleton[Short](name)
-    def singleton[A: TypeTag](name: String): Singleton[A]       = Cons(Column[A](name), Empty)
-    def string(name: String): Singleton[String]                 = singleton[String](name)
-    def uuid(name: String): Singleton[UUID]                     = singleton[UUID](name)
-    def zonedDateTime(name: String): Singleton[ZonedDateTime]   = singleton[ZonedDateTime](name)
+    def bigDecimal(name: ColumnName): Singleton[BigDecimal]         = singleton[BigDecimal](name)
+    def boolean(name: ColumnName): Singleton[Boolean]               = singleton[Boolean](name)
+    def byteArray(name: ColumnName): Singleton[Chunk[Byte]]         = singleton[Chunk[Byte]](name)
+    def char(name: ColumnName): Singleton[Char]                     = singleton[Char](name)
+    def double(name: ColumnName): Singleton[Double]                 = singleton[Double](name)
+    def float(name: ColumnName): Singleton[Float]                   = singleton[Float](name)
+    def instant(name: ColumnName): Singleton[Instant]               = singleton[Instant](name)
+    def int(name: ColumnName): Singleton[Int]                       = singleton[Int](name)
+    def localDate(name: ColumnName): Singleton[LocalDate]           = singleton[LocalDate](name)
+    def localDateTime(name: ColumnName): Singleton[LocalDateTime]   = singleton[LocalDateTime](name)
+    def localTime(name: ColumnName): Singleton[LocalTime]           = singleton[LocalTime](name)
+    def long(name: ColumnName): Singleton[Long]                     = singleton[Long](name)
+    def offsetDateTime(name: ColumnName): Singleton[OffsetDateTime] = singleton[OffsetDateTime](name)
+    def offsetTime(name: ColumnName): Singleton[OffsetTime]         = singleton[OffsetTime](name)
+    def short(name: ColumnName): Singleton[Short]                   = singleton[Short](name)
+    def singleton[A: TypeTag](name: ColumnName): Singleton[A]       = Cons(Column[A](name), Empty)
+    def string(name: ColumnName): Singleton[String]                 = singleton[String](name)
+    def uuid(name: ColumnName): Singleton[UUID]                     = singleton[UUID](name)
+    def zonedDateTime(name: ColumnName): Singleton[ZonedDateTime]   = singleton[ZonedDateTime](name)
   }
 
   object :*: {
@@ -85,7 +85,7 @@ trait TableModule { self: ExprModule with SelectModule =>
 
   }
 
-  sealed case class Column[A: TypeTag](name: String) {
+  sealed case class Column[A: TypeTag](name: ColumnName) {
     def typeTag: TypeTag[A] = implicitly[TypeTag[A]]
   }
 
