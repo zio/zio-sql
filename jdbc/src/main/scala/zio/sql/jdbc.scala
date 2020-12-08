@@ -90,7 +90,7 @@ trait Jdbc extends zio.sql.Sql with TransactionModule {
   type TransactionExecutor = Has[TransactionExecutor.Service]
   object TransactionExecutor {
     trait Service {
-      def execute[R, E >: Exception, A](tx: Transaction[R, E, A]): ZIO[R, E, A]
+      def execute[R, E >: Exception, A](tx: ZTransaction[R, E, A]): ZIO[R, E, A]
     }
 
     val live: ZLayer[
@@ -107,22 +107,22 @@ trait Jdbc extends zio.sql.Sql with TransactionModule {
         TransactionExecutor.Service
       ] { (pool, blocking, readS, updateS, deleteS) =>
         new Service {
-          override def execute[R, E >: Exception, A](tx: Transaction[R, E, A]): ZIO[R, E, A] = {
-            def loop(tx: Transaction[R, E, Any], conn: Connection): ZIO[R, E, Any] = tx match {
-              case Transaction.Effect(zio)       => zio
+          override def execute[R, E >: Exception, A](tx: ZTransaction[R, E, A]): ZIO[R, E, A] = {
+            def loop(tx: ZTransaction[R, E, Any], conn: Connection): ZIO[R, E, Any] = tx match {
+              case ZTransaction.Effect(zio)       => zio
               // This does not work because of `org.postgresql.util.PSQLException: This connection has been closed.`
               // case Transaction.Select(read) => ZIO.succeed(readS.executeOn(read, conn))
               // This works and it is eagerly running the Stream
-              case Transaction.Select(read)      =>
+              case ZTransaction.Select(read)      =>
                 readS
                   .executeOn(read.asInstanceOf[Read[SelectionSet[_]]], conn)
                   .runCollect
                   .map(a => ZStream.fromIterator(a.iterator))
-              case Transaction.Update(update)    => updateS.executeOn(update, conn)
-              case Transaction.Delete(delete)    => deleteS.executeOn(delete, conn)
-              case Transaction.FoldCauseM(tx, k) =>
+              case ZTransaction.Update(update)    => updateS.executeOn(update, conn)
+              case ZTransaction.Delete(delete)    => deleteS.executeOn(delete, conn)
+              case ZTransaction.FoldCauseM(tx, k) =>
                 loop(tx, conn).foldCauseM(
-                  cause => loop(k.asInstanceOf[Transaction.K[R, E, Any, Any]].onHalt(cause), conn),
+                  cause => loop(k.asInstanceOf[ZTransaction.K[R, E, Any, Any]].onHalt(cause), conn),
                   success => loop(k.onSuccess(success), conn)
                 )
             }
@@ -140,7 +140,7 @@ trait Jdbc extends zio.sql.Sql with TransactionModule {
         }
       }
   }
-  def execute[R, E >: Exception, A](tx: Transaction[R, E, A]): ZIO[R with TransactionExecutor, E, A] =
+  def execute[R, E >: Exception, A](tx: ZTransaction[R, E, A]): ZIO[R with TransactionExecutor, E, A] =
     ZIO.accessM[R with TransactionExecutor](_.get.execute(tx))
 
   type ReadExecutor = Has[ReadExecutor.Service]
