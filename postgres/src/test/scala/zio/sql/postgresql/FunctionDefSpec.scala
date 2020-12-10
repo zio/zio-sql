@@ -387,6 +387,48 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
+    testM("now") {
+      val query = select(Now()) from customers
+
+      val testResult = execute(query).to[ZonedDateTime, ZonedDateTime](identity)
+
+      val assertion =
+        for {
+          r <- testResult.runCollect
+        } yield assert(r.head.toString)(
+          Assertion.matchesRegex("([0-9]{4})-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{6}Z")
+        )
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("statement_timestamp") {
+      val query = select(StatementTimestamp()) from customers
+
+      val testResult = execute(query).to[ZonedDateTime, ZonedDateTime](identity)
+
+      val assertion =
+        for {
+          r <- testResult.runCollect
+        } yield assert(r.head.toString)(
+          Assertion.matchesRegex("([0-9]{4})-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{6}Z")
+        )
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("transaction_timestamp") {
+      val query = select(TransactionTimestamp()) from customers
+
+      val testResult = execute(query).to[ZonedDateTime, ZonedDateTime](identity)
+
+      val assertion =
+        for {
+          r <- testResult.runCollect
+        } yield assert(r.head.toString)(
+          Assertion.matchesRegex("([0-9]{4})-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{6}Z")
+        )
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
     testM("localtimestamp with precision") {
       val precision = 2
 
