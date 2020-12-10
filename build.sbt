@@ -24,8 +24,9 @@ addCommandAlias("fmtOnce", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("fmt", "fmtOnce;fmtOnce")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
-val zioVersion            = "1.0.3"
-val testcontainersVersion = "1.15.0"
+val zioVersion                 = "1.0.3"
+val testcontainersVersion      = "1.15.0"
+val testcontainersScalaVersion = "1.0.0-alpha1"
 
 lazy val startPostgres = taskKey[Unit]("Start up Postgres")
 startPostgres := startService(Database.Postgres, streams.value)
@@ -153,14 +154,14 @@ lazy val mysql = project
   .settings(
     libraryDependencies ++= Seq(
       "dev.zio"           %% "zio"                        % zioVersion,
-      "dev.zio"           %% "zio-test"                   % zioVersion            % "test",
-      "dev.zio"           %% "zio-test-sbt"               % zioVersion            % "test",
-      "org.testcontainers" % "testcontainers"             % testcontainersVersion % Test,
-      "org.testcontainers" % "database-commons"           % testcontainersVersion % Test,
-      "org.testcontainers" % "mysql"                      % testcontainersVersion % Test,
-      "org.testcontainers" % "jdbc"                       % testcontainersVersion % Test,
-      "mysql"              % "mysql-connector-java"       % "8.0.22"              % Test,
-      "com.dimafeng"      %% "testcontainers-scala-mysql" % "0.38.6"              % Test
+      "dev.zio"           %% "zio-test"                   % zioVersion                 % "test",
+      "dev.zio"           %% "zio-test-sbt"               % zioVersion                 % "test",
+      "org.testcontainers" % "testcontainers"             % testcontainersVersion      % Test,
+      "org.testcontainers" % "database-commons"           % testcontainersVersion      % Test,
+      "org.testcontainers" % "jdbc"                       % testcontainersVersion      % Test,
+      "org.testcontainers" % "mysql"                      % testcontainersVersion      % Test,
+      "mysql"              % "mysql-connector-java"       % "8.0.22"                   % Test,
+      "com.dimafeng"      %% "testcontainers-scala-mysql" % testcontainersScalaVersion % Test
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
@@ -181,7 +182,7 @@ lazy val oracle = project
       "org.testcontainers"       % "oracle-xe"                      % testcontainersVersion % Test,
       "org.testcontainers"       % "jdbc"                           % testcontainersVersion % Test,
       "com.oracle.database.jdbc" % "ojdbc8"                         % "19.8.0.0"            % Test,
-      "com.dimafeng"            %% "testcontainers-scala-oracle-xe" % "0.38.6"              % Test
+      "com.dimafeng"            %% "testcontainers-scala-oracle-xe" % "0.38.7"              % Test
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
@@ -195,14 +196,14 @@ lazy val postgres = project
   .settings(
     libraryDependencies ++= Seq(
       "dev.zio"           %% "zio"                             % zioVersion,
-      "dev.zio"           %% "zio-test"                        % zioVersion            % Test,
-      "dev.zio"           %% "zio-test-sbt"                    % zioVersion            % Test,
-      "org.testcontainers" % "testcontainers"                  % testcontainersVersion % Test,
-      "org.testcontainers" % "database-commons"                % testcontainersVersion % Test,
-      "org.testcontainers" % "postgresql"                      % testcontainersVersion % Test,
-      "org.testcontainers" % "jdbc"                            % testcontainersVersion % Test,
-      "org.postgresql"     % "postgresql"                      % "42.2.18"             % Test,
-      "com.dimafeng"      %% "testcontainers-scala-postgresql" % "1.0.0-alpha1"        % Test
+      "dev.zio"           %% "zio-test"                        % zioVersion                 % Test,
+      "dev.zio"           %% "zio-test-sbt"                    % zioVersion                 % Test,
+      "org.testcontainers" % "testcontainers"                  % testcontainersVersion      % Test,
+      "org.testcontainers" % "database-commons"                % testcontainersVersion      % Test,
+      "org.testcontainers" % "postgresql"                      % testcontainersVersion      % Test,
+      "org.testcontainers" % "jdbc"                            % testcontainersVersion      % Test,
+      "org.postgresql"     % "postgresql"                      % "42.2.18"                  % Test,
+      "com.dimafeng"      %% "testcontainers-scala-postgresql" % testcontainersScalaVersion % Test
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
