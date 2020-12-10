@@ -10,6 +10,6 @@ addSbtPlugin("com.eed3si9n"                      % "sbt-unidoc"                %
 addSbtPlugin("com.geirsson"                      % "sbt-ci-release"            % "1.5.5")
 addSbtPlugin("com.github.cb372"                  % "sbt-explicit-dependencies" % "0.2.16")
 addSbtPlugin("com.thoughtworks.sbt-api-mappings" % "sbt-api-mappings"          % "3.0.0")
-addSbtPlugin("ch.epfl.lamp"                      % "sbt-dotty"                 % "0.4.1")
+addSbtPlugin("ch.epfl.lamp"                      % "sbt-dotty"                 % "0.4.6")
 addSbtPlugin("ch.epfl.scala"                     % "sbt-scalafix"              % "0.9.24")
 addSbtPlugin("io.github.davidgregory084"         % "sbt-tpolecat"              % "0.1.16")
