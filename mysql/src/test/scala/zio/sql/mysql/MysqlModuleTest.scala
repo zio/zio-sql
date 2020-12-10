@@ -54,7 +54,7 @@ object MysqlModuleTest extends MysqlRunnableSpec with ShopSchema {
             LocalDate.parse("1987-03-23")
           )
         )
-      
+
       val testResult = execute(query)
         .to[UUID, String, String, LocalDate, Customer] { case row =>
           Customer(row._1, row._2, row._3, row._4)
@@ -88,7 +88,7 @@ object MysqlModuleTest extends MysqlRunnableSpec with ShopSchema {
         .to[UUID, String, String, Boolean, LocalDate, Customer] { case row =>
           Customer(row._1, row._2, row._3, row._4, row._5)
         }
-          
+
       val assertion = for {
         r <- testResult.runCollect
       } yield assert(r)(hasSameElementsDistinct(expected))
