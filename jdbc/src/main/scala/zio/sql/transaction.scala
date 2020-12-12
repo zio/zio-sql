@@ -2,7 +2,7 @@ package zio.sql
 
 import zio.{ Cause, ZIO }
 
-trait TransactionModule { self: SelectModule with DeleteModule with UpdateModule =>
+trait TransactionModule { self: SelectModule with DeleteModule with UpdateModule with ExprModule with TableModule =>
 
   type Transaction[+E, +A] = ZTransaction[Any, E, A]
 
