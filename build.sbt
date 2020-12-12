@@ -25,7 +25,7 @@ addCommandAlias("fmt", "fmtOnce;fmtOnce")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
 val zioVersion                 = "1.0.3"
-val testcontainersVersion      = "1.15.0"
+val testcontainersVersion      = "1.15.1"
 val testcontainersScalaVersion = "1.0.0-alpha1"
 
 lazy val startPostgres = taskKey[Unit]("Start up Postgres")
