@@ -1,6 +1,7 @@
 package zio.sql.postgresql
 
 import java.time._
+import java.time.format.DateTimeFormatter
 import java.util.UUID
 import zio.Cause
 import zio.random.{ Random => ZioRandom }
@@ -26,6 +27,8 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
     assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
   }
+
+  private val timestampFormatter = DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss.SSSS").withZone(ZoneId.of("UTC"))
 
   val spec = suite("Postgres FunctionDef")(
     testM("concat_ws #1 - combine flat values") {
@@ -381,8 +384,24 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       val assertion =
         for {
           r <- testResult.runCollect
-        } yield assert(r.head.toString)(
-          Assertion.matchesRegex("([0-9]{4})-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{6}Z")
+        } yield assert(timestampFormatter.format(r.head))(
+          Assertion.matchesRegex("[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{4}")
+        )
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("localtimestamp with precision") {
+      val precision = 2
+
+      val query = select(LocaltimestampWithPrecision(precision)) from customers
+
+      val testResult = execute(query).to[Instant, Instant](identity)
+
+      val assertion =
+        for {
+          r <- testResult.runCollect
+        } yield assert(timestampFormatter.format(r.head))(
+          Assertion.matchesRegex(s"[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{2}00")
         )
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
@@ -395,8 +414,8 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       val assertion =
         for {
           r <- testResult.runCollect
-        } yield assert(r.head.toString)(
-          Assertion.matchesRegex("([0-9]{4})-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{6}Z")
+        } yield assert(timestampFormatter.format(r.head))(
+          Assertion.matchesRegex("[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{4}")
         )
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
@@ -409,8 +428,8 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       val assertion =
         for {
           r <- testResult.runCollect
-        } yield assert(r.head.toString)(
-          Assertion.matchesRegex("([0-9]{4})-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{6}Z")
+        } yield assert(timestampFormatter.format(r.head))(
+          Assertion.matchesRegex("[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{4}")
         )
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
@@ -423,29 +442,8 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       val assertion =
         for {
           r <- testResult.runCollect
-        } yield assert(r.head.toString)(
-          Assertion.matchesRegex("([0-9]{4})-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{6}Z")
-        )
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    },
-    testM("localtimestamp with precision") {
-      val precision = 2
-
-      val millis =
-        if (precision == 0) ""
-        else if (precision <= 3) List.fill(3)("[0-9]").mkString(".", "", "")
-        else List.fill(6)("[0-9]").mkString(".", "", "")
-
-      val query = select(LocaltimestampWithPrecision(precision)) from customers
-
-      val testResult = execute(query).to[Instant, Instant](identity)
-
-      val assertion =
-        for {
-          r <- testResult.runCollect
-        } yield assert(r.head.toString)(
-          Assertion.matchesRegex(s"([0-9]{4})-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}${millis}Z")
+        } yield assert(timestampFormatter.format(r.head))(
+          Assertion.matchesRegex("[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{4}")
         )
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
@@ -458,9 +456,9 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       val assertion =
         for {
           r <- testResult.runCollect
-        } yield assert(r.head.toString)(
+        } yield assert(DateTimeFormatter.ofPattern("HH:mm:ss").format(r.head))(
           matchesRegex(
-            "(2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]Z"
+            "(2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]"
           )
         )
 
