@@ -249,7 +249,7 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
     testM("Can select using like") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
-      val query = select(customerId ++ fName ++ lName ++ dob) from customers where (fName like "'Jo%'")
+      val query = select(customerId ++ fName ++ lName ++ dob) from customers where (fName like "Jo%")
 
       println(renderRead(query))
       val expected = Seq(
@@ -276,22 +276,20 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
       val query = select(customerId) from customers
 
       val result    = execute(
-        Transaction.Select(query) *> Transaction.Select(query)
+        ZTransaction.Select(query) *> ZTransaction.Select(query)
       )
       val assertion = assertM(result.flatMap(_.runCollect))(hasSize(Assertion.equalTo(5))).orDie
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("Transactions is failing") {
+    testM("Transaction is failing") {
       val query = select(customerId) from customers
 
       val result = execute(
-        Transaction.Select(query) *> Transaction.fail(new Exception("failing")) *> Transaction.Select(query)
+        ZTransaction.Select(query) *> ZTransaction.fail(new Exception("failing")) *> ZTransaction.Select(query)
       ).mapError(_.getMessage)
 
-      val assertion = assertM(result.flip)(equalTo("failing"))
-
-      assertion
+      assertM(result.flip)(equalTo("failing")).mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     testM("Can delete all from a single table") {
       val query = deleteFrom(customers)

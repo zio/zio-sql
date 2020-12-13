@@ -1,8 +1,7 @@
-package zio.sql.postgresql
+package zio.sql
 
 import zio.{ ZEnv, ZLayer }
 import zio.duration._
-import zio.sql.Jdbc
 import zio.test._
 import zio.test.environment.TestEnvironment
 
