@@ -1,7 +1,8 @@
 package zio.sql
 
 import com.dimafeng.testcontainers.SingleContainer
-import com.dimafeng.testcontainers.MySQLContainer
+import com.dimafeng.testcontainers.PostgreSQLContainer
+import org.testcontainers.utility.DockerImageName
 import zio._
 import zio.blocking.{ effectBlocking, Blocking }
 
@@ -15,11 +16,13 @@ object TestContainer {
       }
     }(container => effectBlocking(container.stop()).orDie).toLayer
 
-  def mysql(imageName: Option[String] = None): ZLayer[Blocking, Throwable, Has[MySQLContainer]] =
+  def postgres(
+    imageName: String = "postgres:alpine:13"
+  ): ZLayer[Blocking, Throwable, Has[PostgreSQLContainer]] =
     ZManaged.make {
       effectBlocking {
-        val c = new MySQLContainer(
-          mysqlImageVersion = imageName
+        val c = new PostgreSQLContainer(
+          dockerImageNameOverride = Option(imageName).map(DockerImageName.parse)
         ).configure { a =>
           a.withInitScript("shop_schema.sql")
           ()
@@ -27,6 +30,8 @@ object TestContainer {
         c.start()
         c
       }
-    }(container => effectBlocking(container.stop()).orDie).toLayer
+    } { container =>
+      effectBlocking(container.stop()).orDie
+    }.toLayer
 
 }
