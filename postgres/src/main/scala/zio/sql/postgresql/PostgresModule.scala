@@ -1,7 +1,7 @@
 package zio.sql.postgresql
 
 import java.time._
-
+import zio.Chunk
 import zio.sql.{ Jdbc, Renderer }
 
 /**
@@ -49,8 +49,8 @@ trait PostgresModule extends Jdbc { self =>
     val Now                         = FunctionDef[Any, ZonedDateTime](FunctionName("now"))
     val StatementTimestamp          = FunctionDef[Any, ZonedDateTime](FunctionName("statement_timestamp"))
     val TransactionTimestamp        = FunctionDef[Any, ZonedDateTime](FunctionName("transaction_timestamp"))
-    val Encode                      = FunctionDef[(String, String), String](FunctionName("encode"))
-    val Decode                      = FunctionDef[(String, String), String](FunctionName("decode"))
+    val Encode                      = FunctionDef[(Chunk[Byte], String), String](FunctionName("encode"))
+    val Decode                      = FunctionDef[(String, String), Chunk[Byte]](FunctionName("decode"))
   }
 
   override def renderRead(read: self.Read[_]): String = {
@@ -117,10 +117,8 @@ trait PostgresModule extends Jdbc { self =>
     private[zio] def renderLit[A, B](lit: self.Expr.Literal[_])(implicit render: Renderer): Unit = {
       import TypeTag._
       lit.typeTag match {
-        case tt @ TByteArray      => render(tt.cast(lit.value))                     // todo still broken
-        //something like? render(tt.cast(lit.value).map("\\\\%03o" format _).mkString("E\'", "", "\'"))
-        case tt @ TChar           =>
-          render("'", tt.cast(lit.value), "'") //todo is this the same as a string? fix escaping
+        case tt @ TByteArray      => render(tt.cast(lit.value).map("""\%03o""" format _).mkString("E\'", "", "\'"))
+        case tt @ TChar           => render("'", tt.cast(lit.value), "'")           //todo is this the same as a string? fix escaping
         case tt @ TInstant        => render("TIMESTAMP '", tt.cast(lit.value), "'") //todo test
         case tt @ TLocalDate      => render(tt.cast(lit.value))                     // todo still broken
         case tt @ TLocalDateTime  => render(tt.cast(lit.value))                     // todo still broken
