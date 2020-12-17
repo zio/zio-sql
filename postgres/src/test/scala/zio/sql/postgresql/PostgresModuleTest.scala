@@ -1,12 +1,11 @@
 package zio.sql.postgresql
 
-import java.time.LocalDate
-import java.util.UUID
-
-import zio.Cause
+import zio.{ Cause, Task }
 import zio.test.Assertion._
 import zio.test._
 
+import java.time.LocalDate
+import java.util.UUID
 import scala.language.postfixOps
 
 object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
@@ -290,6 +289,42 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
       ).mapError(_.getMessage)
 
       assertM(result.flip)(equalTo("failing")).mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("Render unique names while joining the same tables") {
+      val _ :*: productName2 :*: _ :*: _ :*: parentId2 :*: _ = Products.products2.columns
+
+      val query = select(Products.productId ++ Products.productName ++ productName2 ++ parentId2)
+        .from(Products.products.join(Products.products2).on(Products.productId === parentId2))
+        .where(Products.productName === "Teddy Bear" && productName2 === "Teddy Bear 2")
+
+      final case class InnerProductsResponse(
+        productId: UUID,
+        productName: String,
+        childName: String,
+        childParentId: UUID
+      )
+
+      val testResult = execute(query).to[UUID, String, String, UUID, InnerProductsResponse] { case row =>
+        InnerProductsResponse(row._1, row._2, row._3, row._4)
+      }
+
+      val assertion = for {
+        r             <- testResult.runCollect
+        renderedQuery <- Task.effectTotal(renderRead(query))
+        parentId      <- Task.effectTotal(UUID.fromString("d5137d3a-894a-4109-9986-e982541b434f"))
+      } yield assert(r)(
+        hasSameElementsDistinct(
+          Seq(
+            InnerProductsResponse(parentId, "Teddy Bear", "Teddy Bear 2", parentId)
+          )
+        )
+      ) && assert(renderedQuery)(
+        equalTo(
+          "SELECT p1.id, p1.name, p2.name, p2.parent_id FROM products p1 INNER JOIN products p2 ON p1.id = p2.parent_id  WHERE true and p1.name = 'Teddy Bear' and p2.name = 'Teddy Bear 2'"
+        )
+      )
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
     // testM("Can delete all from a single table") { TODO: Does not work on 2.12 yet
     //   val query = deleteFrom(customers)
