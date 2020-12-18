@@ -49,6 +49,7 @@ trait PostgresModule extends Jdbc { self =>
     val Now                         = FunctionDef[Any, ZonedDateTime](FunctionName("now"))
     val StatementTimestamp          = FunctionDef[Any, ZonedDateTime](FunctionName("statement_timestamp"))
     val TransactionTimestamp        = FunctionDef[Any, ZonedDateTime](FunctionName("transaction_timestamp"))
+    val ToAscii                     = FunctionDef[String, String](FunctionName("to_ascii"))
   }
 
   override def renderRead(read: self.Read[_]): String = {
