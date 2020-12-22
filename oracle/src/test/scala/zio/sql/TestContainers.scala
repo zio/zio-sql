@@ -2,8 +2,9 @@ package zio.sql
 
 import com.dimafeng.testcontainers.SingleContainer
 import com.dimafeng.testcontainers.OracleContainer
+import org.testcontainers.utility.DockerImageName
 import zio._
-import zio.blocking.{ effectBlocking, Blocking }
+import zio.blocking.{Blocking, effectBlocking}
 
 object TestContainer {
 
@@ -15,11 +16,11 @@ object TestContainer {
       }
     }(container => effectBlocking(container.stop()).orDie).toLayer
 
-  def oracle(imageName: String): ZLayer[Blocking, Throwable, Has[OracleContainer]] =
+  def oracle(imageName: DockerImageName): ZLayer[Blocking, Throwable, Has[OracleContainer]] =
     ZManaged.make {
       effectBlocking {
         val c = new OracleContainer(
-          dockerImageNameOverride = Some(imageName)
+          dockerImageName = imageName
         ).configure { a =>
           a.withInitScript("shop_schema.sql")
           ()

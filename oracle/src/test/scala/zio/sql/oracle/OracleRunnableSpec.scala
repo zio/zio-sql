@@ -1,8 +1,9 @@
 package zio.sql.oracle
 
-import java.util.Properties
+import org.testcontainers.utility.DockerImageName
 
-import zio.{ Has, ZEnv, ZLayer }
+import java.util.Properties
+import zio.{Has, ZEnv, ZLayer}
 import zio.blocking.Blocking
 import zio.sql.JdbcRunnableSpec
 import zio.sql.TestContainer
@@ -19,7 +20,7 @@ trait OracleRunnableSpec extends JdbcRunnableSpec with OracleModule {
 
   private val executorLayer = {
     val poolConfigLayer = TestContainer
-      .oracle()
+      .oracle(DockerImageName.parse("oracleinanutshell/oracle-xe-11g"))
       .map(a => Has(ConnectionPool.Config(a.get.jdbcUrl, connProperties(a.get.username, a.get.password))))
 
     val connectionPoolLayer = ZLayer.identity[Blocking] >+> poolConfigLayer >>> ConnectionPool.live
