@@ -2,7 +2,7 @@ package zio.sql.postgresql
 
 import java.util.Properties
 
-import zio.{Has, ZEnv, ZLayer}
+import zio.{ Has, ZEnv, ZLayer }
 import zio.blocking.Blocking
 import zio.sql.JdbcRunnableSpec
 import zio.sql.TestContainer

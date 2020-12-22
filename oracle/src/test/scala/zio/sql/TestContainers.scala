@@ -4,7 +4,7 @@ import com.dimafeng.testcontainers.SingleContainer
 import com.dimafeng.testcontainers.OracleContainer
 import org.testcontainers.utility.DockerImageName
 import zio._
-import zio.blocking.{Blocking, effectBlocking}
+import zio.blocking.{ effectBlocking, Blocking }
 
 object TestContainer {
 

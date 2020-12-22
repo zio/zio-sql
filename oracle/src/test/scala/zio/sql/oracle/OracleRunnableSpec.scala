@@ -3,7 +3,7 @@ package zio.sql.oracle
 import org.testcontainers.utility.DockerImageName
 
 import java.util.Properties
-import zio.{Has, ZEnv, ZLayer}
+import zio.{ Has, ZEnv, ZLayer }
 import zio.blocking.Blocking
 import zio.sql.JdbcRunnableSpec
 import zio.sql.TestContainer
