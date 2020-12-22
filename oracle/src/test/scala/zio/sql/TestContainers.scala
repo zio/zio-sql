@@ -23,6 +23,7 @@ object TestContainer {
           dockerImageName = imageName
         ).configure { a =>
           a.withInitScript("shop_schema.sql")
+          a.addEnv("TZ", "America/New_York")
           ()
         }
         c.start()
