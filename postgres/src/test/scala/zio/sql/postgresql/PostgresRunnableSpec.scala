@@ -1,11 +1,11 @@
 package zio.sql.postgresql
 
 import java.util.Properties
+
 import zio.{Has, ZEnv, ZLayer}
 import zio.blocking.Blocking
 import zio.sql.JdbcRunnableSpec
 import zio.sql.TestContainer
-import zio.sql.postgresql.PostgresModule
 import zio.test.environment.TestEnvironment
 
 trait PostgresRunnableSpec extends JdbcRunnableSpec with PostgresModule {
