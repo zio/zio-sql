@@ -1,4 +1,4 @@
-package zio.sql.postgresql
+package zio.sql.oracle
 
 import java.time.LocalDate
 import java.util.UUID
@@ -9,7 +9,7 @@ import zio.test._
 
 import scala.language.postfixOps
 
-object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
+object OracleModuleTest extends OracleRunnableSpec with ShopSchema {
 
   import Customers._
   import Orders._
@@ -45,7 +45,7 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
     assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
   }
 
-  val spec = suite("Postgres module")(
+  val spec = suite("Oracle module")(
     testM("Can select from single table") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 

@@ -1,4 +1,4 @@
-package zio.sql.postgresql
+package zio.sql.oracle
 
 import java.time._
 import java.time.format.DateTimeFormatter
@@ -11,11 +11,11 @@ import zio.test._
 import zio.test.TestAspect.{ ignore, timeout }
 import zio.duration._
 
-object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
+object FunctionDefSpec extends OracleRunnableSpec with ShopSchema {
 
   import Customers._
   import FunctionDef.{ CharLength => _, _ }
-  import PostgresFunctionDef._
+  import OracleFunctionDef._
 
   private def collectAndCompare(
     expected: Seq[String],
@@ -30,7 +30,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
   private val timestampFormatter = DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss.SSSS").withZone(ZoneId.of("UTC"))
 
-  val spec = suite("Postgres FunctionDef")(
+  val spec = suite("Oracle FunctionDef")(
     testM("concat_ws #1 - combine flat values") {
       import Expr._
 

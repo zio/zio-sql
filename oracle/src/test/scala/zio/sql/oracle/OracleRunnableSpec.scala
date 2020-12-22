@@ -1,14 +1,14 @@
-package zio.sql.postgresql
+package zio.sql.oracle
+
+import java.util.Properties
 
 import zio.{ Has, ZEnv, ZLayer }
 import zio.blocking.Blocking
+import zio.sql.JdbcRunnableSpec
 import zio.sql.TestContainer
 import zio.test.environment.TestEnvironment
 
-import java.util.Properties
-import zio.sql.JdbcRunnableSpec
-
-trait PostgresRunnableSpec extends JdbcRunnableSpec with PostgresModule {
+trait OracleRunnableSpec extends JdbcRunnableSpec with OracleModule {
 
   private def connProperties(user: String, password: String): Properties = {
     val props = new Properties
@@ -19,7 +19,7 @@ trait PostgresRunnableSpec extends JdbcRunnableSpec with PostgresModule {
 
   private val executorLayer = {
     val poolConfigLayer = TestContainer
-      .postgres("postgres:alpine:13")
+      .oracle()
       .map(a => Has(ConnectionPool.Config(a.get.jdbcUrl, connProperties(a.get.username, a.get.password))))
 
     val connectionPoolLayer = ZLayer.identity[Blocking] >+> poolConfigLayer >>> ConnectionPool.live
