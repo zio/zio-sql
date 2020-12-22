@@ -1,4 +1,4 @@
-package zio.sql.postgres
+package zio.sql.postgresql
 
 import java.time.LocalDate
 import java.util.UUID

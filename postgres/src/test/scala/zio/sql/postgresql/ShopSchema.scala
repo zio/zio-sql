@@ -1,4 +1,4 @@
-package zio.sql.postgres
+package zio.sql.postgresql
 
 import zio.sql.Jdbc
 
