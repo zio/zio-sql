@@ -45,6 +45,10 @@ insert all
 	into customers (id, first_name, last_name, verified, dob) values ('636ae137-5b1a-4c8c-b11f-c47c624d9cdc', 'Jose', 'Wiggins', 0, TO_DATE('1987-03-23','YYYY-MM-DD'))
 select * from dual;
 
+-- TODO: Make more robust?
+-- & is a variable indicator in Oracle, and is expect the 2nd-nth query parameters to be defined
+-- set define off in order to stop variable interpolation for our test case
+set define off;
 insert all
 	into products (id, name, description, image_url) values('7368ABF4-AED2-421F-B426-1725DE756895', 'Thermometer', 'Make sure you don''t have a fever (could be covid!)', 'https://images.pexels.com/photos/3987152/pexels-photo-3987152.jpeg?auto=compress&cs=tinysrgb&h=750&w=1260')
 	into products (id, name, description, image_url) values ('4C770002-4C8F-455A-96FF-36A8186D5290', 'Slippers', 'Keep your feet warm this winter', 'https://images.pexels.com/photos/1989843/pexels-photo-1989843.jpeg?auto=compress&cs=tinysrgb&h=750&w=1260')
