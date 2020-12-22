@@ -23,7 +23,7 @@ object TestContainer {
           dockerImageName = imageName
         ).configure { a =>
           a.withInitScript("shop_schema.sql")
-          a.withEnv("JAVA_OPTS", "-Doracle.jdbc.timezoneAsRegion=false")
+          a.withEnv("JAVA_OPTS", "-Duser.timezone=America/Los_Angeles")
           ()
         }
         c.start()
