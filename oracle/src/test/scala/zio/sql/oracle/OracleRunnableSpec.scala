@@ -15,6 +15,7 @@ trait OracleRunnableSpec extends JdbcRunnableSpec with OracleModule {
     val props = new Properties
     props.setProperty("user", user)
     props.setProperty("password", password)
+    props.setProperty("oracle.jdbc.timezoneAsRegion","false")
     props
   }
 
