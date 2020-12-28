@@ -181,8 +181,8 @@ lazy val oracle = project
       "org.testcontainers"       % "database-commons"               % testcontainersVersion % Test,
       "org.testcontainers"       % "oracle-xe"                      % testcontainersVersion % Test,
       "org.testcontainers"       % "jdbc"                           % testcontainersVersion % Test,
-      "com.oracle.database.jdbc" % "ojdbc8"                         % "19.8.0.0"            % Test,
-      "com.dimafeng"            %% "testcontainers-scala-oracle-xe" % "0.38.8"              % Test
+      "com.oracle.database.jdbc" % "ojdbc8"                         % "19.9.0.0"            % Test,
+      "com.dimafeng"            %% "testcontainers-scala-oracle-xe" % "0.38.7"              % Test
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
