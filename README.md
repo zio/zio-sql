@@ -53,7 +53,7 @@ For the JDBC module:
 
 ZIO SQL does not offer Language Integrated Queries (LINQ) or similar functionality. It is intended only as a data model for representing SQL queries and an accompanying lightweight JDBC-based executor.
 
-[badge-ci]: https://github.com/zio/zio-redis/workflows/CI/badge.svg
+[badge-ci]: https://github.com/zio/zio-sql/workflows/CI/badge.svg
 [badge-discord]: https://img.shields.io/discord/629491597070827530?logo=discord "chat on discord"
 [link-discord]: https://discord.gg/2ccFBr4 "Discord"
 
