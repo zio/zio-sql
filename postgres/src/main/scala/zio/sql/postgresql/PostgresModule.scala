@@ -213,10 +213,10 @@ trait PostgresModule extends Jdbc { self =>
           val read = read0.asInstanceOf[Read.Select[Dummy.F, Dummy.A, Dummy.B]]
           import read._
 
-          val tablesAliases = generateTableAliases(selection.value)
+          val tablesAliases = generateTablesAliases(selection.value)
 
           render("SELECT ")
-          renderSelection(selection.value, tablesAliases) //TODO here pass table alias
+          renderSelection(selection.value, tablesAliases)
           render(" FROM ")
           renderTable(table, tablesAliases)
           whereExpr match {
@@ -298,63 +298,53 @@ trait PostgresModule extends Jdbc { self =>
         case Nil          => ()
       }
 
-    def generateTableAliases[A](
+    def generateTablesAliases[A](
       selectionSet: SelectionSet[A],
       queryTablesMap: Map[TableId, (TableName, Int)] = Map.empty
     ): Map[TableId, TableAlias] =
       selectionSet match {
-        case cons0 @ SelectionSet.Cons(_, _) =>
-          object Dummy {
-            type Source
-            type A
-            type B <: SelectionSet[Source]
-          }
-          val cons = cons0.asInstanceOf[SelectionSet.Cons[Dummy.Source, Dummy.A, Dummy.B]]
-
-          def getTableHashCodeFromExpr[A, B](expr: self.Expr[_, A, B]) = expr match {
+        case SelectionSet.Cons(head, tail) =>
+          def getTableIdFromExpr[A, B](expr: self.Expr[_, A, B]) = expr match {
             case Expr.Source(tableName, tableCode, _) =>
               Some((tableName -> tableCode))
             case _                                    => None
           }
 
-          def getTableHashCode[A, B](columnSelection: ColumnSelection[A, B]): Option[(TableName, TableId)] =
+          def getTableId[A, B](columnSelection: ColumnSelection[A, B]): Option[(TableName, TableId)] =
             columnSelection match {
-              case ColumnSelection.Computed(expr, _) => getTableHashCodeFromExpr(expr)
+              case ColumnSelection.Computed(expr, _) => getTableIdFromExpr(expr)
               case _                                 => None
             }
 
-          import cons._
-
-          val tableCode = getTableHashCode(head)
-
           if (tail != SelectionSet.Empty) {
-            val newTableAliasOpt = tableCode.flatMap { case (tableName, tableId) =>
-              if (queryTablesMap.exists(_._2._1 == tableName)) {
-                queryTablesMap.filter { case (id, (name, _)) =>
-                  name == tableName && id != tableId
-                }.toList.sortBy(_._2._2).lastOption.map { case (_, (_, aliasNum)) =>
-                  (tableId, (tableName, aliasNum + 1))
-                }
-              } else {
-                Some((tableId, (tableName, 1)))
+            val newTableAliasNumOpt = getTableId(head).map { case (tableName, tableId) =>
+              val sameTableNameDifferentId = queryTablesMap.filter { case (id, (name, _)) =>
+                name == tableName && id != tableId
+              }.toList.sortBy { case (_, (_, num)) =>
+                num
+              }.lastOption.map { case (_, (_, aliasNum)) =>
+                (tableId, (tableName, aliasNum + 1))
               }
+
+              sameTableNameDifferentId.getOrElse((tableId, (tableName, 1)))
             }
-            val updatedMap       =
-              newTableAliasOpt.map(newTableAlias => queryTablesMap + newTableAlias).getOrElse(queryTablesMap)
-            generateTableAliases(tail, updatedMap)
+
+            val updatedMap = newTableAliasNumOpt
+              .map(newTableAlias => queryTablesMap + newTableAlias)
+              .getOrElse(queryTablesMap)
+
+            generateTablesAliases(tail, updatedMap)
           } else {
-            queryTablesMap
-              .groupBy(_._2._1)
-              .collect {
-                case (_, map) if map.size > 1 => map
-              }
-              .toList
-              .foldLeft((Map.empty[TableId, (TableName, Int)]))(_ ++ _)
-              .map { case (id, (name, num)) =>
-                id -> s"${name.head}$num"
-              }
+            queryTablesMap.groupBy { case (_, (tableName, _)) =>
+              tableName
+            }.collect {
+              case (_, map) if map.size > 1 =>
+                map.view.mapValues { case (tableName, tableNum) =>
+                  s"${tableName.head}$tableNum"
+                }
+            }.foldLeft((Map.empty[TableId, TableAlias]))(_ ++ _)
           }
-        case SelectionSet.Empty              =>
+        case SelectionSet.Empty            =>
           Map.empty
       }
 

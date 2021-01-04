@@ -33,7 +33,7 @@ trait TableModule { self: ExprModule with SelectModule =>
 
       override def columnsUntyped: List[Column.Untyped] = Nil
 
-      override protected def mkColumns[T](name: TableName, id: UUID): ColumnsRepr[T] = ()
+      override protected def mkColumns[T](name: TableName, id: TableId): ColumnsRepr[T] = ()
     }
 
     sealed case class Cons[A, B <: ColumnSet](head: Column[A], tail: B) extends ColumnSet { self =>
