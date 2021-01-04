@@ -3,7 +3,6 @@ package zio.sql.postgresql
 import java.time._
 
 import zio.sql.{ Jdbc, Renderer }
-import java.util.UUID
 
 /**
  */
@@ -143,53 +142,51 @@ trait PostgresModule extends Jdbc { self =>
       }
     }
 
-    private[zio] def renderExpr[A, B](expr: self.Expr[_, A, B], tablesAliases: Map[UUID, String] = Map.empty)(implicit
-      render: Renderer
+    private[zio] def renderExpr[A, B](expr: self.Expr[_, A, B], tablesAliases: Map[TableId, TableAlias] = Map.empty)(
+      implicit render: Renderer
     ): Unit = expr match {
-      case Expr.Source(tableName, tableCode, column) =>
-        tablesAliases.get(tableCode) match {
-          case Some(tableAlias) => render(tableAlias, ".", column.name)
-          case None             => render(tableName, ".", column.name)
-        }
-      case Expr.Unary(base, op)                      =>
+      case source @ Expr.Source(_, _, _)          =>
+        val prefix = tablesAliases.getOrElse(source.tableId, source.tableName)
+        render(prefix, ".", source.column.name)
+      case Expr.Unary(base, op)                   =>
         render(" ", op.symbol)
         renderExpr(base, tablesAliases)
-      case Expr.Property(base, op)                   =>
+      case Expr.Property(base, op)                =>
         renderExpr(base, tablesAliases)
         render(" ", op.symbol)
-      case Expr.Binary(left, right, op)              =>
+      case Expr.Binary(left, right, op)           =>
         renderExpr(left, tablesAliases)
         render(" ", op.symbol, " ")
         renderExpr(right, tablesAliases)
-      case Expr.Relational(left, right, op)          =>
+      case Expr.Relational(left, right, op)       =>
         renderExpr(left, tablesAliases)
         render(" ", op.symbol, " ")
         renderExpr(right, tablesAliases)
-      case Expr.In(value, set)                       =>
+      case Expr.In(value, set)                    =>
         renderExpr(value, tablesAliases)
         renderReadImpl(set)
-      case lit: Expr.Literal[_]                      => renderLit(lit)
-      case Expr.AggregationCall(p, aggregation)      =>
+      case lit: Expr.Literal[_]                   => renderLit(lit)
+      case Expr.AggregationCall(p, aggregation)   =>
         render(aggregation.name.name, "(")
         renderExpr(p, tablesAliases)
         render(")")
-      case Expr.ParenlessFunctionCall0(fn)           =>
+      case Expr.ParenlessFunctionCall0(fn)        =>
         val _ = render(fn.name)
-      case Expr.FunctionCall0(fn)                    =>
+      case Expr.FunctionCall0(fn)                 =>
         render(fn.name.name)
         render("(")
         val _ = render(")")
-      case Expr.FunctionCall1(p, fn)                 =>
+      case Expr.FunctionCall1(p, fn)              =>
         render(fn.name.name, "(")
         renderExpr(p, tablesAliases)
         render(")")
-      case Expr.FunctionCall2(p1, p2, fn)            =>
+      case Expr.FunctionCall2(p1, p2, fn)         =>
         render(fn.name.name, "(")
         renderExpr(p1, tablesAliases)
         render(",")
         renderExpr(p2, tablesAliases)
         render(")")
-      case Expr.FunctionCall3(p1, p2, p3, fn)        =>
+      case Expr.FunctionCall3(p1, p2, p3, fn)     =>
         render(fn.name.name, "(")
         renderExpr(p1, tablesAliases)
         render(",")
@@ -197,7 +194,7 @@ trait PostgresModule extends Jdbc { self =>
         render(",")
         renderExpr(p3, tablesAliases)
         render(")")
-      case Expr.FunctionCall4(p1, p2, p3, p4, fn)    =>
+      case Expr.FunctionCall4(p1, p2, p3, p4, fn) =>
         render(fn.name.name, "(")
         renderExpr(p1, tablesAliases)
         render(",")
@@ -231,7 +228,7 @@ trait PostgresModule extends Jdbc { self =>
           groupBy match {
             case _ :: _ =>
               render(" GROUP BY ")
-              renderExprList(groupBy)
+              renderExprList(groupBy, tablesAliases)
 
               havingExpr match {
                 case Expr.Literal(true) => ()
@@ -266,20 +263,22 @@ trait PostgresModule extends Jdbc { self =>
           render(" (", values.mkString(","), ") ") //todo fix needs escaping
       }
 
-    def renderExprList(expr: List[Expr[_, _, _]])(implicit render: Renderer): Unit =
+    def renderExprList(expr: List[Expr[_, _, _]], tablesAliases: Map[TableId, TableAlias])(implicit
+      render: Renderer
+    ): Unit =
       expr match {
         case head :: tail =>
-          renderExpr(head)
+          renderExpr(head, tablesAliases)
           tail match {
             case _ :: _ =>
               render(", ")
-              renderExprList(tail)
+              renderExprList(tail, tablesAliases)
             case Nil    => ()
           }
         case Nil          => ()
       }
 
-    def renderOrderingList(expr: List[Ordering[Expr[_, _, _]]], tablesAliases: Map[UUID, String])(implicit
+    def renderOrderingList(expr: List[Ordering[Expr[_, _, _]]], tablesAliases: Map[TableId, TableAlias])(implicit
       render: Renderer
     ): Unit =
       expr match {
@@ -301,8 +300,8 @@ trait PostgresModule extends Jdbc { self =>
 
     def generateTableAliases[A](
       selectionSet: SelectionSet[A],
-      aliasesMap: Map[UUID, (String, Int)] = Map.empty
-    ): Map[UUID, String] =
+      queryTablesMap: Map[TableId, (TableName, Int)] = Map.empty
+    ): Map[TableId, TableAlias] =
       selectionSet match {
         case cons0 @ SelectionSet.Cons(_, _) =>
           object Dummy {
@@ -318,7 +317,7 @@ trait PostgresModule extends Jdbc { self =>
             case _                                    => None
           }
 
-          def getTableHashCode[A, B](columnSelection: ColumnSelection[A, B]): Option[(TableName, UUID)] =
+          def getTableHashCode[A, B](columnSelection: ColumnSelection[A, B]): Option[(TableName, TableId)] =
             columnSelection match {
               case ColumnSelection.Computed(expr, _) => getTableHashCodeFromExpr(expr)
               case _                                 => None
@@ -330,8 +329,8 @@ trait PostgresModule extends Jdbc { self =>
 
           if (tail != SelectionSet.Empty) {
             val newTableAliasOpt = tableCode.flatMap { case (tableName, tableId) =>
-              if (aliasesMap.exists(_._2._1 == tableName)) {
-                aliasesMap.filter { case (id, (name, _)) =>
+              if (queryTablesMap.exists(_._2._1 == tableName)) {
+                queryTablesMap.filter { case (id, (name, _)) =>
                   name == tableName && id != tableId
                 }.toList.sortBy(_._2._2).lastOption.map { case (_, (_, aliasNum)) =>
                   (tableId, (tableName, aliasNum + 1))
@@ -340,16 +339,17 @@ trait PostgresModule extends Jdbc { self =>
                 Some((tableId, (tableName, 1)))
               }
             }
-            val updatedMap       = newTableAliasOpt.map(newTableAlias => aliasesMap + newTableAlias).getOrElse(aliasesMap)
+            val updatedMap       =
+              newTableAliasOpt.map(newTableAlias => queryTablesMap + newTableAlias).getOrElse(queryTablesMap)
             generateTableAliases(tail, updatedMap)
           } else {
-            aliasesMap
+            queryTablesMap
               .groupBy(_._2._1)
               .collect {
                 case (_, map) if map.size > 1 => map
               }
               .toList
-              .foldLeft((Map.empty[UUID, (String, Int)]))(_ ++ _)
+              .foldLeft((Map.empty[TableId, (TableName, Int)]))(_ ++ _)
               .map { case (id, (name, num)) =>
                 id -> s"${name.head}$num"
               }
@@ -358,7 +358,7 @@ trait PostgresModule extends Jdbc { self =>
           Map.empty
       }
 
-    def renderSelection[A](selectionSet: SelectionSet[A], tablesAliases: Map[UUID, String])(implicit
+    def renderSelection[A](selectionSet: SelectionSet[A], tablesAliases: Map[TableId, TableAlias])(implicit
       render: Renderer
     ): Unit =
       selectionSet match {
@@ -378,8 +378,8 @@ trait PostgresModule extends Jdbc { self =>
         case SelectionSet.Empty              => ()
       }
 
-    def renderColumnSelection[A, B](columnSelection: ColumnSelection[A, B], tablesAliases: Map[UUID, String])(implicit
-      render: Renderer
+    def renderColumnSelection[A, B](columnSelection: ColumnSelection[A, B], tablesAliases: Map[TableId, TableAlias])(
+      implicit render: Renderer
     ): Unit =
       columnSelection match {
         case ColumnSelection.Constant(value, name) =>
@@ -400,13 +400,13 @@ trait PostgresModule extends Jdbc { self =>
           }
       }
 
-    def renderTable(table: Table, tablesAliases: Map[UUID, String])(implicit render: Renderer): Unit =
+    def renderTable(table: Table, tablesAliases: Map[TableId, TableAlias])(implicit render: Renderer): Unit =
       table match {
         //The outer reference in this type test cannot be checked at run time?!
         //case sourceTable: self.Table.Source if sourceTable.nameAlias.exists(_.nonEmpty) =>
         //  render(sourceTable.name, " ", sourceTable.nameAlias.get)
         case sourceTable: self.Table.Source          =>
-          tablesAliases.get(sourceTable.tableCode) match {
+          tablesAliases.get(sourceTable.id) match {
             case Some(tableAlias) => render(sourceTable.name, " ", tableAlias)
             case None             => render(sourceTable.name)
           }
