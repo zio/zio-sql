@@ -12,7 +12,7 @@ trait MysqlModule extends Jdbc { self =>
     val builder = new StringBuilder
 
     def buildExpr[A, B](expr: self.Expr[_, A, B]): Unit = expr match {
-      case Expr.Source(tableName, column)                                            =>
+      case Expr.Source(tableName, _, column)                                         =>
         val _ = builder.append(tableName).append(".").append(column.name)
       case Expr.Unary(base, op)                                                      =>
         val _ = builder.append(" ").append(op.symbol)

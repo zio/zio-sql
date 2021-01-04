@@ -6,9 +6,8 @@ trait SelectModule { self: ExprModule with TableModule =>
 
   sealed case class SelectBuilder[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]) {
 
-    def from[A1 <: A](table: Table.Aux[A1]): Read.Select[F, A1, B] = {
+    def from[A1 <: A](table: Table.Aux[A1]): Read.Select[F, A1, B] =
       Read.Select(selection, table, true, Nil)
-    }
   }
 
   /**
