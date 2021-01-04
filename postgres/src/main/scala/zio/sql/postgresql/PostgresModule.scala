@@ -303,7 +303,15 @@ trait PostgresModule extends Jdbc { self =>
       queryTablesMap: Map[TableId, (TableName, Int)] = Map.empty
     ): Map[TableId, TableAlias] =
       selectionSet match {
-        case SelectionSet.Cons(head, tail) =>
+        case cons0 @ SelectionSet.Cons(_, _) =>
+          object Dummy {
+            type Source
+            type A
+            type B <: SelectionSet[Source]
+          }
+          val cons = cons0.asInstanceOf[SelectionSet.Cons[Dummy.Source, Dummy.A, Dummy.B]]
+          import cons._
+
           def getTableIdFromExpr[A, B](expr: self.Expr[_, A, B]) = expr match {
             case Expr.Source(tableName, tableCode, _) =>
               Some((tableName -> tableCode))
@@ -344,7 +352,7 @@ trait PostgresModule extends Jdbc { self =>
                 }
             }.foldLeft((Map.empty[TableId, TableAlias]))(_ ++ _)
           }
-        case SelectionSet.Empty            =>
+        case SelectionSet.Empty              =>
           Map.empty
       }
 
