@@ -296,6 +296,7 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
       val query = select(Products.productId ++ Products.productName ++ productName2 ++ parentId2)
         .from(Products.products.join(Products.products2).on(Products.productId === parentId2))
         .where(Products.productName === "Teddy Bear" && productName2 === "Teddy Bear 2")
+        .orderBy(Products.productName)
 
       final case class InnerProductsResponse(
         productId: UUID,
@@ -320,7 +321,9 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
         )
       ) && assert(renderedQuery)(
         equalTo(
-          "SELECT p1.id, p1.name, p2.name, p2.parent_id FROM products p1 INNER JOIN products p2 ON p1.id = p2.parent_id  WHERE true and p1.name = 'Teddy Bear' and p2.name = 'Teddy Bear 2'"
+          "SELECT p1.id, p1.name, p2.name, p2.parent_id FROM products p1 " +
+            "INNER JOIN products p2 ON p1.id = p2.parent_id  WHERE true and " +
+            "p1.name = 'Teddy Bear' and p2.name = 'Teddy Bear 2' ORDER BY p1.name"
         )
       )
 
