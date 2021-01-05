@@ -346,11 +346,13 @@ trait PostgresModule extends Jdbc { self =>
             queryTablesMap.groupBy { case (_, (tableName, _)) =>
               tableName
             }.collect {
-              case (_, map) if map.size > 1 =>
-                map.view.mapValues { case (tableName, tableNum) =>
-                  s"${tableName.head}$tableNum"
+              case (_, tablesMap) if tablesMap.size > 1 =>
+                tablesMap.map { case (tableId, (tableName, tableNum)) =>
+                  (tableId, s"${tableName.head}$tableNum")
                 }
-            }.foldLeft((Map.empty[TableId, TableAlias]))(_ ++ _)
+            }.foldLeft((Map.empty[TableId, TableAlias])) { case (prev, curr) =>
+              prev ++ curr
+            }
           }
         case SelectionSet.Empty              =>
           Map.empty
