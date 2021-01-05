@@ -403,8 +403,6 @@ trait PostgresModule extends Jdbc { self =>
     def renderTable(table: Table, tablesAliases: Map[TableId, TableAlias])(implicit render: Renderer): Unit =
       table match {
         //The outer reference in this type test cannot be checked at run time?!
-        //case sourceTable: self.Table.Source if sourceTable.nameAlias.exists(_.nonEmpty) =>
-        //  render(sourceTable.name, " ", sourceTable.nameAlias.get)
         case sourceTable: self.Table.Source          =>
           tablesAliases.get(sourceTable.id) match {
             case Some(tableAlias) => render(sourceTable.name, " ", tableAlias)
