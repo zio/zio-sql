@@ -7,6 +7,7 @@ import zio.Cause
 import zio.test.Assertion._
 import zio.test._
 
+import zio.test.environment.TestEnvironment
 import scala.language.postfixOps
 
 object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
@@ -45,7 +46,7 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
     assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
   }
 
-  val spec = suite("Postgres module")(
+  override def spec = suite("Postgres module")(
     testM("Can select from single table") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
@@ -315,5 +316,6 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
 
     //   assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     // }
-  )
+  ).provideCustomLayerShared(TestEnvironment.live >+> executorLayer)
+
 }
