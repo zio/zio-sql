@@ -10,6 +10,7 @@ import zio.test.Assertion._
 import zio.test._
 import zio.test.TestAspect.{ ignore, timeout }
 import zio.duration._
+import zio.test.environment.TestEnvironment
 
 object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
@@ -20,7 +21,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
   private def collectAndCompare(
     expected: Seq[String],
     testResult: ZStream[FunctionDefSpec.ReadExecutor, Exception, String]
-  ): zio.ZIO[FunctionDefSpec.Environment, Any, TestResult] = {
+  ) = {
     val assertion = for {
       r <- testResult.runCollect
     } yield assert(r.toList)(equalTo(expected))
@@ -30,7 +31,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
   private val timestampFormatter = DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss.SSSS").withZone(ZoneId.of("UTC"))
 
-  val spec = suite("Postgres FunctionDef")(
+  val spec = (suite("Postgres FunctionDef")(
     testM("concat_ws #1 - combine flat values") {
       import Expr._
 
@@ -988,10 +989,10 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       val expectedRoundTripTimestamp = ZonedDateTime.of(2020, 11, 21, 19, 10, 25, 0, ZoneId.of(ZoneOffset.UTC.getId))
       val roundTripQuery             =
         select(createdString ++ createdTimestamp) from customers
-      val roundTripResults           = execute(roundTripQuery).to[String, ZonedDateTime, (String, ZonedDateTime, ZonedDateTime)] {
-        case row =>
+      val roundTripResults           =
+        execute(roundTripQuery).to[String, ZonedDateTime, (String, ZonedDateTime, ZonedDateTime)] { case row =>
           (row._1, ZonedDateTime.parse(row._1), row._2)
-      }
+        }
       val roundTripExpected          = List(
         ("2020-11-21T19:10:25+00:00", ZonedDateTime.parse("2020-11-21T19:10:25+00:00"), expectedRoundTripTimestamp),
         ("2020-11-21T15:10:25-04:00", ZonedDateTime.parse("2020-11-21T15:10:25-04:00"), expectedRoundTripTimestamp),
@@ -1067,5 +1068,6 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     } @@ ignore  //todo fix - select(PgClientEncoding())?
-  ) @@ timeout(5.minutes)
+  ) @@ timeout(5.minutes)).provideCustomLayerShared(TestEnvironment.live >+> executorLayer)
+
 }
