@@ -24,12 +24,10 @@ object TestContainer {
           a.withInitScript("shop_schema.sql")
           ()
         }
-        println("----> c.start()")
         c.start()
         c
       }
     } { container =>
-      println("----> c.stop()")
       effectBlocking(container.stop()).orDie
     }.toLayer
 
