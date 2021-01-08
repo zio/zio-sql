@@ -15,11 +15,13 @@ object TestContainer {
       }
     }(container => effectBlocking(container.stop()).orDie).toLayer
 
-  def postgres(imageName: String): ZLayer[Blocking, Throwable, Has[PostgreSQLContainer]] =
+  def postgres(
+    imageName: Option[String] = Some("postgres:alpine:13")
+  ): ZLayer[Blocking, Throwable, Has[PostgreSQLContainer]] =
     ZManaged.make {
       effectBlocking {
         val c = new PostgreSQLContainer(
-          dockerImageNameOverride = Some(imageName)
+          dockerImageNameOverride = imageName
         ).configure { a =>
           a.withInitScript("shop_schema.sql")
           ()
