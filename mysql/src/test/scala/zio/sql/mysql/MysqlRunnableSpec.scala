@@ -8,7 +8,7 @@ import zio.sql._
 import zio.test.environment.TestEnvironment
 import zio.test._
 
-trait MysqlRunnableSpec extends DefaultRunnableSpec with Jdbc with MysqlModule {
+trait MysqlRunnableSpec extends JdbcRunnableSpec with MysqlModule {
 
   private def connProperties(user: String, password: String): Properties = {
     val props = new Properties
@@ -33,6 +33,6 @@ trait MysqlRunnableSpec extends DefaultRunnableSpec with Jdbc with MysqlModule {
 
   override def spec: Spec[TestEnvironment, TestFailure[Any], TestSuccess] = specLayered.provideCustomLayerShared(layer)
 
-  def specLayered: Spec[TestEnvironment with TransactionExecutor with ReadExecutor, TestFailure[Object], TestSuccess]
+  def specLayered: Spec[JdbcEnvironment, TestFailure[Object], TestSuccess]
 
 }
