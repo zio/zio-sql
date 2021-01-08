@@ -34,6 +34,7 @@ trait PostgresRunnableSpec extends DefaultRunnableSpec with Jdbc with PostgresMo
 
   override def spec: Spec[TestEnvironment, TestFailure[Any], TestSuccess] = specLayered.provideCustomLayerShared(layer)
 
+  //TODO use object Environment from jdbcrunnable
   def specLayered: Spec[TestEnvironment with TransactionExecutor with ReadExecutor, TestFailure[Object], TestSuccess]
 
 }
