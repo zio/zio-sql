@@ -20,7 +20,7 @@ trait PostgresRunnableSpec extends DefaultRunnableSpec with Jdbc with PostgresMo
 
   lazy val executorLayer = {
     val poolConfigLayer = TestContainer
-      .postgres("postgres:alpine:13")
+      .postgres()
       .map(a => Has(ConnectionPool.Config(a.get.jdbcUrl, connProperties(a.get.username, a.get.password))))
 
     val connectionPoolLayer = ZLayer.identity[Blocking] >+> poolConfigLayer >>> ConnectionPool.live
