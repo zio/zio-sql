@@ -2,13 +2,13 @@ package zio.sql.mysql
 
 import java.util.Properties
 
-import zio.{ Has, ZEnv, ZLayer }
+import zio._
 import zio.blocking.Blocking
-import zio.sql.JdbcRunnableSpec
-import zio.sql.TestContainer
+import zio.sql._
 import zio.test.environment.TestEnvironment
+import zio.test._
 
-trait MysqlRunnableSpec extends JdbcRunnableSpec with MysqlModule {
+trait MysqlRunnableSpec extends DefaultRunnableSpec with Jdbc with MysqlModule {
 
   private def connProperties(user: String, password: String): Properties = {
     val props = new Properties
@@ -29,7 +29,10 @@ trait MysqlRunnableSpec extends JdbcRunnableSpec with MysqlModule {
     ] ++ connectionPoolLayer >+> ReadExecutor.live >+> UpdateExecutor.live >+> DeleteExecutor.live >+> TransactionExecutor.live).orDie
   }
 
-  override val jdbcTestEnvironment: ZLayer[ZEnv, Nothing, Environment] =
-    TestEnvironment.live >+> executorLayer
+  private val layer = TestEnvironment.live >+> executorLayer
+
+  override def spec: Spec[TestEnvironment, TestFailure[Any], TestSuccess] = specLayered.provideCustomLayerShared(layer)
+
+  def specLayered: Spec[TestEnvironment with TransactionExecutor with ReadExecutor, TestFailure[Object], TestSuccess]
 
 }
