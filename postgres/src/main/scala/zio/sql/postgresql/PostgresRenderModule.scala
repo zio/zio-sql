@@ -4,7 +4,7 @@ import zio.sql.rendering.{ Builder, LowPriorityRendering, Rendering }
 
 trait PostgresRenderModule { self: PostgresModule =>
 
-  override type RenderingLower[-A] = PostgresRendering[A]
+  override type SqlRendering[-A] = PostgresRendering[A]
 
   trait PostgresRendering[-A] extends Rendering[A]
   object PostgresRendering {
@@ -14,16 +14,46 @@ trait PostgresRenderModule { self: PostgresModule =>
     implicit case object LongRenderer             extends PostgresRendering[Long]                          {
       override def apply(a: Long)(implicit builder: Builder): Unit = println(a)
     }
+
+    implicit case object ColumnNameRenderer             extends PostgresRendering[ColumnName]                          {
+      override def apply(a: ColumnName)(implicit builder: Builder): Unit = println(ColumnName.unwrap(a))
+    }
+    
     implicit case object ColumnSelectionRendering extends PostgresRendering[ColumnSelection[_, _]]         {
       override def apply(columnSelection: ColumnSelection[_, _])(implicit builder: Builder): Unit =
         columnSelection match {
-          case ColumnSelection.Constant(value, name) =>
-            render(value) //todo fix escaping
+          case c @ ColumnSelection.Constant(value, name) =>
+            c.typeTag match {
+              case x : TypeTag.NotNull[_] => x match {
+                case tt: TBigDecimal => tt.cast(value).
+                case tt: TBoolean =>
+                case tt: TByte =>
+                case tt: TByteArray =>
+                case tt: TChar =>
+                case tt: TDouble =>
+                case tt: TFloat =>
+                case tt: TInstant =>
+                case tt: TInt =>
+                case tt: TLocalDate =>
+                case tt: TLocalDateTime =>
+                case tt: TLocalTime =>
+                case tt: TLong =>
+                case tt: TOffsetDateTime =>
+                case tt: TOffsetTime =>
+                case tt: TShort =>
+                case tt: TString =>
+                case tt: TUUID =>
+                case tt: TZonedDateTime =>
+                case tt: TDialectSpecific(typeTagExtension) =>
+              }
+              case _ => println("fix me")//todo fix
+            }
+             //todo fix escaping
             name match {
               case Some(name) => render(" AS ", name)
               case None       => ()
             }
-          case ColumnSelection.Computed(expr, name)  =>
+          case ColumnSelection.Computed(expr, name)      =>
             render(expr)
             name match {
               case Some(name) =>
@@ -63,7 +93,34 @@ trait PostgresRenderModule { self: PostgresModule =>
         case Expr.Binary(left, right, op)           => render(left, " ", op.symbol, " ", right)
         case Expr.Relational(left, right, op)       => render(left, " ", op.symbol, " ", right)
         case Expr.In(value, set)                    => render(value, set.asInstanceOf[Read[Any]])
-        case lit: Expr.Literal[_]                   => render(lit)
+        case lit: Expr.Literal[_]                   =>
+          import TypeTag._
+          lit.typeTag match {
+            case tt @ TByteArray      => render(tt.cast(lit.value).toString())                   // todo still broken
+            //something like? render(tt.cast(lit.value).map("\\\\%03o" format _).mkString("E\'", "", "\'"))
+            case tt @ TChar           =>
+              render("'", tt.cast(lit.value).toString, "'") //todo is this the same as a string? fix escaping
+            case tt @ TInstant        => render("TIMESTAMP '", tt.cast(lit.value).toString, "'") //todo test
+            case tt @ TLocalDate      => render(tt.cast(lit.value).toString)                     // todo still broken
+            case tt @ TLocalDateTime  => render(tt.cast(lit.value).toString)                     // todo still broken
+            case tt @ TLocalTime      => render(tt.cast(lit.value).toString)                     // todo still broken
+            case tt @ TOffsetDateTime => render(tt.cast(lit.value).toString)                     // todo still broken
+            case tt @ TOffsetTime     => render(tt.cast(lit.value).toString)                     // todo still broken
+            case tt @ TUUID           => render(tt.cast(lit.value).toString)                     // todo still broken
+            case tt @ TZonedDateTime  => render(tt.cast(lit.value).toString)                     // todo still broken
+
+            case TByte       => render(lit.value.toString)           //default toString is probably ok
+            case TBigDecimal => render(lit.value.toString)           //default toString is probably ok
+            case TBoolean    => render(lit.value.toString)           //default toString is probably ok
+            case TDouble     => render(lit.value.toString)           //default toString is probably ok
+            case TFloat      => render(lit.value.toString)           //default toString is probably ok
+            case TInt        => render(lit.value.toString)           //default toString is probably ok
+            case TLong       => render(lit.value.toString)           //default toString is probably ok
+            case TShort      => render(lit.value.toString)           //default toString is probably ok
+            case TString     => render("'", lit.value.toString, "'") //todo fix escaping
+
+            case _ => render(lit.value.toString) //todo fix add TypeTag.Nullable[_] =>
+          }
         case Expr.AggregationCall(p, aggregation)   => render(aggregation.name.name, "(", p, ")")
         case Expr.ParenlessFunctionCall0(fn)        => render(fn.name)
         case Expr.FunctionCall0(fn)                 => render(fn.name.name, "()")
@@ -71,37 +128,6 @@ trait PostgresRenderModule { self: PostgresModule =>
         case Expr.FunctionCall2(p1, p2, fn)         => render(fn.name.name, "(", p1, ",", p2, ")")
         case Expr.FunctionCall3(p1, p2, p3, fn)     => render(fn.name.name, "(", p1, ",", p2, ",", p3, ")")
         case Expr.FunctionCall4(p1, p2, p3, p4, fn) => render(fn.name.name, "(", p1, ",", p2, ",", p3, ",", p4, ")")
-      }
-    }
-    implicit case object LiteralRendering         extends PostgresRendering[Expr.Literal[_]]               {
-      override def apply(lit: Expr.Literal[_])(implicit builder: Builder): Unit = {
-        import TypeTag._
-        lit.typeTag match {
-          case tt @ TByteArray      => render(tt.cast(lit.value).toString())                   // todo still broken
-          //something like? render(tt.cast(lit.value).map("\\\\%03o" format _).mkString("E\'", "", "\'"))
-          case tt @ TChar           =>
-            render("'", tt.cast(lit.value).toString, "'") //todo is this the same as a string? fix escaping
-          case tt @ TInstant        => render("TIMESTAMP '", tt.cast(lit.value).toString, "'") //todo test
-          case tt @ TLocalDate      => render(tt.cast(lit.value).toString)                     // todo still broken
-          case tt @ TLocalDateTime  => render(tt.cast(lit.value).toString)                     // todo still broken
-          case tt @ TLocalTime      => render(tt.cast(lit.value).toString)                     // todo still broken
-          case tt @ TOffsetDateTime => render(tt.cast(lit.value).toString)                     // todo still broken
-          case tt @ TOffsetTime     => render(tt.cast(lit.value).toString)                     // todo still broken
-          case tt @ TUUID           => render(tt.cast(lit.value).toString)                     // todo still broken
-          case tt @ TZonedDateTime  => render(tt.cast(lit.value).toString)                     // todo still broken
-
-          case TByte       => render(lit.value.toString)           //default toString is probably ok
-          case TBigDecimal => render(lit.value.toString)           //default toString is probably ok
-          case TBoolean    => render(lit.value.toString)           //default toString is probably ok
-          case TDouble     => render(lit.value.toString)           //default toString is probably ok
-          case TFloat      => render(lit.value.toString)           //default toString is probably ok
-          case TInt        => render(lit.value.toString)           //default toString is probably ok
-          case TLong       => render(lit.value.toString)           //default toString is probably ok
-          case TShort      => render(lit.value.toString)           //default toString is probably ok
-          case TString     => render("'", lit.value.toString, "'") //todo fix escaping
-
-          case _ => render(lit.value.toString) //todo fix add TypeTag.Nullable[_] =>
-        }
       }
     }
     implicit case object OrderingListRendering    extends PostgresRendering[List[Ordering[Expr[_, _, _]]]] {

@@ -121,7 +121,7 @@ trait SelectModule { self: ExprModule with TableModule =>
   object ColumnSelection {
 
     sealed case class Constant[A: TypeTag](value: A, name: Option[ColumnName]) extends ColumnSelection[Any, A] {
-      def typeTag: TypeTag[A] = implicitly[TypeTag[A]]
+      lazy val typeTag: TypeTag[A] = implicitly[TypeTag[A]]
     }
 
     sealed case class Computed[F, A, B](expr: Expr[F, A, B], name: Option[ColumnName]) extends ColumnSelection[A, B] {

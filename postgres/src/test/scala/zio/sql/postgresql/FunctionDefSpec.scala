@@ -2,11 +2,11 @@ package zio.sql.postgresql
 
 import java.time._
 import java.util.UUID
-import zio.Cause
-import zio.random.{ Random => ZioRandom }
+import zio.{Cause, ZIO}
+import zio.random.{Random => ZioRandom}
 import zio.test.Assertion._
 import zio.test._
-import zio.test.TestAspect.{ ignore, timeout }
+import zio.test.TestAspect.{ignore, timeout}
 import zio.duration._
 
 object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
