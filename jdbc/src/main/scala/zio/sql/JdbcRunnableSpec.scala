@@ -1,25 +1,28 @@
 package zio.sql
 
-import zio.{ ZEnv, ZLayer }
-import zio.duration._
-import zio.test._
 import zio.test.environment.TestEnvironment
+import zio.test.DefaultRunnableSpec
+import zio.ZLayer
+import zio.blocking.Blocking
+import zio.Has
 
-trait JdbcRunnableSpec extends AbstractRunnableSpec with Jdbc {
+trait JdbcRunnableSpec extends DefaultRunnableSpec with Jdbc {
 
-  override type Environment = TestEnvironment
+  type JdbcEnvironment = TestEnvironment
     with ReadExecutor
     with UpdateExecutor
     with DeleteExecutor
     with TransactionExecutor
-  override type Failure     = Any
 
-  override def aspects: List[TestAspect[Nothing, TestEnvironment, Nothing, Any]] =
-    List(TestAspect.timeoutWarning(60.seconds))
+  val poolConfigLayer: ZLayer[Blocking, Throwable, Has[ConnectionPool.Config]]
 
-  def jdbcTestEnvironment: ZLayer[ZEnv, Nothing, Environment]
+  final lazy val executorLayer = {
+    val connectionPoolLayer = ZLayer.identity[Blocking] >+> poolConfigLayer >>> ConnectionPool.live
 
-  override def runner: TestRunner[Environment, Any] =
-    TestRunner(TestExecutor.default(ZEnv.live >>> jdbcTestEnvironment))
+    (ZLayer.identity[
+      Blocking
+    ] ++ connectionPoolLayer >+> ReadExecutor.live >+> UpdateExecutor.live >+> DeleteExecutor.live >+> TransactionExecutor.live).orDie
+  }
 
+  final lazy val jdbcLayer = TestEnvironment.live >+> executorLayer
 }
