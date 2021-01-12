@@ -25,7 +25,7 @@ addCommandAlias("fmt", "fmtOnce;fmtOnce")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
 val zioVersion                 = "1.0.3"
-val testcontainersVersion      = "1.15.0"
+val testcontainersVersion      = "1.15.1"
 val testcontainersScalaVersion = "1.0.0-alpha1"
 
 lazy val startPostgres = taskKey[Unit]("Start up Postgres")
@@ -181,8 +181,8 @@ lazy val oracle = project
       "org.testcontainers"       % "database-commons"               % testcontainersVersion % Test,
       "org.testcontainers"       % "oracle-xe"                      % testcontainersVersion % Test,
       "org.testcontainers"       % "jdbc"                           % testcontainersVersion % Test,
-      "com.oracle.database.jdbc" % "ojdbc8"                         % "19.8.0.0"            % Test,
-      "com.dimafeng"            %% "testcontainers-scala-oracle-xe" % "0.38.6"              % Test
+      "com.oracle.database.jdbc" % "ojdbc8"                         % "19.9.0.0"            % Test,
+      "com.dimafeng"            %% "testcontainers-scala-oracle-xe" % "0.38.8"              % Test
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))

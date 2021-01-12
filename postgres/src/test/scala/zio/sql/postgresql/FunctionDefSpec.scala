@@ -1,9 +1,11 @@
 package zio.sql.postgresql
 
 import java.time._
+import java.time.format.DateTimeFormatter
 import java.util.UUID
 import zio.Cause
 import zio.random.{ Random => ZioRandom }
+import zio.stream.ZStream
 import zio.test.Assertion._
 import zio.test._
 import zio.test.TestAspect.{ ignore, timeout }
@@ -12,10 +14,95 @@ import zio.duration._
 object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
   import Customers._
-  import FunctionDef._
+  import FunctionDef.{ CharLength => _, _ }
   import PostgresFunctionDef._
 
-  val spec = suite("Postgres FunctionDef")(
+  private def collectAndCompare(
+    expected: Seq[String],
+    testResult: ZStream[FunctionDefSpec.ReadExecutor, Exception, String]
+  ) = {
+    val assertion = for {
+      r <- testResult.runCollect
+    } yield assert(r.toList)(equalTo(expected))
+
+    assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+  }
+
+  private val timestampFormatter = DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss.SSSS").withZone(ZoneId.of("UTC"))
+
+  override def specLayered = suite("Postgres FunctionDef")(
+    testM("concat_ws #1 - combine flat values") {
+      import Expr._
+
+      //note: a plain number (3) would and should not compile
+      val query = select(ConcatWs4("+", "1", "2", "3")) from customers
+      println(renderRead(query))
+
+      val expected = Seq( // note: one for each row
+        "1+2+3",
+        "1+2+3",
+        "1+2+3",
+        "1+2+3",
+        "1+2+3"
+      )
+
+      val testResult = execute(query).to[String, String](identity)
+      collectAndCompare(expected, testResult)
+    },
+    testM("concat_ws #2 - combine columns") {
+      import Expr._
+
+      // note: you can't use customerId here as it is a UUID, hence not a string in our book
+      val query = select(ConcatWs3(Customers.fName, Customers.fName, Customers.lName)) from customers
+      println(renderRead(query))
+
+      val expected = Seq(
+        "RonaldRonaldRussell",
+        "TerrenceTerrenceNoel",
+        "MilaMilaPaterso",
+        "AlanaAlanaMurray",
+        "JoseJoseWiggins"
+      )
+
+      val testResult = execute(query).to[String, String](identity)
+      collectAndCompare(expected, testResult)
+    },
+    testM("concat_ws #3 - combine columns and flat values") {
+      import Expr._
+
+      val query = select(ConcatWs4(" ", "Person:", Customers.fName, Customers.lName)) from customers
+      println(renderRead(query))
+
+      val expected = Seq(
+        "Person: Ronald Russell",
+        "Person: Terrence Noel",
+        "Person: Mila Paterso",
+        "Person: Alana Murray",
+        "Person: Jose Wiggins"
+      )
+
+      val testResult = execute(query).to[String, String](identity)
+      collectAndCompare(expected, testResult)
+    },
+    testM("concat_ws #3 - combine function calls together") {
+      import Expr._
+
+      val query = select(
+        ConcatWs3(" and ", Concat("Name: ", Customers.fName), Concat("Surname: ", Customers.lName))
+      ) from customers
+      println(renderRead(query))
+
+      val expected = Seq(
+        "Name: Ronald and Surname: Russell",
+        "Name: Terrence and Surname: Noel",
+        "Name: Mila and Surname: Paterso",
+        "Name: Alana and Surname: Murray",
+        "Name: Jose and Surname: Wiggins"
+      )
+
+      val testResult = execute(query).to[String, String](identity)
+      collectAndCompare(expected, testResult)
+    },
     testM("isfinite") {
       val query = select(IsFinite(Instant.now)) from customers
 
@@ -29,7 +116,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    suite("String functions") {
+    suite("String functions")(
       testM("CharLength") {
         val query    = select(Length("hello")) from customers
         val expected = 5
@@ -41,8 +128,34 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
         } yield assert(r.head)(equalTo(expected))
 
         assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      },
+      testM("ltrim") {
+        val query = select(Ltrim("  hello  ")) from customers
+
+        val expected = "hello  "
+
+        val testResult = execute(query).to[String, String](identity)
+
+        val assertion = for {
+          r <- testResult.runCollect
+        } yield assert(r.head)(equalTo(expected))
+
+        assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      },
+      testM("rtrim") {
+        val query = select(Rtrim("  hello  ")) from customers
+
+        val expected = "  hello"
+
+        val testResult = execute(query).to[String, String](identity)
+
+        val assertion = for {
+          r <- testResult.runCollect
+        } yield assert(r.head)(equalTo(expected))
+
+        assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
       }
-    },
+    ),
     testM("abs") {
       val query = select(Abs(-3.14159)) from customers
 
@@ -271,19 +384,14 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       val assertion =
         for {
           r <- testResult.runCollect
-        } yield assert(r.head.toString)(
-          Assertion.matchesRegex("([0-9]{4})-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{6}Z")
+        } yield assert(timestampFormatter.format(r.head))(
+          Assertion.matchesRegex("[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{4}")
         )
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     testM("localtimestamp with precision") {
       val precision = 2
-
-      val millis =
-        if (precision == 0) ""
-        else if (precision <= 3) List.fill(3)("[0-9]").mkString(".", "", "")
-        else List.fill(6)("[0-9]").mkString(".", "", "")
 
       val query = select(LocaltimestampWithPrecision(precision)) from customers
 
@@ -292,8 +400,50 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       val assertion =
         for {
           r <- testResult.runCollect
-        } yield assert(r.head.toString)(
-          Assertion.matchesRegex(s"([0-9]{4})-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}${millis}Z")
+        } yield assert(timestampFormatter.format(r.head))(
+          Assertion.matchesRegex(s"[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{2}00")
+        )
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("now") {
+      val query = select(Now()) from customers
+
+      val testResult = execute(query).to[ZonedDateTime, ZonedDateTime](identity)
+
+      val assertion =
+        for {
+          r <- testResult.runCollect
+        } yield assert(timestampFormatter.format(r.head))(
+          Assertion.matchesRegex("[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{4}")
+        )
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("statement_timestamp") {
+      val query = select(StatementTimestamp()) from customers
+
+      val testResult = execute(query).to[ZonedDateTime, ZonedDateTime](identity)
+
+      val assertion =
+        for {
+          r <- testResult.runCollect
+        } yield assert(timestampFormatter.format(r.head))(
+          Assertion.matchesRegex("[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{4}")
+        )
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("transaction_timestamp") {
+      val query = select(TransactionTimestamp()) from customers
+
+      val testResult = execute(query).to[ZonedDateTime, ZonedDateTime](identity)
+
+      val assertion =
+        for {
+          r <- testResult.runCollect
+        } yield assert(timestampFormatter.format(r.head))(
+          Assertion.matchesRegex("[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{4}")
         )
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
@@ -306,9 +456,9 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       val assertion =
         for {
           r <- testResult.runCollect
-        } yield assert(r.head.toString)(
+        } yield assert(DateTimeFormatter.ofPattern("HH:mm:ss").format(r.head))(
           matchesRegex(
-            "(2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]Z"
+            "(2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]"
           )
         )
 
