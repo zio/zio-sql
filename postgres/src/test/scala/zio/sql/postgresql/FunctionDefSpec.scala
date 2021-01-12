@@ -20,7 +20,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
   private def collectAndCompare(
     expected: Seq[String],
     testResult: ZStream[FunctionDefSpec.ReadExecutor, Exception, String]
-  ): zio.ZIO[FunctionDefSpec.Environment, Any, TestResult] = {
+  ) = {
     val assertion = for {
       r <- testResult.runCollect
     } yield assert(r.toList)(equalTo(expected))
@@ -30,7 +30,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
   private val timestampFormatter = DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss.SSSS").withZone(ZoneId.of("UTC"))
 
-  val spec = suite("Postgres FunctionDef")(
+  override def specLayered = suite("Postgres FunctionDef")(
     testM("concat_ws #1 - combine flat values") {
       import Expr._
 
