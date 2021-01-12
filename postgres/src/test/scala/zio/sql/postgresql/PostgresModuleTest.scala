@@ -45,7 +45,7 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
     assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
   }
 
-  val spec = suite("Postgres module")(
+  override def specLayered = suite("Postgres module")(
     testM("Can select from single table") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
