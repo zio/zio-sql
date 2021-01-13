@@ -117,7 +117,10 @@ trait PostgresModule extends Jdbc { self =>
     private[zio] def renderLit[A, B](lit: self.Expr.Literal[_])(implicit render: Renderer): Unit = {
       import TypeTag._
       lit.typeTag match {
-        case tt @ TByteArray      => render(tt.cast(lit.value).map("""\%03o""" format _).mkString("E\'", "", "\'"))
+        case TByteArray           =>
+          render(
+            lit.value.asInstanceOf[Chunk[Byte]].map("""\%03o""" format _).mkString("E\'", "", "\'")
+          ) // todo fix `cast` infers correctly but map doesn't work for some reason
         case tt @ TChar           => render("'", tt.cast(lit.value), "'")           //todo is this the same as a string? fix escaping
         case tt @ TInstant        => render("TIMESTAMP '", tt.cast(lit.value), "'") //todo test
         case tt @ TLocalDate      => render(tt.cast(lit.value))                     // todo still broken
