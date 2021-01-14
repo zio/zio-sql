@@ -16,7 +16,7 @@ object TestContainer {
       }
     }(container => effectBlocking(container.stop()).orDie).toLayer
 
-  def mysql(imageName: String): ZLayer[Blocking, Throwable, Has[MySQLContainer]] =
+  def mysql(imageName: String = "mysql"): ZLayer[Blocking, Throwable, Has[MySQLContainer]] =
     ZManaged.make {
       effectBlocking {
         val c = new MySQLContainer(
