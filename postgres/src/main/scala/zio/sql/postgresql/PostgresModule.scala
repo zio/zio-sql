@@ -14,10 +14,10 @@ trait PostgresModule extends Jdbc { self =>
 
   object PostgresSpecific {
     import self.ReadExecutor.DecodingError
-    trait PostgresTypeTag[+A] extends Tag[A] with Decodeable[A]
+    trait PostgresTypeTag[+A] extends Tag[A] with Decodable[A]
     object PostgresTypeTag {
       implicit case object TInterval   extends PostgresTypeTag[Interval]   {
-        override def decode[Interval, DecodingError](
+        override def decode[DecodingError](
           column: Either[Int, String],
           resultSet: ResultSet
         ): Either[DecodingError, Interval] =
@@ -25,25 +25,27 @@ trait PostgresModule extends Jdbc { self =>
             .Try(Interval.fromPgInterval(new PGInterval(column.fold(resultSet.getString(_), resultSet.getString(_)))))
             .fold(
               _ => Left(DecodingError.UnexpectedNull(column).asInstanceOf[DecodingError]),
-              r => Right(r.asInstanceOf[Interval])
+              r => Right(r)
             )
       }
       implicit case object TTimestampz extends PostgresTypeTag[Timestampz] {
-        override def decode[ZonedDateTime, DecodingError](
+        override def decode[DecodingError](
           column: Either[Int, String],
           resultSet: ResultSet
-        ): Either[DecodingError, ZonedDateTime] =
+        ): Either[DecodingError, Timestampz] =
           scala.util
             .Try(
-              ZonedDateTime
-                .ofInstant(
-                  column.fold(resultSet.getTimestamp(_), resultSet.getTimestamp(_)).toInstant,
-                  ZoneId.of(ZoneOffset.UTC.getId)
-                )
+              Timestampz.fromZonedDateTime(
+                ZonedDateTime
+                  .ofInstant(
+                    column.fold(resultSet.getTimestamp(_), resultSet.getTimestamp(_)).toInstant,
+                    ZoneId.of(ZoneOffset.UTC.getId)
+                  )
+              )
             )
             .fold(
               _ => Left(DecodingError.UnexpectedNull(column).asInstanceOf[DecodingError]),
-              r => Right(r.asInstanceOf[ZonedDateTime])
+              r => Right(r)
             )
       }
     }
@@ -155,6 +157,19 @@ trait PostgresModule extends Jdbc { self =>
           interval.seconds.toDouble
         )
     }
+
+    object Timestampz {
+      def fromZonedDateTime(zdt: ZonedDateTime): Timestampz =
+        Timestampz(
+          zdt.getYear,
+          zdt.getMonthValue,
+          zdt.getDayOfMonth,
+          zdt.getHour,
+          zdt.getMinute,
+          zdt.getSecond,
+          zdt.getZone.getId
+        )
+    }
   }
 
   object PostgresFunctionDef {
@@ -208,7 +223,7 @@ trait PostgresModule extends Jdbc { self =>
         FunctionName("make_timestamp")
       )
     val MakeTimestampz              =
-      FunctionDef[Timestampz, ZonedDateTime](FunctionName("make_timestamptz"))
+      FunctionDef[Timestampz, Timestampz](FunctionName("make_timestamptz"))
   }
 
   override def renderRead(read: self.Read[_]): String = {
