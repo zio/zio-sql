@@ -22,10 +22,11 @@ trait ShopSchema extends Jdbc { self =>
     val orderId :*: fkCustomerId :*: orderDate :*: _ = orders.columns
   }
   object Products      {
-    val products =
-      (uuid("id") ++ string("name") ++ string("description") ++ string("image_url")).table("products")
+    val columns   = uuid("id") ++ string("name") ++ string("description") ++ string("image_url") ++ uuid("parent_id")
+    val products  = columns.table("products")
+    val products2 = columns.table("products")
 
-    val productId :*: description :*: imageURL :*: _ = products.columns
+    val productId :*: productName :*: description :*: imageURL :*: parentId :*: _ = products.columns
   }
   object ProductPrices {
     val productPrices =

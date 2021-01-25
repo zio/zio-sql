@@ -17,7 +17,7 @@ trait TableModule { self: ExprModule with SelectModule =>
 
     def columnsUntyped: List[Column.Untyped]
 
-    protected def mkColumns[T](name: TableName): ColumnsRepr[T]
+    protected def mkColumns[T](name: TableName, id: TableId): ColumnsRepr[T]
   }
 
   object ColumnSet {
@@ -33,7 +33,7 @@ trait TableModule { self: ExprModule with SelectModule =>
 
       override def columnsUntyped: List[Column.Untyped] = Nil
 
-      override protected def mkColumns[T](name: TableName): ColumnsRepr[T] = ()
+      override protected def mkColumns[T](name: TableName, id: TableId): ColumnsRepr[T] = ()
     }
 
     sealed case class Cons[A, B <: ColumnSet](head: Column[A], tail: B) extends ColumnSet { self =>
@@ -48,15 +48,16 @@ trait TableModule { self: ExprModule with SelectModule =>
         new Table.Source {
           type Repr[C] = ColumnsRepr[C]
           type Cols    = A :*: B
-          val name: TableName                      = name0
-          val columnSchema: ColumnSchema[A :*: B]  = ColumnSchema(self)
-          val columns: ColumnsRepr[TableType]      = mkColumns[TableType](name0)
-          val columnsUntyped: List[Column.Untyped] = self.columnsUntyped
+          val name: TableName = name0
+          val id: TableId     = UUID.randomUUID()
 
+          val columnSchema: ColumnSchema[A :*: B]  = ColumnSchema(self)
+          val columns: ColumnsRepr[TableType]      = mkColumns[TableType](name0, id)
+          val columnsUntyped: List[Column.Untyped] = self.columnsUntyped
         }
 
-      override protected def mkColumns[T](name: TableName): ColumnsRepr[T] =
-        (Expr.Source(name, head), tail.mkColumns(name))
+      override protected def mkColumns[T](name: TableName, id: TableId): ColumnsRepr[T] =
+        (Expr.Source(name, id, head), tail.mkColumns(name, id))
     }
 
     def bigDecimal(name: String): Singleton[BigDecimal]         = singleton[BigDecimal](name)
@@ -138,6 +139,7 @@ trait TableModule { self: ExprModule with SelectModule =>
     sealed trait Source extends Table with Insanity {
       type Repr[_]
       type Cols
+      val id: TableId
       val name: TableName
       val columnSchema: ColumnSchema[Cols]
       val columns: Repr[TableType]

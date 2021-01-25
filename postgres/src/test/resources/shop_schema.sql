@@ -21,7 +21,9 @@ create table products
     id uuid not null primary key,
     name varchar,
     description varchar not null,
-    image_url varchar
+    image_url varchar,
+    parent_id uuid,
+    CONSTRAINT fk_parent_id FOREIGN KEY (parent_id) REFERENCES products(id)
 );
 
 create table product_prices
@@ -57,6 +59,11 @@ values
     ('105A2701-EF93-4E25-81AB-8952CC7D9DAA', 'Pants', 'Avoid a lawsuit, wear pants to work today!', 'https://images.pexels.com/photos/52518/jeans-pants-blue-shop-52518.jpeg?cs=srgb&dl=blue-jeans-clothes-shopping-52518.jpg&fm=jpg'),
     ('F35B0053-855B-4145-ABE1-DC62BC1FDB96', 'Nail File', 'Keep those nails looking good', 'https://images.pexels.com/photos/3997373/pexels-photo-3997373.jpeg?auto=compress&cs=tinysrgb&h=750&w=1260'),
     ('D5137D3A-894A-4109-9986-E982541B434F', 'Teddy Bear', 'Because sometimes you just need something to hug', 'https://images.pexels.com/photos/1019471/stuffed-bear-teddy-child-girl-1019471.jpeg?cs=srgb&dl=closeup-photography-of-brown-teddy-bear-1019471.jpg&fm=jpg');
+
+insert into products
+    (id, name, description, image_url, parent_id)
+values
+    ('B6E47471-9731-4E26-ABC0-C4F03A4809C4', 'Teddy Bear 2', 'Because sometimes you just need something to hug', 'https://images.pexels.com/photos/1019471/stuffed-bear-teddy-child-girl-1019471.jpeg?cs=srgb&dl=closeup-photography-of-brown-teddy-bear-1019471.jpg&fm=jpg', 'D5137D3A-894A-4109-9986-E982541B434F');
 
 insert into product_prices
     (product_id, effective, price)
