@@ -1128,15 +1128,16 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       def runTest(tz: Timestampz) = {
         val query = select(MakeTimestampz(tz)) from customers
         for {
-          r <- execute(query).to[ZonedDateTime, ZonedDateTime](identity).runCollect
+          r <- execute(query).to[Timestampz, Timestampz](identity).runCollect
         } yield r.head
       }
 
-      val expectedRoundTripTimestamp = ZonedDateTime.of(2020, 11, 21, 19, 10, 25, 0, ZoneId.of(ZoneOffset.UTC.getId))
+      val expectedRoundTripTimestamp =
+        Timestampz.fromZonedDateTime(ZonedDateTime.of(2020, 11, 21, 19, 10, 25, 0, ZoneId.of(ZoneOffset.UTC.getId)))
 
       (for {
         t1 <- assertM(runTest(Timestampz(2013, 7, 15, 8, 15, 23.5)))(
-                equalTo(ZonedDateTime.parse("2013-07-15T08:15:23.5+00:00"))
+                equalTo(Timestampz.fromZonedDateTime(ZonedDateTime.parse("2013-07-15T08:15:23.5+00:00")))
               )
         t2 <- assertM(runTest(Timestampz(2020, 11, 21, 19, 10, 25, "+00:00")))(
                 equalTo(expectedRoundTripTimestamp)

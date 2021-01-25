@@ -7,10 +7,10 @@ import zio.Chunk
 
 trait TypeTagModule {
 
-  type TypeTagExtension[+A] <: Tag[A] with Decodeable[A]
+  type TypeTagExtension[+A] <: Tag[A] with Decodable[A]
 
-  trait Decodeable[+A] {
-    def decode[A, DecodingError](column: Either[Int, String], resultSet: ResultSet): Either[DecodingError, A] = ???
+  trait Decodable[+A] {
+    def decode[DecodingError](column: Either[Int, String], resultSet: ResultSet): Either[DecodingError, A]
   }
 
   trait Tag[+A] {
