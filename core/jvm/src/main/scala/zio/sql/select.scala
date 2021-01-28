@@ -3,7 +3,6 @@ package zio.sql
 import scala.language.implicitConversions
 
 trait SelectModule { self: ExprModule with TableModule =>
-
   sealed case class SelectBuilder[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]) {
 
     def from[A1 <: A](table: Table.Aux[A1]): Read.Select[F, A1, B] =
@@ -193,5 +192,28 @@ trait SelectModule { self: ExprModule with TableModule =>
 
     implicit def exprToOrdering[F, A, B](expr: Expr[F, A, B]): Ordering[Expr[F, A, B]] =
       Asc(expr)
+  }
+
+  sealed trait DecodingError extends Exception {
+    def message: String
+  }
+
+  object DecodingError {
+    sealed case class UnexpectedNull(column: Either[Int, String])       extends DecodingError {
+      private def label = column.fold(index => index.toString, name => name)
+
+      def message = s"Expected column ${label} to be non-null"
+    }
+    sealed case class UnexpectedType(expected: TypeTag[_], actual: Int) extends DecodingError {
+      def message = s"Expected type ${expected} but found ${actual}"
+    }
+    sealed case class MissingColumn(column: Either[Int, String])        extends DecodingError {
+      private def label = column.fold(index => index.toString, name => name)
+
+      def message = s"The column ${label} does not exist"
+    }
+    case object Closed                                                  extends DecodingError {
+      def message = s"The ResultSet has been closed, so decoding is impossible"
+    }
   }
 }
