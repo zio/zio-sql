@@ -13,23 +13,22 @@ trait PostgresModule extends Jdbc { self =>
   override type TypeTagExtension[+A] = PostgresSpecific.PostgresTypeTag[A]
 
   object PostgresSpecific {
-    import self.ReadExecutor.DecodingError
     trait PostgresTypeTag[+A] extends Tag[A] with Decodable[A]
     object PostgresTypeTag {
       implicit case object TInterval   extends PostgresTypeTag[Interval]   {
-        override def decode[DecodingError](
+        override def decode(
           column: Either[Int, String],
           resultSet: ResultSet
         ): Either[DecodingError, Interval] =
           scala.util
             .Try(Interval.fromPgInterval(new PGInterval(column.fold(resultSet.getString(_), resultSet.getString(_)))))
             .fold(
-              _ => Left(DecodingError.UnexpectedNull(column).asInstanceOf[DecodingError]),
+              _ => Left(DecodingError.UnexpectedNull(column)),
               r => Right(r)
             )
       }
       implicit case object TTimestampz extends PostgresTypeTag[Timestampz] {
-        override def decode[DecodingError](
+        override def decode(
           column: Either[Int, String],
           resultSet: ResultSet
         ): Either[DecodingError, Timestampz] =
@@ -44,7 +43,7 @@ trait PostgresModule extends Jdbc { self =>
               )
             )
             .fold(
-              _ => Left(DecodingError.UnexpectedNull(column).asInstanceOf[DecodingError]),
+              _ => Left(DecodingError.UnexpectedNull(column)),
               r => Right(r)
             )
       }

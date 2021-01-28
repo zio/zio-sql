@@ -193,28 +193,6 @@ trait Jdbc extends zio.sql.Sql with TransactionModule {
         }
       }
 
-    sealed trait DecodingError extends Exception {
-      def message: String
-    }
-    object DecodingError {
-      sealed case class UnexpectedNull(column: Either[Int, String])       extends DecodingError {
-        private def label = column.fold(index => index.toString, name => name)
-
-        def message = s"Expected column ${label} to be non-null"
-      }
-      sealed case class UnexpectedType(expected: TypeTag[_], actual: Int) extends DecodingError {
-        def message = s"Expected type ${expected} but found ${actual}"
-      }
-      sealed case class MissingColumn(column: Either[Int, String])        extends DecodingError {
-        private def label = column.fold(index => index.toString, name => name)
-
-        def message = s"The column ${label} does not exist"
-      }
-      case object Closed                                                  extends DecodingError {
-        def message = s"The ResultSet has been closed, so decoding is impossible"
-      }
-    }
-
     // TODO: Only support indexes!
     private[sql] def extractColumn[A](
       column: Either[Int, String],

@@ -5,12 +5,12 @@ import java.time._
 import java.util.UUID
 import zio.Chunk
 
-trait TypeTagModule {
+trait TypeTagModule { self: SelectModule =>
 
   type TypeTagExtension[+A] <: Tag[A] with Decodable[A]
 
   trait Decodable[+A] {
-    def decode[DecodingError](column: Either[Int, String], resultSet: ResultSet): Either[DecodingError, A]
+    def decode(column: Either[Int, String], resultSet: ResultSet): Either[DecodingError, A]
   }
 
   trait Tag[+A] {
