@@ -14,7 +14,7 @@ object BuildHelper {
   val Scala212        = "2.12.12"
   val Scala213        = "2.13.3"
   val DottyVersion    = "0.27.0-RC1"
-  val SilencerVersion = "1.7.1"
+  val SilencerVersion = "1.7.2"
 
   def buildInfoSettings(packageName: String) =
     Seq(
@@ -188,7 +188,7 @@ object BuildHelper {
     libraryDependencies ++= {
       if (isDotty.value)
         Seq(
-          ("com.github.ghik" % s"silencer-lib_2.13.3" % "1.7.1" % Provided)
+          ("com.github.ghik" % s"silencer-lib_2.13.3" % "1.7.2" % Provided)
             .withDottyCompat(scalaVersion.value)
         )
       else
