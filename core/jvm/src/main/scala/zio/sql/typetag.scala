@@ -1,17 +1,22 @@
 package zio.sql
 
+import java.sql.ResultSet
 import java.time._
 import java.util.UUID
-
 import zio.Chunk
 
-trait TypeTagModule {
+trait TypeTagModule { self: SelectModule =>
 
-  type TypeTagExtension[+A]
+  type TypeTagExtension[+A] <: Tag[A] with Decodable[A]
 
-  sealed trait TypeTag[+A] {
+  trait Decodable[+A] {
+    def decode(column: Either[Int, String], resultSet: ResultSet): Either[DecodingError, A]
+  }
+
+  trait Tag[+A] {
     private[zio] def cast(a: Any): A = a.asInstanceOf[A]
   }
+  sealed trait TypeTag[+A] extends Tag[A]
 
   object TypeTag {
     sealed trait NotNull[+A]                                                      extends TypeTag[A]
@@ -35,8 +40,7 @@ trait TypeTagModule {
     implicit case object TUUID                                                    extends NotNull[UUID]
     implicit case object TZonedDateTime                                           extends NotNull[ZonedDateTime]
     sealed case class TDialectSpecific[+A](typeTagExtension: TypeTagExtension[A]) extends NotNull[A]
-
-    sealed case class Nullable[A: NotNull]() extends TypeTag[Option[A]] {
+    sealed case class Nullable[A: NotNull]()                                      extends TypeTag[Option[A]] {
       def typeTag: TypeTag[A] = implicitly[TypeTag[A]]
     }
 

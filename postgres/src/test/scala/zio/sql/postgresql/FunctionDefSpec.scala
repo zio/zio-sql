@@ -16,6 +16,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
   import Customers._
   import FunctionDef.{ CharLength => _, _ }
   import PostgresFunctionDef._
+  import PostgresSpecific._
 
   private def collectAndCompare(
     expected: Seq[String],
@@ -1066,6 +1067,85 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       } yield assert(r.head)(equalTo("UTF8"))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    } @@ ignore  //todo fix - select(PgClientEncoding())?
+    }
+      @@ ignore, //todo fix - select(PgClientEncoding())?
+    testM("make_date") {
+      val query = select(MakeDate(2013, 7, 15)) from customers
+
+      val expected = LocalDate.of(2013, 7, 15)
+
+      val testResult = execute(query).to[LocalDate, LocalDate](identity)
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("make_interval") {
+      def runTest(interval: Interval) = {
+        val query = select(
+          MakeInterval(interval)
+        ) from customers
+        for {
+          r <- execute(query).to[Interval, Interval](identity).runCollect
+        } yield r.head
+      }
+
+      (for {
+        t1 <- assertM(runTest(Interval()))(equalTo(Interval()))
+        t2 <- assertM(runTest(Interval(days = 10)))(equalTo(Interval(days = 10)))
+        t3 <- assertM(
+                runTest(Interval(years = 10, months = 2, days = 5, hours = 6, minutes = 20, seconds = 15))
+              )(
+                equalTo(Interval(years = 10, months = 2, days = 5, hours = 6, minutes = 20, seconds = 15))
+              )
+      } yield t1 && t2 && t3).mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("make_time") {
+      val query      = select(MakeTime(8, 15, 23.5)) from customers
+      val expected   = LocalTime.parse("08:15:23.500")
+      val testResult = execute(query).to[LocalTime, LocalTime](identity)
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("make_timestamp") {
+      val query      = select(MakeTimestamp(2013, 7, 15, 8, 15, 23.5)) from customers
+      val expected   = LocalDateTime.parse("2013-07-15T08:15:23.500")
+      val testResult = execute(query).to[LocalDateTime, LocalDateTime](identity)
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("make_timestampz") {
+      def runTest(tz: Timestampz) = {
+        val query = select(MakeTimestampz(tz)) from customers
+        for {
+          r <- execute(query).to[Timestampz, Timestampz](identity).runCollect
+        } yield r.head
+      }
+
+      val expectedRoundTripTimestamp =
+        Timestampz.fromZonedDateTime(ZonedDateTime.of(2020, 11, 21, 19, 10, 25, 0, ZoneId.of(ZoneOffset.UTC.getId)))
+
+      (for {
+        t1 <- assertM(runTest(Timestampz(2013, 7, 15, 8, 15, 23.5)))(
+                equalTo(Timestampz.fromZonedDateTime(ZonedDateTime.parse("2013-07-15T08:15:23.5+00:00")))
+              )
+        t2 <- assertM(runTest(Timestampz(2020, 11, 21, 19, 10, 25, "+00:00")))(
+                equalTo(expectedRoundTripTimestamp)
+              )
+        t3 <- assertM(runTest(Timestampz(2020, 11, 21, 15, 10, 25, "-04:00")))(equalTo(expectedRoundTripTimestamp))
+        t4 <- assertM(runTest(Timestampz(2020, 11, 22, 2, 10, 25, "+07:00")))(equalTo(expectedRoundTripTimestamp))
+        t5 <- assertM(runTest(Timestampz(2020, 11, 21, 12, 10, 25, "-07:00")))(equalTo(expectedRoundTripTimestamp))
+      } yield t1 && t2 && t3 && t4 && t5).mapErrorCause(cause => Cause.stackless(cause.untraced))
+    }
   ) @@ timeout(5.minutes)
 }
