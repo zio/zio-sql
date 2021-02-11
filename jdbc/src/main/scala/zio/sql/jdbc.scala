@@ -1,9 +1,8 @@
 package zio.sql
 
-import java.sql._
 import java.io.IOException
+import java.sql._
 import java.time.{ OffsetDateTime, OffsetTime, ZoneId, ZoneOffset }
-
 import zio.{ Chunk, Has, IO, Managed, ZIO, ZLayer, ZManaged }
 import zio.blocking.Blocking
 import zio.stream.{ Stream, ZStream }
@@ -194,28 +193,6 @@ trait Jdbc extends zio.sql.Sql with TransactionModule {
         }
       }
 
-    sealed trait DecodingError extends Exception {
-      def message: String
-    }
-    object DecodingError {
-      sealed case class UnexpectedNull(column: Either[Int, String])       extends DecodingError {
-        private def label = column.fold(index => index.toString, name => name)
-
-        def message = s"Expected column ${label} to be non-null"
-      }
-      sealed case class UnexpectedType(expected: TypeTag[_], actual: Int) extends DecodingError {
-        def message = s"Expected type ${expected} but found ${actual}"
-      }
-      sealed case class MissingColumn(column: Either[Int, String])        extends DecodingError {
-        private def label = column.fold(index => index.toString, name => name)
-
-        def message = s"The column ${label} does not exist"
-      }
-      case object Closed                                                  extends DecodingError {
-        def message = s"The ResultSet has been closed, so decoding is impossible"
-      }
-    }
-
     // TODO: Only support indexes!
     private[sql] def extractColumn[A](
       column: Either[Int, String],
@@ -302,6 +279,7 @@ trait Jdbc extends zio.sql.Sql with TransactionModule {
             java.util.UUID.fromString(column.fold(resultSet.getString(_), resultSet.getString(_)))
           )
         case TZonedDateTime      =>
+          //2013-07-15 08:15:23.5+00
           tryDecode[java.time.ZonedDateTime](
             java.time.ZonedDateTime
               .ofInstant(
@@ -309,7 +287,7 @@ trait Jdbc extends zio.sql.Sql with TransactionModule {
                 ZoneId.of(ZoneOffset.UTC.getId)
               )
           )
-        case TDialectSpecific(_) => ???
+        case TDialectSpecific(t) => t.decode(column, resultSet)
         case t @ Nullable()      => extractColumn(column, resultSet, t.typeTag, false).map(Option(_))
       }
     }

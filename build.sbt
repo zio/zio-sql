@@ -26,7 +26,7 @@ addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck"
 
 val zioVersion                 = "1.0.3"
 val testcontainersVersion      = "1.15.1"
-val testcontainersScalaVersion = "1.0.0-alpha1"
+val testcontainersScalaVersion = "0.38.9"
 
 lazy val startPostgres = taskKey[Unit]("Start up Postgres")
 startPostgres := startService(Database.Postgres, streams.value)
@@ -175,14 +175,14 @@ lazy val oracle = project
   .settings(
     libraryDependencies ++= Seq(
       "dev.zio"                 %% "zio"                            % zioVersion,
-      "dev.zio"                 %% "zio-test"                       % zioVersion            % "test",
-      "dev.zio"                 %% "zio-test-sbt"                   % zioVersion            % "test",
-      "org.testcontainers"       % "testcontainers"                 % testcontainersVersion % Test,
-      "org.testcontainers"       % "database-commons"               % testcontainersVersion % Test,
-      "org.testcontainers"       % "oracle-xe"                      % testcontainersVersion % Test,
-      "org.testcontainers"       % "jdbc"                           % testcontainersVersion % Test,
-      "com.oracle.database.jdbc" % "ojdbc8"                         % "19.9.0.0"            % Test,
-      "com.dimafeng"            %% "testcontainers-scala-oracle-xe" % "0.38.8"              % Test
+      "dev.zio"                 %% "zio-test"                       % zioVersion                 % "test",
+      "dev.zio"                 %% "zio-test-sbt"                   % zioVersion                 % "test",
+      "org.testcontainers"       % "testcontainers"                 % testcontainersVersion      % Test,
+      "org.testcontainers"       % "database-commons"               % testcontainersVersion      % Test,
+      "org.testcontainers"       % "oracle-xe"                      % testcontainersVersion      % Test,
+      "org.testcontainers"       % "jdbc"                           % testcontainersVersion      % Test,
+      "com.oracle.database.jdbc" % "ojdbc8"                         % "19.9.0.0"                 % Test,
+      "com.dimafeng"            %% "testcontainers-scala-oracle-xe" % testcontainersScalaVersion % Test
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
@@ -202,7 +202,7 @@ lazy val postgres = project
       "org.testcontainers" % "database-commons"                % testcontainersVersion      % Test,
       "org.testcontainers" % "postgresql"                      % testcontainersVersion      % Test,
       "org.testcontainers" % "jdbc"                            % testcontainersVersion      % Test,
-      "org.postgresql"     % "postgresql"                      % "42.2.18"                  % Test,
+      "org.postgresql"     % "postgresql"                      % "42.2.18"                  % Compile,
       "com.dimafeng"      %% "testcontainers-scala-postgresql" % testcontainersScalaVersion % Test
     )
   )
