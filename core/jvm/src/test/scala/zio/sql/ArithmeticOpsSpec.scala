@@ -1,7 +1,7 @@
 package zio.sql
 
 import zio.test.Assertion.anything
-import zio.test.{ assert, suite, test, DefaultRunnableSpec }
+import zio.test.{ assert, DefaultRunnableSpec }
 
 object ArithmeticOpsSpec extends DefaultRunnableSpec {
   import ProductSchema._
