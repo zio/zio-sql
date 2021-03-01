@@ -12,7 +12,7 @@ import scalafix.sbt.ScalafixPlugin.autoImport.scalafixSemanticdb
 object BuildHelper {
   val Scala211        = "2.11.12"
   val Scala212        = "2.12.13"
-  val Scala213        = "2.13.3"
+  val Scala213        = "2.13.5"
   val DottyVersion    = "0.27.0-RC1"
   val SilencerVersion = "1.7.1"
 
@@ -188,14 +188,14 @@ object BuildHelper {
     libraryDependencies ++= {
       if (isDotty.value)
         Seq(
-          ("com.github.ghik" % s"silencer-lib_2.13.3" % "1.7.1" % Provided)
+          ("com.github.ghik" % s"silencer-lib_2.13.3" % "1.7.3" % Provided)
             .withDottyCompat(scalaVersion.value)
         )
       else
         Seq(
           ("com.github.ghik"                % "silencer-lib"            % SilencerVersion % Provided).cross(CrossVersion.full),
           compilerPlugin(("com.github.ghik" % "silencer-plugin"         % SilencerVersion).cross(CrossVersion.full)),
-          "org.scala-lang.modules"         %% "scala-collection-compat" % "2.4.1"
+          "org.scala-lang.modules"         %% "scala-collection-compat" % "2.4.2"
         )
     },
     parallelExecution in Test := true,

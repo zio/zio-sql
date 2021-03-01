@@ -21,7 +21,7 @@ Running Reads | :heavy_check_mark:
 Running Deletes | :heavy_check_mark:
 Running Updates | :heavy_check_mark:
 Running Inserts | 
-Transactions |
+Transactions | :white_check_mark:
 Connection pool | 
 
 #### Db-specific features:
