@@ -17,7 +17,7 @@ trait Sql extends SelectModule with DeleteModule with UpdateModule with ExprModu
   def select[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]): SelectBuilder[F, A, B] =
     SelectBuilder(selection)
 
-  def deleteFrom[F[_], A, B](table: Table.Source.Aux[F, A, B]): Delete[A] = Delete(table, true)
+  def deleteFrom[T <: Table](table: T): Delete[table.TableType] = Delete(table, true)
 
   def update[A](table: Table.Aux[A]): UpdateBuilder[A] = UpdateBuilder(table)
 
