@@ -3,6 +3,7 @@ package zio.sql
 import java.time._
 
 import scala.language.implicitConversions
+import scala.annotation.nowarn
 
 trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
   self: SelectModule with TableModule =>
@@ -431,6 +432,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
   object Set {
     type Aux[F, -A, Value0] = Set[F, A] { type Value = Value0 }
 
+    @nowarn
     def apply[F: Features.IsSource, A, Value0: TypeTag](
       lhs0: Expr[F, A, Value0],
       rhs0: Expr[_, A, Value0]

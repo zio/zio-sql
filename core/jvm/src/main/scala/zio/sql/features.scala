@@ -1,6 +1,7 @@
 package zio.sql
 
 import scala.annotation.implicitNotFound
+import scala.annotation.nowarn
 
 trait FeaturesModule {
 
@@ -20,6 +21,7 @@ trait FeaturesModule {
 
       implicit def AggregatedIsAggregated[A]: IsAggregated[Aggregated[A]] = new IsAggregated[Aggregated[A]] {}
 
+      @nowarn
       implicit def UnionIsAggregated[A: IsAggregated, B: IsAggregated]: IsAggregated[Union[A, B]] =
         new IsAggregated[Union[A, B]] {}
     }
