@@ -4,6 +4,7 @@ import java.sql._
 
 import zio._
 import zio.blocking.Blocking
+import zio.stream._
 
 trait TransactionModule { self: Jdbc =>
   private[sql] sealed case class Txn(connection: Connection, sqlDriverCore: SqlDriverCore)
@@ -60,9 +61,12 @@ trait TransactionModule { self: Jdbc =>
     def apply[A <: SelectionSet[_]](
       read: self.Read[A]
     ): ZTransaction[Any, Exception, zio.stream.Stream[Exception, A]] =
-      txn.map { case Txn(connection, coreDriver) =>
-        // FIXME: runCollect and feed back into a stream
-        coreDriver.readOn(read, connection).asInstanceOf[zio.stream.Stream[Exception, A]]
+      txn.flatMap { case Txn(connection, coreDriver) =>
+        // FIXME: Find a way to NOT load the whole result set into memory at once!!!
+        val stream =
+          coreDriver.readOn(read, connection).asInstanceOf[Stream[Exception, A]]
+
+        ZTransaction.fromEffect(stream.runCollect.map(Stream.fromIterable(_)))
       }
 
     def apply(update: self.Update[_]): ZTransaction[Any, Exception, Int] =
