@@ -13,7 +13,7 @@ object MysqlModuleTest extends MysqlRunnableSpec with ShopSchema {
   import this.Customers._
   import this.Orders._
 
-  val spec = suite("Mysql module")(
+  override def specLayered = suite("Mysql module")(
     testM("Can select from single table") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
