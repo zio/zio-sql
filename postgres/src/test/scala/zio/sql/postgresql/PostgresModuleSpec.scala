@@ -3,7 +3,7 @@ package zio.sql.postgresql
 import java.time.LocalDate
 import java.util.UUID
 
-import zio.Cause
+import zio._
 import zio.test.Assertion._
 import zio.test._
 
@@ -275,9 +275,10 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
     testM("Transactions is returning the last value") {
       val query = select(customerId) from customers
 
-      val result    = execute(
-        ZTransaction.select(query) *> ZTransaction.select(query)
-      )
+      val result = execute(
+        ZTransaction(query) *> ZTransaction(query)
+      ).use(ZIO.succeed(_))
+
       val assertion = assertM(result.flatMap(_.runCollect))(hasSize(Assertion.equalTo(5))).orDie
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
@@ -286,8 +287,8 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
       val query = select(customerId) from customers
 
       val result = execute(
-        ZTransaction.select(query) *> ZTransaction.fail(new Exception("failing")) *> ZTransaction.select(query)
-      ).mapError(_.getMessage)
+        ZTransaction(query) *> ZTransaction.fail(new Exception("failing")) *> ZTransaction(query)
+      ).mapError(_.getMessage).use(ZIO.succeed(_))
 
       assertM(result.flip)(equalTo("failing")).mapErrorCause(cause => Cause.stackless(cause.untraced))
     }

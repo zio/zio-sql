@@ -57,6 +57,24 @@ trait TransactionModule { self: Jdbc =>
   }
 
   object ZTransaction {
+    def apply[A <: SelectionSet[_]](
+      read: self.Read[A]
+    ): ZTransaction[Any, Exception, zio.stream.Stream[Exception, A]] =
+      txn.map { case Txn(connection, coreDriver) =>
+        // FIXME: runCollect and feed back into a stream
+        coreDriver.readOn(read, connection).asInstanceOf[zio.stream.Stream[Exception, A]]
+      }
+
+    def apply(update: self.Update[_]): ZTransaction[Any, Exception, Int] =
+      txn.flatMap { case Txn(connection, coreDriver) =>
+        ZTransaction.fromEffect(coreDriver.updateOn(update, connection))
+      }
+
+    def apply(delete: self.Delete[_]): ZTransaction[Any, Exception, Int] =
+      txn.flatMap { case Txn(connection, coreDriver) =>
+        ZTransaction.fromEffect(coreDriver.deleteOn(delete, connection))
+      }
+
     def succeed[A](a: => A): ZTransaction[Any, Nothing, A] = fromEffect(ZIO.succeed(a))
 
     def fail[E](e: => E): ZTransaction[Any, E, Nothing] = fromEffect(ZIO.fail(e))
@@ -71,22 +89,5 @@ trait TransactionModule { self: Jdbc =>
 
     private val txn: ZTransaction[Any, Nothing, Txn] =
       ZTransaction(ZManaged.environment[(Any, Txn)].map(_._2))
-
-    def select[A <: SelectionSet[_]](
-      read: self.Read[A]
-    ): ZTransaction[Any, Exception, zio.stream.Stream[Exception, A]] =
-      txn.map { case Txn(connection, coreDriver) =>
-        coreDriver.readOn(read, connection).asInstanceOf[zio.stream.Stream[Exception, A]]
-      }
-
-    def update(update: self.Update[_]): ZTransaction[Any, Exception, Int] =
-      txn.flatMap { case Txn(connection, coreDriver) =>
-        ZTransaction.fromEffect(coreDriver.updateOn(update, connection))
-      }
-
-    def delete(delete: self.Delete[_]): ZTransaction[Any, Exception, Int] =
-      txn.flatMap { case Txn(connection, coreDriver) =>
-        ZTransaction.fromEffect(coreDriver.deleteOn(delete, connection))
-      }
   }
 }
