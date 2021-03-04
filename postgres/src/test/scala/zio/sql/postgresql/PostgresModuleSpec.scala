@@ -9,7 +9,7 @@ import zio.test._
 
 import scala.language.postfixOps
 
-object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
+object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
   import Customers._
   import Orders._
@@ -45,7 +45,7 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
     assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
   }
 
-  val spec = suite("Postgres module")(
+  override def specLayered = suite("Postgres module")(
     testM("Can select from single table") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
@@ -291,29 +291,5 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
 
       assertM(result.flip)(equalTo("failing")).mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
-    // testM("Can delete all from a single table") { TODO: Does not work on 2.12 yet
-    //   val query = deleteFrom(customers)
-    //   println(renderDelete(query))
-
-    //   val result = execute(query)
-
-    //   val assertion = for {
-    //     r <- result
-    //   } yield assert(r)(equalTo(5))
-
-    //   assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    // },
-    // testM("Can delete from single table with a condition") {
-    //   val query = deleteFrom(customers) where (verified isNotTrue)
-    //   println(renderDelete(query))
-
-    //   val result = execute(query)
-
-    //   val assertion = for {
-    //     r <- result
-    //   } yield assert(r)(equalTo(1))
-
-    //   assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    // }
   )
 }
