@@ -4,6 +4,7 @@ import zio.test.environment.TestEnvironment
 import zio.test.DefaultRunnableSpec
 import zio.ZLayer
 import zio.blocking.Blocking
+import zio.clock.Clock
 import zio.Has
 
 trait JdbcRunnableSpec extends DefaultRunnableSpec with Jdbc {
@@ -14,14 +15,13 @@ trait JdbcRunnableSpec extends DefaultRunnableSpec with Jdbc {
     with DeleteExecutor
     with TransactionExecutor
 
-  val poolConfigLayer: ZLayer[Blocking, Throwable, Has[ConnectionPool.Config]]
+  val poolConfigLayer: ZLayer[Blocking, Throwable, Has[ConnectionPoolConfig]]
 
   final lazy val executorLayer = {
-    val connectionPoolLayer = ZLayer.identity[Blocking] >+> poolConfigLayer >>> ConnectionPool.live
+    val connectionPoolLayer: ZLayer[Blocking with Clock, Throwable, Has[ConnectionPool]] =
+      ((Blocking.any >+> poolConfigLayer) ++ Clock.any) >>> ConnectionPool.live
 
-    (ZLayer.identity[
-      Blocking
-    ] ++ connectionPoolLayer >+> ReadExecutor.live >+> UpdateExecutor.live >+> DeleteExecutor.live >+> TransactionExecutor.live).orDie
+    (Blocking.any ++ connectionPoolLayer >+> ReadExecutor.live >+> UpdateExecutor.live >+> DeleteExecutor.live >+> TransactionExecutor.live).orDie
   }
 
   final lazy val jdbcLayer = TestEnvironment.live >+> executorLayer
