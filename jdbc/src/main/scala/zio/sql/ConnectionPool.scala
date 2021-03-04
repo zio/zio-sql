@@ -63,11 +63,13 @@ final case class ConnectionPoolLive(
   /**
    * Closes the connection pool, terminating each connection in parallel.
    */
-  def close: IO[IOException, Any] =
+  val close: IO[IOException, Any] =
     ZIO.uninterruptible {
       available.get.commit.zipWith(taken.get.commit)(_ ++ _).flatMap { all =>
-        ZIO.foreachPar(all) { connection =>
-          blocking.effectBlocking(connection.close()).refineToOrDie[IOException]
+        blocking.blocking {
+          ZIO.foreachPar(all) { connection =>
+            ZIO(connection.close()).refineToOrDie[IOException]
+          }
         }
       }
     }
