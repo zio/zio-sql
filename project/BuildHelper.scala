@@ -10,11 +10,10 @@ import BuildInfoKeys._
 import scalafix.sbt.ScalafixPlugin.autoImport.scalafixSemanticdb
 
 object BuildHelper {
-  val Scala211        = "2.13.5"
-  val Scala212        = "2.12.12"
-  val Scala213        = "2.13.3"
+  val SilencerVersion = "1.7.3"
+  val Scala212        = "2.12.13"
+  val Scala213        = "2.13.5"
   val DottyVersion    = "0.27.0-RC1"
-  val SilencerVersion = "1.7.1"
 
   def buildInfoSettings(packageName: String) =
     Seq(
@@ -113,8 +112,6 @@ object BuildHelper {
 
   def crossPlatformSources(scalaVer: String, platform: String, conf: String, baseDir: File, isDotty: Boolean) =
     CrossVersion.partialVersion(scalaVer) match {
-      case Some((2, x)) if x <= 11 =>
-        platformSpecificSources(platform, conf, baseDir)("2.11", "2.x")
       case Some((2, x)) if x >= 12 =>
         platformSpecificSources(platform, conf, baseDir)("2.12+", "2.12", "2.x")
       case _ if isDotty            =>
@@ -182,7 +179,7 @@ object BuildHelper {
   def stdSettings(prjName: String) = Seq(
     name := s"$prjName",
     scalacOptions := stdOptions,
-    crossScalaVersions := Seq(Scala213, Scala212, Scala211),
+    crossScalaVersions := Seq(Scala213, Scala212),
     scalaVersion in ThisBuild := crossScalaVersions.value.head,
     scalacOptions := stdOptions ++ extraOptions(scalaVersion.value, optimize = !isSnapshot.value),
     libraryDependencies ++= {
@@ -204,13 +201,6 @@ object BuildHelper {
     unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library"),
     Compile / unmanagedSourceDirectories ++= {
       CrossVersion.partialVersion(scalaVersion.value) match {
-        case Some((2, x)) if x <= 11 =>
-          Seq(
-            Seq(file(sourceDirectory.value.getPath + "/main/scala-2.11")),
-            CrossType.Full.sharedSrcDir(baseDirectory.value, "main").toList.map(f => file(f.getPath + "-2.11")),
-            CrossType.Full.sharedSrcDir(baseDirectory.value, "test").toList.map(f => file(f.getPath + "-2.11")),
-            CrossType.Full.sharedSrcDir(baseDirectory.value, "main").toList.map(f => file(f.getPath + "-2.x"))
-          ).flatten
         case Some((2, x)) if x >= 12 =>
           Seq(
             Seq(file(sourceDirectory.value.getPath + "/main/scala-2.12")),
@@ -235,11 +225,6 @@ object BuildHelper {
     },
     Test / unmanagedSourceDirectories ++= {
       CrossVersion.partialVersion(scalaVersion.value) match {
-        case Some((2, x)) if x <= 11 =>
-          Seq(
-            Seq(file(sourceDirectory.value.getPath + "/test/scala-2.11")),
-            CrossType.Full.sharedSrcDir(baseDirectory.value, "test").toList.map(f => file(f.getPath + "-2.x"))
-          ).flatten
         case Some((2, x)) if x >= 12 =>
           Seq(
             Seq(file(sourceDirectory.value.getPath + "/test/scala-2.12")),
