@@ -6,7 +6,17 @@ import zio.blocking.Blocking
 import zio.stream.{ Stream, ZStream }
 
 trait SqlDriverLiveModule { self: Jdbc =>
-  sealed case class SqlDriverLive(blocking: Blocking.Service, pool: ConnectionPool) extends SqlDriver {
+  trait SqlDriverCore {
+    def deleteOn(delete: Delete[_], conn: Connection): IO[Exception, Int]
+
+    def updateOn(update: Update[_], conn: Connection): IO[Exception, Int]
+
+    def readOn[A <: SelectionSet[_]](read: Read[A], conn: Connection): Stream[Exception, read.ResultType]
+  }
+
+  sealed case class SqlDriverLive(blocking: Blocking.Service, pool: ConnectionPool)
+      extends SqlDriver
+      with SqlDriverCore { self =>
     def delete(delete: Delete[_]): IO[Exception, Int] =
       pool.connection.use(deleteOn(delete, _))
 
@@ -68,34 +78,11 @@ trait SqlDriverLiveModule { self: Jdbc =>
         }.refineToOrDie[Exception]
       }
 
-    override def transact[R, E >: Exception, A](tx: ZTransaction[R, E, A]): ZIO[R, E, A] = {
-      def loop(tx: ZTransaction[R, E, Any], conn: Connection): ZIO[R, E, Any] =
-        tx match {
-          case ZTransaction.Effect(zio)       => zio
-          // This does not work because of `org.postgresql.util.PSQLException: This connection has been closed.`
-          // case Transaction.Select(read) => ZIO.succeed(readS.executeOn(read, conn))
-          // This works and it is eagerly running the Stream
-          case ZTransaction.Select(read)      =>
-            readOn(read.asInstanceOf[Read[SelectionSet[_]]], conn).runCollect
-              .map(a => ZStream.fromIterator(a.iterator))
-          case ZTransaction.Update(update)    => updateOn(update, conn)
-          case ZTransaction.Delete(delete)    => deleteOn(delete, conn)
-          case ZTransaction.FoldCauseM(tx, k) =>
-            loop(tx, conn).foldCauseM(
-              cause => loop(k.asInstanceOf[ZTransaction.K[R, E, Any, Any]].onHalt(cause), conn),
-              success => loop(k.onSuccess(success), conn)
-            )
-        }
-
-      pool.connection.use(conn =>
-        blocking.effectBlocking(conn.setAutoCommit(false)).refineToOrDie[Exception] *>
-          loop(tx, conn)
-            .tapBoth(
-              _ => blocking.effectBlocking(conn.rollback()),
-              _ => blocking.effectBlocking(conn.commit())
-            )
-            .asInstanceOf[ZIO[R, E, A]]
-      )
-    }
+    override def transact[R, A](tx: ZTransaction[R, Exception, A]): ZIO[R, Exception, A] =
+      (for {
+        connection <- pool.connection
+        _          <- blocking.effectBlocking(connection.setAutoCommit(false)).refineToOrDie[Exception].toManaged_
+        a          <- tx.run(blocking, Txn(connection, self))
+      } yield a).use(ZIO.succeed(_))
   }
 }

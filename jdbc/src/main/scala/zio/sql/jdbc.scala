@@ -17,7 +17,7 @@ trait Jdbc
 
     def read[A <: SelectionSet[_], Target](read: Read[A])(to: read.ResultType => Target): Stream[Exception, Target]
 
-    def transact[R, E >: Exception, A](tx: ZTransaction[R, E, A]): ZIO[R, E, A]
+    def transact[R, A](tx: ZTransaction[R, Exception, A]): ZIO[R, Exception, A]
   }
   object SqlDriver {
     val live: ZLayer[Blocking with Has[ConnectionPool], Nothing, Has[SqlDriver]] =
@@ -27,8 +27,8 @@ trait Jdbc
       } yield SqlDriverLive(blocking, pool)).toLayer
   }
 
-  def execute[R, E >: Exception, A](tx: ZTransaction[R, E, A]): ZIO[R with Has[SqlDriver], E, A] =
-    ZIO.accessM[R with Has[SqlDriver]](_.get.transact(tx))
+  def execute[R <: Has[SqlDriver], A](tx: ZTransaction[R, Exception, A]): ZIO[R, Exception, A] =
+    ZIO.accessM[R](_.get.transact(tx))
 
   def execute[A <: SelectionSet[_]](read: Read[A]): ExecuteBuilder[A, read.ResultType] =
     new ExecuteBuilder(read)
@@ -37,5 +37,4 @@ trait Jdbc
     ZIO.accessM[Has[SqlDriver]](
       _.get.delete(delete)
     )
-
 }
