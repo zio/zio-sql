@@ -12,7 +12,7 @@ trait SqlDriverLiveModule { self: Jdbc =>
 
     def updateOn(update: Update[_], conn: Connection): IO[Exception, Int]
 
-    def readOn[A <: SelectionSet[_]](read: Read[A], conn: Connection): Stream[Exception, read.ResultType]
+    def readOn[A](read: Read[A], conn: Connection): Stream[Exception, A]
   }
 
   sealed case class SqlDriverLive(blocking: Blocking.Service, pool: ConnectionPool)
@@ -42,15 +42,14 @@ trait SqlDriverLiveModule { self: Jdbc =>
 
       }.refineToOrDie[Exception]
 
-    def read[A <: SelectionSet[_], Target](
+    def read[A](
       read: Read[A]
-    )(to: read.ResultType => Target): Stream[Exception, Target] =
+    ): Stream[Exception, A] =
       ZStream
         .managed(pool.connection)
         .flatMap(readOn(read, _))
-        .map(to)
 
-    def readOn[A <: SelectionSet[_]](read: Read[A], conn: Connection): Stream[Exception, read.ResultType] =
+    override def readOn[A](read: Read[A], conn: Connection): Stream[Exception, A] =
       Stream.unwrap {
         blocking.effectBlocking {
           val schema = getColumns(read).zipWithIndex.map { case (value, index) =>
@@ -74,7 +73,7 @@ trait SqlDriverLiveModule { self: Jdbc =>
                 case e: SQLException => ZIO.fail(e)
               }
             } else ZIO.succeed(None)
-          }
+          }.map(read.mapper)
 
         }.refineToOrDie[Exception]
       }

@@ -123,8 +123,10 @@ trait MysqlModule extends Jdbc { self =>
         val _ = builder.append(")")
     }
 
-    def buildReadString[A <: SelectionSet[_]](read: self.Read[_]): Unit =
+    def buildReadString(read: self.Read[_]): Unit =
       read match {
+        case Read.Mapped(read, _) => buildReadString(read)
+
         case read0 @ Read.Select(_, _, _, _, _, _, _, _) =>
           object Dummy {
             type F
