@@ -1,12 +1,13 @@
 package zio.sql
 
 import java.sql._
-import zio.{ IO, ZIO }
+
+import zio._
 import zio.blocking.Blocking
 import zio.stream.{ Stream, ZStream }
 
 trait SqlDriverLiveModule { self: Jdbc =>
-  trait SqlDriverCore {
+  private[sql] trait SqlDriverCore {
     def deleteOn(delete: Delete[_], conn: Connection): IO[Exception, Int]
 
     def updateOn(update: Update[_], conn: Connection): IO[Exception, Int]
@@ -78,11 +79,11 @@ trait SqlDriverLiveModule { self: Jdbc =>
         }.refineToOrDie[Exception]
       }
 
-    override def transact[R, A](tx: ZTransaction[R, Exception, A]): ZIO[R, Exception, A] =
-      (for {
+    override def transact[R, A](tx: ZTransaction[R, Exception, A]): ZManaged[R, Exception, A] =
+      for {
         connection <- pool.connection
         _          <- blocking.effectBlocking(connection.setAutoCommit(false)).refineToOrDie[Exception].toManaged_
         a          <- tx.run(blocking, Txn(connection, self))
-      } yield a).use(ZIO.succeed(_))
+      } yield a
   }
 }

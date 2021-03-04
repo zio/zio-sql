@@ -1,6 +1,6 @@
 package zio.sql
 
-import zio.{ Has, IO, ZIO, ZLayer }
+import zio._
 import zio.blocking.Blocking
 import zio.stream.Stream
 
@@ -17,7 +17,7 @@ trait Jdbc
 
     def read[A <: SelectionSet[_], Target](read: Read[A])(to: read.ResultType => Target): Stream[Exception, Target]
 
-    def transact[R, A](tx: ZTransaction[R, Exception, A]): ZIO[R, Exception, A]
+    def transact[R, A](tx: ZTransaction[R, Exception, A]): ZManaged[R, Exception, A]
   }
   object SqlDriver {
     val live: ZLayer[Blocking with Has[ConnectionPool], Nothing, Has[SqlDriver]] =
@@ -27,8 +27,8 @@ trait Jdbc
       } yield SqlDriverLive(blocking, pool)).toLayer
   }
 
-  def execute[R <: Has[SqlDriver], A](tx: ZTransaction[R, Exception, A]): ZIO[R, Exception, A] =
-    ZIO.accessM[R](_.get.transact(tx))
+  def execute[R <: Has[SqlDriver], A](tx: ZTransaction[R, Exception, A]): ZManaged[R, Exception, A] =
+    ZManaged.accessManaged[R](_.get.transact(tx))
 
   def execute[A <: SelectionSet[_]](read: Read[A]): ExecuteBuilder[A, read.ResultType] =
     new ExecuteBuilder(read)
