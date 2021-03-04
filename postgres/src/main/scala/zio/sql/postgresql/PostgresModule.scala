@@ -5,6 +5,7 @@ import java.text.DecimalFormat
 import java.time._
 import java.util.Calendar
 import org.postgresql.util.PGInterval
+import zio.Chunk
 import zio.sql.{ Jdbc, Renderer }
 
 trait PostgresModule extends Jdbc { self =>
@@ -223,6 +224,8 @@ trait PostgresModule extends Jdbc { self =>
       )
     val MakeTimestampz              =
       FunctionDef[Timestampz, Timestampz](FunctionName("make_timestamptz"))
+    val Encode                      = FunctionDef[(Chunk[Byte], String), String](FunctionName("encode"))
+    val Decode                      = FunctionDef[(String, String), Chunk[Byte]](FunctionName("decode"))
   }
 
   override def renderRead(read: self.Read[_]): String = {
@@ -296,8 +299,10 @@ trait PostgresModule extends Jdbc { self =>
             case tt @ TTimestampz                       => render(tt.cast(lit.value))
             case _: PostgresSpecific.PostgresTypeTag[_] => ???
           }
-        case tt @ TByteArray      => render(tt.cast(lit.value))                     // todo still broken
-        //something like? render(tt.cast(lit.value).map("\\\\%03o" format _).mkString("E\'", "", "\'"))
+        case TByteArray           =>
+          render(
+            lit.value.asInstanceOf[Chunk[Byte]].map("""\%03o""" format _).mkString("E\'", "", "\'")
+          ) // todo fix `cast` infers correctly but map doesn't work for some reason
         case tt @ TChar           =>
           render("'", tt.cast(lit.value), "'") //todo is this the same as a string? fix escaping
         case tt @ TInstant        => render("TIMESTAMP '", tt.cast(lit.value), "'") //todo test
