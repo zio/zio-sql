@@ -276,7 +276,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
       val query = select(customerId) from customers
 
       val result    = execute(
-        ZTransaction.Select(query) *> ZTransaction.Select(query)
+        ZTransaction.select(query) *> ZTransaction.select(query)
       )
       val assertion = assertM(result.flatMap(_.runCollect))(hasSize(Assertion.equalTo(5))).orDie
 
@@ -286,7 +286,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
       val query = select(customerId) from customers
 
       val result = execute(
-        ZTransaction.Select(query) *> ZTransaction.fail(new Exception("failing")) *> ZTransaction.Select(query)
+        ZTransaction.select(query) *> ZTransaction.fail(new Exception("failing")) *> ZTransaction.select(query)
       ).mapError(_.getMessage)
 
       assertM(result.flip)(equalTo("failing")).mapErrorCause(cause => Cause.stackless(cause.untraced))
