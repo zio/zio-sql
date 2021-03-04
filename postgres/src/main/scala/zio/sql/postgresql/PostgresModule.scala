@@ -175,6 +175,7 @@ trait PostgresModule extends Jdbc { self =>
   object PostgresFunctionDef {
     import PostgresSpecific._
 
+    val SplitPart                   = FunctionDef[(String, String, Int), String](FunctionName("split_part"))
     val IsFinite                    = FunctionDef[Instant, Boolean](FunctionName("isfinite"))
     val TimeOfDay                   = FunctionDef[Any, String](FunctionName("timeofday"))
     val CurrentTime                 = Expr.ParenlessFunctionCall0[OffsetTime](FunctionName("current_time"))
