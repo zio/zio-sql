@@ -1,41 +1,12 @@
 package zio.sql
 
-import java.io.IOException
 import java.sql._
 import java.time.{ OffsetDateTime, OffsetTime, ZoneId, ZoneOffset }
-import zio.{ Chunk, Has, IO, Managed, ZIO, ZLayer, ZManaged }
+import zio.{ Chunk, Has, IO, ZIO, ZLayer }
 import zio.blocking.Blocking
 import zio.stream.{ Stream, ZStream }
 
 trait Jdbc extends zio.sql.Sql with TransactionModule {
-  type ConnectionPool = Has[ConnectionPool.Service]
-  object ConnectionPool {
-    sealed case class Config(url: String, properties: java.util.Properties)
-
-    trait Service {
-      def connection: Managed[Exception, Connection]
-    }
-
-    val live: ZLayer[Has[Config] with Blocking, IOException, ConnectionPool] =
-      ZLayer.fromFunctionManaged[Has[Config] with Blocking, IOException, Service] { env =>
-        val blocking = env.get[Blocking.Service]
-        val config   = env.get[Config]
-
-        // TODO: Make a real connection pool with warmup.
-        ZManaged.succeed {
-          new Service {
-            // TODO: effectBlockingIO should not require Blocking!!
-            def connection: Managed[Exception, Connection] =
-              Managed.make(
-                blocking
-                  .effectBlocking(DriverManager.getConnection(config.url, config.properties))
-                  .refineToOrDie[IOException]
-              )(conn => blocking.effectBlocking(conn.close()).orDie)
-          }
-        }
-      }
-  }
-
   type DeleteExecutor = Has[DeleteExecutor.Service]
   object DeleteExecutor {
     trait Service {
@@ -43,8 +14,8 @@ trait Jdbc extends zio.sql.Sql with TransactionModule {
       def executeOn(delete: Delete[_], conn: Connection): IO[Exception, Int]
     }
 
-    val live: ZLayer[ConnectionPool with Blocking, Nothing, DeleteExecutor] =
-      ZLayer.fromServices[ConnectionPool.Service, Blocking.Service, DeleteExecutor.Service] { (pool, blocking) =>
+    val live: ZLayer[Has[ConnectionPool] with Blocking, Nothing, DeleteExecutor] =
+      ZLayer.fromServices[ConnectionPool, Blocking.Service, DeleteExecutor.Service] { (pool, blocking) =>
         new Service {
           def execute(delete: Delete[_]): IO[Exception, Int]                     = pool.connection.use { conn =>
             executeOn(delete, conn)
@@ -66,8 +37,8 @@ trait Jdbc extends zio.sql.Sql with TransactionModule {
       def executeOn(update: Update[_], conn: Connection): IO[Exception, Int]
     }
 
-    val live: ZLayer[ConnectionPool with Blocking, Nothing, UpdateExecutor] =
-      ZLayer.fromServices[ConnectionPool.Service, Blocking.Service, UpdateExecutor.Service] { (pool, blocking) =>
+    val live: ZLayer[Has[ConnectionPool] with Blocking, Nothing, UpdateExecutor] =
+      ZLayer.fromServices[ConnectionPool, Blocking.Service, UpdateExecutor.Service] { (pool, blocking) =>
         new Service {
           def execute(update: Update[_]): IO[Exception, Int]                     =
             pool.connection
@@ -93,12 +64,12 @@ trait Jdbc extends zio.sql.Sql with TransactionModule {
     }
 
     val live: ZLayer[
-      ConnectionPool with Blocking with ReadExecutor with UpdateExecutor with DeleteExecutor,
+      Has[ConnectionPool] with Blocking with ReadExecutor with UpdateExecutor with DeleteExecutor,
       Exception,
       TransactionExecutor
     ] =
       ZLayer.fromServices[
-        ConnectionPool.Service,
+        ConnectionPool,
         Blocking.Service,
         ReadExecutor.Service,
         UpdateExecutor.Service,
@@ -149,8 +120,8 @@ trait Jdbc extends zio.sql.Sql with TransactionModule {
       def executeOn[A <: SelectionSet[_]](read: Read[A], conn: Connection): Stream[Exception, read.ResultType]
     }
 
-    val live: ZLayer[ConnectionPool with Blocking, Nothing, ReadExecutor] =
-      ZLayer.fromServices[ConnectionPool.Service, Blocking.Service, ReadExecutor.Service] { (pool, blocking) =>
+    val live: ZLayer[Has[ConnectionPool] with Blocking, Nothing, ReadExecutor] =
+      ZLayer.fromServices[ConnectionPool, Blocking.Service, ReadExecutor.Service] { (pool, blocking) =>
         new Service {
           // TODO: Allow partial success for nullable columns
           def execute[A <: SelectionSet[_], Target](

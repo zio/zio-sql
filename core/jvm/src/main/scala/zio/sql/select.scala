@@ -54,10 +54,12 @@ trait SelectModule { self: ExprModule with TableModule =>
         copy(groupBy = groupBy ++ (key :: keys.toList))
       }
 
-      def having(havingExpr2: Expr[_, A, Boolean]) /*(implicit
+      def having(havingExpr2: Expr[_, A, Boolean])(implicit
         ev: Features.IsAggregated[F]
-      )*/: Select[F, A, B] =
+      ): Select[F, A, B] = {
+        val _ = ev
         copy(havingExpr = self.havingExpr && havingExpr2)
+      }
     }
 
     sealed case class Union[B <: SelectionSet[_]](left: Read[B], right: Read[B], distinct: Boolean) extends Read[B] {
