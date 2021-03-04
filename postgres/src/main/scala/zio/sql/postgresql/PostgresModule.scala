@@ -292,8 +292,9 @@ trait PostgresModule extends Jdbc { self =>
       lit.typeTag match {
         case TDialectSpecific(tt) =>
           tt match {
-            case tt @ TInterval   => render(tt.cast(lit.value))
-            case tt @ TTimestampz => render(tt.cast(lit.value))
+            case tt @ TInterval                         => render(tt.cast(lit.value))
+            case tt @ TTimestampz                       => render(tt.cast(lit.value))
+            case _: PostgresSpecific.PostgresTypeTag[_] => ???
           }
         case tt @ TByteArray      => render(tt.cast(lit.value))                     // todo still broken
         //something like? render(tt.cast(lit.value).map("\\\\%03o" format _).mkString("E\'", "", "\'"))
