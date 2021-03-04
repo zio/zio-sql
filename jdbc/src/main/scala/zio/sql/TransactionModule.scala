@@ -58,13 +58,13 @@ trait TransactionModule { self: Jdbc =>
   }
 
   object ZTransaction {
-    def apply[A <: SelectionSet[_]](
+    def apply[A](
       read: self.Read[A]
     ): ZTransaction[Any, Exception, zio.stream.Stream[Exception, A]] =
       txn.flatMap { case Txn(connection, coreDriver) =>
         // FIXME: Find a way to NOT load the whole result set into memory at once!!!
         val stream =
-          coreDriver.readOn(read, connection).asInstanceOf[Stream[Exception, A]]
+          coreDriver.readOn[A](read, connection)
 
         ZTransaction.fromEffect(stream.runCollect.map(Stream.fromIterable(_)))
       }

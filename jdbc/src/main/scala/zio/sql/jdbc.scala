@@ -2,12 +2,11 @@ package zio.sql
 
 import zio._
 import zio.blocking.Blocking
-import zio.stream.Stream
+import zio.stream._
 
 trait Jdbc
     extends zio.sql.Sql
     with TransactionModule
-    with ExecuteBuilderModule
     with JdbcInternalModule
     with SqlDriverLiveModule {
   trait SqlDriver  {
@@ -15,7 +14,7 @@ trait Jdbc
 
     def update(update: Update[_]): IO[Exception, Int]
 
-    def read[A <: SelectionSet[_], Target](read: Read[A])(to: read.ResultType => Target): Stream[Exception, Target]
+    def read[A](read: Read[A]): Stream[Exception, A]
 
     def transact[R, A](tx: ZTransaction[R, Exception, A]): ZManaged[R, Exception, A]
   }
@@ -30,8 +29,8 @@ trait Jdbc
   def execute[R <: Has[SqlDriver], A](tx: ZTransaction[R, Exception, A]): ZManaged[R, Exception, A] =
     ZManaged.accessManaged[R](_.get.transact(tx))
 
-  def execute[A <: SelectionSet[_]](read: Read[A]): ExecuteBuilder[A, read.ResultType] =
-    new ExecuteBuilder(read)
+  def execute[A](read: Read[A]): ZStream[Has[SqlDriver], Exception, A] =
+    ZStream.unwrap(ZIO.access[Has[SqlDriver]](_.get.read(read)))
 
   def execute(delete: Delete[_]): ZIO[Has[SqlDriver], Exception, Int] =
     ZIO.accessM[Has[SqlDriver]](

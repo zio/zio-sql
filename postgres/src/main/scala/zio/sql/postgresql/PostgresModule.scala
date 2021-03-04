@@ -275,7 +275,7 @@ trait PostgresModule extends Jdbc { self =>
           renderExpr(whereExpr)
       }
 
-    def renderSet[A <: SelectionSet[_]](set: List[Set[_, A]])(implicit render: Renderer): Unit =
+    def renderSet(set: List[Set[_, _]])(implicit render: Renderer): Unit =
       set match {
         case head :: tail =>
           renderExpr(head.lhs)
@@ -442,8 +442,9 @@ trait PostgresModule extends Jdbc { self =>
         render(")")
     }
 
-    private[zio] def renderReadImpl[A <: SelectionSet[_]](read: self.Read[_])(implicit render: Renderer): Unit =
+    private[zio] def renderReadImpl(read: self.Read[_])(implicit render: Renderer): Unit =
       read match {
+        case Read.Mapped(read, _) => renderReadImpl(read)
         case read0 @ Read.Select(_, _, _, _, _, _, _, _) =>
           object Dummy { type F; type A; type B <: SelectionSet[A] }
           val read = read0.asInstanceOf[Read.Select[Dummy.F, Dummy.A, Dummy.B]]
