@@ -3,7 +3,7 @@ package zio.sql.postgresql
 import java.time._
 import java.time.format.DateTimeFormatter
 import java.util.UUID
-import zio.Cause
+import zio.{ Cause, Chunk }
 import zio.random.{ Random => ZioRandom }
 import zio.stream.ZStream
 import zio.test.Assertion._
@@ -582,6 +582,32 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       val expected = "7fffffff"
 
       val testResult = execute(query).to[String, String](identity)
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("encode") {
+      val query = select(Encode(Chunk.fromArray("Hello, World!".getBytes), "BASE64")) from customers
+
+      val expected = "SGVsbG8sIFdvcmxkIQ=="
+
+      val testResult = execute(query).to[String, String](identity)
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("decode") {
+      val query = select(Decode("SGVsbG8sIFdvcmxkIQ==", "BASE64")) from customers
+
+      val expected = Chunk.fromArray("Hello, World!".getBytes)
+
+      val testResult = execute(query).to[Chunk[Byte], Chunk[Byte]](identity)
 
       val assertion = for {
         r <- testResult.runCollect
