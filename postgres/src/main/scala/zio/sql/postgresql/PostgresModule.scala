@@ -1,14 +1,181 @@
 package zio.sql.postgresql
 
+import java.sql.ResultSet
+import java.text.DecimalFormat
 import java.time._
-
+import java.util.Calendar
+import org.postgresql.util.PGInterval
+import zio.Chunk
 import zio.sql.{ Jdbc, Renderer }
 
-/**
- */
 trait PostgresModule extends Jdbc { self =>
+  import TypeTag._
+
+  override type TypeTagExtension[+A] = PostgresSpecific.PostgresTypeTag[A]
+
+  object PostgresSpecific {
+    trait PostgresTypeTag[+A] extends Tag[A] with Decodable[A]
+    object PostgresTypeTag {
+      implicit case object TInterval   extends PostgresTypeTag[Interval]   {
+        override def decode(
+          column: Either[Int, String],
+          resultSet: ResultSet
+        ): Either[DecodingError, Interval] =
+          scala.util
+            .Try(Interval.fromPgInterval(new PGInterval(column.fold(resultSet.getString(_), resultSet.getString(_)))))
+            .fold(
+              _ => Left(DecodingError.UnexpectedNull(column)),
+              r => Right(r)
+            )
+      }
+      implicit case object TTimestampz extends PostgresTypeTag[Timestampz] {
+        override def decode(
+          column: Either[Int, String],
+          resultSet: ResultSet
+        ): Either[DecodingError, Timestampz] =
+          scala.util
+            .Try(
+              Timestampz.fromZonedDateTime(
+                ZonedDateTime
+                  .ofInstant(
+                    column.fold(resultSet.getTimestamp(_), resultSet.getTimestamp(_)).toInstant,
+                    ZoneId.of(ZoneOffset.UTC.getId)
+                  )
+              )
+            )
+            .fold(
+              _ => Left(DecodingError.UnexpectedNull(column)),
+              r => Right(r)
+            )
+      }
+    }
+
+    sealed case class Timestampz(
+      year: Int = 0,
+      month: Int = 0,
+      day: Int = 0,
+      hour: Int = 0,
+      minute: Int = 0,
+      second: BigDecimal = 0.0,
+      timeZone: String = "+00"
+    ) {
+      override def toString =
+        s"""$year, $month, $day, $hour, $minute, $second, '$timeZone'"""
+    }
+
+    //Based upon https://github.com/tminglei/slick-pg/blob/master/src/main/scala/com/github/tminglei/slickpg/PgDateSupport.scala
+    sealed case class Interval(
+      years: Int = 0,
+      months: Int = 0,
+      days: Int = 0,
+      hours: Int = 0,
+      minutes: Int = 0,
+      seconds: BigDecimal = 0.0
+    ) {
+      private val secondsFormat = {
+        val format = new DecimalFormat("0.00####")
+        val dfs    = format.getDecimalFormatSymbols()
+        dfs.setDecimalSeparator('.')
+        format.setDecimalFormatSymbols(dfs)
+        format
+      }
+      def milliseconds: Int = (microseconds + (if (microseconds < 0) -500 else 500)) / 1000
+      def microseconds: Int = (seconds * 1000000.0).asInstanceOf[Int]
+
+      def +:(cal: Calendar): Calendar = {
+        cal.add(Calendar.MILLISECOND, milliseconds)
+        cal.add(Calendar.MINUTE, minutes)
+        cal.add(Calendar.HOUR, hours)
+        cal.add(Calendar.DAY_OF_MONTH, days)
+        cal.add(Calendar.MONTH, months)
+        cal.add(Calendar.YEAR, years)
+        cal
+      }
+
+      def +:(date: java.util.Date): java.util.Date = {
+        val cal = Calendar.getInstance
+        cal.setTime(date)
+        date.setTime((cal +: this).getTime.getTime)
+        date
+      }
+
+      def +(other: Interval): Interval =
+        new Interval(
+          years + other.years,
+          months + other.months,
+          days + other.days,
+          hours + other.hours,
+          minutes + other.minutes,
+          seconds + other.seconds
+        )
+
+      def *(factor: Int): Interval =
+        new Interval(
+          years * factor,
+          months * factor,
+          days * factor,
+          hours * factor,
+          minutes * factor,
+          seconds * factor
+        )
+
+      override def toString = {
+        val secs = secondsFormat.format(seconds)
+        s"""years => ${years}, months => ${months}, weeks => 0, days => ${days}, hours => ${hours}, mins => ${minutes}, secs => ${secs}"""
+      }
+
+      def fromPgInterval(interval: PGInterval): Interval =
+        Interval(
+          interval.getYears,
+          interval.getMonths,
+          interval.getDays,
+          interval.getHours,
+          interval.getMinutes,
+          interval.getSeconds
+        )
+    }
+
+    object Interval {
+      def apply(interval: String): Interval              = fromPgInterval(new PGInterval(interval))
+      def fromPgInterval(interval: PGInterval): Interval =
+        new Interval(
+          interval.getYears,
+          interval.getMonths,
+          interval.getDays,
+          interval.getHours,
+          interval.getMinutes,
+          interval.getSeconds
+        )
+
+      def toPgInterval(interval: Interval): PGInterval =
+        new PGInterval(
+          interval.years,
+          interval.months,
+          interval.days,
+          interval.hours,
+          interval.minutes,
+          interval.seconds.toDouble
+        )
+    }
+
+    object Timestampz {
+      def fromZonedDateTime(zdt: ZonedDateTime): Timestampz =
+        Timestampz(
+          zdt.getYear,
+          zdt.getMonthValue,
+          zdt.getDayOfMonth,
+          zdt.getHour,
+          zdt.getMinute,
+          zdt.getSecond,
+          zdt.getZone.getId
+        )
+    }
+  }
 
   object PostgresFunctionDef {
+    import PostgresSpecific._
+
+    val SplitPart                   = FunctionDef[(String, String, Int), String](FunctionName("split_part"))
     val IsFinite                    = FunctionDef[Instant, Boolean](FunctionName("isfinite"))
     val TimeOfDay                   = FunctionDef[Any, String](FunctionName("timeofday"))
     val CurrentTime                 = Expr.ParenlessFunctionCall0[OffsetTime](FunctionName("current_time"))
@@ -50,6 +217,17 @@ trait PostgresModule extends Jdbc { self =>
     val StatementTimestamp          = FunctionDef[Any, ZonedDateTime](FunctionName("statement_timestamp"))
     val TransactionTimestamp        = FunctionDef[Any, ZonedDateTime](FunctionName("transaction_timestamp"))
     val ToAscii                     = FunctionDef[String, String](FunctionName("to_ascii"))
+    val MakeDate                    = FunctionDef[(Int, Int, Int), LocalDate](FunctionName("make_date"))
+    val MakeInterval                = FunctionDef[Interval, Interval](FunctionName("make_interval"))
+    val MakeTime                    = FunctionDef[(Int, Int, Double), LocalTime](FunctionName("make_time"))
+    val MakeTimestamp               =
+      FunctionDef[(Int, Int, Int, Int, Int, Double), LocalDateTime](
+        FunctionName("make_timestamp")
+      )
+    val MakeTimestampz              =
+      FunctionDef[Timestampz, Timestampz](FunctionName("make_timestamptz"))
+    val Encode                      = FunctionDef[(Chunk[Byte], String), String](FunctionName("encode"))
+    val Decode                      = FunctionDef[(String, String), Chunk[Byte]](FunctionName("decode"))
   }
 
   override def renderRead(read: self.Read[_]): String = {
@@ -114,10 +292,19 @@ trait PostgresModule extends Jdbc { self =>
       }
 
     private[zio] def renderLit[A, B](lit: self.Expr.Literal[_])(implicit render: Renderer): Unit = {
+      import PostgresSpecific.PostgresTypeTag._
       import TypeTag._
       lit.typeTag match {
-        case tt @ TByteArray      => render(tt.cast(lit.value))                     // todo still broken
-        //something like? render(tt.cast(lit.value).map("\\\\%03o" format _).mkString("E\'", "", "\'"))
+        case TDialectSpecific(tt) =>
+          tt match {
+            case tt @ TInterval                         => render(tt.cast(lit.value))
+            case tt @ TTimestampz                       => render(tt.cast(lit.value))
+            case _: PostgresSpecific.PostgresTypeTag[_] => ???
+          }
+        case TByteArray           =>
+          render(
+            lit.value.asInstanceOf[Chunk[Byte]].map("""\%03o""" format _).mkString("E\'", "", "\'")
+          ) // todo fix `cast` infers correctly but map doesn't work for some reason
         case tt @ TChar           =>
           render("'", tt.cast(lit.value), "'") //todo is this the same as a string? fix escaping
         case tt @ TInstant        => render("TIMESTAMP '", tt.cast(lit.value), "'") //todo test
@@ -138,52 +325,51 @@ trait PostgresModule extends Jdbc { self =>
         case TLong       => render(lit.value)           //default toString is probably ok
         case TShort      => render(lit.value)           //default toString is probably ok
         case TString     => render("'", lit.value, "'") //todo fix escaping
-
-        case _ => render(lit.value) //todo fix add TypeTag.Nullable[_] =>
+        case _           => render(lit.value)           //todo fix add TypeTag.Nullable[_] =>
       }
     }
 
     private[zio] def renderExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
-      case Expr.Source(tableName, column)         => render(tableName, ".", column.name)
-      case Expr.Unary(base, op)                   =>
+      case Expr.Source(tableName, column)                                               => render(tableName, ".", column.name)
+      case Expr.Unary(base, op)                                                         =>
         render(" ", op.symbol)
         renderExpr(base)
-      case Expr.Property(base, op)                =>
+      case Expr.Property(base, op)                                                      =>
         renderExpr(base)
         render(" ", op.symbol)
-      case Expr.Binary(left, right, op)           =>
+      case Expr.Binary(left, right, op)                                                 =>
         renderExpr(left)
         render(" ", op.symbol, " ")
         renderExpr(right)
-      case Expr.Relational(left, right, op)       =>
+      case Expr.Relational(left, right, op)                                             =>
         renderExpr(left)
         render(" ", op.symbol, " ")
         renderExpr(right)
-      case Expr.In(value, set)                    =>
+      case Expr.In(value, set)                                                          =>
         renderExpr(value)
         renderReadImpl(set)
-      case lit: Expr.Literal[_]                   => renderLit(lit)
-      case Expr.AggregationCall(p, aggregation)   =>
+      case lit: Expr.Literal[_]                                                         => renderLit(lit)
+      case Expr.AggregationCall(p, aggregation)                                         =>
         render(aggregation.name.name, "(")
         renderExpr(p)
         render(")")
-      case Expr.ParenlessFunctionCall0(fn)        =>
+      case Expr.ParenlessFunctionCall0(fn)                                              =>
         val _ = render(fn.name)
-      case Expr.FunctionCall0(fn)                 =>
+      case Expr.FunctionCall0(fn)                                                       =>
         render(fn.name.name)
         render("(")
         val _ = render(")")
-      case Expr.FunctionCall1(p, fn)              =>
+      case Expr.FunctionCall1(p, fn)                                                    =>
         render(fn.name.name, "(")
         renderExpr(p)
         render(")")
-      case Expr.FunctionCall2(p1, p2, fn)         =>
+      case Expr.FunctionCall2(p1, p2, fn)                                               =>
         render(fn.name.name, "(")
         renderExpr(p1)
         render(",")
         renderExpr(p2)
         render(")")
-      case Expr.FunctionCall3(p1, p2, p3, fn)     =>
+      case Expr.FunctionCall3(p1, p2, p3, fn)                                           =>
         render(fn.name.name, "(")
         renderExpr(p1)
         render(",")
@@ -191,7 +377,7 @@ trait PostgresModule extends Jdbc { self =>
         render(",")
         renderExpr(p3)
         render(")")
-      case Expr.FunctionCall4(p1, p2, p3, p4, fn) =>
+      case Expr.FunctionCall4(p1, p2, p3, p4, fn)                                       =>
         render(fn.name.name, "(")
         renderExpr(p1)
         render(",")
@@ -200,6 +386,60 @@ trait PostgresModule extends Jdbc { self =>
         renderExpr(p3)
         render(",")
         renderExpr(p4)
+        render(")")
+      case Expr.FunctionCall5(param1, param2, param3, param4, param5, function)         =>
+        render(function.name.name)
+        render("(")
+        renderExpr(param1)
+        render(",")
+        renderExpr(param2)
+        render(",")
+        renderExpr(param3)
+        render(",")
+        renderExpr(param4)
+        render(",")
+        renderExpr(param5)
+        render(")")
+      case Expr.FunctionCall6(param1, param2, param3, param4, param5, param6, function) =>
+        render(function.name.name)
+        render("(")
+        renderExpr(param1)
+        render(",")
+        renderExpr(param2)
+        render(",")
+        renderExpr(param3)
+        render(",")
+        renderExpr(param4)
+        render(",")
+        renderExpr(param5)
+        render(",")
+        renderExpr(param6)
+        render(")")
+      case Expr.FunctionCall7(
+            param1,
+            param2,
+            param3,
+            param4,
+            param5,
+            param6,
+            param7,
+            function
+          ) =>
+        render(function.name.name)
+        render("(")
+        renderExpr(param1)
+        render(",")
+        renderExpr(param2)
+        render(",")
+        renderExpr(param3)
+        render(",")
+        renderExpr(param4)
+        render(",")
+        renderExpr(param5)
+        render(",")
+        renderExpr(param6)
+        render(",")
+        renderExpr(param7)
         render(")")
     }
 
