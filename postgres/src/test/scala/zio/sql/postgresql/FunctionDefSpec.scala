@@ -18,9 +18,9 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
   import PostgresFunctionDef._
   import PostgresSpecific._
 
-  private def collectAndCompare(
+  private def collectAndCompare[R, E](
     expected: Seq[String],
-    testResult: ZStream[FunctionDefSpec.ReadExecutor, Exception, String]
+    testResult: ZStream[R, E, String]
   ) = {
     val assertion = for {
       r <- testResult.runCollect
