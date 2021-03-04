@@ -7,8 +7,8 @@ trait ExecuteBuilderModule { self: Jdbc =>
   class ExecuteBuilder[Set <: SelectionSet[_], Output](val read: Read.Aux[Output, Set]) {
     import zio.stream._
 
-    def to[A, Target](f: A => Target)(implicit ev: Output <:< (A, Unit)): ZStream[Has[SqlExecutor], Exception, Target] =
-      ZStream.unwrap(ZIO.access[Has[SqlExecutor]](_.get.read(read) { resultType =>
+    def to[A, Target](f: A => Target)(implicit ev: Output <:< (A, Unit)): ZStream[Has[SqlDriver], Exception, Target] =
+      ZStream.unwrap(ZIO.access[Has[SqlDriver]](_.get.read(read) { resultType =>
         val (a, _) = ev(resultType)
 
         f(a)
@@ -16,8 +16,8 @@ trait ExecuteBuilderModule { self: Jdbc =>
 
     def to[A, B, Target](
       f: (A, B) => Target
-    )(implicit ev: Output <:< (A, (B, Unit))): ZStream[Has[SqlExecutor], Exception, Target] =
-      ZStream.unwrap(ZIO.access[Has[SqlExecutor]](_.get.read(read) { resultType =>
+    )(implicit ev: Output <:< (A, (B, Unit))): ZStream[Has[SqlDriver], Exception, Target] =
+      ZStream.unwrap(ZIO.access[Has[SqlDriver]](_.get.read(read) { resultType =>
         val (a, (b, _)) = ev(resultType)
 
         f(a, b)
@@ -25,8 +25,8 @@ trait ExecuteBuilderModule { self: Jdbc =>
 
     def to[A, B, C, Target](
       f: (A, B, C) => Target
-    )(implicit ev: Output <:< (A, (B, (C, Unit)))): ZStream[Has[SqlExecutor], Exception, Target] =
-      ZStream.unwrap(ZIO.access[Has[SqlExecutor]](_.get.read(read) { resultType =>
+    )(implicit ev: Output <:< (A, (B, (C, Unit)))): ZStream[Has[SqlDriver], Exception, Target] =
+      ZStream.unwrap(ZIO.access[Has[SqlDriver]](_.get.read(read) { resultType =>
         val (a, (b, (c, _))) = ev(resultType)
 
         f(a, b, c)
@@ -34,8 +34,8 @@ trait ExecuteBuilderModule { self: Jdbc =>
 
     def to[A, B, C, D, Target](
       f: (A, B, C, D) => Target
-    )(implicit ev: Output <:< (A, (B, (C, (D, Unit))))): ZStream[Has[SqlExecutor], Exception, Target] =
-      ZStream.unwrap(ZIO.access[Has[SqlExecutor]](_.get.read(read) { resultType =>
+    )(implicit ev: Output <:< (A, (B, (C, (D, Unit))))): ZStream[Has[SqlDriver], Exception, Target] =
+      ZStream.unwrap(ZIO.access[Has[SqlDriver]](_.get.read(read) { resultType =>
         val (a, (b, (c, (d, _)))) = ev(resultType)
 
         f(a, b, c, d)
@@ -43,8 +43,8 @@ trait ExecuteBuilderModule { self: Jdbc =>
 
     def to[A, B, C, D, E, Target](
       f: (A, B, C, D, E) => Target
-    )(implicit ev: Output <:< (A, (B, (C, (D, (E, Unit)))))): ZStream[Has[SqlExecutor], Exception, Target] =
-      ZStream.unwrap(ZIO.access[Has[SqlExecutor]](_.get.read(read) { resultType =>
+    )(implicit ev: Output <:< (A, (B, (C, (D, (E, Unit)))))): ZStream[Has[SqlDriver], Exception, Target] =
+      ZStream.unwrap(ZIO.access[Has[SqlDriver]](_.get.read(read) { resultType =>
         val (a, (b, (c, (d, (e, _))))) = ev(resultType)
 
         f(a, b, c, d, e)
@@ -54,8 +54,8 @@ trait ExecuteBuilderModule { self: Jdbc =>
       f: (A, B, C, D, E, F, G, H) => Target
     )(implicit
       ev: Output <:< (A, (B, (C, (D, (E, (F, (G, (H, Unit))))))))
-    ): ZStream[Has[SqlExecutor], Exception, Target] =
-      ZStream.unwrap(ZIO.access[Has[SqlExecutor]](_.get.read(read) { resultType =>
+    ): ZStream[Has[SqlDriver], Exception, Target] =
+      ZStream.unwrap(ZIO.access[Has[SqlDriver]](_.get.read(read) { resultType =>
         val (a, (b, (c, (d, (e, (fArg, (g, (h, _)))))))) = ev(resultType)
 
         f(a, b, c, d, e, fArg, g, h)
@@ -65,8 +65,8 @@ trait ExecuteBuilderModule { self: Jdbc =>
       f: (A, B, C, D, E, F, G, H, I) => Target
     )(implicit
       ev: Output <:< (A, (B, (C, (D, (E, (F, (G, (H, (I, Unit)))))))))
-    ): ZStream[Has[SqlExecutor], Exception, Target] =
-      ZStream.unwrap(ZIO.access[Has[SqlExecutor]](_.get.read(read) { resultType =>
+    ): ZStream[Has[SqlDriver], Exception, Target] =
+      ZStream.unwrap(ZIO.access[Has[SqlDriver]](_.get.read(read) { resultType =>
         val (a, (b, (c, (d, (e, (fArg, (g, (h, (i, _))))))))) = ev(resultType)
 
         f(a, b, c, d, e, fArg, g, h, i)
@@ -76,8 +76,8 @@ trait ExecuteBuilderModule { self: Jdbc =>
       f: (A, B, C, D, E, F, G, H, I, J, K, L) => Target
     )(implicit
       ev: Output <:< (A, (B, (C, (D, (E, (F, (G, (H, (I, (J, (K, (L, Unit))))))))))))
-    ): ZStream[Has[SqlExecutor], Exception, Target] =
-      ZStream.unwrap(ZIO.access[Has[SqlExecutor]](_.get.read(read) { resultType =>
+    ): ZStream[Has[SqlDriver], Exception, Target] =
+      ZStream.unwrap(ZIO.access[Has[SqlDriver]](_.get.read(read) { resultType =>
         val (a, (b, (c, (d, (e, (fArg, (g, (h, (i, (j, (k, (l, _)))))))))))) = ev(resultType)
 
         f(a, b, c, d, e, fArg, g, h, i, j, k, l)
@@ -87,8 +87,8 @@ trait ExecuteBuilderModule { self: Jdbc =>
       f: (A, B, C, D, E, F, G, H, I, J, K, L, M) => Target
     )(implicit
       ev: Output <:< (A, (B, (C, (D, (E, (F, (G, (H, (I, (J, (K, (L, (M, Unit)))))))))))))
-    ): ZStream[Has[SqlExecutor], Exception, Target] =
-      ZStream.unwrap(ZIO.access[Has[SqlExecutor]](_.get.read(read) { resultType =>
+    ): ZStream[Has[SqlDriver], Exception, Target] =
+      ZStream.unwrap(ZIO.access[Has[SqlDriver]](_.get.read(read) { resultType =>
         val (a, (b, (c, (d, (e, (fArg, (g, (h, (i, (j, (k, (l, (m, _))))))))))))) = ev(resultType)
 
         f(a, b, c, d, e, fArg, g, h, i, j, k, l, m)
@@ -98,8 +98,8 @@ trait ExecuteBuilderModule { self: Jdbc =>
       f: (A, B, C, D, E, F, G, H, I, J, K, L, M, N) => Target
     )(implicit
       ev: Output <:< (A, (B, (C, (D, (E, (F, (G, (H, (I, (J, (K, (L, (M, (N, Unit))))))))))))))
-    ): ZStream[Has[SqlExecutor], Exception, Target] =
-      ZStream.unwrap(ZIO.access[Has[SqlExecutor]](_.get.read(read) { resultType =>
+    ): ZStream[Has[SqlDriver], Exception, Target] =
+      ZStream.unwrap(ZIO.access[Has[SqlDriver]](_.get.read(read) { resultType =>
         val (a, (b, (c, (d, (e, (fArg, (g, (h, (i, (j, (k, (l, (m, (n, _)))))))))))))) = ev(resultType)
 
         f(a, b, c, d, e, fArg, g, h, i, j, k, l, m, n)
@@ -109,8 +109,8 @@ trait ExecuteBuilderModule { self: Jdbc =>
       f: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O) => Target
     )(implicit
       ev: Output <:< (A, (B, (C, (D, (E, (F, (G, (H, (I, (J, (K, (L, (M, (N, (O, Unit)))))))))))))))
-    ): ZStream[Has[SqlExecutor], Exception, Target] =
-      ZStream.unwrap(ZIO.access[Has[SqlExecutor]](_.get.read(read) { resultType =>
+    ): ZStream[Has[SqlDriver], Exception, Target] =
+      ZStream.unwrap(ZIO.access[Has[SqlDriver]](_.get.read(read) { resultType =>
         val (a, (b, (c, (d, (e, (fArg, (g, (h, (i, (j, (k, (l, (m, (n, (o, _))))))))))))))) = ev(resultType)
 
         f(a, b, c, d, e, fArg, g, h, i, j, k, l, m, n, o)
@@ -120,8 +120,8 @@ trait ExecuteBuilderModule { self: Jdbc =>
       f: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P) => Target
     )(implicit
       ev: Output <:< (A, (B, (C, (D, (E, (F, (G, (H, (I, (J, (K, (L, (M, (N, (O, (P, Unit))))))))))))))))
-    ): ZStream[Has[SqlExecutor], Exception, Target] =
-      ZStream.unwrap(ZIO.access[Has[SqlExecutor]](_.get.read(read) { resultType =>
+    ): ZStream[Has[SqlDriver], Exception, Target] =
+      ZStream.unwrap(ZIO.access[Has[SqlDriver]](_.get.read(read) { resultType =>
         val (a, (b, (c, (d, (e, (fArg, (g, (h, (i, (j, (k, (l, (m, (n, (o, (p, _)))))))))))))))) = ev(resultType)
 
         f(a, b, c, d, e, fArg, g, h, i, j, k, l, m, n, o, p)
@@ -131,8 +131,8 @@ trait ExecuteBuilderModule { self: Jdbc =>
       f: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q) => Target
     )(implicit
       ev: Output <:< (A, (B, (C, (D, (E, (F, (G, (H, (I, (J, (K, (L, (M, (N, (O, (P, (Q, Unit)))))))))))))))))
-    ): ZStream[Has[SqlExecutor], Exception, Target] =
-      ZStream.unwrap(ZIO.access[Has[SqlExecutor]](_.get.read(read) { resultType =>
+    ): ZStream[Has[SqlDriver], Exception, Target] =
+      ZStream.unwrap(ZIO.access[Has[SqlDriver]](_.get.read(read) { resultType =>
         val (a, (b, (c, (d, (e, (fArg, (g, (h, (i, (j, (k, (l, (m, (n, (o, (p, (q, _))))))))))))))))) = ev(resultType)
 
         f(a, b, c, d, e, fArg, g, h, i, j, k, l, m, n, o, p, q)
@@ -145,8 +145,8 @@ trait ExecuteBuilderModule { self: Jdbc =>
         A,
         (B, (C, (D, (E, (F, (G, (H, (I, (J, (K, (L, (M, (N, (O, (P, (Q, (R, Unit)))))))))))))))))
       )
-    ): ZStream[Has[SqlExecutor], Exception, Target] =
-      ZStream.unwrap(ZIO.access[Has[SqlExecutor]](_.get.read(read) { resultType =>
+    ): ZStream[Has[SqlDriver], Exception, Target] =
+      ZStream.unwrap(ZIO.access[Has[SqlDriver]](_.get.read(read) { resultType =>
         val (a, (b, (c, (d, (e, (fArg, (g, (h, (i, (j, (k, (l, (m, (n, (o, (p, (q, (r, _)))))))))))))))))) =
           ev(resultType)
 
@@ -160,8 +160,8 @@ trait ExecuteBuilderModule { self: Jdbc =>
         A,
         (B, (C, (D, (E, (F, (G, (H, (I, (J, (K, (L, (M, (N, (O, (P, (Q, (R, (S, Unit))))))))))))))))))
       )
-    ): ZStream[Has[SqlExecutor], Exception, Target] =
-      ZStream.unwrap(ZIO.access[Has[SqlExecutor]](_.get.read(read) { resultType =>
+    ): ZStream[Has[SqlDriver], Exception, Target] =
+      ZStream.unwrap(ZIO.access[Has[SqlDriver]](_.get.read(read) { resultType =>
         val (a, (b, (c, (d, (e, (fArg, (g, (h, (i, (j, (k, (l, (m, (n, (o, (p, (q, (r, (s, _))))))))))))))))))) =
           ev(resultType)
 
@@ -175,8 +175,8 @@ trait ExecuteBuilderModule { self: Jdbc =>
         A,
         (B, (C, (D, (E, (F, (G, (H, (I, (J, (K, (L, (M, (N, (O, (P, (Q, (R, (S, (T, Unit)))))))))))))))))))
       )
-    ): ZStream[Has[SqlExecutor], Exception, Target] =
-      ZStream.unwrap(ZIO.access[Has[SqlExecutor]](_.get.read(read) { resultType =>
+    ): ZStream[Has[SqlDriver], Exception, Target] =
+      ZStream.unwrap(ZIO.access[Has[SqlDriver]](_.get.read(read) { resultType =>
         val (a, (b, (c, (d, (e, (fArg, (g, (h, (i, (j, (k, (l, (m, (n, (o, (p, (q, (r, (s, (t, _)))))))))))))))))))) =
           ev(resultType)
 

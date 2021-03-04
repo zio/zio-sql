@@ -9,7 +9,7 @@ import zio.Has
 
 trait JdbcRunnableSpec extends DefaultRunnableSpec with Jdbc {
 
-  type JdbcEnvironment = TestEnvironment with Has[SqlExecutor]
+  type JdbcEnvironment = TestEnvironment with Has[SqlDriver]
 
   val poolConfigLayer: ZLayer[Blocking, Throwable, Has[ConnectionPoolConfig]]
 
@@ -17,7 +17,7 @@ trait JdbcRunnableSpec extends DefaultRunnableSpec with Jdbc {
     val connectionPoolLayer: ZLayer[Blocking with Clock, Throwable, Has[ConnectionPool]] =
       ((Blocking.any >+> poolConfigLayer) ++ Clock.any) >>> ConnectionPool.live
 
-    (Blocking.any ++ connectionPoolLayer >+> SqlExecutor.live).orDie
+    (Blocking.any ++ connectionPoolLayer >+> SqlDriver.live).orDie
   }
 
   final lazy val jdbcLayer = TestEnvironment.live >+> executorLayer
