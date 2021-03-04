@@ -2,6 +2,8 @@ package zio.sql
 
 import java.time._
 
+import com.github.ghik.silencer.silent
+
 import scala.language.implicitConversions
 
 trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
@@ -431,6 +433,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
   object Set {
     type Aux[F, -A, Value0] = Set[F, A] { type Value = Value0 }
 
+    @silent
     def apply[F: Features.IsSource, A, Value0: TypeTag](
       lhs0: Expr[F, A, Value0],
       rhs0: Expr[_, A, Value0]
