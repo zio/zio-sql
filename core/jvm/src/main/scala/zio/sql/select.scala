@@ -7,7 +7,7 @@ trait SelectModule { self: ExprModule with TableModule =>
 
     // [F, Repr, A, B <: SelectionSet.Aux[Repr, A]]
     def from[A1 <: A](table: Table.Aux[A1]): Read.Select[F, selection.value.ResultTypeRepr, A1] = {
-      type B0 = SelectionSet.Aux[selection.value.ResultTypeRepr, A] 
+      type B0 = SelectionSet.Aux[selection.value.ResultTypeRepr, A]
       val b: B0 = selection.value
 
       Read.Select(Selection[F, A1, B0](b), table, true, Nil)
@@ -23,10 +23,10 @@ trait SelectModule { self: ExprModule with TableModule =>
     val mapper: ResultType => Out
 
     /**
-      * Maps the [[Read]] query's output to another type by providing a function
-      * that can transform from the current type to the new type.
-      */
-    def map[Out2](f: Out => Out2): Read.Aux[ResultType, Out2] = 
+     * Maps the [[Read]] query's output to another type by providing a function
+     * that can transform from the current type to the new type.
+     */
+    def map[Out2](f: Out => Out2): Read.Aux[ResultType, Out2] =
       Read.Mapped(self, f)
 
     def to[A, Target](f: A => Target)(implicit ev: Out <:< (A, Unit)): Read[Target] =
@@ -205,10 +205,10 @@ trait SelectModule { self: ExprModule with TableModule =>
         f(a, b, c, d, e, fArg, g, h, i, j, k, l, m, n, o, p, q, r, s, t)
       }
 
-    def union[Out1 >: Out](that: Read.Aux[ResultType, Out1]): Read.Aux[ResultType, Out1] = 
+    def union[Out1 >: Out](that: Read.Aux[ResultType, Out1]): Read.Aux[ResultType, Out1] =
       Read.Union[ResultType, Out1](self, that, true)
 
-    def unionAll[Out1 >: Out](that: Read.Aux[ResultType, Out1]): Read.Aux[ResultType, Out1] = 
+    def unionAll[Out1 >: Out](that: Read.Aux[ResultType, Out1]): Read.Aux[ResultType, Out1] =
       Read.Union[ResultType, Out1](self, that, false)
   }
 
@@ -233,7 +233,7 @@ trait SelectModule { self: ExprModule with TableModule =>
       offset: Option[Long] = None, //todo don't know how to do this outside of postgres/mysql
       limit: Option[Long] = None
     ) extends Read[Repr] { self =>
-      type ResultType = Repr 
+      type ResultType = Repr
 
       val mapper: Repr => Repr = identity(_)
 
@@ -262,10 +262,11 @@ trait SelectModule { self: ExprModule with TableModule =>
       }
     }
 
-    sealed case class Union[Repr, Out](left: Read.Aux[Repr, Out], right: Read.Aux[Repr, Out], distinct: Boolean) extends Read[Out] {
+    sealed case class Union[Repr, Out](left: Read.Aux[Repr, Out], right: Read.Aux[Repr, Out], distinct: Boolean)
+        extends Read[Out] {
       type ResultType = Repr
 
-      val mapper: ResultType => Out = left.mapper 
+      val mapper: ResultType => Out = left.mapper
     }
 
     sealed case class Literal[B: TypeTag](values: Iterable[B]) extends Read[(B, Unit)] {
@@ -348,7 +349,7 @@ trait SelectModule { self: ExprModule with TableModule =>
   }
 
   object SelectionSet {
-    type Aux[ResultTypeRepr0, -Source] = 
+    type Aux[ResultTypeRepr0, -Source] =
       SelectionSet[Source] {
         type ResultTypeRepr = ResultTypeRepr0
       }

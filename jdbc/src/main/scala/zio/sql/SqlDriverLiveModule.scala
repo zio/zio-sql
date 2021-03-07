@@ -64,16 +64,18 @@ trait SqlDriverLiveModule { self: Jdbc =>
 
           val resultSet = statement.getResultSet()
 
-          ZStream.unfoldM(resultSet) { rs =>
-            if (rs.next()) {
-              try unsafeExtractRow[read.ResultType](resultSet, schema) match {
-                case Left(error)  => ZIO.fail(error)
-                case Right(value) => ZIO.succeed(Some((value, rs)))
-              } catch {
-                case e: SQLException => ZIO.fail(e)
-              }
-            } else ZIO.succeed(None)
-          }.map(read.mapper)
+          ZStream
+            .unfoldM(resultSet) { rs =>
+              if (rs.next()) {
+                try unsafeExtractRow[read.ResultType](resultSet, schema) match {
+                  case Left(error)  => ZIO.fail(error)
+                  case Right(value) => ZIO.succeed(Some((value, rs)))
+                } catch {
+                  case e: SQLException => ZIO.fail(e)
+                }
+              } else ZIO.succeed(None)
+            }
+            .map(read.mapper)
 
         }.refineToOrDie[Exception]
       }
