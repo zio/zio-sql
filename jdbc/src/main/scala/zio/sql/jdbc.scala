@@ -4,11 +4,7 @@ import zio._
 import zio.blocking.Blocking
 import zio.stream._
 
-trait Jdbc
-    extends zio.sql.Sql
-    with TransactionModule
-    with JdbcInternalModule
-    with SqlDriverLiveModule {
+trait Jdbc extends zio.sql.Sql with TransactionModule with JdbcInternalModule with SqlDriverLiveModule {
   trait SqlDriver  {
     def delete(delete: Delete[_]): IO[Exception, Int]
 

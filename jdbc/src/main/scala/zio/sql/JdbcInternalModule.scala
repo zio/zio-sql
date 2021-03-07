@@ -108,7 +108,7 @@ trait JdbcInternalModule { self: Jdbc =>
   private[sql] def getColumns(read: Read[_]): Vector[TypeTag[_]] =
     read match {
       case Read.Mapped(read, _) => getColumns(read)
-      
+
       case Read.Select(selection, _, _, _, _, _, _, _) =>
         selection.value.selectionsUntyped.toVector.map(_.asInstanceOf[ColumnSelection[_, _]]).map {
           case t @ ColumnSelection.Constant(_, _) => t.typeTag

@@ -444,7 +444,7 @@ trait PostgresModule extends Jdbc { self =>
 
     private[zio] def renderReadImpl(read: self.Read[_])(implicit render: Renderer): Unit =
       read match {
-        case Read.Mapped(read, _) => renderReadImpl(read)
+        case Read.Mapped(read, _)                        => renderReadImpl(read)
         case read0 @ Read.Select(_, _, _, _, _, _, _, _) =>
           object Dummy { type F; type A; type B <: SelectionSet[A] }
           val read = read0.asInstanceOf[Read.Select[Dummy.F, Dummy.A, Dummy.B]]

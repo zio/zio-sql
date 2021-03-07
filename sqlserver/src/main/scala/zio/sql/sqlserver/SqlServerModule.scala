@@ -126,7 +126,7 @@ trait SqlServerModule extends Jdbc { self =>
     def buildReadString(read: self.Read[_]): Unit =
       read match {
         case Read.Mapped(read, _) => buildReadString(read)
-        
+
         //todo offset (needs orderBy, must use fetch _instead_ of top)
         case read0 @ Read.Select(_, _, _, _, _, _, _, _) =>
           object Dummy {

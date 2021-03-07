@@ -814,10 +814,12 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
           )
         )
 
-      val testResult = execute(query
-        .to[UUID, String, String, Boolean, LocalDate, Customer]((id, fname, lname, verified, dob) =>
-          Customer(id, fname, lname, verified, dob)
-        ))
+      val testResult = execute(
+        query
+          .to[UUID, String, String, Boolean, LocalDate, Customer]((id, fname, lname, verified, dob) =>
+            Customer(id, fname, lname, verified, dob)
+          )
+      )
 
       val assertion = for {
         r <- testResult.runCollect
