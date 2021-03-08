@@ -3,7 +3,7 @@ package zio.sql.postgresql
 import java.time.LocalDate
 import java.util.UUID
 
-import zio.Cause
+import zio._
 import zio.test.Assertion._
 import zio.test._
 
@@ -33,10 +33,12 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
         )
       )
 
-    val testResult = execute(query)
-      .to[UUID, String, String, Boolean, LocalDate, Customer] { case row =>
-        Customer(row._1, row._2, row._3, row._4, row._5)
-      }
+    val testResult = execute(
+      query
+        .to[UUID, String, String, Boolean, LocalDate, Customer] { case row =>
+          Customer(row._1, row._2, row._3, row._4, row._5)
+        }
+    )
 
     val assertion = for {
       r <- testResult.runCollect
@@ -89,10 +91,12 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
 //      execute(query ++ query ++ query ++ query)
 
-      val testResult = execute(query)
-        .to[UUID, String, String, LocalDate, Customer] { case row =>
-          Customer(row._1, row._2, row._3, row._4)
-        }
+      val testResult = execute(
+        query
+          .to[UUID, String, String, LocalDate, Customer] { case row =>
+            Customer(row._1, row._2, row._3, row._4)
+          }
+      )
 
       val assertion = for {
         r <- testResult.runCollect
@@ -174,10 +178,12 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
           )
         )
 
-      val testResult = execute(query)
-        .to[UUID, String, String, LocalDate, Customer] { case row =>
-          Customer(row._1, row._2, row._3, row._4)
-        }
+      val testResult = execute(
+        query
+          .to[UUID, String, String, LocalDate, Customer] { case row =>
+            Customer(row._1, row._2, row._3, row._4)
+          }
+      )
 
       val assertion = for {
         r <- testResult.runCollect
@@ -235,10 +241,12 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
         Row("Mila", "Paterso", LocalDate.parse("2020-04-30"))
       )
 
-      val result = execute(query)
-        .to[String, String, LocalDate, Row] { case row =>
-          Row(row._1, row._2, row._3)
-        }
+      val result = execute(
+        query
+          .to[String, String, LocalDate, Row] { case row =>
+            Row(row._1, row._2, row._3)
+          }
+      )
 
       val assertion = for {
         r <- result.runCollect
@@ -261,10 +269,12 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
         )
       )
 
-      val testResult = execute(query)
-        .to[UUID, String, String, LocalDate, Customer] { case row =>
-          Customer(row._1, row._2, row._3, row._4)
-        }
+      val testResult = execute(
+        query
+          .to[UUID, String, String, LocalDate, Customer] { case row =>
+            Customer(row._1, row._2, row._3, row._4)
+          }
+      )
 
       val assertion = for {
         r <- testResult.runCollect
@@ -275,9 +285,10 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
     testM("Transactions is returning the last value") {
       val query = select(customerId) from customers
 
-      val result    = execute(
-        ZTransaction.Select(query) *> ZTransaction.Select(query)
-      )
+      val result = execute(
+        ZTransaction(query) *> ZTransaction(query)
+      ).use(ZIO.succeed(_))
+
       val assertion = assertM(result.flatMap(_.runCollect))(hasSize(Assertion.equalTo(5))).orDie
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
@@ -286,8 +297,8 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
       val query = select(customerId) from customers
 
       val result = execute(
-        ZTransaction.Select(query) *> ZTransaction.fail(new Exception("failing")) *> ZTransaction.Select(query)
-      ).mapError(_.getMessage)
+        ZTransaction(query) *> ZTransaction.fail(new Exception("failing")) *> ZTransaction(query)
+      ).mapError(_.getMessage).use(ZIO.succeed(_))
 
       assertM(result.flip)(equalTo("failing")).mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
