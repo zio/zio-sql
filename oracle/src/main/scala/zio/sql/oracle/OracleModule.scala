@@ -9,57 +9,51 @@ trait OracleModule extends Jdbc { self =>
   }
 
   def buildExpr[A, B](expr: self.Expr[_, A, B], builder: StringBuilder): Unit = expr match {
-    case Expr.Source(tableName, column)                                            =>
+    case Expr.Source(tableName, column)                                                       =>
       val _ = builder.append(tableName).append(".").append(column.name)
-    case Expr.Unary(base, op)                                                      =>
+    case Expr.Unary(base, op)                                                                 =>
       val _ = builder.append(" ").append(op.symbol)
       buildExpr(base, builder)
-    case Expr.Property(base, op)                                                   =>
+    case Expr.Property(base, op)                                                              =>
       buildExpr(base, builder)
       val _ = builder.append(" ").append(op.symbol)
-    case Expr.Binary(left, right, op)                                              =>
+    case Expr.Binary(left, right, op)                                                         =>
       buildExpr(left, builder)
       builder.append(" ").append(op.symbol).append(" ")
       buildExpr(right, builder)
-    case Expr.Relational(left, right, op)                                          =>
+    case Expr.Relational(left, right, op)                                                     =>
       buildExpr(left, builder)
       builder.append(" ").append(op.symbol).append(" ")
       buildExpr(right, builder)
-    case Expr.In(value, set)                                                       =>
+    case Expr.In(value, set)                                                                  =>
       buildExpr(value, builder)
       buildReadString(set, builder)
-    case Expr.Literal(value)                                                       =>
+    case Expr.Literal(value)                                                                  =>
       val _ = builder.append(value.toString) //todo fix escaping
-    case Expr.AggregationCall(param, aggregation)                                  =>
+    case Expr.AggregationCall(param, aggregation)                                             =>
       builder.append(aggregation.name.name)
       builder.append("(")
       buildExpr(param, builder)
       val _ = builder.append(")")
-    case Expr.FunctionCall0(function) if function.name.name == "localtime"         =>
-      val _ = builder.append(function.name.name)
-    case Expr.FunctionCall0(function) if function.name.name == "localtimestamp"    =>
-      val _ = builder.append(function.name.name)
-    case Expr.FunctionCall0(function) if function.name.name == "current_date"      =>
-      val _ = builder.append(function.name.name)
-    case Expr.FunctionCall0(function) if function.name.name == "current_timestamp" =>
-      val _ = builder.append(function.name.name)
-    case Expr.FunctionCall0(function)                                              =>
+    case Expr.ParenlessFunctionCall0(functionName)                                            =>
+      val _ = builder.append(functionName.name)
+    case Expr.FunctionCall0(function)                                                         =>
       builder.append(function.name.name)
       builder.append("(")
       val _ = builder.append(")")
-    case Expr.FunctionCall1(param, function)                                       =>
+    case Expr.FunctionCall1(param, function)                                                  =>
       builder.append(function.name.name)
       builder.append("(")
       buildExpr(param, builder)
       val _ = builder.append(")")
-    case Expr.FunctionCall2(param1, param2, function)                              =>
+    case Expr.FunctionCall2(param1, param2, function)                                         =>
       builder.append(function.name.name)
       builder.append("(")
       buildExpr(param1, builder)
       builder.append(",")
       buildExpr(param2, builder)
       val _ = builder.append(")")
-    case Expr.FunctionCall3(param1, param2, param3, function)                      =>
+    case Expr.FunctionCall3(param1, param2, param3, function)                                 =>
       builder.append(function.name.name)
       builder.append("(")
       buildExpr(param1, builder)
@@ -68,7 +62,7 @@ trait OracleModule extends Jdbc { self =>
       builder.append(",")
       buildExpr(param3, builder)
       val _ = builder.append(")")
-    case Expr.FunctionCall4(param1, param2, param3, param4, function)              =>
+    case Expr.FunctionCall4(param1, param2, param3, param4, function)                         =>
       builder.append(function.name.name)
       builder.append("(")
       buildExpr(param1, builder)
@@ -79,10 +73,57 @@ trait OracleModule extends Jdbc { self =>
       builder.append(",")
       buildExpr(param4, builder)
       val _ = builder.append(")")
+    case Expr.FunctionCall5(param1, param2, param3, param4, param5, function)                 =>
+      builder.append(function.name.name)
+      builder.append("(")
+      buildExpr(param1, builder)
+      builder.append(",")
+      buildExpr(param2, builder)
+      builder.append(",")
+      buildExpr(param3, builder)
+      builder.append(",")
+      buildExpr(param4, builder)
+      builder.append(",")
+      buildExpr(param5, builder)
+      val _ = builder.append(")")
+    case Expr.FunctionCall6(param1, param2, param3, param4, param5, param6, function)         =>
+      builder.append(function.name.name)
+      builder.append("(")
+      buildExpr(param1, builder)
+      builder.append(",")
+      buildExpr(param2, builder)
+      builder.append(",")
+      buildExpr(param3, builder)
+      builder.append(",")
+      buildExpr(param4, builder)
+      builder.append(",")
+      buildExpr(param5, builder)
+      builder.append(",")
+      buildExpr(param6, builder)
+      val _ = builder.append(")")
+    case Expr.FunctionCall7(param1, param2, param3, param4, param5, param6, param7, function) =>
+      builder.append(function.name.name)
+      builder.append("(")
+      buildExpr(param1, builder)
+      builder.append(",")
+      buildExpr(param2, builder)
+      builder.append(",")
+      buildExpr(param3, builder)
+      builder.append(",")
+      buildExpr(param4, builder)
+      builder.append(",")
+      buildExpr(param5, builder)
+      builder.append(",")
+      buildExpr(param6, builder)
+      builder.append(",")
+      buildExpr(param7, builder)
+      val _ = builder.append(")")
   }
 
-  def buildReadString[A <: SelectionSet[_]](read: self.Read[_], builder: StringBuilder): Unit =
+  def buildReadString(read: self.Read[_], builder: StringBuilder): Unit =
     read match {
+      case Read.Mapped(read, _) => buildReadString(read, builder)
+
       case read0 @ Read.Select(_, _, _, _, _, _, _, _) =>
         object Dummy {
           type F

@@ -12,51 +12,51 @@ trait SqlServerModule extends Jdbc { self =>
     val builder = new StringBuilder
 
     def buildExpr[A, B](expr: self.Expr[_, A, B]): Unit = expr match {
-      case Expr.Source(tableName, column)                               =>
+      case Expr.Source(tableName, column)                                                       =>
         val _ = builder.append(tableName).append(".").append(column.name)
-      case Expr.Unary(base, op)                                         =>
+      case Expr.Unary(base, op)                                                                 =>
         val _ = builder.append(" ").append(op.symbol)
         buildExpr(base)
-      case Expr.Property(base, op)                                      =>
+      case Expr.Property(base, op)                                                              =>
         buildExpr(base)
         val _ = builder.append(" ").append(op.symbol)
-      case Expr.Binary(left, right, op)                                 =>
+      case Expr.Binary(left, right, op)                                                         =>
         buildExpr(left)
         builder.append(" ").append(op.symbol).append(" ")
         buildExpr(right)
-      case Expr.Relational(left, right, op)                             =>
+      case Expr.Relational(left, right, op)                                                     =>
         buildExpr(left)
         builder.append(" ").append(op.symbol).append(" ")
         buildExpr(right)
-      case Expr.In(value, set)                                          =>
+      case Expr.In(value, set)                                                                  =>
         buildExpr(value)
         buildReadString(set)
-      case Expr.Literal(value)                                          =>
+      case Expr.Literal(value)                                                                  =>
         val _ = builder.append(value.toString) //todo fix escaping
-      case Expr.AggregationCall(param, aggregation)                     =>
+      case Expr.AggregationCall(param, aggregation)                                             =>
         builder.append(aggregation.name.name)
         builder.append("(")
         buildExpr(param)
         val _ = builder.append(")")
-      case Expr.ParenlessFunctionCall0(function)                        =>
+      case Expr.ParenlessFunctionCall0(function)                                                =>
         val _ = builder.append(function.name)
-      case Expr.FunctionCall0(function)                                 =>
+      case Expr.FunctionCall0(function)                                                         =>
         builder.append(function.name.name)
         builder.append("(")
         val _ = builder.append(")")
-      case Expr.FunctionCall1(param, function)                          =>
+      case Expr.FunctionCall1(param, function)                                                  =>
         builder.append(function.name.name)
         builder.append("(")
         buildExpr(param)
         val _ = builder.append(")")
-      case Expr.FunctionCall2(param1, param2, function)                 =>
+      case Expr.FunctionCall2(param1, param2, function)                                         =>
         builder.append(function.name.name)
         builder.append("(")
         buildExpr(param1)
         builder.append(",")
         buildExpr(param2)
         val _ = builder.append(")")
-      case Expr.FunctionCall3(param1, param2, param3, function)         =>
+      case Expr.FunctionCall3(param1, param2, param3, function)                                 =>
         builder.append(function.name.name)
         builder.append("(")
         buildExpr(param1)
@@ -65,7 +65,7 @@ trait SqlServerModule extends Jdbc { self =>
         builder.append(",")
         buildExpr(param3)
         val _ = builder.append(")")
-      case Expr.FunctionCall4(param1, param2, param3, param4, function) =>
+      case Expr.FunctionCall4(param1, param2, param3, param4, function)                         =>
         builder.append(function.name.name)
         builder.append("(")
         buildExpr(param1)
@@ -76,10 +76,57 @@ trait SqlServerModule extends Jdbc { self =>
         builder.append(",")
         buildExpr(param4)
         val _ = builder.append(")")
+      case Expr.FunctionCall5(param1, param2, param3, param4, param5, function)                 =>
+        builder.append(function.name.name)
+        builder.append("(")
+        buildExpr(param1)
+        builder.append(",")
+        buildExpr(param2)
+        builder.append(",")
+        buildExpr(param3)
+        builder.append(",")
+        buildExpr(param4)
+        builder.append(",")
+        buildExpr(param5)
+        val _ = builder.append(")")
+      case Expr.FunctionCall6(param1, param2, param3, param4, param5, param6, function)         =>
+        builder.append(function.name.name)
+        builder.append("(")
+        buildExpr(param1)
+        builder.append(",")
+        buildExpr(param2)
+        builder.append(",")
+        buildExpr(param3)
+        builder.append(",")
+        buildExpr(param4)
+        builder.append(",")
+        buildExpr(param5)
+        builder.append(",")
+        buildExpr(param6)
+        val _ = builder.append(")")
+      case Expr.FunctionCall7(param1, param2, param3, param4, param5, param6, param7, function) =>
+        builder.append(function.name.name)
+        builder.append("(")
+        buildExpr(param1)
+        builder.append(",")
+        buildExpr(param2)
+        builder.append(",")
+        buildExpr(param3)
+        builder.append(",")
+        buildExpr(param4)
+        builder.append(",")
+        buildExpr(param5)
+        builder.append(",")
+        buildExpr(param6)
+        builder.append(",")
+        buildExpr(param7)
+        val _ = builder.append(")")
     }
 
     def buildReadString(read: self.Read[_]): Unit =
       read match {
+        case Read.Mapped(read, _) => buildReadString(read)
+
         //todo offset (needs orderBy, must use fetch _instead_ of top)
         case read0 @ Read.Select(_, _, _, _, _, _, _, _) =>
           object Dummy {
