@@ -3,11 +3,12 @@ package zio.sql.postgresql
 import zio.test._
 import zio.test.environment.TestEnvironment
 import java.util.Properties
-import zio.sql.TestContainer
+import zio.sql.{ ConnectionPoolConfig, JdbcRunnableSpec, TestContainer }
 import zio.Has
-import zio.sql.JdbcRunnableSpec
 
 trait PostgresRunnableSpec extends JdbcRunnableSpec with PostgresModule {
+
+  def autoCommit: Boolean = true
 
   private def connProperties(user: String, password: String): Properties = {
     val props = new Properties
@@ -18,7 +19,15 @@ trait PostgresRunnableSpec extends JdbcRunnableSpec with PostgresModule {
 
   val poolConfigLayer = TestContainer
     .postgres()
-    .map(a => Has(ConnectionPool.Config(a.get.jdbcUrl, connProperties(a.get.username, a.get.password))))
+    .map(a =>
+      Has(
+        ConnectionPoolConfig(
+          url = a.get.jdbcUrl,
+          properties = connProperties(a.get.username, a.get.password),
+          autoCommit = autoCommit
+        )
+      )
+    )
 
   override def spec: Spec[TestEnvironment, TestFailure[Any], TestSuccess] =
     specLayered.provideCustomLayerShared(jdbcLayer)

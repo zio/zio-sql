@@ -18,7 +18,7 @@ trait MysqlRunnableSpec extends JdbcRunnableSpec with MysqlModule {
 
   val poolConfigLayer = TestContainer
     .mysql()
-    .map(a => Has(ConnectionPool.Config(a.get.jdbcUrl, connProperties(a.get.username, a.get.password))))
+    .map(a => Has(ConnectionPoolConfig(a.get.jdbcUrl, connProperties(a.get.username, a.get.password))))
 
   override def spec: Spec[TestEnvironment, TestFailure[Any], TestSuccess] =
     specLayered.provideCustomLayerShared(jdbcLayer)
