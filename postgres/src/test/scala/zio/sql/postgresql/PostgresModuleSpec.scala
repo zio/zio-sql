@@ -1,6 +1,6 @@
 package zio.sql.postgresql
 
-import java.time.LocalDate
+import java.time._
 import java.util.UUID
 
 import zio._
@@ -11,6 +11,7 @@ import scala.language.postfixOps
 
 object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
+  import AggregationDef._
   import Customers._
   import Orders._
 
@@ -19,8 +20,6 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
     val query =
       select(customerId ++ fName ++ lName ++ verified ++ dob) from customers where (condition)
-
-    println(renderRead(query))
 
     val expected =
       Seq(
@@ -52,8 +51,6 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
       val query = select(customerId ++ fName ++ lName ++ dob) from customers
-
-      println(renderRead(query))
 
       val expected =
         Seq(
@@ -89,8 +86,6 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
           )
         )
 
-//      execute(query ++ query ++ query ++ query)
-
       val testResult = execute(
         query
           .to[UUID, String, String, LocalDate, Customer] { case row =>
@@ -107,66 +102,63 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
     testM("Can select with property unary operator") {
       customerSelectJoseAssertion(verified isNotTrue)
     },
-// TODO: uncomment when #311 (rendering literals) will be fixed
-//    testM("Can select with property binary operator with UUID") {
-//      customerSelectJoseAssertion(customerId === UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc"))
-//    },
-//    testM("Can select with property binary operator with String") {
-//      customerSelectJoseAssertion(fName === "Jose")
-//    },
-//    testM("Can select with property binary operator with LocalDate") {
-//      customerSelectJoseAssertion(dob === LocalDate.parse("1987-03-23"))
-//    },
-//    testM("Can select with property binary operator with LocalDateTime") {
-//      customerSelectJoseAssertion(dob === LocalDateTime.parse("1987-03-23T00:00:00"))
-//    },
-//    testM("Can select with property binary operator with OffsetDateTime") {
-//      customerSelectJoseAssertion(dob === OffsetDateTime.parse("1987-03-23T00:00:00Z"))
-//    },
-//    testM("Can select with property binary operator with ZonedLocalDate") {
-//      customerSelectJoseAssertion(dob === ZonedDateTime.parse("1987-03-23T00:00:00Z"))
-//    },
-//    testM("Can select with property binary operator with Instant") {
-//      customerSelectJoseAssertion(dob === Instant.parse("1987-03-23T00:00:00Z"))
-//    },
-//    testM("Can select with property binary operator with numbers") {
-//      case class OrderDetails(orderId: UUID, product_id: UUID, quantity: Int, unitPrice: BigDecimal)
-//
-//      val orderDetailQuantity  = 3
-//      val orderDetailUnitPrice = BigDecimal(80.0)
-//      val condition            = (quantity === orderDetailQuantity) && (unitPrice === orderDetailUnitPrice)
-//      val query                =
-//        select(fkOrderId ++ fkProductId ++ quantity ++ unitPrice) from orderDetails where (condition)
-//
-//      println(renderRead(query))
-//
-//      val expected =
-//        Seq(
-//          OrderDetails(
-//            UUID.fromString("763a7c39-833f-4ee8-9939-e80dfdbfc0fc"),
-//            UUID.fromString("105a2701-ef93-4e25-81ab-8952cc7d9daa"),
-//            orderDetailQuantity,
-//            orderDetailUnitPrice
-//          )
-//        )
-//
-//      val testResult = execute(query)
-//        .to[UUID, UUID, Int, BigDecimal, OrderDetails] { case row =>
-//          OrderDetails(row._1, row._2, row._3, row._4)
-//        }
-//
-//      val assertion = for {
-//        r <- testResult.runCollect
-//      } yield assert(r)(hasSameElementsDistinct(expected))
-//
-//      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-//    },
+    testM("Can select with property binary operator with UUID") {
+      customerSelectJoseAssertion(customerId === UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc"))
+    },
+    testM("Can select with property binary operator with String") {
+      customerSelectJoseAssertion(fName === "Jose")
+    },
+    testM("Can select with property binary operator with LocalDate") {
+      customerSelectJoseAssertion(dob === LocalDate.parse("1987-03-23"))
+    },
+    testM("Can select with property binary operator with LocalDateTime") {
+      customerSelectJoseAssertion(dob === LocalDateTime.parse("1987-03-23T00:00:00"))
+    },
+    testM("Can select with property binary operator with OffsetDateTime") {
+      customerSelectJoseAssertion(dob === OffsetDateTime.parse("1987-03-23T00:00:00Z"))
+    },
+    testM("Can select with property binary operator with ZonedLocalDate") {
+      customerSelectJoseAssertion(dob === ZonedDateTime.parse("1987-03-23T00:00:00Z"))
+    },
+    testM("Can select with property binary operator with Instant") {
+      customerSelectJoseAssertion(dob === Instant.parse("1987-03-23T00:00:00Z"))
+    },
+    // uncomment when we properly handle Postgres' Money type
+    //  testM("Can select with property binary operator with numbers") {
+    //    case class OrderDetails(orderId: UUID, product_id: UUID, quantity: Int, unitPrice: BigDecimal)
+
+    //    val orderDetailQuantity  = 3
+    //    val orderDetailUnitPrice = BigDecimal(80.0)
+    //    val condition            = (quantity === orderDetailQuantity) && (unitPrice === orderDetailUnitPrice)
+    //    val query                =
+    //      select(fkOrderId ++ fkProductId ++ quantity ++ unitPrice) from orderDetails where (condition)
+
+    //    println(renderRead(query))
+
+    //    val expected =
+    //      Seq(
+    //        OrderDetails(
+    //          UUID.fromString("763a7c39-833f-4ee8-9939-e80dfdbfc0fc"),
+    //          UUID.fromString("105a2701-ef93-4e25-81ab-8952cc7d9daa"),
+    //          orderDetailQuantity,
+    //          orderDetailUnitPrice
+    //        )
+    //      )
+
+    //    val testResult = execute(query.to[UUID, UUID, Int, BigDecimal, OrderDetails] { case row =>
+    //        OrderDetails(row._1, row._2, row._3, row._4)
+    //      })
+
+    //    val assertion = for {
+    //      r <- testResult.runCollect
+    //    } yield assert(r)(hasSameElementsDistinct(expected))
+
+    //    assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    //  },
     testM("Can select from single table with limit, offset and order by") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
       val query = (select(customerId ++ fName ++ lName ++ dob) from customers).limit(1).offset(1).orderBy(fName)
-
-      println(renderRead(query))
 
       val expected =
         Seq(
@@ -191,25 +183,19 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    /*
-     * This is a failing test for aggregation function.
-     * Uncomment it when aggregation function handling is fixed.
-     */
-    // testM("Can count rows") {
-    //   val query = select { Count(userId) } from users
+    testM("Can count rows") {
+      val query = select(Count(customerId)) from customers
 
-    //   val expected = 5L
+      val expected = 5L
 
-    //   val result = new ExecuteBuilder(query).to[Long, Long](identity).provideCustomLayer(executorLayer)
+      val result = execute(query.to[Long, Long](identity))
 
-    //   for {
-    //     r <- result.runCollect
-    //   } yield assert(r.head)(equalTo(expected))
-    // },
+      for {
+        r <- result.runCollect
+      } yield assert(r.head)(equalTo(expected))
+    },
     testM("Can select from joined tables (inner join)") {
       val query = select(fName ++ lName ++ orderDate) from (customers join orders).on(fkCustomerId === customerId)
-
-      println(renderRead(query))
 
       case class Row(firstName: String, lastName: String, orderDate: LocalDate)
 
@@ -259,7 +245,6 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
       val query = select(customerId ++ fName ++ lName ++ dob) from customers where (fName like "Jo%")
 
-      println(renderRead(query))
       val expected = Seq(
         Customer(
           UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc"),

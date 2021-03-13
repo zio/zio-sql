@@ -13,7 +13,6 @@ object DeleteSpec extends PostgresRunnableSpec with ShopSchema {
   override def specLayered = suite("Postgres module delete")(
     testM("Can delete from single table with a condition") {
       val query = deleteFrom(customers) where (verified isNotTrue)
-      println(renderDelete(query))
 
       val result = execute(query)
 
