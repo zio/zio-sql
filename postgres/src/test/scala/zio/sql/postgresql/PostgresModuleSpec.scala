@@ -19,7 +19,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
     case class Customer(id: UUID, fname: String, lname: String, verified: Boolean, dateOfBirth: LocalDate)
 
     val query =
-      select(customerId ++ fName ++ lName ++ verified ++ dob) from customers where (condition)
+      select(customerId ++ fName ++ lName ++ verified ++ dob).from(customers).where(condition)
 
     val expected =
       Seq(
@@ -50,7 +50,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
     testM("Can select from single table") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
-      val query = select(customerId ++ fName ++ lName ++ dob) from customers
+      val query = select(customerId ++ fName ++ lName ++ dob).from(customers)
 
       val expected =
         Seq(
@@ -131,7 +131,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
     //    val orderDetailUnitPrice = BigDecimal(80.0)
     //    val condition            = (quantity === orderDetailQuantity) && (unitPrice === orderDetailUnitPrice)
     //    val query                =
-    //      select(fkOrderId ++ fkProductId ++ quantity ++ unitPrice) from orderDetails where (condition)
+    //      select(fkOrderId ++ fkProductId ++ quantity ++ unitPrice).from(orderDetails).where(condition)
 
     //    println(renderRead(query))
 
@@ -158,7 +158,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
     testM("Can select from single table with limit, offset and order by") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
-      val query = (select(customerId ++ fName ++ lName ++ dob) from customers).limit(1).offset(1).orderBy(fName)
+      val query = select(customerId ++ fName ++ lName ++ dob).from(customers).limit(1).offset(1).orderBy(fName)
 
       val expected =
         Seq(
@@ -184,7 +184,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     testM("Can count rows") {
-      val query = select(Count(customerId)) from customers
+      val query = select(Count(customerId)).from(customers)
 
       val expected = 5L
 
@@ -195,7 +195,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
       } yield assert(r.head)(equalTo(expected))
     },
     testM("Can select from joined tables (inner join)") {
-      val query = select(fName ++ lName ++ orderDate) from (customers join orders).on(fkCustomerId === customerId)
+      val query = select(fName ++ lName ++ orderDate).from(customers.join(orders).on(fkCustomerId === customerId))
 
       case class Row(firstName: String, lastName: String, orderDate: LocalDate)
 
@@ -243,7 +243,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
     testM("Can select using like") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
-      val query = select(customerId ++ fName ++ lName ++ dob) from customers where (fName like "Jo%")
+      val query = select(customerId ++ fName ++ lName ++ dob).from(customers).where(fName like "Jo%")
 
       val expected = Seq(
         Customer(
@@ -268,7 +268,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     testM("Transactions is returning the last value") {
-      val query = select(customerId) from customers
+      val query = select(customerId).from(customers)
 
       val result = execute(
         ZTransaction(query) *> ZTransaction(query)
@@ -279,7 +279,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     testM("Transaction is failing") {
-      val query = select(customerId) from customers
+      val query = select(customerId).from(customers)
 
       val result = execute(
         ZTransaction(query) *> ZTransaction.fail(new Exception("failing")) *> ZTransaction(query)
