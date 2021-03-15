@@ -9,13 +9,13 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
   import Customers._
   import FunctionDef._
 
-  val spec = suite("Mysql FunctionDef")(
+  override def specLayered = suite("Mysql FunctionDef")(
     testM("lower") {
       val query = select(Lower("first_name")) from customers limit (1)
 
       val expected = "ronald"
 
-      val testResult = execute(query).to[String, String](identity)
+      val testResult = execute(query.to[String, String](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -28,7 +28,7 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       val expected = 0.8414709848078965
 
-      val testResult = execute(query).to[Double, Double](identity)
+      val testResult = execute(query.to[Double, Double](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -41,7 +41,7 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       val expected = 32.0
 
-      val testResult = execute(query).to[Double, Double](identity)
+      val testResult = execute(query.to[Double, Double](identity))
 
       val assertion = for {
         r <- testResult.runCollect

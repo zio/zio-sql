@@ -1,8 +1,9 @@
 package zio.sql.postgresql
 
 import java.time._
+import java.time.format.DateTimeFormatter
 import java.util.UUID
-import zio.Cause
+import zio.{ Cause, Chunk }
 import zio.random.{ Random => ZioRandom }
 import zio.stream.ZStream
 import zio.test.Assertion._
@@ -15,11 +16,12 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
   import Customers._
   import FunctionDef.{ CharLength => _, _ }
   import PostgresFunctionDef._
+  import PostgresSpecific._
 
-  private def collectAndCompare(
+  private def collectAndCompare[R, E](
     expected: Seq[String],
-    testResult: ZStream[FunctionDefSpec.ReadExecutor, Exception, String]
-  ): zio.ZIO[FunctionDefSpec.Environment, Any, TestResult] = {
+    testResult: ZStream[R, E, String]
+  ) = {
     val assertion = for {
       r <- testResult.runCollect
     } yield assert(r.toList)(equalTo(expected))
@@ -27,7 +29,9 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
     assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
   }
 
-  val spec = suite("Postgres FunctionDef")(
+  private val timestampFormatter = DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss.SSSS").withZone(ZoneId.of("UTC"))
+
+  override def specLayered = suite("Postgres FunctionDef")(
     testM("concat_ws #1 - combine flat values") {
       import Expr._
 
@@ -43,7 +47,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
         "1+2+3"
       )
 
-      val testResult = execute(query).to[String, String](identity)
+      val testResult = execute(query.to[String, String](identity))
       collectAndCompare(expected, testResult)
     },
     testM("concat_ws #2 - combine columns") {
@@ -61,7 +65,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
         "JoseJoseWiggins"
       )
 
-      val testResult = execute(query).to[String, String](identity)
+      val testResult = execute(query.to[String, String](identity))
       collectAndCompare(expected, testResult)
     },
     testM("concat_ws #3 - combine columns and flat values") {
@@ -78,7 +82,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
         "Person: Jose Wiggins"
       )
 
-      val testResult = execute(query).to[String, String](identity)
+      val testResult = execute(query.to[String, String](identity))
       collectAndCompare(expected, testResult)
     },
     testM("concat_ws #3 - combine function calls together") {
@@ -97,7 +101,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
         "Name: Jose and Surname: Wiggins"
       )
 
-      val testResult = execute(query).to[String, String](identity)
+      val testResult = execute(query.to[String, String](identity))
       collectAndCompare(expected, testResult)
     },
     testM("isfinite") {
@@ -105,7 +109,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected: Boolean = true
 
-      val testResult = execute(query).to[Boolean, Boolean](identity)
+      val testResult = execute(query.to[Boolean, Boolean](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -113,12 +117,38 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    suite("String functions") {
+    suite("String functions")(
       testM("CharLength") {
         val query    = select(Length("hello")) from customers
         val expected = 5
 
-        val testResult = execute(query).to[Int, Int](identity)
+        val testResult = execute(query.to[Int, Int](identity))
+
+        val assertion = for {
+          r <- testResult.runCollect
+        } yield assert(r.head)(equalTo(expected))
+
+        assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      },
+      testM("ltrim") {
+        val query = select(Ltrim("  hello  ")) from customers
+
+        val expected = "hello  "
+
+        val testResult = execute(query.to[String, String](identity))
+
+        val assertion = for {
+          r <- testResult.runCollect
+        } yield assert(r.head)(equalTo(expected))
+
+        assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      },
+      testM("rtrim") {
+        val query = select(Rtrim("  hello  ")) from customers
+
+        val expected = "  hello"
+
+        val testResult = execute(query.to[String, String](identity))
 
         val assertion = for {
           r <- testResult.runCollect
@@ -126,13 +156,13 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
         assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
       }
-    },
+    ),
     testM("abs") {
       val query = select(Abs(-3.14159)) from customers
 
       val expected = 3.14159
 
-      val testResult = execute(query).to[Double, Double](identity)
+      val testResult = execute(query.to[Double, Double](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -145,7 +175,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected: Double = 5
 
-      val testResult = execute(query).to[Double, Double](identity)
+      val testResult = execute(query.to[Double, Double](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -158,7 +188,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = 3.141592653589793
 
-      val testResult = execute(query).to[Double, Double](identity)
+      val testResult = execute(query.to[Double, Double](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -171,7 +201,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = "ZioZioZio"
 
-      val testResult = execute(query).to[String, String](identity)
+      val testResult = execute(query.to[String, String](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -184,7 +214,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = 0.5235987755982989
 
-      val testResult = execute(query).to[Double, Double](identity)
+      val testResult = execute(query.to[Double, Double](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -197,7 +227,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = 1.0986122886681097
 
-      val testResult = execute(query).to[Double, Double](identity)
+      val testResult = execute(query.to[Double, Double](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -210,7 +240,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = 1.4711276743037347
 
-      val testResult = execute(query).to[Double, Double](identity)
+      val testResult = execute(query.to[Double, Double](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -223,7 +253,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = "dcba"
 
-      val testResult = execute(query).to[String, String](identity)
+      val testResult = execute(query.to[String, String](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -236,7 +266,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = -1.0
 
-      val testResult = execute(query).to[Double, Double](identity)
+      val testResult = execute(query.to[Double, Double](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -249,7 +279,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = 2.718281828459045
 
-      val testResult = execute(query).to[Double, Double](identity)
+      val testResult = execute(query.to[Double, Double](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -262,7 +292,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = -4.0
 
-      val testResult = execute(query).to[Double, Double](identity)
+      val testResult = execute(query.to[Double, Double](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -275,7 +305,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = (54.0, -53.0)
 
-      val testResult = execute(query).to[Double, Double, (Double, Double)]((a, b) => (a, b))
+      val testResult = execute(query.to[Double, Double, (Double, Double)]((a, b) => (a, b)))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -288,7 +318,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = 0.8414709848078965
 
-      val testResult = execute(query).to[Double, Double](identity)
+      val testResult = execute(query.to[Double, Double](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -301,7 +331,20 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = 0.5
 
-      val testResult = execute(query).to[Double, Double](identity)
+      val testResult = execute(query.to[Double, Double](identity))
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("split_part") {
+      val query = select(SplitPart("abc~@~def~@~ghi", "~@~", 2)) from customers
+
+      val expected = "def"
+
+      val testResult = execute(query.to[String, String](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -312,7 +355,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
     testM("timeofday") {
       val query = select(TimeOfDay()) from customers
 
-      val testResult = execute(query).to[String, String](identity)
+      val testResult = execute(query.to[String, String](identity))
 
       val assertion =
         for {
@@ -327,7 +370,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
     testM("localtime") {
       val query = select(Localtime) from customers
 
-      val testResult = execute(query).to[LocalTime, LocalTime](identity)
+      val testResult = execute(query.to[LocalTime, LocalTime](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -339,7 +382,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       val precision = 0
       val query     = select(LocaltimeWithPrecision(precision)) from customers
 
-      val testResult = execute(query).to[LocalTime, LocalTime](identity)
+      val testResult = execute(query.to[LocalTime, LocalTime](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -350,13 +393,13 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
     testM("localtimestamp") {
       val query = select(Localtimestamp) from customers
 
-      val testResult = execute(query).to[Instant, Instant](identity)
+      val testResult = execute(query.to[Instant, Instant](identity))
 
       val assertion =
         for {
           r <- testResult.runCollect
-        } yield assert(r.head.toString)(
-          Assertion.matchesRegex("([0-9]{4})-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{6}Z")
+        } yield assert(timestampFormatter.format(r.head))(
+          Assertion.matchesRegex("[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{4}")
         )
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
@@ -364,20 +407,57 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
     testM("localtimestamp with precision") {
       val precision = 2
 
-      val millis =
-        if (precision == 0) ""
-        else if (precision <= 3) List.fill(3)("[0-9]").mkString(".", "", "")
-        else List.fill(6)("[0-9]").mkString(".", "", "")
-
       val query = select(LocaltimestampWithPrecision(precision)) from customers
 
-      val testResult = execute(query).to[Instant, Instant](identity)
+      val testResult = execute(query.to[Instant, Instant](identity))
 
       val assertion =
         for {
           r <- testResult.runCollect
-        } yield assert(r.head.toString)(
-          Assertion.matchesRegex(s"([0-9]{4})-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}${millis}Z")
+        } yield assert(timestampFormatter.format(r.head))(
+          Assertion.matchesRegex(s"[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{2}00")
+        )
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("now") {
+      val query = select(Now()) from customers
+
+      val testResult = execute(query.to[ZonedDateTime, ZonedDateTime](identity))
+
+      val assertion =
+        for {
+          r <- testResult.runCollect
+        } yield assert(timestampFormatter.format(r.head))(
+          Assertion.matchesRegex("[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{4}")
+        )
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("statement_timestamp") {
+      val query = select(StatementTimestamp()) from customers
+
+      val testResult = execute(query.to[ZonedDateTime, ZonedDateTime](identity))
+
+      val assertion =
+        for {
+          r <- testResult.runCollect
+        } yield assert(timestampFormatter.format(r.head))(
+          Assertion.matchesRegex("[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{4}")
+        )
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("transaction_timestamp") {
+      val query = select(TransactionTimestamp()) from customers
+
+      val testResult = execute(query.to[ZonedDateTime, ZonedDateTime](identity))
+
+      val assertion =
+        for {
+          r <- testResult.runCollect
+        } yield assert(timestampFormatter.format(r.head))(
+          Assertion.matchesRegex("[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{4}")
         )
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
@@ -385,14 +465,14 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
     testM("current_time") {
       val query = select(CurrentTime) from customers
 
-      val testResult = execute(query).to[OffsetTime, OffsetTime](identity)
+      val testResult = execute(query.to[OffsetTime, OffsetTime](identity))
 
       val assertion =
         for {
           r <- testResult.runCollect
-        } yield assert(r.head.toString)(
+        } yield assert(DateTimeFormatter.ofPattern("HH:mm:ss").format(r.head))(
           matchesRegex(
-            "(2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]Z"
+            "(2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]"
           )
         )
 
@@ -403,7 +483,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = "3adbbad1791fbae3ec908894c4963870"
 
-      val testResult = execute(query).to[String, String](identity)
+      val testResult = execute(query.to[String, String](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -424,7 +504,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
         val assertion = checkM(genTestString) { (testString) =>
           val query      = select(ParseIdent(testString)) from customers
-          val testResult = execute(query).to[String, String](identity)
+          val testResult = execute(query.to[String, String](identity))
 
           for {
             r <- testResult.runCollect
@@ -435,7 +515,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       },
       testM("parseIdent fails with invalid identifier") {
         val query      = select(ParseIdent("\'\"SomeSchema\".someTable.\'")) from customers
-        val testResult = execute(query).to[String, String](identity)
+        val testResult = execute(query.to[String, String](identity))
 
         val assertion = for {
           r <- testResult.runCollect.run
@@ -449,7 +529,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = 11.0
 
-      val testResult = execute(query).to[Double, Double](identity)
+      val testResult = execute(query.to[Double, Double](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -462,7 +542,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = "A"
 
-      val testResult = execute(query).to[String, String](identity)
+      val testResult = execute(query.to[String, String](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -475,7 +555,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = LocalDate.now()
 
-      val testResult = execute(query).to[LocalDate, LocalDate](identity)
+      val testResult = execute(query.to[LocalDate, LocalDate](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -488,7 +568,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = "Hi Thomas"
 
-      val testResult = execute(query).to[String, String](identity)
+      val testResult = execute(query.to[String, String](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -501,7 +581,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = 8.41
 
-      val testResult = execute(query).to[Double, Double](identity)
+      val testResult = execute(query.to[Double, Double](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -514,7 +594,33 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = "7fffffff"
 
-      val testResult = execute(query).to[String, String](identity)
+      val testResult = execute(query.to[String, String](identity))
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("encode") {
+      val query = select(Encode(Chunk.fromArray("Hello, World!".getBytes), "BASE64")) from customers
+
+      val expected = "SGVsbG8sIFdvcmxkIQ=="
+
+      val testResult = execute(query.to[String, String](identity))
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("decode") {
+      val query = select(Decode("SGVsbG8sIFdvcmxkIQ==", "BASE64")) from customers
+
+      val expected = Chunk.fromArray("Hello, World!".getBytes)
+
+      val testResult = execute(query.to[Chunk[Byte], Chunk[Byte]](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -527,7 +633,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = 42d
 
-      val testResult = execute(query).to[Double, Double](identity)
+      val testResult = execute(query.to[Double, Double](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -540,7 +646,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = 10.81
 
-      val testResult = execute(query).to[Double, Double](identity)
+      val testResult = execute(query.to[Double, Double](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -553,7 +659,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = 1
 
-      val testResult = execute(query).to[Int, Int](identity)
+      val testResult = execute(query.to[Int, Int](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -566,7 +672,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = -1
 
-      val testResult = execute(query).to[Int, Int](identity)
+      val testResult = execute(query.to[Int, Int](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -579,7 +685,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = 0
 
-      val testResult = execute(query).to[Int, Int](identity)
+      val testResult = execute(query.to[Int, Int](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -592,7 +698,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = 343.000000000000000
 
-      val testResult = execute(query).to[Double, Double](identity)
+      val testResult = execute(query.to[Double, Double](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -605,7 +711,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = 5
 
-      val testResult = execute(query).to[Int, Int](identity)
+      val testResult = execute(query.to[Int, Int](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -618,7 +724,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = -3.0
 
-      val testResult = execute(query).to[Double, Double](identity)
+      val testResult = execute(query.to[Double, Double](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -631,7 +737,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = "a2x5"
 
-      val testResult = execute(query).to[String, String](identity)
+      val testResult = execute(query.to[String, String](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -644,7 +750,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = "ab"
 
-      val testResult = execute(query).to[String, String](identity)
+      val testResult = execute(query.to[String, String](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -657,7 +763,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = "de"
 
-      val testResult = execute(query).to[String, String](identity)
+      val testResult = execute(query.to[String, String](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -670,7 +776,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = 0.7853981634
 
-      val testResult = execute(query).to[Double, Double](identity)
+      val testResult = execute(query.to[Double, Double](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -683,7 +789,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = 2
 
-      val testResult = execute(query).to[Int, Int](identity)
+      val testResult = execute(query.to[Int, Int](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -708,10 +814,12 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
           )
         )
 
-      val testResult = execute(query)
-        .to[UUID, String, String, Boolean, LocalDate, Customer]((id, fname, lname, verified, dob) =>
-          Customer(id, fname, lname, verified, dob)
-        )
+      val testResult = execute(
+        query
+          .to[UUID, String, String, Boolean, LocalDate, Customer]((id, fname, lname, verified, dob) =>
+            Customer(id, fname, lname, verified, dob)
+          )
+      )
 
       val assertion = for {
         r <- testResult.runCollect
@@ -724,7 +832,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = "ronald"
 
-      val testResult = execute(query).to[String, String](identity)
+      val testResult = execute(query.to[String, String](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -737,7 +845,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = 5
 
-      val testResult = execute(query).to[Int, Int](identity)
+      val testResult = execute(query.to[Int, Int](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -750,7 +858,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = 120
 
-      val testResult = execute(query).to[Int, Int](identity)
+      val testResult = execute(query.to[Int, Int](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -763,7 +871,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = "RONALD"
 
-      val testResult = execute(query).to[String, String](identity)
+      val testResult = execute(query.to[String, String](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -776,7 +884,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = 3
 
-      val testResult = execute(query).to[Int, Int](identity)
+      val testResult = execute(query.to[Int, Int](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -789,7 +897,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = 1.0000000000051035
 
-      val testResult = execute(query).to[Double, Double](identity)
+      val testResult = execute(query.to[Double, Double](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -802,7 +910,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = 21d
 
-      val testResult = execute(query).to[Double, Double](identity)
+      val testResult = execute(query.to[Double, Double](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -815,7 +923,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = 23562d
 
-      val testResult = execute(query).to[Double, Double](identity)
+      val testResult = execute(query.to[Double, Double](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -828,7 +936,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = 4d
 
-      val testResult = execute(query).to[Double, Double](identity)
+      val testResult = execute(query.to[Double, Double](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -841,7 +949,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = 28.64788975654116
 
-      val testResult = execute(query).to[Double, Double](identity)
+      val testResult = execute(query.to[Double, Double](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -854,7 +962,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = 2d
 
-      val testResult = execute(query).to[Double, Double](identity)
+      val testResult = execute(query.to[Double, Double](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -867,7 +975,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = 120
 
-      val testResult = execute(query).to[Int, Int](identity)
+      val testResult = execute(query.to[Int, Int](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -878,7 +986,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
     testM("random") {
       val query = select(Random()) from customers
 
-      val testResult = execute(query).to[Double, Double](identity)
+      val testResult = execute(query.to[Double, Double](identity))
 
       val assertion = for {
         r <- testResult.runCollect
@@ -892,7 +1000,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = Seq("RonaldRussell", "TerrenceNoel", "MilaPaterso", "AlanaMurray", "JoseWiggins")
 
-      val result = execute(query).to[String, String](identity)
+      val result = execute(query.to[String, String](identity))
 
       val assertion = for {
         r <- result.runCollect
@@ -906,7 +1014,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = Seq(6, 8, 4, 5, 4)
 
-      val result = execute(query).to[Int, Int](identity)
+      val result = execute(query.to[Int, Int](identity))
 
       val assertion = for {
         r <- result.runCollect
@@ -917,15 +1025,15 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
     testM("to_timestamp") {
       val query      = select(ToTimestamp(1284352323L)) from customers
       val expected   = ZonedDateTime.of(2010, 9, 13, 4, 32, 3, 0, ZoneId.of(ZoneOffset.UTC.getId))
-      val testResult = execute(query).to[ZonedDateTime, ZonedDateTime](identity)
+      val testResult = execute(query.to[ZonedDateTime, ZonedDateTime](identity))
 
       val expectedRoundTripTimestamp = ZonedDateTime.of(2020, 11, 21, 19, 10, 25, 0, ZoneId.of(ZoneOffset.UTC.getId))
       val roundTripQuery             =
         select(createdString ++ createdTimestamp) from customers
-      val roundTripResults           = execute(roundTripQuery).to[String, ZonedDateTime, (String, ZonedDateTime, ZonedDateTime)] {
+      val roundTripResults           = execute(roundTripQuery.to[String, ZonedDateTime, (String, ZonedDateTime, ZonedDateTime)] {
         case row =>
           (row._1, ZonedDateTime.parse(row._1), row._2)
-      }
+      })
       val roundTripExpected          = List(
         ("2020-11-21T19:10:25+00:00", ZonedDateTime.parse("2020-11-21T19:10:25+00:00"), expectedRoundTripTimestamp),
         ("2020-11-21T15:10:25-04:00", ZonedDateTime.parse("2020-11-21T15:10:25-04:00"), expectedRoundTripTimestamp),
@@ -950,9 +1058,9 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       val expected = ("Russe_", "special ::__::")
 
       val testResult =
-        execute(query).to[String, String, (String, String)] { case row =>
+        execute(query.to[String, String, (String, String)] { case row =>
           (row._1, row._2)
-        }
+        })
 
       val assertion = for {
         r <- testResult.runCollect
@@ -965,7 +1073,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
         val query = select(LPad(s, 5, pad)) from customers
 
         for {
-          r <- execute(query).to[String, String](identity).runCollect
+          r <- execute(query.to[String, String](identity)).runCollect
         } yield r.head
       }
 
@@ -980,7 +1088,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
         val query = select(RPad(s, 5, pad)) from customers
 
         for {
-          r <- execute(query).to[String, String](identity).runCollect
+          r <- execute(query.to[String, String](identity)).runCollect
         } yield r.head
       }
 
@@ -993,13 +1101,92 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
     testM("pg_client_encoding") {
       val query = select(PgClientEncoding()) from customers
 
-      val testResult = execute(query).to[String, String](identity)
+      val testResult = execute(query.to[String, String](identity))
 
       val assertion = for {
         r <- testResult.runCollect
       } yield assert(r.head)(equalTo("UTF8"))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    } @@ ignore  //todo fix - select(PgClientEncoding())?
+    }
+      @@ ignore, //todo fix - select(PgClientEncoding())?
+    testM("make_date") {
+      val query = select(MakeDate(2013, 7, 15)) from customers
+
+      val expected = LocalDate.of(2013, 7, 15)
+
+      val testResult = execute(query.to[LocalDate, LocalDate](identity))
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("make_interval") {
+      def runTest(interval: Interval) = {
+        val query = select(
+          MakeInterval(interval)
+        ) from customers
+        for {
+          r <- execute(query.to[Interval, Interval](identity)).runCollect
+        } yield r.head
+      }
+
+      (for {
+        t1 <- assertM(runTest(Interval()))(equalTo(Interval()))
+        t2 <- assertM(runTest(Interval(days = 10)))(equalTo(Interval(days = 10)))
+        t3 <- assertM(
+                runTest(Interval(years = 10, months = 2, days = 5, hours = 6, minutes = 20, seconds = 15))
+              )(
+                equalTo(Interval(years = 10, months = 2, days = 5, hours = 6, minutes = 20, seconds = 15))
+              )
+      } yield t1 && t2 && t3).mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("make_time") {
+      val query      = select(MakeTime(8, 15, 23.5)) from customers
+      val expected   = LocalTime.parse("08:15:23.500")
+      val testResult = execute(query.to[LocalTime, LocalTime](identity))
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("make_timestamp") {
+      val query      = select(MakeTimestamp(2013, 7, 15, 8, 15, 23.5)) from customers
+      val expected   = LocalDateTime.parse("2013-07-15T08:15:23.500")
+      val testResult = execute(query.to[LocalDateTime, LocalDateTime](identity))
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("make_timestampz") {
+      def runTest(tz: Timestampz) = {
+        val query = select(MakeTimestampz(tz)) from customers
+        for {
+          r <- execute(query.to[Timestampz, Timestampz](identity)).runCollect
+        } yield r.head
+      }
+
+      val expectedRoundTripTimestamp =
+        Timestampz.fromZonedDateTime(ZonedDateTime.of(2020, 11, 21, 19, 10, 25, 0, ZoneId.of(ZoneOffset.UTC.getId)))
+
+      (for {
+        t1 <- assertM(runTest(Timestampz(2013, 7, 15, 8, 15, 23.5)))(
+                equalTo(Timestampz.fromZonedDateTime(ZonedDateTime.parse("2013-07-15T08:15:23.5+00:00")))
+              )
+        t2 <- assertM(runTest(Timestampz(2020, 11, 21, 19, 10, 25, "+00:00")))(
+                equalTo(expectedRoundTripTimestamp)
+              )
+        t3 <- assertM(runTest(Timestampz(2020, 11, 21, 15, 10, 25, "-04:00")))(equalTo(expectedRoundTripTimestamp))
+        t4 <- assertM(runTest(Timestampz(2020, 11, 22, 2, 10, 25, "+07:00")))(equalTo(expectedRoundTripTimestamp))
+        t5 <- assertM(runTest(Timestampz(2020, 11, 21, 12, 10, 25, "-07:00")))(equalTo(expectedRoundTripTimestamp))
+      } yield t1 && t2 && t3 && t4 && t5).mapErrorCause(cause => Cause.stackless(cause.untraced))
+    }
   ) @@ timeout(5.minutes)
 }

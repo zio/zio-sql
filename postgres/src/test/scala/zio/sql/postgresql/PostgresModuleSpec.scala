@@ -3,13 +3,13 @@ package zio.sql.postgresql
 import java.time.LocalDate
 import java.util.UUID
 
-import zio.Cause
+import zio._
 import zio.test.Assertion._
 import zio.test._
 
 import scala.language.postfixOps
 
-object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
+object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
   import Customers._
   import Orders._
@@ -33,10 +33,12 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
         )
       )
 
-    val testResult = execute(query)
-      .to[UUID, String, String, Boolean, LocalDate, Customer] { case row =>
-        Customer(row._1, row._2, row._3, row._4, row._5)
-      }
+    val testResult = execute(
+      query
+        .to[UUID, String, String, Boolean, LocalDate, Customer] { case row =>
+          Customer(row._1, row._2, row._3, row._4, row._5)
+        }
+    )
 
     val assertion = for {
       r <- testResult.runCollect
@@ -45,7 +47,7 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
     assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
   }
 
-  val spec = suite("Postgres module")(
+  override def specLayered = suite("Postgres module")(
     testM("Can select from single table") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
@@ -89,10 +91,12 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
 
 //      execute(query ++ query ++ query ++ query)
 
-      val testResult = execute(query)
-        .to[UUID, String, String, LocalDate, Customer] { case row =>
-          Customer(row._1, row._2, row._3, row._4)
-        }
+      val testResult = execute(
+        query
+          .to[UUID, String, String, LocalDate, Customer] { case row =>
+            Customer(row._1, row._2, row._3, row._4)
+          }
+      )
 
       val assertion = for {
         r <- testResult.runCollect
@@ -174,10 +178,12 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
           )
         )
 
-      val testResult = execute(query)
-        .to[UUID, String, String, LocalDate, Customer] { case row =>
-          Customer(row._1, row._2, row._3, row._4)
-        }
+      val testResult = execute(
+        query
+          .to[UUID, String, String, LocalDate, Customer] { case row =>
+            Customer(row._1, row._2, row._3, row._4)
+          }
+      )
 
       val assertion = for {
         r <- testResult.runCollect
@@ -235,10 +241,12 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
         Row("Mila", "Paterso", LocalDate.parse("2020-04-30"))
       )
 
-      val result = execute(query)
-        .to[String, String, LocalDate, Row] { case row =>
-          Row(row._1, row._2, row._3)
-        }
+      val result = execute(
+        query
+          .to[String, String, LocalDate, Row] { case row =>
+            Row(row._1, row._2, row._3)
+          }
+      )
 
       val assertion = for {
         r <- result.runCollect
@@ -261,10 +269,12 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
         )
       )
 
-      val testResult = execute(query)
-        .to[UUID, String, String, LocalDate, Customer] { case row =>
-          Customer(row._1, row._2, row._3, row._4)
-        }
+      val testResult = execute(
+        query
+          .to[UUID, String, String, LocalDate, Customer] { case row =>
+            Customer(row._1, row._2, row._3, row._4)
+          }
+      )
 
       val assertion = for {
         r <- testResult.runCollect
@@ -275,47 +285,22 @@ object PostgresModuleTest extends PostgresRunnableSpec with ShopSchema {
     testM("Transactions is returning the last value") {
       val query = select(customerId) from customers
 
-      val result    = execute(
-        Transaction.Select(query) *> Transaction.Select(query)
-      )
+      val result = execute(
+        ZTransaction(query) *> ZTransaction(query)
+      ).use(ZIO.succeed(_))
+
       val assertion = assertM(result.flatMap(_.runCollect))(hasSize(Assertion.equalTo(5))).orDie
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("Transactions is failing") {
+    testM("Transaction is failing") {
       val query = select(customerId) from customers
 
       val result = execute(
-        Transaction.Select(query) *> Transaction.fail(new Exception("failing")) *> Transaction.Select(query)
-      ).mapError(_.getMessage)
+        ZTransaction(query) *> ZTransaction.fail(new Exception("failing")) *> ZTransaction(query)
+      ).mapError(_.getMessage).use(ZIO.succeed(_))
 
-      val assertion = assertM(result.flip)(equalTo("failing"))
-
-      assertion
+      assertM(result.flip)(equalTo("failing")).mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
-    // testM("Can delete all from a single table") { TODO: Does not work on 2.12 yet
-    //   val query = deleteFrom(customers)
-    //   println(renderDelete(query))
-
-    //   val result = execute(query)
-
-    //   val assertion = for {
-    //     r <- result
-    //   } yield assert(r)(equalTo(5))
-
-    //   assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    // },
-    // testM("Can delete from single table with a condition") {
-    //   val query = deleteFrom(customers) where (verified isNotTrue)
-    //   println(renderDelete(query))
-
-    //   val result = execute(query)
-
-    //   val assertion = for {
-    //     r <- result
-    //   } yield assert(r)(equalTo(1))
-
-    //   assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    // }
   )
 }

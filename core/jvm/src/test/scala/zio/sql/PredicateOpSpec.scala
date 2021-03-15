@@ -1,6 +1,6 @@
 package zio.sql
 
-import zio.test.{ assert, suite, test, DefaultRunnableSpec }
+import zio.test.{ assert, DefaultRunnableSpec }
 import zio.test.Assertion.anything
 
 object PredicateOpSpec extends DefaultRunnableSpec {

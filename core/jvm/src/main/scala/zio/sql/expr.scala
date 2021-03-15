@@ -2,6 +2,8 @@ package zio.sql
 
 import java.time._
 
+import com.github.ghik.silencer.silent
+
 import scala.language.implicitConversions
 
 trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
@@ -203,6 +205,53 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     ) extends InvariantExpr[Features.Union[F1, Features.Union[F2, Features.Union[F3, F4]]], A, Z] {
       def typeTag: TypeTag[Z] = implicitly[TypeTag[Z]]
     }
+
+    sealed case class FunctionCall5[F1, F2, F3, F4, F5, A, B, C, D, E, F, Z: TypeTag](
+      param1: Expr[F1, A, B],
+      param2: Expr[F2, A, C],
+      param3: Expr[F3, A, D],
+      param4: Expr[F4, A, E],
+      param5: Expr[F5, A, F],
+      function: FunctionDef[(B, C, D, E, F), Z]
+    ) extends InvariantExpr[Features.Union[F1, Features.Union[F2, Features.Union[F3, Features.Union[F4, F5]]]], A, Z] {
+      def typeTag: TypeTag[Z] = implicitly[TypeTag[Z]]
+    }
+
+    sealed case class FunctionCall6[F1, F2, F3, F4, F5, F6, A, B, C, D, E, F, G, Z: TypeTag](
+      param1: Expr[F1, A, B],
+      param2: Expr[F2, A, C],
+      param3: Expr[F3, A, D],
+      param4: Expr[F4, A, E],
+      param5: Expr[F5, A, F],
+      param6: Expr[F6, A, G],
+      function: FunctionDef[(B, C, D, E, F, G), Z]
+    ) extends InvariantExpr[
+          Features.Union[F1, Features.Union[F2, Features.Union[F3, Features.Union[F4, Features.Union[F5, F6]]]]],
+          A,
+          Z
+        ] {
+      def typeTag: TypeTag[Z] = implicitly[TypeTag[Z]]
+    }
+
+    sealed case class FunctionCall7[F1, F2, F3, F4, F5, F6, F7, A, B, C, D, E, F, G, H, Z: TypeTag](
+      param1: Expr[F1, A, B],
+      param2: Expr[F2, A, C],
+      param3: Expr[F3, A, D],
+      param4: Expr[F4, A, E],
+      param5: Expr[F5, A, F],
+      param6: Expr[F6, A, G],
+      param7: Expr[F7, A, H],
+      function: FunctionDef[(B, C, D, E, F, G, H), Z]
+    ) extends InvariantExpr[
+          Features.Union[
+            F1,
+            Features.Union[F2, Features.Union[F3, Features.Union[F4, Features.Union[F5, Features.Union[F6, F7]]]]]
+          ],
+          A,
+          Z
+        ] {
+      def typeTag: TypeTag[Z] = implicitly[TypeTag[Z]]
+    }
   }
 
   sealed case class AggregationDef[-A, +B](name: FunctionName) { self =>
@@ -255,6 +304,69 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
         param3,
         param4,
         self.narrow[(P1, P2, P3, P4)]: FunctionDef[(P1, P2, P3, P4), B1]
+      )
+
+    def apply[F1, F2, F3, F4, F5, Source, P1, P2, P3, P4, P5, B1 >: B](
+      param1: Expr[F1, Source, P1],
+      param2: Expr[F2, Source, P2],
+      param3: Expr[F3, Source, P3],
+      param4: Expr[F4, Source, P4],
+      param5: Expr[F5, Source, P5]
+    )(implicit
+      ev: (P1, P2, P3, P4, P5) <:< A,
+      typeTag: TypeTag[B1]
+    ): Expr[F1 :||: F2 :||: F3 :||: F4 :||: F5, Source, B1] =
+      Expr.FunctionCall5(
+        param1,
+        param2,
+        param3,
+        param4,
+        param5,
+        self.narrow[(P1, P2, P3, P4, P5)]: FunctionDef[(P1, P2, P3, P4, P5), B1]
+      )
+
+    def apply[F1, F2, F3, F4, F5, F6, Source, P1, P2, P3, P4, P5, P6, B1 >: B](
+      param1: Expr[F1, Source, P1],
+      param2: Expr[F2, Source, P2],
+      param3: Expr[F3, Source, P3],
+      param4: Expr[F4, Source, P4],
+      param5: Expr[F5, Source, P5],
+      param6: Expr[F6, Source, P6]
+    )(implicit
+      ev: (P1, P2, P3, P4, P5, P6) <:< A,
+      typeTag: TypeTag[B1]
+    ): Expr[F1 :||: F2 :||: F3 :||: F4 :||: F5 :||: F6, Source, B1] =
+      Expr.FunctionCall6(
+        param1,
+        param2,
+        param3,
+        param4,
+        param5,
+        param6,
+        self.narrow[(P1, P2, P3, P4, P5, P6)]: FunctionDef[(P1, P2, P3, P4, P5, P6), B1]
+      )
+
+    def apply[F1, F2, F3, F4, F5, F6, F7, Source, P1, P2, P3, P4, P5, P6, P7, B1 >: B](
+      param1: Expr[F1, Source, P1],
+      param2: Expr[F2, Source, P2],
+      param3: Expr[F3, Source, P3],
+      param4: Expr[F4, Source, P4],
+      param5: Expr[F5, Source, P5],
+      param6: Expr[F6, Source, P6],
+      param7: Expr[F7, Source, P7]
+    )(implicit
+      ev: (P1, P2, P3, P4, P5, P6, P7) <:< A,
+      typeTag: TypeTag[B1]
+    ): Expr[F1 :||: F2 :||: F3 :||: F4 :||: F5 :||: F6 :||: F7, Source, B1] =
+      Expr.FunctionCall7(
+        param1,
+        param2,
+        param3,
+        param4,
+        param5,
+        param6,
+        param7,
+        self.narrow[(P1, P2, P3, P4, P5, P6, P7)]: FunctionDef[(P1, P2, P3, P4, P5, P6, P7), B1]
       )
 
     def narrow[C](implicit ev: C <:< A): FunctionDef[C, B] = {
@@ -321,6 +433,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
   object Set {
     type Aux[F, -A, Value0] = Set[F, A] { type Value = Value0 }
 
+    @silent
     def apply[F: Features.IsSource, A, Value0: TypeTag](
       lhs0: Expr[F, A, Value0],
       rhs0: Expr[_, A, Value0]

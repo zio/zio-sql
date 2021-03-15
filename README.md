@@ -2,7 +2,7 @@
 
 | CI | Discord |
 | --- | --- |
-| [![Build Status][badge-ci]][link-ci] | [![badge-discord]][link-discord] |
+| ![CI][badge-ci] | [![badge-discord]][link-discord] |
 
 ## Current status: pre-0.1 (no release yet)
 
@@ -21,8 +21,8 @@ Running Reads | :heavy_check_mark:
 Running Deletes | :heavy_check_mark:
 Running Updates | :heavy_check_mark:
 Running Inserts | 
-Transactions |
-Connection pool | 
+Transactions | :white_check_mark:
+Connection pool | :white_check_mark:
 
 #### Db-specific features:
 
@@ -53,9 +53,8 @@ For the JDBC module:
 
 ZIO SQL does not offer Language Integrated Queries (LINQ) or similar functionality. It is intended only as a data model for representing SQL queries and an accompanying lightweight JDBC-based executor.
 
-[badge-ci]: https://circleci.com/gh/zio/zio-sql/tree/master.svg?style=svg
+[badge-ci]: https://github.com/zio/zio-sql/workflows/CI/badge.svg
 [badge-discord]: https://img.shields.io/discord/629491597070827530?logo=discord "chat on discord"
-[link-ci]: https://circleci.com/gh/zio/zio-sql/tree/master
 [link-discord]: https://discord.gg/2ccFBr4 "Discord"
 
 ## Setup
