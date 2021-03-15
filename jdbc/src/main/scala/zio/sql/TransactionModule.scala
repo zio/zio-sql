@@ -25,8 +25,16 @@ trait TransactionModule { self: Jdbc =>
                .mapError(ev)
                .provide((r, txn))
                .tapBoth(
-                 _ => blocking.effectBlocking(txn.connection.rollback()).refineToOrDie[Exception].toManaged_,
-                 _ => blocking.effectBlocking(txn.connection.commit()).refineToOrDie[Exception].toManaged_
+                 _ =>
+                   blocking
+                     .effectBlocking(txn.connection.rollback())
+                     .refineToOrDie[Exception]
+                     .toManaged_,
+                 _ =>
+                   blocking
+                     .effectBlocking(txn.connection.commit())
+                     .refineToOrDie[Exception]
+                     .toManaged_
                )
       } yield a
 
