@@ -60,7 +60,7 @@ final case class ConnectionPoolLive(
     val makeConnection = blocking.effectBlocking {
       val connection = DriverManager.getConnection(config.url, config.properties)
 
-      val autoCommit  = connection.getAutoCommit()
+      val autoCommit  = config.autoCommit
       val catalog     = connection.getCatalog()
       val clientInfo  = connection.getClientInfo()
       val holdability = connection.getHoldability()
