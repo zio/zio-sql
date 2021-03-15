@@ -6,6 +6,7 @@ import java.util.UUID
 import zio._
 import zio.test.Assertion._
 import zio.test._
+import zio.test.TestAspect.sequential
 
 import scala.language.postfixOps
 
@@ -267,25 +268,29 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("Transactions is returning the last value") {
-      val query = select(customerId).from(customers)
+    testM("Can delete from single table with a condition") {
+      val query = deleteFrom(customers) where (verified isNotTrue)
+      println(renderDelete(query))
 
-      val result = execute(
-        ZTransaction(query) *> ZTransaction(query)
-      ).use(ZIO.succeed(_))
+      val result = execute(query)
 
-      val assertion = assertM(result.flatMap(_.runCollect))(hasSize(Assertion.equalTo(5))).orDie
+      val assertion = for {
+        r <- result
+      } yield assert(r)(equalTo(1))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("Transaction is failing") {
-      val query = select(customerId).from(customers)
+    testM("Can delete all from a single table") {
+      val query = deleteFrom(customers)
+      println(renderDelete(query))
 
-      val result = execute(
-        ZTransaction(query) *> ZTransaction.fail(new Exception("failing")) *> ZTransaction(query)
-      ).mapError(_.getMessage).use(ZIO.succeed(_))
+      val result = execute(query)
 
-      assertM(result.flip)(equalTo("failing")).mapErrorCause(cause => Cause.stackless(cause.untraced))
+      val assertion = for {
+        r <- result
+      } yield assert(r)(equalTo(4))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
-  )
+  ) @@ sequential
 }

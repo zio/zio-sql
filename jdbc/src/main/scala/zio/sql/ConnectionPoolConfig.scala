@@ -17,5 +17,6 @@ final case class ConnectionPoolConfig(
   properties: java.util.Properties,
   poolSize: Int = 10,
   queueCapacity: Int = 1000,
+  autoCommit: Boolean = true,
   retryPolicy: Schedule[Any, Exception, Any] = Schedule.recurs(20) && Schedule.exponential(10.millis)
 )
