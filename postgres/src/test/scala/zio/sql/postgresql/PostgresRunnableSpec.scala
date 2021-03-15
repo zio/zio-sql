@@ -8,6 +8,8 @@ import zio.Has
 
 trait PostgresRunnableSpec extends JdbcRunnableSpec with PostgresModule {
 
+  def autoCommit: Boolean = true
+
   private def connProperties(user: String, password: String): Properties = {
     val props = new Properties
     props.setProperty("user", user)
@@ -17,7 +19,15 @@ trait PostgresRunnableSpec extends JdbcRunnableSpec with PostgresModule {
 
   val poolConfigLayer = TestContainer
     .postgres()
-    .map(a => Has(ConnectionPoolConfig(a.get.jdbcUrl, connProperties(a.get.username, a.get.password))))
+    .map(a =>
+      Has(
+        ConnectionPoolConfig(
+          url = a.get.jdbcUrl,
+          properties = connProperties(a.get.username, a.get.password),
+          autoCommit = autoCommit
+        )
+      )
+    )
 
   override def spec: Spec[TestEnvironment, TestFailure[Any], TestSuccess] =
     specLayered.provideCustomLayerShared(jdbcLayer)
