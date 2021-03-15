@@ -37,7 +37,6 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       //note: a plain number (3) would and should not compile
       val query = select(ConcatWs4("+", "1", "2", "3")) from customers
-      println(renderRead(query))
 
       val expected = Seq( // note: one for each row
         "1+2+3",
@@ -55,7 +54,6 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       // note: you can't use customerId here as it is a UUID, hence not a string in our book
       val query = select(ConcatWs3(Customers.fName, Customers.fName, Customers.lName)) from customers
-      println(renderRead(query))
 
       val expected = Seq(
         "RonaldRonaldRussell",
@@ -72,7 +70,6 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       import Expr._
 
       val query = select(ConcatWs4(" ", "Person:", Customers.fName, Customers.lName)) from customers
-      println(renderRead(query))
 
       val expected = Seq(
         "Person: Ronald Russell",
@@ -91,7 +88,6 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       val query = select(
         ConcatWs3(" and ", Concat("Name: ", Customers.fName), Concat("Surname: ", Customers.lName))
       ) from customers
-      println(renderRead(query))
 
       val expected = Seq(
         "Name: Ronald and Surname: Russell",
