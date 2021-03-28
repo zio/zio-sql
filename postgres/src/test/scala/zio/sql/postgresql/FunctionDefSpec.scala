@@ -204,7 +204,9 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
         testM("format3") {
           import Expr._
 
-          val query = select(Format3("Person: %s %s with double quoted %I ", Customers.fName, Customers.lName, "identi fier")) from customers
+          val query = select(
+            Format3("Person: %s %s with double quoted %I ", Customers.fName, Customers.lName, "identi fier")
+          ) from customers
 
           val expected = Seq(
             s"""Person: Ronald Russell with double quoted "identi fier" """,
@@ -220,7 +222,15 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
         testM("format4") {
           import Expr._
 
-          val query = select(Format4("Person: %s %s with null-literal %L and non-null-literal %L ", Customers.fName, Customers.lName, "FIXME: NULL", "literal")) from customers
+          val query = select(
+            Format4(
+              "Person: %s %s with null-literal %L and non-null-literal %L ",
+              Customers.fName,
+              Customers.lName,
+              "FIXME: NULL",
+              "literal"
+            )
+          ) from customers
 
           val expected = Seq(
             s"""Person: Ronald Russell with null-literal 'FIXME: NULL' and non-null-literal 'literal' """,
@@ -236,7 +246,16 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
         testM("format5") {
           import Expr._
 
-          val query = select(Format5("Person: %s %s with more arguments than placeholders: %I %L ", Customers.fName, Customers.lName, "identifier", Reverse(Customers.fName), "unused")) from customers
+          val query = select(
+            Format5(
+              "Person: %s %s with more arguments than placeholders: %I %L ",
+              Customers.fName,
+              Customers.lName,
+              "identifier",
+              Reverse(Customers.fName),
+              "unused"
+            )
+          ) from customers
 
           val expected = Seq(
             s"""Person: Ronald Russell with more arguments than placeholders: identifier 'dlanoR' """,
