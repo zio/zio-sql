@@ -16,6 +16,15 @@ trait PostgresModule extends Jdbc { self =>
   object PostgresSpecific {
     trait PostgresTypeTag[+A] extends Tag[A] with Decodable[A]
     object PostgresTypeTag {
+      implicit case object TVoid       extends PostgresTypeTag[Unit]       {
+        override def decode(column: Either[Int, String], resultSet: ResultSet): Either[DecodingError, Unit] =
+          scala.util
+            .Try(column.fold(resultSet.getObject(_), resultSet.getObject(_)))
+            .fold(
+              _ => Left(DecodingError.UnexpectedNull(column)),
+              _ => Right(())
+            )
+      }
       implicit case object TInterval   extends PostgresTypeTag[Interval]   {
         override def decode(
           column: Either[Int, String],
@@ -227,6 +236,7 @@ trait PostgresModule extends Jdbc { self =>
       FunctionDef[Timestampz, Timestampz](FunctionName("make_timestamptz"))
     val Encode                      = FunctionDef[(Chunk[Byte], String), String](FunctionName("encode"))
     val Decode                      = FunctionDef[(String, String), Chunk[Byte]](FunctionName("decode"))
+    val SetSeed                     = FunctionDef[Double, Unit](FunctionName("setseed"))
   }
 
   override def renderRead(read: self.Read[_]): String = {
