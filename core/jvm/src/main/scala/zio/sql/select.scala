@@ -10,7 +10,16 @@ trait SelectModule { self: ExprModule with TableModule =>
       type B0 = SelectionSet.Aux[selection.value.ResultTypeRepr, A]
       val b: B0 = selection.value
 
-      Read.Select(Selection[F, A1, B0](b), table, true, Nil)
+      Read.Select(Selection[F, A1, B0](b), Some(table), true, Nil)
+    }
+  }
+  object SelectBuilder {
+    implicit def noTable[F, A >: Any, B <: SelectionSet[A]](
+      selectBuilder: SelectBuilder[F, A, B]
+    ): Read.Select[F, selectBuilder.selection.value.ResultTypeRepr, A] = {
+      type B0 = SelectionSet.Aux[selectBuilder.selection.value.ResultTypeRepr, A]
+      val b: B0 = selectBuilder.selection.value
+      Read.Select(Selection[F, A, B0](b), None, true, Nil)
     }
   }
 
@@ -225,7 +234,7 @@ trait SelectModule { self: ExprModule with TableModule =>
 
     sealed case class Select[F, Repr, A](
       selection: Selection[F, A, SelectionSet.Aux[Repr, A]],
-      table: Table.Aux[A],
+      table: Option[Table.Aux[A]],
       whereExpr: Expr[_, A, Boolean],
       groupBy: List[Expr[_, A, Any]],
       havingExpr: Expr[_, A, Boolean] = true,

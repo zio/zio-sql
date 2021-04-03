@@ -138,8 +138,10 @@ trait MysqlModule extends Jdbc { self =>
 
           builder.append("SELECT ")
           buildSelection(selection.value)
-          builder.append(" FROM ")
-          buildTable(table)
+          table.foreach { t =>
+            builder.append(" FROM ")
+            buildTable(t)
+          }
           whereExpr match {
             case Expr.Literal(true) => ()
             case _                  =>

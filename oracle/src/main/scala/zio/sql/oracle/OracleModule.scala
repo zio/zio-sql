@@ -135,8 +135,10 @@ trait OracleModule extends Jdbc { self =>
 
         builder.append("SELECT ")
         buildSelection(selection.value, builder)
-        builder.append(" FROM ")
-        buildTable(table, builder)
+        table.foreach { t =>
+          builder.append(" FROM ")
+          buildTable(t, builder)
+        }
         whereExpr match {
           case Expr.Literal(true) => ()
           case _                  =>
