@@ -10,7 +10,7 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
   import FunctionDef._
   import MysqlFunctionDef._
 
-  override def specLayered = suite("Mysql FunctionDef")(
+  override def specLayered = suite("MySQL FunctionDef")(
     testM("lower") {
       val query = select(Lower(fName)) from customers limit (1)
 
