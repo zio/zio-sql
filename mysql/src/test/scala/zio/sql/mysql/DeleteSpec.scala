@@ -4,7 +4,7 @@ import zio.Cause
 import zio.test.Assertion._
 import zio.test._
 
-object DeleteSpec extends PostgresRunnableSpec with ShopSchema {
+object DeleteSpec extends MysqlRunnableSpec with ShopSchema {
 
   import Customers._
 
