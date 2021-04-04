@@ -8,7 +8,7 @@ object DeleteSpec extends MysqlRunnableSpec with ShopSchema {
 
   import Customers._
 
-  override def specLayered = suite("Postgres module delete")(
+  override def specLayered = suite("MySQL module delete")(
     testM("Can delete from single table with a condition") {
       val query = deleteFrom(customers).where(verified.isNotTrue)
 
