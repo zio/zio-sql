@@ -1,4 +1,4 @@
-package zio.sql.mysql
+package zio.sql.postgresql
 
 import zio.Cause
 import zio.test.Assertion._

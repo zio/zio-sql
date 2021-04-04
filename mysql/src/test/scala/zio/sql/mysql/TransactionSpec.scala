@@ -6,7 +6,6 @@ import zio._
 import zio.test.Assertion._
 import zio.test._
 import zio.test.TestAspect.sequential
-import zio.sql.mysql.MysqlRunnableSpec
 
 object TransactionSpec extends MysqlRunnableSpec with ShopSchema {
 
