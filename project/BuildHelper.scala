@@ -192,7 +192,7 @@ object BuildHelper {
         Seq(
           ("com.github.ghik"                % "silencer-lib"            % SilencerVersion % Provided).cross(CrossVersion.full),
           compilerPlugin(("com.github.ghik" % "silencer-plugin"         % SilencerVersion).cross(CrossVersion.full)),
-          "org.scala-lang.modules"         %% "scala-collection-compat" % "2.4.2"
+          "org.scala-lang.modules"         %% "scala-collection-compat" % "2.4.3"
         )
     },
     parallelExecution in Test := true,
