@@ -11,7 +11,7 @@ object TransactionSpec extends MysqlRunnableSpec with ShopSchema {
 
   import Customers._
 
-  override def specLayered = suite("Postgres module")(
+  override def specLayered = suite("MySQL module")(
     testM("Transaction is returning the last value") {
       val query = select(customerId) from customers
 
