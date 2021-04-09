@@ -1195,13 +1195,19 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
         t4 <- assertM(runTest(Timestampz(2020, 11, 22, 2, 10, 25, "+07:00")))(equalTo(expectedRoundTripTimestamp))
         t5 <- assertM(runTest(Timestampz(2020, 11, 21, 12, 10, 25, "-07:00")))(equalTo(expectedRoundTripTimestamp))
       } yield t1 && t2 && t3 && t4 && t5).mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("cannot compile a select without from clause if a table source is required") {
+      //the following execute only compiles with 'from customers' clause
+      execute((select(CharLength(Customers.fName)) from customers).to[Int, Int](identity))
+
+      // imports for Left and Right are necessary to make the typeCheck macro expansion compile
+      // TODO: clean this up when https://github.com/zio/zio/issues/4927 is resolved
+      import scala.util.Right
+      import scala.util.Left
+      val dummyUsage = zio.ZIO.succeed((Left(()), Right(())))
+
+      val result = typeCheck("execute((select(CharLength(Customers.fName))).to[Int, Int](identity))")
+      assertM(dummyUsage *> result)(isLeft)
     }
-    // TODO: make typeCheck(String) compile
-//    testM("cannot compile a select without from clause if a table source is required") {
-//      //the following execute only compiles with 'from customers' clause
-//      execute((select(CharLength(Customers.fName)) from customers).to[Int, Int](identity))
-//      val result = typeCheck("execute((select(CharLength(Customers.fName))).to[Int, Int](identity))")
-//      assertM(result)(isLeft)
-//    }
   ) @@ timeout(5.minutes)
 }
