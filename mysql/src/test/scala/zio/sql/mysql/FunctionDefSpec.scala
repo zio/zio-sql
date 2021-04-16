@@ -8,10 +8,11 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
   import Customers._
   import FunctionDef._
+  import MysqlFunctionDef._
 
-  override def specLayered = suite("Mysql FunctionDef")(
+  override def specLayered = suite("MySQL FunctionDef")(
     testM("lower") {
-      val query = select(Lower("first_name")) from customers limit (1)
+      val query = select(Lower(fName)) from customers limit (1)
 
       val expected = "ronald"
 
@@ -40,6 +41,71 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
       val query = select(Abs(-32.0)) from customers
 
       val expected = 32.0
+
+      val testResult = execute(query.to[Double, Double](identity))
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("crc32") {
+      val query = select(Crc32("MySQL")) from customers
+
+      val expected = 3259397556L
+
+      val testResult = execute(query.to[Long, Long](identity))
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("degrees") {
+      val query = select(Degrees(Math.PI)) from customers
+
+      val expected = 180d
+
+      val testResult = execute(query.to[Double, Double](identity))
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("log2") {
+      val query = select(Log2(8d)) from customers
+
+      val expected = 3d
+
+      val testResult = execute(query.to[Double, Double](identity))
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("log10") {
+      val query = select(Log10(1000000d)) from customers
+
+      val expected = 6d
+
+      val testResult = execute(query.to[Double, Double](identity))
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("pi") {
+      val query = select(Pi) from customers
+
+      val expected = 3.141593d
 
       val testResult = execute(query.to[Double, Double](identity))
 
