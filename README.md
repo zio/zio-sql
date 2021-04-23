@@ -1,5 +1,42 @@
 # ZIO SQL
 
+| CI | Discord |
+| --- | --- |
+| ![CI][badge-ci] | [![badge-discord]][link-discord] |
+
+## Current status: pre-0.1 (no release yet)
+
+### Progress report towards 0.1
+
+:heavy_check_mark: - good to go
+
+:white_check_mark: - some more work needed
+
+#### General features:
+Feature | Progress
+:------------ | :-------------
+Type-safe schema | :heavy_check_mark:
+Type-safe DSL | :white_check_mark:
+Running Reads | :heavy_check_mark:
+Running Deletes | :heavy_check_mark:
+Running Updates | :heavy_check_mark:
+Running Inserts | 
+Transactions | :white_check_mark:
+Connection pool | :white_check_mark:
+
+#### Db-specific features:
+
+Feature | PostgreSQL | SQL Server | Oracle | MySQL
+:------------ | :-------------| :-------------| :-------------| :-------------
+Render Read | :white_check_mark: | :white_check_mark: | | :white_check_mark: |
+Render Delete | :white_check_mark: | | | :white_check_mark: | 
+Render Update | :white_check_mark: | | | :white_check_mark: |
+Render Insert | | | |
+Functions     | :white_check_mark: | | | :white_check_mark: |
+Types         | | | |
+Operators     | | | |
+
+## What is ZIO SQL?
 ZIO SQL lets you write type-safe, type-inferred, and composable SQL queries in ordinary Scala, helping you prevent persistence bugs before they happen, and leverage your IDE to make writing SQL productive, safe, and fun. 
 
  * **Type-safety**. ZIO SQL queries are type-safe by construction. Most classes of bugs can be detected at compile-time, shortening your feedback loop and helping you use your IDE to write correct queries.
@@ -15,6 +52,25 @@ For the JDBC module:
  - Like Doobie, ZIO SQL is purely functional, but ZIO SQL does compile-time query validation that catches most issues, and has rich ZIO integration, offering improved type-safety compared to monofunctor effects and minimal dependencies (depending only on ZIO).
 
 ZIO SQL does not offer Language Integrated Queries (LINQ) or similar functionality. It is intended only as a data model for representing SQL queries and an accompanying lightweight JDBC-based executor.
+
+[badge-ci]: https://github.com/zio/zio-sql/workflows/CI/badge.svg
+[badge-discord]: https://img.shields.io/discord/629491597070827530?logo=discord "chat on discord"
+[link-discord]: https://discord.gg/2ccFBr4 "Discord"
+
+## Setup
+Prerequisites (installed):
+
+ | Technology   |   Version        |  
+ | ------------ | ---------------- |
+ | sbt          |    1.4.3         |
+ | Docker       |    3.1           |
+ 
+To set up the project follow below steps:
+1. Fork the repository.
+2. Setup the upstream (Extended instructions can be followed [here](https://docs.github.com/en/free-pro-team@latest/github/getting-started-with-github/fork-a-repo)).
+3. Make sure you have installed `sbt` and `Docker`.
+4. In project directory execute `sbt test`.
+5. Pick up an issue & you are ready to go!
 
 If you want to learn more, please check out:
 
