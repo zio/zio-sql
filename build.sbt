@@ -24,8 +24,8 @@ addCommandAlias("fmtOnce", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("fmt", "fmtOnce;fmtOnce")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
-val zioVersion                 = "1.0.5"
-val testcontainersVersion      = "1.15.2"
+val zioVersion                 = "1.0.7"
+val testcontainersVersion      = "1.15.3"
 val testcontainersScalaVersion = "0.39.3"
 
 lazy val startPostgres = taskKey[Unit]("Start up Postgres")
@@ -55,7 +55,7 @@ stopOracle := stopService(Database.Oracle, streams.value)
 lazy val root = project
   .in(file("."))
   .settings(
-    skip in publish := true,
+    publish / skip := true,
     unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
   )
   .aggregate(
@@ -96,7 +96,7 @@ lazy val coreJVM = core.jvm
 lazy val docs = project
   .in(file("zio-sql-docs"))
   .settings(
-    skip.in(publish) := true,
+    publish / skip := true,
     moduleName := "zio-sql-docs",
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
@@ -111,7 +111,7 @@ lazy val examples = project
   .in(file("examples"))
   .settings(stdSettings("examples"))
   .settings(
-    skip in publish := true,
+    publish / skip := true,
     moduleName := "examples"
   )
   .settings(dottySettings)
@@ -160,7 +160,7 @@ lazy val mysql = project
       "org.testcontainers" % "database-commons"           % testcontainersVersion      % Test,
       "org.testcontainers" % "jdbc"                       % testcontainersVersion      % Test,
       "org.testcontainers" % "mysql"                      % testcontainersVersion      % Test,
-      "mysql"              % "mysql-connector-java"       % "8.0.23"                   % Test,
+      "mysql"              % "mysql-connector-java"       % "8.0.24"                   % Test,
       "com.dimafeng"      %% "testcontainers-scala-mysql" % testcontainersScalaVersion % Test
     )
   )
@@ -174,15 +174,15 @@ lazy val oracle = project
   .settings(buildInfoSettings("zio.sql.oracle"))
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio"                 %% "zio"                            % zioVersion,
-      "dev.zio"                 %% "zio-test"                       % zioVersion                 % "test",
-      "dev.zio"                 %% "zio-test-sbt"                   % zioVersion                 % "test",
-      "org.testcontainers"       % "testcontainers"                 % testcontainersVersion      % Test,
-      "org.testcontainers"       % "database-commons"               % testcontainersVersion      % Test,
-      "org.testcontainers"       % "oracle-xe"                      % testcontainersVersion      % Test,
-      "org.testcontainers"       % "jdbc"                           % testcontainersVersion      % Test,
-      "com.oracle.database.jdbc" % "ojdbc8"                         % "21.1.0.0"                 % Test,
-      "com.dimafeng"            %% "testcontainers-scala-oracle-xe" % testcontainersScalaVersion % Test
+      "dev.zio"                 %% "zio"                                 % zioVersion,
+      "dev.zio"                 %% "zio-test"                            % zioVersion                 % "test",
+      "dev.zio"                 %% "zio-test-sbt"                        % zioVersion                 % "test",
+      "org.testcontainers"       % "testcontainers"                      % testcontainersVersion      % Test,
+      "org.testcontainers"       % "database-commons"                    % testcontainersVersion      % Test,
+      "org.testcontainers"       % "oracle-xe"                           % testcontainersVersion      % Test,
+      "org.testcontainers"       % "jdbc"                                % testcontainersVersion      % Test,
+      "com.oracle.database.jdbc" % "ojdbc8"                              % "21.1.0.0"                 % Test,
+      "com.dimafeng"             % "testcontainers-scala-oracle-xe_2.13" % testcontainersScalaVersion % Test
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
@@ -202,7 +202,7 @@ lazy val postgres = project
       "org.testcontainers" % "database-commons"                % testcontainersVersion      % Test,
       "org.testcontainers" % "postgresql"                      % testcontainersVersion      % Test,
       "org.testcontainers" % "jdbc"                            % testcontainersVersion      % Test,
-      "org.postgresql"     % "postgresql"                      % "42.2.19"                  % Compile,
+      "org.postgresql"     % "postgresql"                      % "42.2.20"                  % Compile,
       "com.dimafeng"      %% "testcontainers-scala-postgresql" % testcontainersScalaVersion % Test
     )
   )
@@ -234,7 +234,7 @@ lazy val test = project
   .settings(stdSettings("zio-sql-test"))
   .settings(buildInfoSettings("zio.sql.test"))
   .settings(
-    skip in publish := true,
+    publish / skip := true,
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio"          % zioVersion,
       "dev.zio" %% "zio-test"     % zioVersion % "test",
