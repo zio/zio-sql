@@ -55,7 +55,7 @@ stopOracle := stopService(Database.Oracle, streams.value)
 lazy val root = project
   .in(file("."))
   .settings(
-    skip in publish := true,
+    publish / skip := true,
     unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
   )
   .aggregate(
@@ -96,7 +96,7 @@ lazy val coreJVM = core.jvm
 lazy val docs = project
   .in(file("zio-sql-docs"))
   .settings(
-    skip.in(publish) := true,
+    publish / skip := true,
     moduleName := "zio-sql-docs",
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
@@ -111,7 +111,7 @@ lazy val examples = project
   .in(file("examples"))
   .settings(stdSettings("examples"))
   .settings(
-    skip in publish := true,
+    publish / skip := true,
     moduleName := "examples"
   )
   .settings(dottySettings)
@@ -174,15 +174,15 @@ lazy val oracle = project
   .settings(buildInfoSettings("zio.sql.oracle"))
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio"                 %% "zio"                            % zioVersion,
-      "dev.zio"                 %% "zio-test"                       % zioVersion                 % "test",
-      "dev.zio"                 %% "zio-test-sbt"                   % zioVersion                 % "test",
-      "org.testcontainers"       % "testcontainers"                 % testcontainersVersion      % Test,
-      "org.testcontainers"       % "database-commons"               % testcontainersVersion      % Test,
-      "org.testcontainers"       % "oracle-xe"                      % testcontainersVersion      % Test,
-      "org.testcontainers"       % "jdbc"                           % testcontainersVersion      % Test,
-      "com.oracle.database.jdbc" % "ojdbc8"                         % "21.1.0.0"                 % Test,
-      "com.dimafeng"            %% "testcontainers-scala-oracle-xe" % testcontainersScalaVersion % Test
+      "dev.zio"                 %% "zio"                                 % zioVersion,
+      "dev.zio"                 %% "zio-test"                            % zioVersion                 % "test",
+      "dev.zio"                 %% "zio-test-sbt"                        % zioVersion                 % "test",
+      "org.testcontainers"       % "testcontainers"                      % testcontainersVersion      % Test,
+      "org.testcontainers"       % "database-commons"                    % testcontainersVersion      % Test,
+      "org.testcontainers"       % "oracle-xe"                           % testcontainersVersion      % Test,
+      "org.testcontainers"       % "jdbc"                                % testcontainersVersion      % Test,
+      "com.oracle.database.jdbc" % "ojdbc8"                              % "21.1.0.0"                 % Test,
+      "com.dimafeng"             % "testcontainers-scala-oracle-xe_2.13" % testcontainersScalaVersion % Test
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
@@ -234,7 +234,7 @@ lazy val test = project
   .settings(stdSettings("zio-sql-test"))
   .settings(buildInfoSettings("zio.sql.test"))
   .settings(
-    skip in publish := true,
+    publish / skip := true,
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio"          % zioVersion,
       "dev.zio" %% "zio-test"     % zioVersion % "test",
