@@ -5,7 +5,6 @@ import explicitdeps.ExplicitDepsPlugin.autoImport._
 import sbtcrossproject.CrossPlugin.autoImport._
 import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 import sbtbuildinfo._
-import dotty.tools.sbtplugin.DottyPlugin.autoImport._
 import BuildInfoKeys._
 import scalafix.sbt.ScalafixPlugin.autoImport.scalafixSemanticdb
 
@@ -13,7 +12,7 @@ object BuildHelper {
   val SilencerVersion = "1.7.3"
   val Scala212        = "2.12.13"
   val Scala213        = "2.13.5"
-  val DottyVersion    = "0.27.0-RC1"
+  val ScalaDotty      = "3.0.0-RC2"
 
   def buildInfoSettings(packageName: String) =
     Seq(
@@ -27,7 +26,8 @@ object BuildHelper {
     "-encoding",
     "UTF-8",
     "-feature",
-    "-unchecked"
+    "-unchecked",
+    "-Xfatal-warnings"
   )
 
   private val std2xOptions = Seq(
@@ -37,8 +37,7 @@ object BuildHelper {
     "-Yrangepos",
     "-Xlint:_,-missing-interpolator,-type-parameter-shadow",
     "-Ywarn-numeric-widen",
-    "-Ywarn-value-discard",
-    "-Xfatal-warnings"
+    "-Ywarn-value-discard"
   )
 
   private def propertyFlag(property: String, default: Boolean) =
@@ -61,13 +60,7 @@ object BuildHelper {
         )
       case Some((2, 13)) =>
         Seq(
-          "-Wunused:imports",
-          "-Wvalue-discard",
-          "-Wunused:patvars",
-          "-Wunused:privates",
-          "-Wunused:params",
-          "-Wvalue-discard",
-          "-Wdead-code"
+          "-Ywarn-unused:params,-implicits"
         ) ++ std2xOptions ++ optimizerOptions(optimize)
       case Some((2, 12)) =>
         Seq(
@@ -87,21 +80,6 @@ object BuildHelper {
           "-Xmax-classfile-name",
           "242"
         ) ++ std2xOptions ++ optimizerOptions(optimize)
-      case Some((2, 11)) =>
-        Seq(
-          "-Ypartial-unification",
-          "-Yno-adapted-args",
-          "-Ywarn-inaccessible",
-          "-Ywarn-infer-any",
-          "-Ywarn-nullary-override",
-          "-Ywarn-nullary-unit",
-          "-Xexperimental",
-          "-Ywarn-unused-import",
-          "-Xfuture",
-          "-Xsource:2.13",
-          "-Xmax-classfile-name",
-          "242"
-        ) ++ std2xOptions
       case _             => Seq.empty
     }
 
@@ -110,37 +88,39 @@ object BuildHelper {
       baseDirectory.getParentFile / platform.toLowerCase / "src" / conf / version
     }.filter(_.exists)
 
-  def crossPlatformSources(scalaVer: String, platform: String, conf: String, baseDir: File, isDotty: Boolean) =
-    CrossVersion.partialVersion(scalaVer) match {
-      case Some((2, x)) if x >= 12 =>
-        platformSpecificSources(platform, conf, baseDir)("2.12+", "2.12", "2.x")
-      case _ if isDotty            =>
-        platformSpecificSources(platform, conf, baseDir)("2.12+", "dotty")
+  def crossPlatformSources(scalaVer: String, platform: String, conf: String, baseDir: File) = {
+    val versions = CrossVersion.partialVersion(scalaVer) match {
+      case Some((2, 12)) =>
+        List("2.12", "2.11+", "2.12+", "2.11-2.12", "2.12-2.13", "2.x")
+      case Some((2, 13)) =>
+        List("2.13", "2.11+", "2.12+", "2.13+", "2.12-2.13", "2.x")
+      case Some((3, 0)) =>
+        List("dotty", "2.11+", "2.12+", "2.13+", "3.x")
       case _                       =>
         Nil
     }
+    platformSpecificSources(platform, conf, baseDir)(versions: _*)
+  }
 
   val dottySettings = Seq(
-    // Keep this consistent with the version in .circleci/config.yml
-    crossScalaVersions += DottyVersion,
+    crossScalaVersions += ScalaDotty,
     scalacOptions ++= {
-      if (isDotty.value)
+      if (scalaVersion.value == ScalaDotty)
         Seq("-noindent")
       else
         Seq()
     },
-    libraryDependencies := libraryDependencies.value.map(_.withDottyCompat(scalaVersion.value)),
-    sources in (Compile, doc) := {
+    Compile / doc / sources := {
       val old = (Compile / doc / sources).value
-      if (isDotty.value) {
+      if (scalaVersion.value == ScalaDotty) {
         Nil
       } else {
         old
       }
     },
-    parallelExecution in Test := {
+    Test / parallelExecution := {
       val old = (Test / parallelExecution).value
-      if (isDotty.value) {
+      if (scalaVersion.value == ScalaDotty) {
         false
       } else {
         old
@@ -150,10 +130,10 @@ object BuildHelper {
 
   val scalaReflectSettings = Seq(
     libraryDependencies ++=
-      (if (isDotty.value) Seq()
+      (if (scalaVersion.value == ScalaDotty) Seq()
        else
          Seq(
-           "dev.zio" %%% "izumi-reflect" % "0.12.0-M0"
+           "dev.zio" %%% "izumi-reflect" % "1.1.0"
          ))
   )
 
@@ -162,17 +142,15 @@ object BuildHelper {
       val platform = crossProjectPlatform.value.identifier
       val baseDir  = baseDirectory.value
       val scalaVer = scalaVersion.value
-      val isDot    = isDotty.value
 
-      crossPlatformSources(scalaVer, platform, "main", baseDir, isDot)
+      crossPlatformSources(scalaVer, platform, "main", baseDir)
     },
     Test / unmanagedSourceDirectories ++= {
       val platform = crossProjectPlatform.value.identifier
       val baseDir  = baseDirectory.value
       val scalaVer = scalaVersion.value
-      val isDot    = isDotty.value
 
-      crossPlatformSources(scalaVer, platform, "test", baseDir, isDot)
+      crossPlatformSources(scalaVer, platform, "test", baseDir)
     }
   )
 
@@ -180,68 +158,23 @@ object BuildHelper {
     name := s"$prjName",
     scalacOptions := stdOptions,
     crossScalaVersions := Seq(Scala213, Scala212),
-    scalaVersion in ThisBuild := crossScalaVersions.value.head,
+    ThisBuild / scalaVersion := Scala213,//ScalaDotty,
     scalacOptions := stdOptions ++ extraOptions(scalaVersion.value, optimize = !isSnapshot.value),
     libraryDependencies ++= {
-      if (isDotty.value)
+      if (scalaVersion.value == ScalaDotty)
         Seq(
-          ("com.github.ghik" % s"silencer-lib_2.13.3" % "1.7.3" % Provided)
-            .withDottyCompat(scalaVersion.value)
+          "com.github.ghik" % s"silencer-lib_2.13.5" % "1.7.3" % Provided
         )
       else
         Seq(
           ("com.github.ghik"                % "silencer-lib"            % SilencerVersion % Provided).cross(CrossVersion.full),
-          compilerPlugin(("com.github.ghik" % "silencer-plugin"         % SilencerVersion).cross(CrossVersion.full)),
-          "org.scala-lang.modules"         %% "scala-collection-compat" % "2.4.3"
+          compilerPlugin(("com.github.ghik" % "silencer-plugin"         % SilencerVersion).cross(CrossVersion.full))
         )
     },
-    parallelExecution in Test := true,
+    Test / parallelExecution := true,
     incOptions ~= (_.withLogRecompileOnMacro(false)),
     autoAPIMappings := true,
     unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library"),
-    Compile / unmanagedSourceDirectories ++= {
-      CrossVersion.partialVersion(scalaVersion.value) match {
-        case Some((2, x)) if x >= 12 =>
-          Seq(
-            Seq(file(sourceDirectory.value.getPath + "/main/scala-2.12")),
-            Seq(file(sourceDirectory.value.getPath + "/main/scala-2.12+")),
-            CrossType.Full.sharedSrcDir(baseDirectory.value, "main").toList.map(f => file(f.getPath + "-2.12+")),
-            CrossType.Full.sharedSrcDir(baseDirectory.value, "test").toList.map(f => file(f.getPath + "-2.12+")),
-            CrossType.Full.sharedSrcDir(baseDirectory.value, "main").toList.map(f => file(f.getPath + "-2.x")),
-            CrossType.Full.sharedSrcDir(baseDirectory.value, "main").toList.map(f => file(f.getPath + "-2.12-2.13"))
-          ).flatten
-        case _                       =>
-          if (isDotty.value)
-            Seq(
-              Seq(file(sourceDirectory.value.getPath + "/main/scala-2.12")),
-              Seq(file(sourceDirectory.value.getPath + "/main/scala-2.12+")),
-              CrossType.Full.sharedSrcDir(baseDirectory.value, "main").toList.map(f => file(f.getPath + "-2.12+")),
-              CrossType.Full.sharedSrcDir(baseDirectory.value, "test").toList.map(f => file(f.getPath + "-2.12+")),
-              CrossType.Full.sharedSrcDir(baseDirectory.value, "main").toList.map(f => file(f.getPath + "-dotty"))
-            ).flatten
-          else
-            Nil
-      }
-    },
-    Test / unmanagedSourceDirectories ++= {
-      CrossVersion.partialVersion(scalaVersion.value) match {
-        case Some((2, x)) if x >= 12 =>
-          Seq(
-            Seq(file(sourceDirectory.value.getPath + "/test/scala-2.12")),
-            Seq(file(sourceDirectory.value.getPath + "/test/scala-2.12+")),
-            CrossType.Full.sharedSrcDir(baseDirectory.value, "test").toList.map(f => file(f.getPath + "-2.x"))
-          ).flatten
-        case _                       =>
-          if (isDotty.value)
-            Seq(
-              Seq(file(sourceDirectory.value.getPath + "/test/scala-2.12+")),
-              CrossType.Full.sharedSrcDir(baseDirectory.value, "main").toList.map(f => file(f.getPath + "-2.12+")),
-              CrossType.Full.sharedSrcDir(baseDirectory.value, "test").toList.map(f => file(f.getPath + "-dotty"))
-            ).flatten
-          else
-            Nil
-      }
-    }
   )
 
   def macroExpansionSettings = Seq(
@@ -262,19 +195,14 @@ object BuildHelper {
 
   def macroDefinitionSettings = Seq(
     scalacOptions += "-language:experimental.macros",
-    libraryDependencies ++=
-      Seq("org.portable-scala" %%% "portable-scala-reflect" % "1.0.0") ++ {
-        if (isDotty.value) Seq()
-        else
-          Seq(
-            "org.scala-lang" % "scala-reflect"  % scalaVersion.value % "provided",
-            "org.scala-lang" % "scala-compiler" % scalaVersion.value % "provided"
-          )
-      }
-  )
-
-  def testJsSettings = Seq(
-    libraryDependencies += "io.github.cquiroz" %%% "scala-java-time" % "2.0.0-RC5" % Test
+    libraryDependencies ++= {
+      if (scalaVersion.value == ScalaDotty) Seq()
+      else
+        Seq(
+          "org.scala-lang" % "scala-reflect"  % scalaVersion.value % "provided",
+          "org.scala-lang" % "scala-compiler" % scalaVersion.value % "provided"
+        )
+    }
   )
 
   implicit class ModuleHelper(p: Project) {
