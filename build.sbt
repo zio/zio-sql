@@ -61,7 +61,7 @@ lazy val root = project
   .aggregate(
     coreJVM,
     coreJS,
-    //docs,
+    docs,
     driver,
     examples,
     jdbc,
@@ -93,19 +93,19 @@ lazy val coreJS = core.js
 lazy val coreJVM = core.jvm
   .settings(dottySettings)
 
-// lazy val docs = project
-//   .in(file("zio-sql-docs"))
-//   .settings(
-//     publish / skip := true,
-//     moduleName := "zio-sql-docs",
-//     scalacOptions -= "-Yno-imports",
-//     scalacOptions -= "-Xfatal-warnings",
-//     libraryDependencies ++= Seq(
-//       "dev.zio" %% "zio" % zioVersion
-//     )
-//   )
-//   .dependsOn(coreJVM)
-//   .enablePlugins(MdocPlugin, DocusaurusPlugin)
+lazy val docs = project
+  .in(file("zio-sql-docs"))
+  .settings(
+    publish / skip := true,
+    moduleName := "zio-sql-docs",
+    scalacOptions -= "-Yno-imports",
+    scalacOptions -= "-Xfatal-warnings",
+    libraryDependencies ++= Seq(
+      "dev.zio" %% "zio" % zioVersion
+    )
+  )
+  .dependsOn(coreJVM)
+  .enablePlugins(MdocPlugin, DocusaurusPlugin)
 
 lazy val examples = project
   .in(file("examples"))
