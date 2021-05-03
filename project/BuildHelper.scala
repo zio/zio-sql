@@ -12,7 +12,7 @@ object BuildHelper {
   val SilencerVersion = "1.7.3"
   val Scala212        = "2.12.13"
   val Scala213        = "2.13.5"
-  val ScalaDotty      = "3.0.0-RC2"
+  val ScalaDotty      = "3.0.0-RC3"
 
   def buildInfoSettings(packageName: String) =
     Seq(
@@ -167,8 +167,8 @@ object BuildHelper {
         )
       else
         Seq(
-          ("com.github.ghik"                % "silencer-lib"            % SilencerVersion % Provided).cross(CrossVersion.full),
-          compilerPlugin(("com.github.ghik" % "silencer-plugin"         % SilencerVersion).cross(CrossVersion.full))
+          ("com.github.ghik"                % "silencer-lib"    % SilencerVersion % Provided).cross(CrossVersion.full),
+          compilerPlugin(("com.github.ghik" % "silencer-plugin" % SilencerVersion).cross(CrossVersion.full))
         )
     },
     Test / parallelExecution := true,
