@@ -94,9 +94,9 @@ object BuildHelper {
         List("2.12", "2.11+", "2.12+", "2.11-2.12", "2.12-2.13", "2.x")
       case Some((2, 13)) =>
         List("2.13", "2.11+", "2.12+", "2.13+", "2.12-2.13", "2.x")
-      case Some((3, 0)) =>
+      case Some((3, 0))  =>
         List("dotty", "2.11+", "2.12+", "2.13+", "3.x")
-      case _                       =>
+      case _             =>
         Nil
     }
     platformSpecificSources(platform, conf, baseDir)(versions: _*)
@@ -158,23 +158,23 @@ object BuildHelper {
     name := s"$prjName",
     scalacOptions := stdOptions,
     crossScalaVersions := Seq(Scala213, Scala212),
-    ThisBuild / scalaVersion := Scala213,//ScalaDotty,
+    ThisBuild / scalaVersion := Scala213, //ScalaDotty,
     scalacOptions := stdOptions ++ extraOptions(scalaVersion.value, optimize = !isSnapshot.value),
     libraryDependencies ++= {
       if (scalaVersion.value == ScalaDotty)
         Seq(
-          "com.github.ghik" % s"silencer-lib_2.13.5" % "1.7.3" % Provided
+          "com.github.ghik"                 % s"silencer-lib_2.13.5" % "1.7.3"         % Provided
         )
       else
         Seq(
-          ("com.github.ghik"                % "silencer-lib"    % SilencerVersion % Provided).cross(CrossVersion.full),
-          compilerPlugin(("com.github.ghik" % "silencer-plugin" % SilencerVersion).cross(CrossVersion.full))
+          ("com.github.ghik"                % "silencer-lib"         % SilencerVersion % Provided).cross(CrossVersion.full),
+          compilerPlugin(("com.github.ghik" % "silencer-plugin"      % SilencerVersion).cross(CrossVersion.full))
         )
     },
     Test / parallelExecution := true,
     incOptions ~= (_.withLogRecompileOnMacro(false)),
     autoAPIMappings := true,
-    unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library"),
+    unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
   )
 
   def macroExpansionSettings = Seq(
