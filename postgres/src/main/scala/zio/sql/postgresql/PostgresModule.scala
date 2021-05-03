@@ -227,6 +227,12 @@ trait PostgresModule extends Jdbc { self =>
       FunctionDef[Timestampz, Timestampz](FunctionName("make_timestamptz"))
     val Encode                      = FunctionDef[(Chunk[Byte], String), String](FunctionName("encode"))
     val Decode                      = FunctionDef[(String, String), Chunk[Byte]](FunctionName("decode"))
+    val Format0                     = FunctionDef[String, String](FunctionName("format")) // TODO: varargs
+    val Format1                     = FunctionDef[(String, Any), String](FunctionName("format"))
+    val Format2                     = FunctionDef[(String, Any, Any), String](FunctionName("format"))
+    val Format3                     = FunctionDef[(String, Any, Any, Any), String](FunctionName("format"))
+    val Format4                     = FunctionDef[(String, Any, Any, Any, Any), String](FunctionName("format"))
+    val Format5                     = FunctionDef[(String, Any, Any, Any, Any, Any), String](FunctionName("format"))
   }
 
   override def renderRead(read: self.Read[_]): String = {
