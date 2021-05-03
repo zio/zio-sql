@@ -5,7 +5,7 @@ import java.time._
 import java.util.UUID
 import zio.Chunk
 
-trait TypeTagModule { self: SelectModule =>
+trait TypeTagModule { self: SelectModule with ExprModule with TableModule =>
 
   type TypeTagExtension[+A] <: Tag[A] with Decodable[A]
 
