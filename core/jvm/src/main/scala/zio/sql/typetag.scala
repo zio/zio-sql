@@ -16,10 +16,10 @@ trait TypeTagModule { self: SelectModule with ExprModule with TableModule =>
   trait Tag[+A] {
     private[zio] def cast(a: Any): A = a.asInstanceOf[A]
   }
-  sealed trait TypeTag[+A] extends Tag[A]
+  sealed trait TypeTag[A] extends Tag[A]
 
   object TypeTag {
-    sealed trait NotNull[+A]                                                      extends TypeTag[A]
+    sealed trait NotNull[A]                                                      extends TypeTag[A]
     implicit case object TBigDecimal                                              extends NotNull[BigDecimal]
     implicit case object TBoolean                                                 extends NotNull[Boolean]
     implicit case object TByte                                                    extends NotNull[Byte]
@@ -39,7 +39,7 @@ trait TypeTagModule { self: SelectModule with ExprModule with TableModule =>
     implicit case object TString                                                  extends NotNull[String]
     implicit case object TUUID                                                    extends NotNull[UUID]
     implicit case object TZonedDateTime                                           extends NotNull[ZonedDateTime]
-    sealed case class TDialectSpecific[+A](typeTagExtension: TypeTagExtension[A]) extends NotNull[A]
+    sealed case class TDialectSpecific[A](typeTagExtension: TypeTagExtension[A]) extends NotNull[A]
     sealed case class Nullable[A: NotNull]()                                      extends TypeTag[Option[A]] {
       def typeTag: TypeTag[A] = implicitly[TypeTag[A]]
     }
