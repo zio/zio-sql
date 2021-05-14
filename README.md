@@ -1,8 +1,8 @@
 # ZIO SQL
 
-| CI | Discord |
-| --- | --- |
-| ![CI][badge-ci] | [![badge-discord]][link-discord] |
+| Project Stage | CI | Discord |
+| --- | --- | --- |
+| [![Project stage][Stage]][Stage-Page] | ![CI][badge-ci] | [![badge-discord]][link-discord] |
 
 ## Current status: pre-0.1 (no release yet)
 
@@ -56,6 +56,8 @@ ZIO SQL does not offer Language Integrated Queries (LINQ) or similar functionali
 [badge-ci]: https://github.com/zio/zio-sql/workflows/CI/badge.svg
 [badge-discord]: https://img.shields.io/discord/629491597070827530?logo=discord "chat on discord"
 [link-discord]: https://discord.gg/2ccFBr4 "Discord"
+[Stage]: https://img.shields.io/badge/Project%20Stage-Experimental-yellow.svg
+[Stage-Page]: https://github.com/zio/zio/wiki/Project-Stages
 
 ## Setup
 Prerequisites (installed):
