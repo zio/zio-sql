@@ -11,7 +11,7 @@ import scalafix.sbt.ScalafixPlugin.autoImport.scalafixSemanticdb
 object BuildHelper {
   val SilencerVersion = "1.7.3"
   val Scala212        = "2.12.13"
-  val Scala213        = "2.13.5"
+  val Scala213        = "2.13.6"
   val ScalaDotty      = "3.0.0-RC3"
 
   def buildInfoSettings(packageName: String) =
