@@ -1,224 +1,343 @@
 package zio.sql.mysql
 
-import zio.sql.Jdbc
+import zio.sql.{ Jdbc, Renderer }
+import zio.Chunk
+import java.time.Year
+import java.sql.ResultSet
 
 trait MysqlModule extends Jdbc { self =>
 
+  override type TypeTagExtension[+A] = MysqlSpecific.MysqlTypeTag[A]
+
+  object MysqlSpecific {
+    trait MysqlTypeTag[+A] extends Tag[A] with Decodable[A]
+
+    object MysqlTypeTag {
+      implicit case object TYear extends MysqlTypeTag[Year] {
+        override def decode(column: Either[Int, String], resultSet: ResultSet): Either[DecodingError, Year] =
+          scala.util
+            .Try(Year.of(column.fold(resultSet.getByte(_), resultSet.getByte(_)).toInt))
+            .fold(
+              _ => Left(DecodingError.UnexpectedNull(column)),
+              r => Right(r)
+            )
+      }
+
+    }
+  }
+
   object MysqlFunctionDef {
-    val Sind = FunctionDef[Double, Double](FunctionName("sind"))
+    val Crc32   = FunctionDef[String, Long](FunctionName("crc32"))
+    val Degrees = FunctionDef[Double, Double](FunctionName("degrees"))
+    val Log2    = FunctionDef[Double, Double](FunctionName("log2"))
+    val Log10   = FunctionDef[Double, Double](FunctionName("log10"))
+    val Pi      = Expr.FunctionCall0[Double](FunctionDef[Any, Double](FunctionName("pi")))
   }
 
   override def renderRead(read: self.Read[_]): String = {
-    val builder = new StringBuilder
+    implicit val render: Renderer = Renderer()
+    MysqlRenderModule.renderReadImpl(read)
+    render.toString
+  }
 
-    def buildExpr[A, B](expr: self.Expr[_, A, B]): Unit = expr match {
-      case Expr.Source(tableName, column)                                                       =>
-        val _ = builder.append(tableName).append(".").append(column.name)
-      case Expr.Unary(base, op)                                                                 =>
-        val _ = builder.append(" ").append(op.symbol)
-        buildExpr(base)
-      case Expr.Property(base, op)                                                              =>
-        buildExpr(base)
-        val _ = builder.append(" ").append(op.symbol)
-      case Expr.Binary(left, right, op)                                                         =>
-        buildExpr(left)
-        builder.append(" ").append(op.symbol).append(" ")
-        buildExpr(right)
-      case Expr.Relational(left, right, op)                                                     =>
-        buildExpr(left)
-        builder.append(" ").append(op.symbol).append(" ")
-        buildExpr(right)
-      case Expr.In(value, set)                                                                  =>
-        buildExpr(value)
-        buildReadString(set)
-      case Expr.Literal(value)                                                                  =>
-        val _ = builder.append(value.toString) //todo fix escaping
-      case Expr.AggregationCall(param, aggregation)                                             =>
-        builder.append(aggregation.name.name)
-        builder.append("(")
-        buildExpr(param)
-        val _ = builder.append(")")
-      case Expr.ParenlessFunctionCall0(functionName)                                            =>
-        val _ = builder.append(functionName.name)
-      case Expr.FunctionCall0(function)                                                         =>
-        builder.append(function.name.name)
-        builder.append("(")
-        val _ = builder.append(")")
-      case Expr.FunctionCall1(param, function)                                                  =>
-        builder.append(function.name.name)
-        builder.append("(")
-        buildExpr(param)
-        val _ = builder.append(")")
-      case Expr.FunctionCall2(param1, param2, function)                                         =>
-        builder.append(function.name.name)
-        builder.append("(")
-        buildExpr(param1)
-        builder.append(",")
-        buildExpr(param2)
-        val _ = builder.append(")")
-      case Expr.FunctionCall3(param1, param2, param3, function)                                 =>
-        builder.append(function.name.name)
-        builder.append("(")
-        buildExpr(param1)
-        builder.append(",")
-        buildExpr(param2)
-        builder.append(",")
-        buildExpr(param3)
-        val _ = builder.append(")")
-      case Expr.FunctionCall4(param1, param2, param3, param4, function)                         =>
-        builder.append(function.name.name)
-        builder.append("(")
-        buildExpr(param1)
-        builder.append(",")
-        buildExpr(param2)
-        builder.append(",")
-        buildExpr(param3)
-        builder.append(",")
-        buildExpr(param4)
-        val _ = builder.append(")")
-      case Expr.FunctionCall5(param1, param2, param3, param4, param5, function)                 =>
-        builder.append(function.name.name)
-        builder.append("(")
-        buildExpr(param1)
-        builder.append(",")
-        buildExpr(param2)
-        builder.append(",")
-        buildExpr(param3)
-        builder.append(",")
-        buildExpr(param4)
-        builder.append(",")
-        buildExpr(param5)
-        val _ = builder.append(")")
-      case Expr.FunctionCall6(param1, param2, param3, param4, param5, param6, function)         =>
-        builder.append(function.name.name)
-        builder.append("(")
-        buildExpr(param1)
-        builder.append(",")
-        buildExpr(param2)
-        builder.append(",")
-        buildExpr(param3)
-        builder.append(",")
-        buildExpr(param4)
-        builder.append(",")
-        buildExpr(param5)
-        builder.append(",")
-        buildExpr(param6)
-        val _ = builder.append(")")
-      case Expr.FunctionCall7(param1, param2, param3, param4, param5, param6, param7, function) =>
-        builder.append(function.name.name)
-        builder.append("(")
-        buildExpr(param1)
-        builder.append(",")
-        buildExpr(param2)
-        builder.append(",")
-        buildExpr(param3)
-        builder.append(",")
-        buildExpr(param4)
-        builder.append(",")
-        buildExpr(param5)
-        builder.append(",")
-        buildExpr(param6)
-        builder.append(",")
-        buildExpr(param7)
-        val _ = builder.append(")")
+  override def renderDelete(delete: self.Delete[_]): String = {
+    implicit val render: Renderer = Renderer()
+    MysqlRenderModule.renderDeleteImpl(delete)
+    render.toString
+  }
+
+  override def renderUpdate(update: self.Update[_]): String = {
+    implicit val render: Renderer = Renderer()
+    MysqlRenderModule.renderUpdateImpl(update)
+    render.toString
+  }
+
+  object MysqlRenderModule {
+    def renderDeleteImpl(delete: Delete[_])(implicit render: Renderer) = {
+      render("DELETE FROM ")
+      renderTable(delete.table)
+      delete.whereExpr match {
+        case Expr.Literal(true) => ()
+        case _                  =>
+          render(" WHERE ")
+          renderExpr(delete.whereExpr)
+      }
     }
 
-    def buildReadString(read: self.Read[_]): Unit =
-      read match {
-        case Read.Mapped(read, _) => buildReadString(read)
+    def renderUpdateImpl(update: Update[_])(implicit render: Renderer) =
+      update match {
+        case Update(table, set, whereExpr) =>
+          render("UPDATE ")
+          renderTable(table)
+          render(" SET ")
+          renderSet(set)
+          render(" WHERE ")
+          renderExpr(whereExpr)
+      }
 
+    def renderReadImpl(read: self.Read[_])(implicit render: Renderer): Unit =
+      read match {
+        case Read.Mapped(read, _)                        =>
+          renderReadImpl(read)
         case read0 @ Read.Select(_, _, _, _, _, _, _, _) =>
-          object Dummy {
-            type F
-            type A
-            type B <: SelectionSet[A]
-          }
+          object Dummy { type F; type A; type B <: SelectionSet[A] }
           val read = read0.asInstanceOf[Read.Select[Dummy.F, Dummy.A, Dummy.B]]
           import read._
 
-          builder.append("SELECT ")
-          buildSelection(selection.value)
+          render("SELECT ")
+          renderSelection(selection.value)
           table.foreach { t =>
-            builder.append(" FROM ")
-            buildTable(t)
+            render(" FROM ")
+            renderTable(t)
           }
           whereExpr match {
             case Expr.Literal(true) => ()
             case _                  =>
-              builder.append(" WHERE ")
-              buildExpr(whereExpr)
+              render(" WHERE ")
+              renderExpr(whereExpr)
           }
           groupBy match {
             case _ :: _ =>
-              builder.append(" GROUP BY ")
-              buildExprList(groupBy)
+              render(" GROUP BY ")
+              renderExprList(groupBy)
 
               havingExpr match {
                 case Expr.Literal(true) => ()
                 case _                  =>
-                  builder.append(" HAVING ")
-                  buildExpr(havingExpr)
+                  render(" HAVING ")
+                  renderExpr(havingExpr)
               }
             case Nil    => ()
           }
           orderBy match {
             case _ :: _ =>
-              builder.append(" ORDER BY ")
-              buildOrderingList(orderBy)
+              render(" ORDER BY ")
+              renderOrderingList(orderBy)
             case Nil    => ()
           }
           limit match {
-            case Some(limit) =>
-              builder.append(" LIMIT ").append(limit)
+            case Some(limit) => render(" LIMIT ", limit)
             case None        => ()
           }
           offset match {
-            case Some(offset) =>
-              val _ = builder.append(" OFFSET ").append(offset)
+            case Some(offset) => render(" OFFSET ", offset)
             case None         => ()
           }
 
         case Read.Union(left, right, distinct) =>
-          buildReadString(left)
-          builder.append(" UNION ")
-          if (!distinct) builder.append("ALL ")
-          buildReadString(right)
+          renderReadImpl(left)
+          render(" UNION ")
+          if (!distinct) render("ALL ")
+          renderReadImpl(right)
 
         case Read.Literal(values) =>
-          val _ = builder.append(" (").append(values.mkString(",")).append(") ") //todo fix needs escaping
+          render(" (", values.mkString(","), ") ") //todo fix needs escaping
       }
 
-    def buildExprList(expr: List[Expr[_, _, _]]): Unit               =
-      expr match {
+    private def renderSet(set: List[Set[_, _]])(implicit render: Renderer): Unit =
+      set match {
         case head :: tail =>
-          buildExpr(head)
-          tail match {
-            case _ :: _ =>
-              builder.append(", ")
-              buildExprList(tail)
-            case Nil    => ()
+          renderExpr(head.lhs)
+          render(" = ")
+          renderExpr(head.rhs)
+          tail.foreach { setEq =>
+            render(", ")
+            renderExpr(setEq.lhs)
+            render(" = ")
+            renderExpr(setEq.rhs)
           }
-        case Nil          => ()
-      }
-    def buildOrderingList(expr: List[Ordering[Expr[_, _, _]]]): Unit =
-      expr match {
-        case head :: tail =>
-          head match {
-            case Ordering.Asc(value)  => buildExpr(value)
-            case Ordering.Desc(value) =>
-              buildExpr(value)
-              builder.append(" DESC")
-          }
-          tail match {
-            case _ :: _ =>
-              builder.append(", ")
-              buildOrderingList(tail)
-            case Nil    => ()
-          }
-        case Nil          => ()
+        case Nil          => //TODO restrict Update to not allow empty set
       }
 
-    def buildSelection[A](selectionSet: SelectionSet[A]): Unit =
+    private def renderTable(table: Table)(implicit render: Renderer): Unit =
+      table match {
+        //The outer reference in this type test cannot be checked at run time?!
+        case sourceTable: self.Table.Source          =>
+          render(sourceTable.name)
+        case Table.Joined(joinType, left, right, on) =>
+          renderTable(left)
+          render(joinType match {
+            case JoinType.Inner      => " INNER JOIN "
+            case JoinType.LeftOuter  => " LEFT JOIN "
+            case JoinType.RightOuter => " RIGHT JOIN "
+            case JoinType.FullOuter  => " OUTER JOIN "
+          })
+          renderTable(right)
+          render(" ON ")
+          renderExpr(on)
+          render(" ")
+      }
+
+    private def renderExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
+      case Expr.Source(tableName, column)                                               => render(tableName, ".", column.name)
+      case Expr.Unary(base, op)                                                         =>
+        render(" ", op.symbol)
+        renderExpr(base)
+      case Expr.Property(base, op)                                                      =>
+        renderExpr(base)
+        render(" ", op.symbol)
+      case Expr.Binary(left, right, op)                                                 =>
+        renderExpr(left)
+        render(" ", op.symbol, " ")
+        renderExpr(right)
+      case Expr.Relational(left, right, op)                                             =>
+        renderExpr(left)
+        render(" ", op.symbol, " ")
+        renderExpr(right)
+      case Expr.In(value, set)                                                          =>
+        renderExpr(value)
+        renderReadImpl(set)
+      case lit: Expr.Literal[_]                                                         => renderLit(lit)
+      case Expr.AggregationCall(p, aggregation)                                         =>
+        render(aggregation.name.name, "(")
+        renderExpr(p)
+        render(")")
+      case Expr.ParenlessFunctionCall0(fn)                                              =>
+        val _ = render(fn.name)
+      case Expr.FunctionCall0(fn)                                                       =>
+        render(fn.name.name)
+        render("(")
+        val _ = render(")")
+      case Expr.FunctionCall1(p, fn)                                                    =>
+        render(fn.name.name, "(")
+        renderExpr(p)
+        render(")")
+      case Expr.FunctionCall2(p1, p2, fn)                                               =>
+        render(fn.name.name, "(")
+        renderExpr(p1)
+        render(",")
+        renderExpr(p2)
+        render(")")
+      case Expr.FunctionCall3(p1, p2, p3, fn)                                           =>
+        render(fn.name.name, "(")
+        renderExpr(p1)
+        render(",")
+        renderExpr(p2)
+        render(",")
+        renderExpr(p3)
+        render(")")
+      case Expr.FunctionCall4(p1, p2, p3, p4, fn)                                       =>
+        render(fn.name.name, "(")
+        renderExpr(p1)
+        render(",")
+        renderExpr(p2)
+        render(",")
+        renderExpr(p3)
+        render(",")
+        renderExpr(p4)
+        render(")")
+      case Expr.FunctionCall5(param1, param2, param3, param4, param5, function)         =>
+        render(function.name.name)
+        render("(")
+        renderExpr(param1)
+        render(",")
+        renderExpr(param2)
+        render(",")
+        renderExpr(param3)
+        render(",")
+        renderExpr(param4)
+        render(",")
+        renderExpr(param5)
+        render(")")
+      case Expr.FunctionCall6(param1, param2, param3, param4, param5, param6, function) =>
+        render(function.name.name)
+        render("(")
+        renderExpr(param1)
+        render(",")
+        renderExpr(param2)
+        render(",")
+        renderExpr(param3)
+        render(",")
+        renderExpr(param4)
+        render(",")
+        renderExpr(param5)
+        render(",")
+        renderExpr(param6)
+        render(")")
+      case Expr.FunctionCall7(
+            param1,
+            param2,
+            param3,
+            param4,
+            param5,
+            param6,
+            param7,
+            function
+          ) =>
+        render(function.name.name)
+        render("(")
+        renderExpr(param1)
+        render(",")
+        renderExpr(param2)
+        render(",")
+        renderExpr(param3)
+        render(",")
+        renderExpr(param4)
+        render(",")
+        renderExpr(param5)
+        render(",")
+        renderExpr(param6)
+        render(",")
+        renderExpr(param7)
+        render(")")
+    }
+
+    private def renderLit[A, B](lit: self.Expr.Literal[_])(implicit render: Renderer): Unit = {
+      import MysqlSpecific.MysqlTypeTag._
+      import TypeTag._
+      lit.typeTag match {
+        case TDialectSpecific(tt) =>
+          tt match {
+            case tt @ TYear                       =>
+              render(tt.cast(lit.value))
+            case _: MysqlSpecific.MysqlTypeTag[_] => ???
+          }
+        case TByteArray           =>
+          render(
+            lit.value.asInstanceOf[Chunk[Byte]].map("""\%02X""" format _).mkString("x'", "", "'")
+          ) // todo fix `cast` infers correctly but map doesn't work for some reason
+        case tt @ TChar           =>
+          render("'", tt.cast(lit.value), "'") //todo is this the same as a string? fix escaping
+        case tt @ TInstant        =>
+          render("TIMESTAMP '", tt.cast(lit.value), "'")
+        case tt @ TLocalDate      =>
+          render("DATE '", tt.cast(lit.value), "'")
+        case tt @ TLocalDateTime  =>
+          render("DATE '", tt.cast(lit.value), "'")
+        case tt @ TLocalTime      =>
+          render("TIME '", tt.cast(lit.value), "'")
+        case tt @ TOffsetDateTime =>
+          render("DATE '", tt.cast(lit.value), "'")
+        case tt @ TOffsetTime     =>
+          render("TIME '", tt.cast(lit.value), "'")
+        case tt @ TUUID           =>
+          render("'", tt.cast(lit.value), "'")
+        case tt @ TZonedDateTime  =>
+          render("DATE '", tt.cast(lit.value), "'")
+        case TByte                =>
+          render(lit.value)
+        case TBigDecimal          =>
+          render(lit.value)
+        case TBoolean             =>
+          render(lit.value)
+        case TDouble              =>
+          render(lit.value)
+        case TFloat               =>
+          render(lit.value)
+        case TInt                 =>
+          render(lit.value)
+        case TLong                =>
+          render(lit.value)
+        case TShort               =>
+          render(lit.value)
+        case TString              =>
+          render("'", lit.value, "'") //todo fix escaping
+        case _                    =>
+          render(lit.value) //todo fix add TypeTag.Nullable[_] =>
+      }
+    }
+
+    private def renderSelection[A](selectionSet: SelectionSet[A])(implicit render: Renderer): Unit =
       selectionSet match {
         case cons0 @ SelectionSet.Cons(_, _) =>
           object Dummy {
@@ -228,59 +347,65 @@ trait MysqlModule extends Jdbc { self =>
           }
           val cons = cons0.asInstanceOf[SelectionSet.Cons[Dummy.Source, Dummy.A, Dummy.B]]
           import cons._
-          buildColumnSelection(head)
+          renderColumnSelection(head)
           if (tail != SelectionSet.Empty) {
-            builder.append(", ")
-            buildSelection(tail)
+            render(", ")
+            renderSelection(tail)
           }
         case SelectionSet.Empty              => ()
       }
 
-    def buildColumnSelection[A, B](columnSelection: ColumnSelection[A, B]): Unit =
+    private def renderColumnSelection[A, B](columnSelection: ColumnSelection[A, B])(implicit render: Renderer): Unit =
       columnSelection match {
         case ColumnSelection.Constant(value, name) =>
-          builder.append(value.toString()) //todo fix escaping
+          render(value) //todo fix escaping
           name match {
-            case Some(name) =>
-              val _ = builder.append(" AS ").append(name)
+            case Some(name) => render(" AS ", name)
             case None       => ()
           }
         case ColumnSelection.Computed(expr, name)  =>
-          buildExpr(expr)
+          renderExpr(expr)
           name match {
             case Some(name) =>
               Expr.exprName(expr) match {
-                case Some(sourceName) if name != sourceName =>
-                  val _ = builder.append(" AS ").append(name)
+                case Some(sourceName) if name != sourceName => render(" AS ", name)
                 case _                                      => ()
               }
             case _          => () //todo what do we do if we don't have a name?
           }
       }
-    def buildTable(table: Table): Unit                                           =
-      table match {
-        //The outer reference in this type test cannot be checked at run time?!
-        case sourceTable: self.Table.Source          =>
-          val _ = builder.append(sourceTable.name)
-        case Table.Joined(joinType, left, right, on) =>
-          buildTable(left)
-          builder.append(joinType match {
-            case JoinType.Inner      => " INNER JOIN "
-            case JoinType.LeftOuter  => " LEFT JOIN "
-            case JoinType.RightOuter => " RIGHT JOIN "
-            case JoinType.FullOuter  => " OUTER JOIN "
-          })
-          buildTable(right)
-          builder.append(" ON ")
-          buildExpr(on)
-          val _ = builder.append(" ")
+
+    private def renderExprList(expr: List[Expr[_, _, _]])(implicit render: Renderer): Unit =
+      expr match {
+        case head :: tail =>
+          renderExpr(head)
+          tail match {
+            case _ :: _ =>
+              render(", ")
+              renderExprList(tail)
+            case Nil    => ()
+          }
+        case Nil          => ()
       }
-    buildReadString(read)
-    builder.toString()
+
+    def renderOrderingList(expr: List[Ordering[Expr[_, _, _]]])(implicit render: Renderer): Unit =
+      expr match {
+        case head :: tail =>
+          head match {
+            case Ordering.Asc(value)  =>
+              renderExpr(value)
+            case Ordering.Desc(value) =>
+              renderExpr(value)
+              render(" DESC")
+          }
+          tail match {
+            case _ :: _ =>
+              render(", ")
+              renderOrderingList(tail)
+            case Nil    => ()
+          }
+        case Nil          => ()
+      }
   }
-
-  override def renderDelete(delete: self.Delete[_]): String = ???
-
-  override def renderUpdate(update: self.Update[_]): String = ???
 
 }

@@ -151,7 +151,124 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
         } yield assert(r.head)(equalTo(expected))
 
         assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-      }
+      },
+      suite("format function")(
+        testM("format0") {
+          import Expr._
+
+          val query = select(Format0("Person")) from customers
+
+          val expected = Seq(
+            "Person",
+            "Person",
+            "Person",
+            "Person",
+            "Person"
+          )
+
+          val testResult = execute(query.to[String, String](identity))
+          collectAndCompare(expected, testResult)
+        },
+        testM("format1") {
+          import Expr._
+
+          val query = select(Format1("Person: %s", Customers.fName)) from customers
+
+          val expected = Seq(
+            "Person: Ronald",
+            "Person: Terrence",
+            "Person: Mila",
+            "Person: Alana",
+            "Person: Jose"
+          )
+
+          val testResult = execute(query.to[String, String](identity))
+          collectAndCompare(expected, testResult)
+        },
+        testM("format2") {
+          import Expr._
+
+          val query = select(Format2("Person: %s %s", Customers.fName, Customers.lName)) from customers
+
+          val expected = Seq(
+            "Person: Ronald Russell",
+            "Person: Terrence Noel",
+            "Person: Mila Paterso",
+            "Person: Alana Murray",
+            "Person: Jose Wiggins"
+          )
+
+          val testResult = execute(query.to[String, String](identity))
+          collectAndCompare(expected, testResult)
+        },
+        testM("format3") {
+          import Expr._
+
+          val query = select(
+            Format3("Person: %s %s with double quoted %I ", Customers.fName, Customers.lName, "identi fier")
+          ) from customers
+
+          val expected = Seq(
+            s"""Person: Ronald Russell with double quoted "identi fier" """,
+            s"""Person: Terrence Noel with double quoted "identi fier" """,
+            s"""Person: Mila Paterso with double quoted "identi fier" """,
+            s"""Person: Alana Murray with double quoted "identi fier" """,
+            s"""Person: Jose Wiggins with double quoted "identi fier" """
+          )
+
+          val testResult = execute(query.to[String, String](identity))
+          collectAndCompare(expected, testResult)
+        },
+        testM("format4") {
+          import Expr._
+
+          val query = select(
+            Format4(
+              "Person: %s %s with null-literal %L and non-null-literal %L ",
+              Customers.fName,
+              Customers.lName,
+              "FIXME: NULL",
+              "literal"
+            )
+          ) from customers
+
+          val expected = Seq(
+            s"""Person: Ronald Russell with null-literal 'FIXME: NULL' and non-null-literal 'literal' """,
+            s"""Person: Terrence Noel with null-literal 'FIXME: NULL' and non-null-literal 'literal' """,
+            s"""Person: Mila Paterso with null-literal 'FIXME: NULL' and non-null-literal 'literal' """,
+            s"""Person: Alana Murray with null-literal 'FIXME: NULL' and non-null-literal 'literal' """,
+            s"""Person: Jose Wiggins with null-literal 'FIXME: NULL' and non-null-literal 'literal' """
+          )
+
+          val testResult = execute(query.to[String, String](identity))
+          collectAndCompare(expected, testResult)
+        },
+        testM("format5") {
+          import Expr._
+
+          val query = select(
+            Format5(
+              "Person: %s %s with more arguments than placeholders: %I %L ",
+              Customers.fName,
+              Customers.lName,
+              "identifier",
+              Reverse(Customers.fName),
+              "unused"
+            )
+          ) from customers
+
+          val expected = Seq(
+            s"""Person: Ronald Russell with more arguments than placeholders: identifier 'dlanoR' """,
+            s"""Person: Terrence Noel with more arguments than placeholders: identifier 'ecnerreT' """,
+            s"""Person: Mila Paterso with more arguments than placeholders: identifier 'aliM' """,
+            s"""Person: Alana Murray with more arguments than placeholders: identifier 'analA' """,
+            s"""Person: Jose Wiggins with more arguments than placeholders: identifier 'esoJ' """
+          )
+
+          val testResult = execute(query.to[String, String](identity))
+          collectAndCompare(expected, testResult)
+        }
+      )
     ),
     testM("abs") {
       val query = select(Abs(-3.14159))
@@ -358,7 +475,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
           r <- testResult.runCollect
         } yield assert(r.head)(
           matchesRegex(
-            "[A-Za-z]{3}\\s[A-Za-z]{3}\\s[0-9]{2}\\s(2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9].[0-9]{6}\\s[0-9]{4}\\s[A-Za-z]{3}"
+            "[A-Za-z]{3}\\s[A-Za-z]{3}\\s[0-9]{2}\\s(2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9].[0-9]{6}\\s[0-9]{4}\\s[A-Za-z]{3,4}"
           )
         )
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
