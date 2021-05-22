@@ -455,8 +455,10 @@ trait PostgresModule extends Jdbc { self =>
 
           render("SELECT ")
           renderSelection(selection.value)
-          render(" FROM ")
-          renderTable(table)
+          table.foreach { t =>
+            render(" FROM ")
+            renderTable(t)
+          }
           whereExpr match {
             case Expr.Literal(true) => ()
             case _                  =>
