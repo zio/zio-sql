@@ -9,8 +9,8 @@ import BuildInfoKeys._
 import scalafix.sbt.ScalafixPlugin.autoImport.scalafixSemanticdb
 
 object BuildHelper {
-  val SilencerVersion = "1.7.4"
-  val Scala212        = "2.12.13"
+  val SilencerVersion = "1.7.5"
+  val Scala212        = "2.12.14"
   val Scala213        = "2.13.6"
   val ScalaDotty      = "3.0.0-RC3"
 
@@ -163,7 +163,7 @@ object BuildHelper {
     libraryDependencies ++= {
       if (scalaVersion.value == ScalaDotty)
         Seq(
-          "com.github.ghik"                 % s"silencer-lib_2.13.6" % "1.7.4"         % Provided
+          "com.github.ghik"                 % s"silencer-lib_2.13.6" % "1.7.5"         % Provided
         )
       else
         Seq(
