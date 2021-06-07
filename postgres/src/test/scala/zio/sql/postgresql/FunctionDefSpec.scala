@@ -1119,7 +1119,19 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       } yield assert(r.head)(Assertion.isGreaterThanEqualTo(0d) && Assertion.isLessThanEqualTo(1d))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    } @@ ignore, //todo fix need custom rendering?
+    },
+    testM("setseed") {
+      val query = select(SetSeed(0.12) ++ Random() ++ Random()) from customers
+
+      val randomTupleForSeed = (0.019967750719779076, 0.8378369929936333)
+      val testResult         = execute(query.to[Unit, Double, Double, (Double, Double)]((_, b, c) => (b, c)))
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.take(2))(equalTo(Chunk(randomTupleForSeed, randomTupleForSeed)))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
     testM("Can concat strings with concat function") {
 
       val query = select(Concat(fName, lName) as "fullname") from customers
