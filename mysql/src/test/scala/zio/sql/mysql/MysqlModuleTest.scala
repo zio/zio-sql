@@ -13,7 +13,7 @@ object MysqlModuleTest extends MysqlRunnableSpec with ShopSchema {
   import this.Customers._
   import this.Orders._
 
-  val spec = suite("Mysql module")(
+  override def specLayered = suite("Mysql module")(
     testM("Can select from single table") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
@@ -55,10 +55,12 @@ object MysqlModuleTest extends MysqlRunnableSpec with ShopSchema {
           )
         )
 
-      val testResult = execute(query)
-        .to[UUID, String, String, LocalDate, Customer] { case row =>
-          Customer(row._1, row._2, row._3, row._4)
-        }
+      val testResult = execute(
+        query
+          .to[UUID, String, String, LocalDate, Customer] { case row =>
+            Customer(row._1, row._2, row._3, row._4)
+          }
+      )
 
       val assertion = for {
         r <- testResult.runCollect
@@ -84,10 +86,12 @@ object MysqlModuleTest extends MysqlRunnableSpec with ShopSchema {
           )
         )
 
-      val testResult = execute(query)
-        .to[UUID, String, String, Boolean, LocalDate, Customer] { case row =>
-          Customer(row._1, row._2, row._3, row._4, row._5)
-        }
+      val testResult = execute(
+        query
+          .to[UUID, String, String, Boolean, LocalDate, Customer] { case row =>
+            Customer(row._1, row._2, row._3, row._4, row._5)
+          }
+      )
 
       val assertion = for {
         r <- testResult.runCollect
@@ -112,10 +116,12 @@ object MysqlModuleTest extends MysqlRunnableSpec with ShopSchema {
           )
         )
 
-      val testResult = execute(query)
-        .to[UUID, String, String, LocalDate, Customer] { case row =>
-          Customer(row._1, row._2, row._3, row._4)
-        }
+      val testResult = execute(
+        query
+          .to[UUID, String, String, LocalDate, Customer] { case row =>
+            Customer(row._1, row._2, row._3, row._4)
+          }
+      )
 
       val assertion = for {
         r <- testResult.runCollect
@@ -154,10 +160,12 @@ object MysqlModuleTest extends MysqlRunnableSpec with ShopSchema {
         Row("Jose", "Wiggins", LocalDate.parse("2020-01-15"))
       )
 
-      val result = execute(query)
-        .to[String, String, LocalDate, Row] { case row =>
-          Row(row._1, row._2, row._3)
-        }
+      val result = execute(
+        query
+          .to[String, String, LocalDate, Row] { case row =>
+            Row(row._1, row._2, row._3)
+          }
+      )
 
       val assertion = for {
         r <- result.runCollect
