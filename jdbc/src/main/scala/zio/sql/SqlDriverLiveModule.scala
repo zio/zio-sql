@@ -60,22 +60,24 @@ trait SqlDriverLiveModule { self: Jdbc =>
 
           val statement = conn.createStatement()
 
-          val _ = statement.execute(query) // TODO: Check boolean return value
+          val hasResultSet = statement.execute(query)
 
-          val resultSet = statement.getResultSet()
+          if (hasResultSet) {
+            val resultSet = statement.getResultSet()
 
-          ZStream
-            .unfoldM(resultSet) { rs =>
-              if (rs.next()) {
-                try unsafeExtractRow[read.ResultType](resultSet, schema) match {
-                  case Left(error)  => ZIO.fail(error)
-                  case Right(value) => ZIO.succeed(Some((value, rs)))
-                } catch {
-                  case e: SQLException => ZIO.fail(e)
-                }
-              } else ZIO.succeed(None)
-            }
-            .map(read.mapper)
+            ZStream
+              .unfoldM(resultSet) { rs =>
+                if (rs.next()) {
+                  try unsafeExtractRow[read.ResultType](resultSet, schema) match {
+                    case Left(error)  => ZIO.fail(error)
+                    case Right(value) => ZIO.succeed(Some((value, rs)))
+                  } catch {
+                    case e: SQLException => ZIO.fail(e)
+                  }
+                } else ZIO.succeed(None)
+              }
+              .map(read.mapper)
+          } else ZStream.empty
 
         }.refineToOrDie[Exception]
       }
