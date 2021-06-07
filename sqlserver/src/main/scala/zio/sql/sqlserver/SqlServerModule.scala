@@ -144,8 +144,10 @@ trait SqlServerModule extends Jdbc { self =>
             case None        => ()
           }
           buildSelection(selection.value)
-          builder.append(" from ")
-          buildTable(table)
+          table.foreach { t =>
+            builder.append(" from ")
+            buildTable(t)
+          }
           whereExpr match {
             case Expr.Literal(true) => ()
             case _                  =>
