@@ -13,8 +13,6 @@ trait DbSchema extends Jdbc { self =>
 
     val customerId :*: fName :*: lName :*: verified :*: dob :*: _ =
       customers.columns
-
-    val z = Cons(Column[Int]("1"), Cons(Column[Int]("2"), Empty)).table("whoo")
   }
 
   object Orders {

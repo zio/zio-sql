@@ -2,7 +2,74 @@ package zio.sql.sqlserver
 
 import zio.sql.Jdbc
 
+import scala.language.implicitConversions
+
 trait SqlServerModule extends Jdbc { self =>
+
+  import self.ColumnSet._
+
+  override type TableExtension[+A] = SqlServerSpecific.SqlServerTable[A]
+
+  object SqlServerSpecific {
+    import SqlServerTable._
+
+    sealed trait SqlServerTable[+A] extends Table.TableEx 
+
+    object SqlServerTable {
+
+      sealed case class SelectedTable[F1, F2, Cols, A, B](crossType: CrossType, left: Table.Aux[A], select: Read.Select[F1, Cols, B], expr: Expr[_, A with B, Boolean]) extends SqlServerTable[A with B] { self =>
+
+        def where(whereExpr: Expr[F1 :||: F2, A with B, Boolean]) : SelectedTable[F1, F2, Cols, A, B] = self.copy(expr = whereExpr)
+
+        def columnsUntyped: List[Column.Untyped] = left.columnsUntyped ++ select.table.get.columnsUntyped
+      }
+
+      implicit def tableSourceToSelectedBuilder[ColumnsRepr[_], Cols](table: Table.Source.Aux_[ColumnsRepr, Cols]) : SelectedTableBuilder[ColumnsRepr, Cols] = 
+        new SelectedTableBuilder(table)
+
+      sealed case class SelectedTableBuilder[ColumnsRepr[_], Cols](table: Table.Source.Aux_[ColumnsRepr, Cols]) { self =>
+
+        final def crossApply[F1, F2, Cols, SelectTableType](select: Read.Select[F1, Cols, SelectTableType]): SelectedTable[F1, F2, Cols, table.TableType, SelectTableType] = 
+            SelectedTable(CrossType.CrossApply, table, select, Expr.literal(false))
+
+        final def outerApply[F1, F2, Cols, SelectTableType](select: Read.Select[F1, Cols, SelectTableType]): SelectedTable[F1, F2, Cols, table.TableType, SelectTableType] = 
+            SelectedTable(CrossType.OuterApply, table, select, Expr.literal(false))
+      }
+    }
+
+    val crossApplyExample = select(fName ++ lName ++ orderDate).from(customers.crossApply(select(orderDate).from(orders)).where(customerId === fkCustomerId).toTable)
+
+    sealed trait CrossType 
+    object CrossType {
+      case object CrossApply extends CrossType
+      case object OuterApply extends CrossType
+    }
+
+    val customers =
+      (uuid("id") ++ string("first_name") ++ string("last_name") ++ boolean("verified") ++ localDate("dob"))
+        .table("customers")
+    
+    val customerId :*: fName :*: lName :*: verified :*: dob :*: _ =
+      customers.columns
+
+    val orders = (uuid("id") ++ uuid("customer_id") ++ localDate("order_date")).table("orders")
+    
+    val orderId :*: fkCustomerId :*: orderDate :*: _ = orders.columns
+
+    //JOIN
+    val joinQuery = select(fName ++ lName ++ orderDate).from(customers.join(orders).on(customerId === fkCustomerId))
+    // SELECT customers.first_name, customers.last_name, orders.order_date 
+    //   FROM customers 
+    // INNER JOIN orders 
+    //   ON orders.customer_id = customers.id 
+
+    // SELECT customers.first_name, customers.last_name, orders.order_date FROM customers 
+    //   CROSS APPLY 
+    //     (
+    //       SELECT order_date from orders
+    //       WHERE orders.customer_id = customers.id
+    //     )    
+  }
 
   override def renderDelete(delete: Delete[_]): String = ??? // TODO: https://github.com/zio/zio-sql/issues/159
 
@@ -260,12 +327,13 @@ trait SqlServerModule extends Jdbc { self =>
         case sourceTable: self.Table.Source          =>
           val _ = builder.append(sourceTable.name)
 
-        case Table.SelectedTable(crossType, left, select, on) => {
-              buildTable(left)
+        case Table.DialectSpecificTable(table) => table match {
+          case SqlServerSpecific.SqlServerTable.SelectedTable(crossType, left, select, on)  => {
+             buildTable(left)
 
               crossType match {
-                case CrossType.CrossApply => builder.append(" CROSS APPLY ( ")
-                case CrossType.OuterApply => builder.append(" OUTER APPLY ( ")
+                case SqlServerSpecific.CrossType.CrossApply => builder.append(" CROSS APPLY ( ")
+                case SqlServerSpecific.CrossType.OuterApply => builder.append(" OUTER APPLY ( ")
               }
           
               builder.append("SELECT ")
@@ -277,6 +345,8 @@ trait SqlServerModule extends Jdbc { self =>
 
               builder.append(" ) ")
               val _ = buildTable(select.table.get)
+          }
+          
         }
 
         case Table.Joined(joinType, left, right, on) =>

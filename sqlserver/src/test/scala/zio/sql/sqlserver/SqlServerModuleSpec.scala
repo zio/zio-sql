@@ -166,63 +166,63 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
         r <- result.runCollect
       } yield assert(r.head)(equalTo(expected))
     },
-    testM("cross apply") {
-      val query = select(fName ++ lName ++ orderDate).from(customers.crossApply(select(orderDate).from(orders)).where(fkCustomerId === customerId))
+    // testM("cross apply") {
+    //   val query = select(fName ++ lName ++ orderDate).from(customers.crossApply(select(orderDate).from(orders)).where(fkCustomerId === customerId))
 
-      case class Row(firstName: String, lastName: String, orderDate: LocalDate)
+    //   case class Row(firstName: String, lastName: String, orderDate: LocalDate)
 
-      val expected = Seq(
-        Row("Ronald", "Russell", LocalDate.parse("2019-03-25")),
-        Row("Ronald", "Russell", LocalDate.parse("2018-06-04")),
-        Row("Alana", "Murray", LocalDate.parse("2019-08-19")),
-        Row("Jose", "Wiggins", LocalDate.parse("2019-08-30")),
-        Row("Jose", "Wiggins", LocalDate.parse("2019-03-07")),
-        Row("Ronald", "Russell", LocalDate.parse("2020-03-19")),
-        Row("Alana", "Murray", LocalDate.parse("2020-05-11")),
-        Row("Alana", "Murray", LocalDate.parse("2019-02-21")),
-        Row("Ronald", "Russell", LocalDate.parse("2018-05-06")),
-        Row("Mila", "Paterso", LocalDate.parse("2019-02-11")),
-        Row("Terrence", "Noel", LocalDate.parse("2019-10-12")),
-        Row("Ronald", "Russell", LocalDate.parse("2019-01-29")),
-        Row("Terrence", "Noel", LocalDate.parse("2019-02-10")),
-        Row("Ronald", "Russell", LocalDate.parse("2019-09-27")),
-        Row("Alana", "Murray", LocalDate.parse("2018-11-13")),
-        Row("Jose", "Wiggins", LocalDate.parse("2020-01-15")),
-        Row("Terrence", "Noel", LocalDate.parse("2018-07-10")),
-        Row("Mila", "Paterso", LocalDate.parse("2019-08-01")),
-        Row("Alana", "Murray", LocalDate.parse("2019-12-08")),
-        Row("Mila", "Paterso", LocalDate.parse("2019-11-04")),
-        Row("Mila", "Paterso", LocalDate.parse("2018-10-14")),
-        Row("Terrence", "Noel", LocalDate.parse("2020-04-05")),
-        Row("Jose", "Wiggins", LocalDate.parse("2019-01-23")),
-        Row("Terrence", "Noel", LocalDate.parse("2019-05-14")),
-        Row("Mila", "Paterso", LocalDate.parse("2020-04-30"))
-      )
+    //   val expected = Seq(
+    //     Row("Ronald", "Russell", LocalDate.parse("2019-03-25")),
+    //     Row("Ronald", "Russell", LocalDate.parse("2018-06-04")),
+    //     Row("Alana", "Murray", LocalDate.parse("2019-08-19")),
+    //     Row("Jose", "Wiggins", LocalDate.parse("2019-08-30")),
+    //     Row("Jose", "Wiggins", LocalDate.parse("2019-03-07")),
+    //     Row("Ronald", "Russell", LocalDate.parse("2020-03-19")),
+    //     Row("Alana", "Murray", LocalDate.parse("2020-05-11")),
+    //     Row("Alana", "Murray", LocalDate.parse("2019-02-21")),
+    //     Row("Ronald", "Russell", LocalDate.parse("2018-05-06")),
+    //     Row("Mila", "Paterso", LocalDate.parse("2019-02-11")),
+    //     Row("Terrence", "Noel", LocalDate.parse("2019-10-12")),
+    //     Row("Ronald", "Russell", LocalDate.parse("2019-01-29")),
+    //     Row("Terrence", "Noel", LocalDate.parse("2019-02-10")),
+    //     Row("Ronald", "Russell", LocalDate.parse("2019-09-27")),
+    //     Row("Alana", "Murray", LocalDate.parse("2018-11-13")),
+    //     Row("Jose", "Wiggins", LocalDate.parse("2020-01-15")),
+    //     Row("Terrence", "Noel", LocalDate.parse("2018-07-10")),
+    //     Row("Mila", "Paterso", LocalDate.parse("2019-08-01")),
+    //     Row("Alana", "Murray", LocalDate.parse("2019-12-08")),
+    //     Row("Mila", "Paterso", LocalDate.parse("2019-11-04")),
+    //     Row("Mila", "Paterso", LocalDate.parse("2018-10-14")),
+    //     Row("Terrence", "Noel", LocalDate.parse("2020-04-05")),
+    //     Row("Jose", "Wiggins", LocalDate.parse("2019-01-23")),
+    //     Row("Terrence", "Noel", LocalDate.parse("2019-05-14")),
+    //     Row("Mila", "Paterso", LocalDate.parse("2020-04-30"))
+    //   )
 
-      val result = execute(
-        query
-          .to[String, String, LocalDate, Row] { case row =>
-            Row(row._1, row._2, row._3)
-          }
-      )
+    //   val result = execute(
+    //     query
+    //       .to[String, String, LocalDate, Row] { case row =>
+    //         Row(row._1, row._2, row._3)
+    //       }
+    //   )
 
-      val assertion = for {
-        r <- result.runCollect
-      } yield assert(r)(hasSameElementsDistinct(expected))
+    //   val assertion = for {
+    //     r <- result.runCollect
+    //   } yield assert(r)(hasSameElementsDistinct(expected))
 
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    //   assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
 
 
-      //TODO SHOULD NOT COMPILE because orderDate is not selected in "tabled valued function" select(orderId).from(orders)
-      // possible solution is to need to extract "orderId" column out of orders and create a new table 
-      // select(fName ++ lName ++ orderDate).from(customers.crossApply(select(orderId).from(orders)).where(fkCustomerId === customerId))
-    },
-     testM("outer apply") {
-      val query = select(fName ++ lName ++ orderDate).from(customers.outerApply(select(orderDate).from(orders)).where(fkCustomerId === customerId))
+    //   //TODO SHOULD NOT COMPILE because orderDate is not selected in "tabled valued function" select(orderId).from(orders)
+    //   // possible solution is to need to extract "orderId" column out of orders and create a new table 
+    //   // select(fName ++ lName ++ orderDate).from(customers.crossApply(select(orderId).from(orders)).where(fkCustomerId === customerId))
+    // },
+    //  testM("outer apply") {
+    //   val query = select(fName ++ lName ++ orderDate).from(customers.outerApply(select(orderDate).from(orders)).where(fkCustomerId === customerId))
 
-      val _ = query
-      ???
-    } @@ ignore,
+    //   val _ = query
+    //   ???
+    // } @@ ignore,
     testM("Can select from joined tables (inner join)") {
       val query = select(fName ++ lName ++ orderDate).from(customers.join(orders).on(fkCustomerId === customerId))
 

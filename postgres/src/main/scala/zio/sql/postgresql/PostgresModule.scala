@@ -1,12 +1,13 @@
 package zio.sql.postgresql
 
+import org.postgresql.util.PGInterval
+import zio.Chunk
+import zio.sql.{ Jdbc, Renderer }
+
 import java.sql.ResultSet
 import java.text.DecimalFormat
 import java.time._
 import java.util.Calendar
-import org.postgresql.util.PGInterval
-import zio.Chunk
-import zio.sql.{ Jdbc, Renderer }
 
 trait PostgresModule extends Jdbc { self =>
   import TypeTag._
@@ -243,6 +244,8 @@ trait PostgresModule extends Jdbc { self =>
     val Format4                     = FunctionDef[(String, Any, Any, Any, Any), String](FunctionName("format"))
     val Format5                     = FunctionDef[(String, Any, Any, Any, Any, Any), String](FunctionName("format"))
     val SetSeed                     = FunctionDef[Double, Unit](FunctionName("setseed"))
+    val BitLength                   = FunctionDef[String, Int](FunctionName("bit_length"))
+    val Pi                          = Expr.FunctionCall0[Double](FunctionDef[Any, Double](FunctionName("pi")))
   }
 
   override def renderRead(read: self.Read[_]): String = {
@@ -585,16 +588,9 @@ trait PostgresModule extends Jdbc { self =>
     def renderTable(table: Table)(implicit render: Renderer): Unit =
       table match {
         //The outer reference in this type test cannot be checked at run time?!
-        case sourceTable: self.Table.Source          => render(sourceTable.name)
-        case Table.SelectedTable(crossType, left, select, on) => {
-          // CROSS and OUTER APPLY are only supported in SQL SERVER, so we rewrite them to JOINs
-          //TODO write tests if thats a safe thing to do
-          crossType match {
-            case CrossType.CrossApply => renderTable(Table.Joined(JoinType.Inner, left, select.table.get, on))
-            case CrossType.OuterApply => renderTable(Table.Joined(JoinType.LeftOuter, left, select.table.get, on))
-          }
-        }
-        case Table.Joined(joinType, left, right, on) =>
+        case sourceTable: self.Table.Source             => render(sourceTable.name)
+        case Table.DialectSpecificTable(tableExtension) => ???
+        case Table.Joined(joinType, left, right, on)    =>
           renderTable(left)
           render(joinType match {
             case JoinType.Inner      => " INNER JOIN "
