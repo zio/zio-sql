@@ -5,7 +5,6 @@ import scala.language.implicitConversions
 trait SelectModule { self: ExprModule with TableModule =>
   sealed case class SelectBuilder[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]) {
 
-    // [F, Repr, A, B <: SelectionSet.Aux[Repr, A]]
     def from[A1 <: A](table: Table.Aux[A1]): Read.Select[F, selection.value.ResultTypeRepr, A1] = {
       type B0 = SelectionSet.Aux[selection.value.ResultTypeRepr, A]
       val b: B0 = selection.value
