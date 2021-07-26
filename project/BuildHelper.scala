@@ -128,15 +128,6 @@ object BuildHelper {
     }
   )
 
-  val scalaReflectSettings = Seq(
-    libraryDependencies ++=
-      (if (scalaVersion.value == ScalaDotty) Seq()
-       else
-         Seq(
-           "dev.zio" %%% "izumi-reflect" % "1.1.0"
-         ))
-  )
-
   lazy val crossProjectSettings = Seq(
     Compile / unmanagedSourceDirectories ++= {
       val platform = crossProjectPlatform.value.identifier
@@ -190,18 +181,6 @@ object BuildHelper {
           Seq(compilerPlugin(("org.scalamacros" % "paradise" % "2.1.1").cross(CrossVersion.full)))
         case _                       => Seq.empty
       }
-    }
-  )
-
-  def macroDefinitionSettings = Seq(
-    scalacOptions += "-language:experimental.macros",
-    libraryDependencies ++= {
-      if (scalaVersion.value == ScalaDotty) Seq()
-      else
-        Seq(
-          "org.scala-lang" % "scala-reflect"  % scalaVersion.value % "provided",
-          "org.scala-lang" % "scala-compiler" % scalaVersion.value % "provided"
-        )
     }
   )
 
