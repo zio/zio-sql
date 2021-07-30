@@ -53,24 +53,6 @@ trait SqlServerModule extends Jdbc { self =>
             case t @ ColumnSelection.Constant(value, _) => t.typeTag
             case t @ ColumnSelection.Computed(expr, _)  => expr
           }
-
-          val b: SelectionSet.Aux[select.selection.value.ResultTypeRepr, SelectTableType] = select.selection.value
-
-          val z = b.selections
-
-          val _ = b
-          val _ = z
-
-          select.table.get.columnsUntyped match {
-            case head :: next =>
-              val columnName = head.name
-              val typeTag    = head.typeTag
-              val _          = columnName
-              val _          = typeTag
-              ???
-            case Nil          => ???
-          }
-
           ???
         }
 
