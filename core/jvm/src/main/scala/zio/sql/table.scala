@@ -84,6 +84,8 @@ trait TableModule { self: ExprModule with SelectModule =>
     def unapply[A, B](tuple: (A, B)): Some[(A, B)] = Some(tuple)
   }
 
+  // turn column into seald trait
+  // with "named" and "indexed" subtypes
   sealed case class Column[A: TypeTag](name: String) {
     def typeTag: TypeTag[A] = implicitly[TypeTag[A]]
   }

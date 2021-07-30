@@ -30,6 +30,11 @@ trait SelectModule { self: ExprModule with TableModule =>
 
     val mapper: ResultType => Out
 
+    type Repr[TableType]
+    type TableType 
+
+    val columns: Repr[_ <: TableType]
+
     /**
      * Maps the [[Read]] query's output to another type by providing a function
      * that can transform from the current type to the new type.
@@ -270,11 +275,18 @@ trait SelectModule { self: ExprModule with TableModule =>
       }
     }
 
+    //TODO change type Read.Repr to ColumnsRepr
     sealed case class Union[Repr, Out](left: Read.Aux[Repr, Out], right: Read.Aux[Repr, Out], distinct: Boolean)
         extends Read[Out] {
       type ResultType = Repr
 
       val mapper: ResultType => Out = left.mapper
+
+      //TODO left has type Expr[T1, String], right has Expr[T2, String], Repr is Expr[T1 with T2, String]
+      type Repr[TableType] = left.Repr[left.TableType with right.TableType]
+
+      //TODO turn the name columns into indexed columns so they can apply to either left hand or right hand side
+      val columns: Repr[left.TableType with right.TableType] = left.columns.asInstanceOf
     }
 
     sealed case class Literal[B: TypeTag](values: Iterable[B]) extends Read[(B, Unit)] {
@@ -283,6 +295,10 @@ trait SelectModule { self: ExprModule with TableModule =>
       val mapper: ResultType => (B, Unit) = identity(_)
 
       def typeTag: TypeTag[B] = implicitly[TypeTag[B]]
+
+      type Repr[TableType] = (Expr[Features.Source, TableType, B], Unit)
+
+      val columns: Repr[TableType] = (Expr.Source(TableName.Derived, Column[B]("1")), ())
     }
 
     def lit[B: TypeTag](values: B*): Read[(B, Unit)] = Literal(values.toSeq)
