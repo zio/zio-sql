@@ -94,8 +94,14 @@ trait SqlServerModule extends Jdbc { self =>
       // import SqlServerTable._
       // val crossApplyExample = select(fName ++ lName ++ orderDate ++ fkCustomerId).from(customers.crossApply(select(orderDate).from(orders).where(customerId === fkCustomerId)))
 
+      //val qq = select(Expr.Literal("hello")).union(select(orderId).from(orders))
 
-      val q = select(orderDate).from(orders).where(fkCustomerId === "")
+     // select(orderId).from(orders).union(select(Expr.Literal(1)))
+
+      //val x = select(orderId).from(orders).union(select(orderDate).from(orders))
+      val xx = select(orderId).from(orders).union(select(fkCustomerId).from(orders))
+
+      val q = select(orderId ++ orderDate).from(orders).where(fkCustomerId === "")
     }
   }
 
@@ -106,9 +112,15 @@ trait SqlServerModule extends Jdbc { self =>
   override def renderRead(read: self.Read[_]): String = {
     val builder = new StringBuilder
 
+    //TODO check
     def buildExpr[A, B](expr: self.Expr[_, A, B]): Unit = expr match {
-      case Expr.Source(tableName, column)                                                       =>
-        val _ = builder.append(tableName).append(".").append(column.name)
+      case Expr.Source(table, column)                                                       => {
+        (table, column) match {
+          case (TableName.Source(tableName), Column.Named(columnName)) => 
+            val _ = builder.append(tableName).append(".").append(columnName)
+          case _ => ()
+        }
+      }
       case Expr.Unary(base, op)                                                                 =>
         val _ = builder.append(" ").append(op.symbol)
         buildExpr(base)

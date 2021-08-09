@@ -118,7 +118,8 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
 
     def exprName[F, A, B](expr: Expr[F, A, B]): Option[String] =
       expr match {
-        case Expr.Source(_, c) => Some(c.name)
+        //TODO what to do with indexed column???
+        case Expr.Source(_, c @ Column.Named(name)) => Some(name)
         case _                 => None
       }
 

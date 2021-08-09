@@ -74,7 +74,7 @@ trait TableModule { self: ExprModule with SelectModule =>
     def offsetDateTime(name: String): Singleton[OffsetDateTime] = singleton[OffsetDateTime](name)
     def offsetTime(name: String): Singleton[OffsetTime]         = singleton[OffsetTime](name)
     def short(name: String): Singleton[Short]                   = singleton[Short](name)
-    def singleton[A: TypeTag](name: String): Singleton[A]       = Cons(Column[A](name), Empty)
+    def singleton[A: TypeTag](name: String): Singleton[A]       = Cons(Column.Named[A](name), Empty)
     def string(name: String): Singleton[String]                 = singleton[String](name)
     def uuid(name: String): Singleton[UUID]                     = singleton[UUID](name)
     def zonedDateTime(name: String): Singleton[ZonedDateTime]   = singleton[ZonedDateTime](name)
@@ -84,13 +84,17 @@ trait TableModule { self: ExprModule with SelectModule =>
     def unapply[A, B](tuple: (A, B)): Some[(A, B)] = Some(tuple)
   }
 
-  // turn column into seald trait
-  // with "named" and "indexed" subtypes
-  sealed case class Column[A: TypeTag](name: String) {
-    def typeTag: TypeTag[A] = implicitly[TypeTag[A]]
+  sealed trait Column[A]{
+    def typeTag: TypeTag[A]
   }
 
   object Column {
+    sealed case class Named[A: TypeTag](columnName: String) extends Column[A] {
+      def typeTag: TypeTag[A] = implicitly[TypeTag[A]]
+    }
+    sealed case class Indexed[A: TypeTag](index: Int) extends Column[A] {
+      def typeTag: TypeTag[A] = implicitly[TypeTag[A]]
+    }
     type Untyped = Column[_]
   }
 

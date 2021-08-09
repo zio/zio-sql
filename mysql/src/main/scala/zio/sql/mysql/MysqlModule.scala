@@ -171,7 +171,12 @@ trait MysqlModule extends Jdbc { self =>
       }
 
     private def renderExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
-      case Expr.Source(tableName, column)                                               => render(tableName, ".", column.name)
+      case Expr.Source(table, column)                                               => {
+        (table, column) match {
+          case (TableName.Source(tableName), Column.Named(columnName)) => render(tableName, ".", columnName)
+          case _ => ()
+        }
+      }
       case Expr.Unary(base, op)                                                         =>
         render(" ", op.symbol)
         renderExpr(base)

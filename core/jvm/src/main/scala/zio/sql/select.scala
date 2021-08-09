@@ -30,10 +30,10 @@ trait SelectModule { self: ExprModule with TableModule =>
 
     val mapper: ResultType => Out
 
-    type Repr[TableType]
+    type ColumnsRepr[TableType]
     type TableType 
 
-    val columns: Repr[_ <: TableType]
+    val columns: ColumnsRepr[_ <: TableType]
 
     /**
      * Maps the [[Read]] query's output to another type by providing a function
@@ -218,8 +218,13 @@ trait SelectModule { self: ExprModule with TableModule =>
         f(a, b, c, d, e, fArg, g, h, i, j, k, l, m, n, o, p, q, r, s, t)
       }
 
-    def union[Out1 >: Out](that: Read.Aux[ResultType, Out1]): Read.Aux[ResultType, Out1] =
-      Read.Union[ResultType, Out1](self, that, true)
+    // def union[Out1 >: Out](that: Read.Aux[ResultType, Out1]): Read.Aux[ResultType, Out1] =
+    //   Read.Union[ResultType, Out1](self, that, true)
+
+    //TODO check union logic
+    def union[Out1 >: Out, ThatResultType](that: Read.Aux[ThatResultType, Out1]): Read.Aux[self.ResultType with ThatResultType, Out1] =
+      ???
+      //Read.Union[self.ResultType with that.ResultType, Out with Out1](self, that, true)
 
     def unionAll[Out1 >: Out](that: Read.Aux[ResultType, Out1]): Read.Aux[ResultType, Out1] =
       Read.Union[ResultType, Out1](self, that, false)
@@ -234,6 +239,10 @@ trait SelectModule { self: ExprModule with TableModule =>
       type ResultType = Repr
 
       val mapper = read.mapper.andThen(f)
+
+      type ColumnsRepr[TableType]
+
+      val columns: ColumnsRepr[_ <: TableType] = ???
     }
 
     sealed case class Select[F, Repr, A](
@@ -273,20 +282,27 @@ trait SelectModule { self: ExprModule with TableModule =>
         val _ = ev
         copy(havingExpr = self.havingExpr && havingExpr2)
       }
+
+      type ColumnsRepr[TableType]
+
+      val columns: ColumnsRepr[_ <: TableType] = ???
     }
 
-    //TODO change type Read.Repr to ColumnsRepr
+    // TODO what to do with distinct?
     sealed case class Union[Repr, Out](left: Read.Aux[Repr, Out], right: Read.Aux[Repr, Out], distinct: Boolean)
         extends Read[Out] {
       type ResultType = Repr
 
       val mapper: ResultType => Out = left.mapper
 
-      //TODO left has type Expr[T1, String], right has Expr[T2, String], Repr is Expr[T1 with T2, String]
-      type Repr[TableType] = left.Repr[left.TableType with right.TableType]
+      //TODO left has type Expr[T1, String], right has Expr[T2, String], ColumnsRepr is Expr[T1 with T2, String]
+      //type ColumnsRepr[TableType] = left.ColumnsRepr[left.TableType with right.TableType]
+      type ColumnsRepr[TableType] = Expr[Features.Union[left.ColumnsRepr[left.TableType], right.ColumnsRepr[right.TableType]], 
+        TableType, left.ColumnsRepr[left.TableType] with right.ColumnsRepr[right.TableType]]
 
       //TODO turn the name columns into indexed columns so they can apply to either left hand or right hand side
-      val columns: Repr[left.TableType with right.TableType] = left.columns.asInstanceOf
+      val columns: ColumnsRepr[left.TableType with right.TableType] = //left.columns.asInstanceOf
+          ??? // Expr.Source(TàbleName.Derived, )
     }
 
     sealed case class Literal[B: TypeTag](values: Iterable[B]) extends Read[(B, Unit)] {
@@ -296,9 +312,9 @@ trait SelectModule { self: ExprModule with TableModule =>
 
       def typeTag: TypeTag[B] = implicitly[TypeTag[B]]
 
-      type Repr[TableType] = (Expr[Features.Source, TableType, B], Unit)
+      type ColumnsRepr[TableType] = (Expr[Features.Source, TableType, B], Unit)
 
-      val columns: Repr[TableType] = (Expr.Source(TableName.Derived, Column[B]("1")), ())
+      val columns: ColumnsRepr[TableType] = (Expr.Source(TableName.Derived, Column.Indexed(1)), ())
     }
 
     def lit[B: TypeTag](values: B*): Read[(B, Unit)] = Literal(values.toSeq)
