@@ -9,8 +9,13 @@ trait OracleModule extends Jdbc { self =>
   }
 
   def buildExpr[A, B](expr: self.Expr[_, A, B], builder: StringBuilder): Unit = expr match {
-    case Expr.Source(tableName, column)                                                       =>
-      val _ = builder.append(tableName).append(".").append(column.name)
+    case Expr.Source(table, column)                                                       => {
+        (table, column) match {
+          case (TableName.Source(tableName), Column.Named(columnName)) => 
+            val _ = builder.append(tableName).append(".").append(columnName)
+          case _ => ()
+        }
+      }
     case Expr.Unary(base, op)                                                                 =>
       val _ = builder.append(" ").append(op.symbol)
       buildExpr(base, builder)
