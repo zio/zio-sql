@@ -347,7 +347,7 @@ trait PostgresModule extends Jdbc { self =>
     private[zio] def renderExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
       case Expr.Source(table, column)                                                       => {
         (table, column) match {
-          case (TableName.Source(tableName), Column.Named(columnName)) => 
+          case (tableName: TableName, Column.Named(columnName)) => 
             render(tableName, ".", columnName)
           case _ => ()
         }

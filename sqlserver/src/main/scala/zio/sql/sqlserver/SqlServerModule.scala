@@ -76,16 +76,27 @@ trait SqlServerModule extends Jdbc { self =>
 
     object QueriesExamples {
 
-      val customers =
-        (uuid("id") ++ string("first_name") ++ string("last_name") ++ boolean("verified") ++ localDate("dob"))
-          .table("customers")
+      val x: Cons[java.util.UUID, Singleton[String]] = uuid("id") ++ string("first_name")
+      
+      // val customers =
+      //   (uuid("id") ++ string("first_name") ++ string("last_name") ++ boolean("verified") ++ localDate("dob"))
+      //     .table("customers")
+      // val customerId :*: fName :*: lName :*: verified :*: dob :*: _ =
+      //   customers.columns
 
-      val customerId :*: fName :*: lName :*: verified :*: dob :*: _ =
-        customers.columns
+      val customers: Table.Source{type Repr[X] = (SqlServerModule.this.Expr[SqlServerModule.this.Features.Source,X,java.util.UUID], (SqlServerModule.this.Expr[SqlServerModule.this.Features.Source,X,String], (SqlServerModule.this.Expr[SqlServerModule.this.Features.Source,X,String], Unit))); type Cols = SqlServerModule.this.ColumnSet.Cons[java.util.UUID,SqlServerModule.this.ColumnSet.Cons[String,SqlServerModule.this.ColumnSet.Cons[String,SqlServerModule.this.ColumnSet.Empty.type]]]} = 
+        (uuid("id") ++ string("first_name") ++ string("last_name")).table("customers")
+
+      val customerId :*: fName :*: lName :*: _ = customers.columns
 
       val orders = (uuid("id") ++ uuid("customer_id") ++ localDate("order_date")).table("orders")
 
       val orderId :*: fkCustomerId :*: orderDate :*: _ = orders.columns
+
+      // val derived = //: Table.Source{type Repr[X] = (SqlServerModule.this.Expr[SqlServerModule.this.Features.Source,X,_$1], _1.type#columnSet.tail.ColumnsRepr[X]); type Cols = SqlServerModule.this.ColumnSet.Cons[_$1,_1.type#selection.value.tail.CS]}( forSome { type _$1; val _1: Read.Select[Features.Union[Features.Source,Features.Source],(UUID, (String, Unit)),customers.TableType]; val stabilizer$1: SelectBuilder[Features.Union[Features.Source,Features.Source],customers.TableType,SelectionSet.Cons[customers.TableType,UUID,SelectionSet.Cons[customers.TableType,String,SelectionSet.Empty]]] })
+      //     select(customerId ++ fName).from(customers).asTable("derivedCustomers")
+      
+    //  val e = select(fName ++ lName).from(customers).asTable(TableName.Source("derivedCustomers"))
 
       //JOIN example
       val joinQuery = select(fName ++ lName ++ orderDate).from(customers.join(orders).on(customerId === fkCustomerId))
@@ -94,12 +105,7 @@ trait SqlServerModule extends Jdbc { self =>
       // import SqlServerTable._
       // val crossApplyExample = select(fName ++ lName ++ orderDate ++ fkCustomerId).from(customers.crossApply(select(orderDate).from(orders).where(customerId === fkCustomerId)))
 
-      //val qq = select(Expr.Literal("hello")).union(select(orderId).from(orders))
-
-     // select(orderId).from(orders).union(select(Expr.Literal(1)))
-
-      //val x = select(orderId).from(orders).union(select(orderDate).from(orders))
-      val xx = select(orderId).from(orders).union(select(fkCustomerId).from(orders))
+     // val xx = select(orderId ++ Selection.constant("hello")).from(orders).union(select(fkCustomerId ++ Selection.constant("world")).from(orders))
 
       val q = select(orderId ++ orderDate).from(orders).where(fkCustomerId === "")
     }
@@ -116,7 +122,7 @@ trait SqlServerModule extends Jdbc { self =>
     def buildExpr[A, B](expr: self.Expr[_, A, B]): Unit = expr match {
       case Expr.Source(table, column)                                                       => {
         (table, column) match {
-          case (TableName.Source(tableName), Column.Named(columnName)) => 
+          case (tableName: TableName, Column.Named(columnName)) => 
             val _ = builder.append(tableName).append(".").append(columnName)
           case _ => ()
         }
