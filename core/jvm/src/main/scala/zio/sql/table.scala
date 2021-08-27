@@ -21,6 +21,8 @@ trait TableModule { self: ExprModule with SelectModule =>
   }
 
   object ColumnSet {
+    type ConsAux[Head, Tail <: ColumnSet, TableType, ColumnsRepr0[TableType]] = ColumnSet.Cons[Head, Tail] { type ColumnsRepr = ColumnsRepr0[TableType] }
+
     type Empty                  = Empty.type
     type :*:[A, B <: ColumnSet] = Cons[A, B]
     type Singleton[A]           = Cons[A, Empty]
@@ -39,6 +41,7 @@ trait TableModule { self: ExprModule with SelectModule =>
     sealed case class Cons[A, B <: ColumnSet](head: Column[A], tail: B) extends ColumnSet { self =>
       type ColumnsRepr[T]            = (Expr[Features.Source, T, A], tail.ColumnsRepr[T])
       type Append[That <: ColumnSet] = Cons[A, tail.Append[That]]
+      type TableSource = Table.Source.Aux_[ColumnsRepr, A :*: B]
 
       override def ++[That <: ColumnSet](that: That): Append[That] = Cons(head, tail ++ that)
 
@@ -84,7 +87,7 @@ trait TableModule { self: ExprModule with SelectModule =>
     def unapply[A, B](tuple: (A, B)): Some[(A, B)] = Some(tuple)
   }
 
-  sealed trait Column[A]{
+  sealed trait Column[+A]{
     def typeTag: TypeTag[A]
   }
 
