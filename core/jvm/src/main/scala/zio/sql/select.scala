@@ -40,11 +40,10 @@ trait SelectModule { self: ExprModule with TableModule =>
     type ColumnTail <: ColumnSet
 
     type CS <: ColumnSet.Cons[ColumnHead, ColumnTail]
-    type ColumnsRepr[X]
 
     val columnSet : CS
 
-   def asTable(tableName: TableName): columnSet.TableSource = columnSet.table(tableName)
+    def asTable(tableName: TableName): columnSet.TableSource = columnSet.table(tableName)
 
     /**
      * Maps the [[Read]] query's output to another type by providing a function
@@ -252,8 +251,6 @@ trait SelectModule { self: ExprModule with TableModule =>
       override type CS = read.CS
 
       override val columnSet : CS = read.columnSet
-
-      override type ColumnsRepr[X] = read.ColumnsRepr[X]
     }
 
     sealed case class Select[F, Repr, Source, Head, Tail <: SelectionSet[Source]](
@@ -300,8 +297,6 @@ trait SelectModule { self: ExprModule with TableModule =>
       override val columnSet : CS = selection.value.columnSet(0)
 
       override type CS = selection.value.CS
-
-      override type ColumnsRepr[X] = selection.value.ColumnsRepr[X]
     }
 
     sealed case class Union[Repr, Out](left: Read.Aux[Repr, Out], right: Read.Aux[Repr, Out], distinct: Boolean)
@@ -317,8 +312,6 @@ trait SelectModule { self: ExprModule with TableModule =>
       override type CS = left.CS
 
       override val columnSet : CS = left.columnSet
-
-      override type ColumnsRepr[X] = left.ColumnsRepr[X]
     }
 
     // QUESITON doesn't literal need to have a name of a column?
@@ -336,8 +329,6 @@ trait SelectModule { self: ExprModule with TableModule =>
       override type CS = ColumnSet.Cons[ColumnHead, ColumnTail]
 
       override val columnSet : CS = ColumnSet.Cons(Column.Indexed[ColumnHead](1), ColumnSet.Empty)
-
-      override type ColumnsRepr[X] = (Expr.Source[TableName.Derived, Column.Indexed[ColumnHead]], Unit)
     }
 
     def lit[B: TypeTag](values: B*): Read[(B, Unit)] = Literal(values.toSeq)
@@ -425,8 +416,6 @@ trait SelectModule { self: ExprModule with TableModule =>
     type CS <: ColumnSet
     def columnSet(startingIndex: Int) : CS
 
-    type ColumnsRepr[X]
-
     def ++[Source1 <: Source, That <: SelectionSet[Source1]](that: That): Append[Source1, That]
 
     def selectionsUntyped: List[ColumnSelection[Source, _]]
@@ -458,7 +447,6 @@ trait SelectModule { self: ExprModule with TableModule =>
       override type CS = ColumnSet.Empty
       override def columnSet(startingIndex: Int) : CS = ColumnSet.Empty
 
-      override type ColumnsRepr[X] = Unit
       override type SelectionsRepr[Source1, T] = Unit
 
       override type ResultTypeRepr = Unit
@@ -483,10 +471,8 @@ trait SelectModule { self: ExprModule with TableModule =>
       override type CS = ColumnSet.Cons[ColumnHead, ColumnTail]
 
       override def columnSet(startingIndex: Int) : CS = 
-        ColumnSet.Cons[ColumnHead, ColumnTail](head.toColumn(startingIndex), tail.columnSet(startingIndex + 1))//.asInstanceOf
+        ColumnSet.Cons[ColumnHead, ColumnTail](head.toColumn(startingIndex), tail.columnSet(startingIndex + 1))
       
-      override type ColumnsRepr[X] = (Expr[Features.Source, X, A], tail.ColumnsRepr[X])
-
       override type SelectionsRepr[Source1, T] = (ColumnSelection[Source1, A], tail.SelectionsRepr[Source1, T])
 
       override type ResultTypeRepr = (A, tail.ResultTypeRepr)

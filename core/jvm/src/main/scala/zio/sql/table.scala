@@ -21,8 +21,6 @@ trait TableModule { self: ExprModule with SelectModule =>
   }
 
   object ColumnSet {
-    type ConsAux[Head, Tail <: ColumnSet, TableType, ColumnsRepr0[TableType]] = ColumnSet.Cons[Head, Tail] { type ColumnsRepr = ColumnsRepr0[TableType] }
-
     type Empty                  = Empty.type
     type :*:[A, B <: ColumnSet] = Cons[A, B]
     type Singleton[A]           = Cons[A, Empty]
