@@ -468,8 +468,14 @@ trait PostgresModule extends Jdbc { self =>
       read match {
         case Read.Mapped(read, _)                        => renderReadImpl(read)
         case read0 @ Read.Select(_, _, _, _, _, _, _, _) =>
-          object Dummy { type F; type A; type B <: SelectionSet[A] }
-          val read = read0.asInstanceOf[Read.Select[Dummy.F, Dummy.A, Dummy.B]]
+          object Dummy {
+            type F
+            type Repr
+            type Source
+            type Head
+            type Tail <: SelectionSet[Source]
+          }
+          val read = read0.asInstanceOf[Read.Select[Dummy.F, Dummy.Repr, Dummy.Source, Dummy.Head, Dummy.Tail]]
           import read._
 
           render("SELECT ")
