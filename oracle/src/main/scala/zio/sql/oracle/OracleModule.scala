@@ -131,11 +131,13 @@ trait OracleModule extends Jdbc { self =>
 
       case read0 @ Read.Select(_, _, _, _, _, _, _, _) =>
         object Dummy {
-          type F
-          type A
-          type B <: SelectionSet[A]
-        }
-        val read = read0.asInstanceOf[Read.Select[Dummy.F, Dummy.A, Dummy.B]]
+            type F
+            type Repr
+            type Source
+            type Head
+            type Tail <: SelectionSet[Source]
+          }
+        val read = read0.asInstanceOf[Read.Select[Dummy.F, Dummy.Repr, Dummy.Source, Dummy.Head, Dummy.Tail]]
         import read._
 
         builder.append("SELECT ")

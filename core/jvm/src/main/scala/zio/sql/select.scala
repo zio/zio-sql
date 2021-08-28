@@ -8,7 +8,7 @@ trait SelectModule { self: ExprModule with TableModule =>
   sealed case class SelectBuilder[F, Source, B <: SelectionSet[Source]](selection: Selection[F, Source, B]) {
 
     def from[Source0 <: Source](table: Table.Aux[Source0])
-    (implicit ev: B <:< SelectionSet.Cons[Source0, selection.value.ColumnHead, selection.value.SelectionTail]): Read.Select[F, selection.value.ResultTypeRepr, Source0] = {
+    (implicit ev: B <:< SelectionSet.Cons[Source0, selection.value.ColumnHead, selection.value.SelectionTail]): Read.Select[F, selection.value.ResultTypeRepr, Source0, selection.value.ColumnHead, selection.value.SelectionTail] = {
     type B0 = SelectionSet.ConsAux[selection.value.ResultTypeRepr, Source0, selection.value.ColumnHead, selection.value.SelectionTail]
       val b: B0 = selection.value.asInstanceOf[B0]
 
@@ -20,7 +20,7 @@ trait SelectModule { self: ExprModule with TableModule =>
     implicit def noTable[F, Source >: Any, B <: SelectionSet[Source]](
       selectBuilder: SelectBuilder[F, Source, B]
       )(implicit ev: B <:< SelectionSet.Cons[Source, selectBuilder.selection.value.ColumnHead, selectBuilder.selection.value.SelectionTail]
-      ): Read.Select[F, selectBuilder.selection.value.ResultTypeRepr, Source] = {
+      ): Read.Select[F, selectBuilder.selection.value.ResultTypeRepr, Source, selectBuilder.selection.value.ColumnHead, selectBuilder.selection.value.SelectionTail] = {
       type B0 = SelectionSet.ConsAux[selectBuilder.selection.value.ResultTypeRepr, Source, selectBuilder.selection.value.ColumnHead, selectBuilder.selection.value.SelectionTail]
       val b: B0 = selectBuilder.selection.value.asInstanceOf[B0]
 
@@ -44,7 +44,7 @@ trait SelectModule { self: ExprModule with TableModule =>
 
     val columnSet : CS
 
-    def asTable(tableName: TableName): columnSet.TableSource = columnSet.table(tableName)
+   def asTable(tableName: TableName): columnSet.TableSource = columnSet.table(tableName)
 
     /**
      * Maps the [[Read]] query's output to another type by providing a function
@@ -256,8 +256,8 @@ trait SelectModule { self: ExprModule with TableModule =>
       override type ColumnsRepr[X] = read.ColumnsRepr[X]
     }
 
-    sealed case class Select[F, Repr, Source](
-      selection: Selection[F, Source, SelectionSet.ConsAux[Repr, Source, _, _ <: SelectionSet[Source]]],
+    sealed case class Select[F, Repr, Source, Head, Tail <: SelectionSet[Source]](
+      selection: Selection[F, Source, SelectionSet.ConsAux[Repr, Source, Head, Tail]],
       table: Option[Table.Aux[Source]],
       whereExpr: Expr[_, Source, Boolean],
       groupBy: List[Expr[_, Source, Any]],
@@ -270,26 +270,26 @@ trait SelectModule { self: ExprModule with TableModule =>
 
       val mapper: Repr => Repr = identity(_)
 
-      def where(whereExpr2: Expr[_, Source, Boolean]): Select[F, Repr, Source] =
+      def where(whereExpr2: Expr[_, Source, Boolean]): Select[F, Repr, Source, Head, Tail] =
         copy(whereExpr = self.whereExpr && whereExpr2)
 
-      def limit(n: Long): Select[F, Repr, Source] = copy(limit = Some(n))
+      def limit(n: Long): Select[F, Repr, Source, Head, Tail] = copy(limit = Some(n))
 
-      def offset(n: Long): Select[F, Repr, Source] = copy(offset = Some(n))
+      def offset(n: Long): Select[F, Repr, Source, Head, Tail] = copy(offset = Some(n))
 
-      def orderBy(o: Ordering[Expr[_, Source, Any]], os: Ordering[Expr[_, Source, Any]]*): Select[F, Repr, Source] =
+      def orderBy(o: Ordering[Expr[_, Source, Any]], os: Ordering[Expr[_, Source, Any]]*): Select[F, Repr, Source, Head, Tail] =
         copy(orderBy = self.orderBy ++ (o :: os.toList))
 
       def groupBy(key: Expr[_, Source, Any], keys: Expr[_, Source, Any]*)(implicit
         ev: Features.IsAggregated[F]
-      ): Select[F, Repr, Source] = {
+      ): Select[F, Repr, Source, Head, Tail] = {
         val _ = ev
         copy(groupBy = groupBy ++ (key :: keys.toList))
       }
 
       def having(havingExpr2: Expr[_, Source, Boolean])(implicit
         ev: Features.IsAggregated[F]
-      ): Select[F, Repr, Source] = {
+      ): Select[F, Repr, Source, Head, Tail] = {
         val _ = ev
         copy(havingExpr = self.havingExpr && havingExpr2)
       }
@@ -498,7 +498,7 @@ trait SelectModule { self: ExprModule with TableModule =>
         Cons[Source1, A, tail.Append[Source1, That]](head, tail ++ that)
 
       override def selectionsUntyped: List[ColumnSelection[Source, _]] = head :: tail.selectionsUntyped
-
+      
       override def selections[Source1 <: Source, T]: SelectionsRepr[Source1, T] = (head, tail.selections[Source1, T])
     }
   }

@@ -2,8 +2,6 @@ package zio.sql.sqlserver
 
 import zio.sql.Jdbc
 
-import scala.language.implicitConversions
-
 trait SqlServerModule extends Jdbc { self =>
 
   import self.ColumnSet._
@@ -14,59 +12,55 @@ trait SqlServerModule extends Jdbc { self =>
 
     sealed trait SqlServerTable[+A] extends Table.TableEx
 
-    object SqlServerTable {
+    // object SqlServerTable {
 
-      sealed case class SelectedTable[F1, F2, ColumnsRepr[_], Cols, A, B](
-        crossType: CrossType,
-        left: Table.Source.Aux[ColumnsRepr, A, Cols],
-        //tableValuedFuctnion : TableValuedFunction ???
-        select: Read.Select[F1, Cols, B],
-        expr: Expr[_, A with B, Boolean]
-      ) extends SqlServerTable[A with B] { self =>
+    //   sealed case class SelectedTable[F1, F2, ColumnsRepr[_], Cols, A, B](
+    //     crossType: CrossType,
+    //     left: Table.Source.Aux[ColumnsRepr, A, Cols],
+    //     //tableValuedFuctnion : TableValuedFunction ???
+    //     select: Read.Select[F1, Cols, B],
+    //     expr: Expr[_, A with B, Boolean]
+    //   ) extends SqlServerTable[A with B] { self =>
 
-        // def where(whereExpr: Expr[F1 :||: F2, A with B, Boolean]): SelectedTable[F1, F2, ColumnsRepr, Cols, A, B] =
-        //   self.copy(expr = whereExpr)
+    //     // def where(whereExpr: Expr[F1 :||: F2, A with B, Boolean]): SelectedTable[F1, F2, ColumnsRepr, Cols, A, B] =
+    //     //   self.copy(expr = whereExpr)
 
-        def columnsUntyped: List[Column.Untyped] = left.columnsUntyped ++ select.table.get.columnsUntyped
-      }
+    //     def columnsUntyped: List[Column.Untyped] = left.columnsUntyped ++ select.table.get.columnsUntyped
+    //   }
 
-      implicit def tableSourceToSelectedBuilder[ColumnsRepr[_], A, Cols](
-        table: Table.Source.Aux[ColumnsRepr, A, Cols]
-      ): SelectedTableBuilder[ColumnsRepr, A, Cols] =
-        new SelectedTableBuilder(table)
+    //   implicit def tableSourceToSelectedBuilder[ColumnsRepr[_], A, Cols](
+    //     table: Table.Source.Aux[ColumnsRepr, A, Cols]
+    //   ): SelectedTableBuilder[ColumnsRepr, A, Cols] =
+    //     new SelectedTableBuilder(table)
 
-      sealed case class SelectedTableBuilder[ColumnsRepr[_], A, Cols](table: Table.Source.Aux[ColumnsRepr, A, Cols]) {
-        self =>
+    //   sealed case class SelectedTableBuilder[ColumnsRepr[_], A, Cols](table: Table.Source.Aux[ColumnsRepr, A, Cols]) {
+    //     self =>
 
-        /**
-          * Instead of Read.Select we need to accept some 'TableValuedFunction' which would: 
-          * (or we could accept Select and turn it into TableValuedFunction - but we need to make sure only sensible things compile)
-          *   - contain selection, table and optionally where clause
-          *   - create new Table of type B created out of columns in select.selection
-          *   - where clause need to access Table.Aux[A] and origin select.Table to create Expr.
-          */
-        final def crossApply[F1, F2, SelectionCols, SelectTableType](
-          select: Read.Select[F1, SelectionCols, SelectTableType]
-        ): SelectedTable[F1, F2, ColumnsRepr, Cols, table.TableType, SelectTableType] = {
+    //     /**
+    //       * Instead of Read.Select we need to accept some 'TableValuedFunction' which would: 
+    //       * (or we could accept Select and turn it into TableValuedFunction - but we need to make sure only sensible things compile)
+    //       *   - contain selection, table and optionally where clause
+    //       *   - create new Table of type B created out of columns in select.selection
+    //       *   - where clause need to access Table.Aux[A] and origin select.Table to create Expr.
+    //       */
+    //     final def crossApply[F1, F2, SelectionCols, SelectTableType](
+    //       select: Read.Select[F1, SelectionCols, SelectTableType]
+    //     ): SelectedTable[F1, F2, ColumnsRepr, Cols, table.TableType, SelectTableType] = {
 
-          select.selection.value.selectionsUntyped.map(_.asInstanceOf[ColumnSelection[_, _]]).map {
-            case t @ ColumnSelection.Constant(value, _) => t.typeTag
-            case t @ ColumnSelection.Computed(expr, _)  => expr
-          }
-          ???
-        }
+    //       ???
+    //     }
 
-        final def outerApply[F1, F2, SelectTableType](
-          select: Read.Select[F1, Cols, SelectTableType]
-        ): SelectedTable[F1, F2, ColumnsRepr, Cols, table.TableType, SelectTableType] =
-          SelectedTable[F1, F2, ColumnsRepr, Cols, A, SelectTableType](
-            CrossType.OuterApply,
-            table,
-            select,
-            Expr.literal(false)
-          )
-      }
-    }
+    //     final def outerApply[F1, F2, SelectTableType](
+    //       select: Read.Select[F1, Cols, SelectTableType]
+    //     ): SelectedTable[F1, F2, ColumnsRepr, Cols, table.TableType, SelectTableType] =
+    //       SelectedTable[F1, F2, ColumnsRepr, Cols, A, SelectTableType](
+    //         CrossType.OuterApply,
+    //         table,
+    //         select,
+    //         Expr.literal(false)
+    //       )
+    //   }
+    // }
 
     sealed trait CrossType
     object CrossType {
@@ -84,8 +78,7 @@ trait SqlServerModule extends Jdbc { self =>
       // val customerId :*: fName :*: lName :*: verified :*: dob :*: _ =
       //   customers.columns
 
-      val customers: Table.Source{type Repr[X] = (SqlServerModule.this.Expr[SqlServerModule.this.Features.Source,X,java.util.UUID], (SqlServerModule.this.Expr[SqlServerModule.this.Features.Source,X,String], (SqlServerModule.this.Expr[SqlServerModule.this.Features.Source,X,String], Unit))); type Cols = SqlServerModule.this.ColumnSet.Cons[java.util.UUID,SqlServerModule.this.ColumnSet.Cons[String,SqlServerModule.this.ColumnSet.Cons[String,SqlServerModule.this.ColumnSet.Empty.type]]]} = 
-        (uuid("id") ++ string("first_name") ++ string("last_name")).table("customers")
+      val customers = (uuid("id") ++ string("first_name") ++ string("last_name")).table("customers")
 
       val customerId :*: fName :*: lName :*: _ = customers.columns
 
@@ -93,10 +86,12 @@ trait SqlServerModule extends Jdbc { self =>
 
       val orderId :*: fkCustomerId :*: orderDate :*: _ = orders.columns
 
-      // val derived = //: Table.Source{type Repr[X] = (SqlServerModule.this.Expr[SqlServerModule.this.Features.Source,X,_$1], _1.type#columnSet.tail.ColumnsRepr[X]); type Cols = SqlServerModule.this.ColumnSet.Cons[_$1,_1.type#selection.value.tail.CS]}( forSome { type _$1; val _1: Read.Select[Features.Union[Features.Source,Features.Source],(UUID, (String, Unit)),customers.TableType]; val stabilizer$1: SelectBuilder[Features.Union[Features.Source,Features.Source],customers.TableType,SelectionSet.Cons[customers.TableType,UUID,SelectionSet.Cons[customers.TableType,String,SelectionSet.Empty]]] })
-      //     select(customerId ++ fName).from(customers).asTable("derivedCustomers")
+      val derived = 
+          select(customerId ++ fName).from(customers).asTable("derivedCustomers")
+
+      val derivedId :*: derivedName = derived.columns
       
-    //  val e = select(fName ++ lName).from(customers).asTable(TableName.Source("derivedCustomers"))
+      val e = select(fName ++ lName).from(customers).asTable(TableName.Source("derivedCustomers"))
 
       //JOIN example
       val joinQuery = select(fName ++ lName ++ orderDate).from(customers.join(orders).on(customerId === fkCustomerId))
@@ -244,10 +239,12 @@ trait SqlServerModule extends Jdbc { self =>
         case read0 @ Read.Select(_, _, _, _, _, _, _, _) =>
           object Dummy {
             type F
-            type A
-            type B <: SelectionSet[A]
+            type Repr
+            type Source
+            type Head
+            type Tail <: SelectionSet[Source]
           }
-          val read = read0.asInstanceOf[Read.Select[Dummy.F, Dummy.A, Dummy.B]]
+          val read = read0.asInstanceOf[Read.Select[Dummy.F, Dummy.Repr, Dummy.Source, Dummy.Head, Dummy.Tail]]
           import read._
 
           builder.append("select ")
@@ -373,27 +370,27 @@ trait SqlServerModule extends Jdbc { self =>
         case sourceTable: self.Table.Source    =>
           val _ = builder.append(sourceTable.name)
 
-        case Table.DialectSpecificTable(table) =>
-          table match {
-            case SqlServerSpecific.SqlServerTable.SelectedTable(crossType, left, select, on) =>
-              buildTable(left)
+        case Table.DialectSpecificTable(table) => 
+          // table match {
+          //   case SqlServerSpecific.SqlServerTable.SelectedTable(crossType, left, select, on) =>
+          //     buildTable(left)
 
-              crossType match {
-                case SqlServerSpecific.CrossType.CrossApply => builder.append(" CROSS APPLY ( ")
-                case SqlServerSpecific.CrossType.OuterApply => builder.append(" OUTER APPLY ( ")
-              }
+          //     crossType match {
+          //       case SqlServerSpecific.CrossType.CrossApply => builder.append(" CROSS APPLY ( ")
+          //       case SqlServerSpecific.CrossType.OuterApply => builder.append(" OUTER APPLY ( ")
+          //     }
 
-              builder.append("SELECT ")
-              buildSelection(select.selection.value)
-              builder.append(" FROM ")
-              buildTable(select.table.get)
-              builder.append(" WHERE ")
-              buildExpr(on)
+          //     builder.append("SELECT ")
+          //     buildSelection(select.selection.value)
+          //     builder.append(" FROM ")
+          //     buildTable(select.table.get)
+          //     builder.append(" WHERE ")
+          //     buildExpr(on)
 
-              builder.append(" ) ")
-              val _ = buildTable(select.table.get)
+          //     builder.append(" ) ")
+          //     val _ = buildTable(select.table.get)
 
-          }
+          // }
 
         case Table.Joined(joinType, left, right, on) =>
           buildTable(left)
