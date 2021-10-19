@@ -163,7 +163,7 @@ lazy val mysql = project
       "org.testcontainers" % "database-commons"           % testcontainersVersion      % Test,
       "org.testcontainers" % "jdbc"                       % testcontainersVersion      % Test,
       "org.testcontainers" % "mysql"                      % testcontainersVersion      % Test,
-      "mysql"              % "mysql-connector-java"       % "8.0.26"                   % Test,
+      "mysql"              % "mysql-connector-java"       % "8.0.27"                   % Test,
       "com.dimafeng"      %% "testcontainers-scala-mysql" % testcontainersScalaVersion % Test
     )
   )
