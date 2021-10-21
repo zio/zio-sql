@@ -90,19 +90,36 @@ trait SqlServerModule extends Jdbc { self =>
           select(customerId ++ fName).from(customers).asTable("derivedCustomers")
 
       val derivedId :*: derivedName = derived.columns
+
+      // Select[F, Repr, Source, Head, Tail <: SelectionSet[Source]]
+      val ww: Read.Select[Features.Union[Features.Source, Features.Source], (String, (String, Unit)), customers.TableType, String, SelectionSet.Cons[customers.TableType,String,SelectionSet.Empty]] = 
+        select(fName ++ lName).from(customers)
       
       val e = select(fName ++ lName).from(customers).asTable(TableName.Source("derivedCustomers"))
 
       //JOIN example
       val joinQuery = select(fName ++ lName ++ orderDate).from(customers.join(orders).on(customerId === fkCustomerId))
+
+      val xq = fName ++ lName ++ orderDate
       
       // Cross Apply example
       // import SqlServerTable._
       // val crossApplyExample = select(fName ++ lName ++ orderDate ++ fkCustomerId).from(customers.crossApply(select(orderDate).from(orders).where(customerId === fkCustomerId)))
 
-     // val xx = select(orderId ++ Selection.constant("hello")).from(orders).union(select(fkCustomerId ++ Selection.constant("world")).from(orders))
+     // cannot prove orders <:< orders with customers
 
-      val q = select(orderId ++ orderDate).from(orders).where(fkCustomerId === "")
+      // SubselectBuilder[Features.Source,orders.TableType,SelectionSet.Cons[orders.TableType,LocalDate,SelectionSet.Empty],customers.TableType]
+      val xwe = subselect[customers.TableType](orderDate)
+
+      // Read.Subselect[F,(LocalDate, (String, Unit)),orders.TableType with customers.TableType, orders.TableType, LocalDate,SelectionSet.Cons[customers.TableType,String,SelectionSet.Empty]]
+      val xw = subselect[orders.TableType](orderDate ++ fName).from(orders) //.where(customerId === fkCustomerId)
+      // Read.Subselect[F, (LocalDate, (String, Unit)),orders.TableType with customers.TableType, orders.TableType, LocalDate,SelectionSet.Cons[customers.TableType,String,SelectionSet.Empty]]
+      val xww = subselect[customers.TableType](orderDate ++ fName).from(orders) //.where(customerId === fkCustomerId)
+
+      // SelectBuilder[F,orders.TableType with customers.TableType, SelectionSet.Cons[orders.TableType with customers.TableType, LocalDate,SelectionSet.Cons[customers.TableType,String,SelectionSet.Empty]]]
+      val xwx = select(orderDate ++ fName)//.from(orders) //.where(customerId === fkCustomerId)
+
+      //select(orderDate ++ fName).from(orders)
     }
   }
 
@@ -234,6 +251,8 @@ trait SqlServerModule extends Jdbc { self =>
     def buildReadString(read: self.Read[_]): Unit =
       read match {
         case Read.Mapped(read, _) => buildReadString(read)
+
+        case Read.Subselect(selection, table, whereExpr, _, _, _, _, _) => ???
 
         //todo offset (needs orderBy, must use fetch _instead_ of top)
         case read0 @ Read.Select(_, _, _, _, _, _, _, _) =>
