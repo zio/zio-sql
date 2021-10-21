@@ -80,6 +80,8 @@ trait MysqlModule extends Jdbc { self =>
       read match {
         case Read.Mapped(read, _)                        =>
           renderReadImpl(read)
+
+        case Read.Subselect(selection, table, whereExpr, _, _, _, _, _) => ???
         case read0 @ Read.Select(_, _, _, _, _, _, _, _) =>
           object Dummy {
             type F

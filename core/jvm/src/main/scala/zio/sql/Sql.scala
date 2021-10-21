@@ -15,16 +15,15 @@ trait Sql extends SelectModule with DeleteModule with UpdateModule with ExprModu
    * SELECT ARBITRARY(age), COUNT(*) FROM person GROUP BY age
    */
   def select[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]): SelectBuilder[F, A, B] =
-    SelectBuilder(selection)
+     SelectBuilder(selection)
 
-  // def select(selection: AbstractSelection): SelectBuilder[selection.F, selection.A, selection.B] =
-  //   SelectBuilder(selection)
+  // selection.Source (aka A) <:< ParentTable with from[Source0]  
+  def subselect[ParentTable]: SubselectPartiallyApplied[ParentTable] = new SubselectPartiallyApplied[ParentTable]
 
-  // def subselect[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]): SubselectBuilder[F, A, B] =
-  //   SubselectBuilder(selection)
-
-  def subselect[ParentTable](selection: AbstractSelection): SubselectBuilder[selection.F, selection.Source, selection.B, ParentTable] =
-    SubselectBuilder(selection)
+  final class SubselectPartiallyApplied[ParentTable](val dummy: Boolean = true) {
+    def apply[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]): SubselectBuilder[F, A, B, ParentTable] = 
+      SubselectBuilder(selection)
+  }
 
   def deleteFrom[T <: Table](table: T): Delete[table.TableType] = Delete(table, true)
 
