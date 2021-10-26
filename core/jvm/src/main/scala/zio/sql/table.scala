@@ -39,7 +39,7 @@ trait TableModule { self: ExprModule with SelectModule =>
     sealed case class Cons[A, B <: ColumnSet](head: Column[A], tail: B) extends ColumnSet { self =>
       type ColumnsRepr[T]            = (Expr[Features.Source, T, A], tail.ColumnsRepr[T])
       type Append[That <: ColumnSet] = Cons[A, tail.Append[That]]
-      type TableSource = Table.Source.Aux_[ColumnsRepr, A :*: B]
+      type TableSource[TableType]    = Table.Source.Aux[ColumnsRepr, TableType, A :*: B]
 
       override def ++[That <: ColumnSet](that: That): Append[That] = Cons(head, tail ++ that)
 
@@ -53,7 +53,17 @@ trait TableModule { self: ExprModule with SelectModule =>
           val columnSchema: ColumnSchema[A :*: B]  = ColumnSchema(self)
           val columns: ColumnsRepr[TableType]      = mkColumns[TableType](name0)
           val columnsUntyped: List[Column.Untyped] = self.columnsUntyped
+        }
 
+      def tableOfType[TT](name0: TableName): Table.Source.Aux[ColumnsRepr, TT, A :*: B] =
+        new Table.Source {
+          override type TableType = TT
+          type Repr[C]            = ColumnsRepr[C]
+          type Cols               = A :*: B
+          val name: TableName                      = name0
+          val columnSchema: ColumnSchema[A :*: B]  = ColumnSchema(self)
+          val columns: ColumnsRepr[TableType]      = mkColumns[TableType](name0)
+          val columnsUntyped: List[Column.Untyped] = self.columnsUntyped
         }
 
       override protected def mkColumns[T](name: TableName): ColumnsRepr[T] =
@@ -85,7 +95,7 @@ trait TableModule { self: ExprModule with SelectModule =>
     def unapply[A, B](tuple: (A, B)): Some[(A, B)] = Some(tuple)
   }
 
-  sealed trait Column[+A]{
+  sealed trait Column[+A] {
     def typeTag: TypeTag[A]
   }
 
@@ -93,7 +103,7 @@ trait TableModule { self: ExprModule with SelectModule =>
     sealed case class Named[A: TypeTag](columnName: String) extends Column[A] {
       def typeTag: TypeTag[A] = implicitly[TypeTag[A]]
     }
-    sealed case class Indexed[A: TypeTag](index: Int) extends Column[A] {
+    sealed case class Indexed[A: TypeTag](index: Int)       extends Column[A] {
       def typeTag: TypeTag[A] = implicitly[TypeTag[A]]
     }
     type Untyped = Column[_]
@@ -181,8 +191,10 @@ trait TableModule { self: ExprModule with SelectModule =>
     }
 
     sealed case class DialectSpecificTable[A](tableExtension: TableExtension[A]) extends Table {
-      
-      val columnsUntyped: List[Column.Untyped] = tableExtension.columnsUntyped
+
+      override type TableType = A
+
+      override val columnsUntyped: List[Column.Untyped] = tableExtension.columnsUntyped
     }
   }
 }

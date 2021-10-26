@@ -17,10 +17,9 @@ trait Sql extends SelectModule with DeleteModule with UpdateModule with ExprModu
   def select[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]): SelectBuilder[F, A, B] =
      SelectBuilder(selection)
 
-  // selection.Source (aka A) <:< ParentTable with from[Source0]  
   def subselect[ParentTable]: SubselectPartiallyApplied[ParentTable] = new SubselectPartiallyApplied[ParentTable]
 
-  final class SubselectPartiallyApplied[ParentTable](val dummy: Boolean = true) {
+  final class SubselectPartiallyApplied[ParentTable] {
     def apply[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]): SubselectBuilder[F, A, B, ParentTable] = 
       SubselectBuilder(selection)
   }

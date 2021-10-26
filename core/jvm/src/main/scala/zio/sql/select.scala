@@ -23,10 +23,7 @@ trait SelectModule { self: ExprModule with TableModule =>
       ]
       val b: B0 = selection.value.asInstanceOf[B0]
 
-      val x: Read.Select[F0, selection.value.ResultTypeRepr, Source0,selection.value.ColumnHead,selection.value.SelectionTail] = 
-        Read.Select(Selection[F0, Source0, B0](b), Some(table), true, Nil)
-
-      x
+      Read.Select(Selection[F0, Source0, B0](b), Some(table), true, Nil)
     }
   }
 
@@ -54,51 +51,43 @@ trait SelectModule { self: ExprModule with TableModule =>
       ]
       val b: B0 = selectBuilder.selection.value.asInstanceOf[B0]
 
-      Read.Select(Selection[F, Source, B0](b), None, true, Nil)
+      Read.Select(Selection[F, Source, B0](b), None, true)
     }
   }
 
-  // select customers.id, customers.first_name, customers.last_name, orders.order_date  
-  // from customers
-  // cross apply (
-  //     Select top 1 *
-  //     from orders
-  //     where orders.customer_id = customers.id
-  //     order by orders.order_date DESC
-  // ) orders
-  // order by orders.order_date desc
-
-
-  // Source == customers with orders, 
-  // ParentTable == customers, 
+  // Source == customers with orders,
+  // ParentTable == customers,
   // Source0 = orders
-
-  //ev: B <:< SelectionSet.Cons[Source0, selection.value.ColumnHead, selection.value.SelectionTail]
   sealed case class SubselectBuilder[F, Source, B <: SelectionSet[Source], ParentTable](
     selection: Selection[F, Source, B]
   ) {
     def from[Source0](table: Table.Aux[Source0])(implicit
-   //   ev2: Source <:< Source0 with ParentTable,
-      ev: B <:< SelectionSet.Cons[Source, selection.value.ColumnHead, selection.value.SelectionTail]
-    ):
-      Read.Subselect[
+      ev1: Source0 with ParentTable <:< Source,
+      ev2: B <:< SelectionSet.Cons[Source, selection.value.ColumnHead, selection.value.SelectionTail]
+    ): Read.Subselect[
       F,
       selection.value.ResultTypeRepr,
-      Source,
+      Source with ParentTable,
       Source0,
       selection.value.ColumnHead,
       selection.value.SelectionTail
     ] = {
       type B0 = SelectionSet.ConsAux[
         selection.value.ResultTypeRepr,
-        Source,
+        Source with ParentTable,
         selection.value.ColumnHead,
         selection.value.SelectionTail
       ]
-      val b: B0 = selection.value.asInstanceOf[B0]      
+      val b: B0 = selection.value.asInstanceOf[B0]
 
-      // Read.Subselect[F,selection.value.ResultTypeRepr, Source, Source0,selection.value.ColumnHead,selection.value.SelectionTail] = 
-      Read.Subselect(Selection[F, Source, B0](b), Some(table), true)
+      //TODO
+      // 1. Read.Select is almost identical to Read.Subselect, get rid of duplication
+      // 2. Create subselect Expr, so subselects in where clause are possible
+      // 3. Try to translate cross apply to sql query
+      // 4. Check ColumnSet.Cons#tableType[TableType]
+      // 5. change subselect[table.TableType] to some better name?
+      // 6. Read.Literal = what is a TableType of a Table derived from Literal "selection" ?
+      Read.Subselect(Selection[F, Source with ParentTable, B0](b), Some(table), true)
     }
   }
 
@@ -112,12 +101,13 @@ trait SelectModule { self: ExprModule with TableModule =>
 
     type ColumnHead
     type ColumnTail <: ColumnSet
+    type TableType
 
     type CS <: ColumnSet.Cons[ColumnHead, ColumnTail]
 
     val columnSet: CS
 
-    def asTable(tableName: TableName): columnSet.TableSource = columnSet.table(tableName)
+    def asTable(tableName: TableName): columnSet.TableSource[TableType] = columnSet.tableOfType[TableType](tableName)
 
     /**
      * Maps the [[Read]] query's output to another type by providing a function
@@ -317,6 +307,8 @@ trait SelectModule { self: ExprModule with TableModule =>
     sealed case class Mapped[Repr, Out, Out2](read: Read.Aux[Repr, Out], f: Out => Out2) extends Read[Out2] {
       override type ResultType = Repr
 
+      override type TableType = read.TableType
+
       override val mapper = read.mapper.andThen(f)
 
       override type ColumnHead = read.ColumnHead
@@ -338,6 +330,8 @@ trait SelectModule { self: ExprModule with TableModule =>
       limit: Option[Long] = None
     ) extends Read[Repr] { self =>
       override type ResultType = Repr
+
+      override type TableType = Source
 
       override val mapper: Repr => Repr = identity(_)
 
@@ -376,18 +370,14 @@ trait SelectModule { self: ExprModule with TableModule =>
       override type CS = selection.value.CS
     }
 
-  // firstName ++ lastName
-  // Read.Select[Features.Union[Features.Source, Features.Source], (String, (String, Unit)), customers.TableType, String, SelectionSet.Cons[customers.TableType,String,SelectionSet.Empty]] = 
-
-    //TODO add support for Expr
+    // TODO add support for Expr
     // select(orderId ++ productId ++ unitPrice)
     //     .from(orderDetails)
     //     .where(unitPrice > subselect[orderDetails.TableType](avg(unitPrice2))
     //                            .from(orderDetails2).where(productId === productId2))
 
-    // final case class SubSelect[F, -Source, -Subsource, +Value](select: Select[F, (Value, Unit), Subsource, Value, _]) extends Expr[F, From, Value]
+    //final case class SubSelect[F, -Source, -Subsource, +Value](select: Select[F, (Value, Unit), Subsource, Value, _]) extends Expr[F, From, Value]
 
-    // Cons[-Source, A, B <: SelectionSet[Source]]
     sealed case class Subselect[F, Repr, Source, Subsource, Head, Tail <: SelectionSet[Source]](
       selection: Selection[F, Source, SelectionSet.ConsAux[Repr, Source, Head, Tail]],
       table: Option[Table.Aux[Subsource]],
@@ -395,9 +385,11 @@ trait SelectModule { self: ExprModule with TableModule =>
       groupBy: List[Expr[_, Source, Any]] = Nil,
       havingExpr: Expr[_, Source, Boolean] = true,
       orderBy: List[Ordering[Expr[_, Source, Any]]] = Nil,
-      offset: Option[Long] = None, 
+      offset: Option[Long] = None,
       limit: Option[Long] = None
     ) extends Read[Repr] { self =>
+
+      override type TableType = Source
 
       def where(whereExpr2: Expr[_, Source, Boolean]): Subselect[F, Repr, Source, Subsource, Head, Tail] =
         copy(whereExpr = self.whereExpr && whereExpr2)
@@ -441,6 +433,8 @@ trait SelectModule { self: ExprModule with TableModule =>
         extends Read[Out] {
       override type ResultType = Repr
 
+      override type TableType = left.TableType with right.TableType
+
       override val mapper: ResultType => Out = left.mapper
 
       //TODO union is allowed only if two selection are of the same column names and the same column types
@@ -456,6 +450,9 @@ trait SelectModule { self: ExprModule with TableModule =>
     // EXAMPLE select * from (select '1' as up) as x
     sealed case class Literal[B: TypeTag](values: Iterable[B]) extends Read[(B, Unit)] {
       type ResultType = (B, Unit)
+
+      //TODO what is a TableType of a Table derived from Literal selection ?
+      override type TableType = B
 
       override val mapper: ResultType => (B, Unit) = identity(_)
 
@@ -491,7 +488,7 @@ trait SelectModule { self: ExprModule with TableModule =>
     import SelectionSet.{ Cons, Empty }
     import ColumnSelection._
 
-   // val empty: Selection[Any, Any, Empty] = Selection(Empty)
+    // val empty: Selection[Any, Any, Empty] = Selection(Empty)
 
     def constantOption[A: TypeTag](value: A, option: Option[ColumnName]): Selection[Any, Any, Cons[Any, A, Empty]] =
       Selection(Cons(Constant(value, option), Empty))
