@@ -9,6 +9,7 @@ trait OracleModule extends Jdbc { self =>
   }
 
   def buildExpr[A, B](expr: self.Expr[_, A, B], builder: StringBuilder): Unit = expr match {
+    case Expr.Subselect(subselect) =>  
     case Expr.Source(table, column)                                                       => {
         (table, column) match {
           case (tableName: TableName, Column.Named(columnName)) => 
@@ -129,9 +130,7 @@ trait OracleModule extends Jdbc { self =>
     read match {
       case Read.Mapped(read, _) => buildReadString(read, builder)
 
-      case Read.Subselect(selection, table, whereExpr, _, _, _, _, _) => ???
-
-      case read0 @ Read.Select(_, _, _, _, _, _, _, _) =>
+      case read0 @ Read.Subselect(_, _, _, _, _, _, _, _) =>
         object Dummy {
             type F
             type Repr
@@ -268,10 +267,11 @@ trait OracleModule extends Jdbc { self =>
     }
   def buildTable(table: Table, builder: StringBuilder): Unit                                           =
     table match {
+      case Table.DialectSpecificTable(tableExtension) => ???
       //The outer reference in this type test cannot be checked at run time?!
       case sourceTable: self.Table.Source          =>
         val _ = builder.append(sourceTable.name)
-      case Table.DialectSpecificTable(tableExtension) => ???
+      case Table.DerivedTable(read, name) => ???
       case Table.Joined(joinType, left, right, on) =>
         buildTable(left, builder)
         builder.append(joinType match {
