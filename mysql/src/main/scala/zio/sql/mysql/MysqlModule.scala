@@ -81,8 +81,7 @@ trait MysqlModule extends Jdbc { self =>
         case Read.Mapped(read, _)                        =>
           renderReadImpl(read)
 
-        case Read.Subselect(selection, table, whereExpr, _, _, _, _, _) => ???
-        case read0 @ Read.Select(_, _, _, _, _, _, _, _) =>
+        case read0 @ Read.Subselect(_, _, _, _, _, _, _, _) =>
           object Dummy {
             type F
             type Repr
@@ -160,10 +159,11 @@ trait MysqlModule extends Jdbc { self =>
 
     private def renderTable(table: Table)(implicit render: Renderer): Unit =
       table match {
+        case Table.DialectSpecificTable(tableExtension) => ???
         //The outer reference in this type test cannot be checked at run time?!
         case sourceTable: self.Table.Source          =>
           render(sourceTable.name)
-        case Table.DialectSpecificTable(tableExtension) => ???
+        case Table.DerivedTable(read, name) => ???
         case Table.Joined(joinType, left, right, on) =>
           renderTable(left)
           render(joinType match {
@@ -179,6 +179,7 @@ trait MysqlModule extends Jdbc { self =>
       }
 
     private def renderExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
+      case Expr.Subselect(subselect) => 
       case Expr.Source(table, column)                                               => {
         (table, column) match {
           case (tableName: TableName, Column.Named(columnName)) => render(tableName, ".", columnName)

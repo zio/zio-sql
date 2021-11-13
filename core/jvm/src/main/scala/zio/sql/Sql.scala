@@ -1,6 +1,7 @@
 package zio.sql
 
-trait Sql extends SelectModule with DeleteModule with UpdateModule with ExprModule with TableModule { self =>
+trait Sql extends SelectModule with DeleteModule with UpdateModule with ExprModule with TableModule {
+  self =>
 
   /*
    * (SELECT *, "foo", table.a + table.b AS sum... FROM table WHERE cond) UNION (SELECT ... FROM table)
@@ -15,13 +16,16 @@ trait Sql extends SelectModule with DeleteModule with UpdateModule with ExprModu
    * SELECT ARBITRARY(age), COUNT(*) FROM person GROUP BY age
    */
   def select[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]): SelectBuilder[F, A, B] =
-     SelectBuilder(selection)
+    SelectBuilder(selection)
 
   def subselect[ParentTable]: SubselectPartiallyApplied[ParentTable] = new SubselectPartiallyApplied[ParentTable]
 
-  final class SubselectPartiallyApplied[ParentTable] {
-    def apply[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]): SubselectBuilder[F, A, B, ParentTable] = 
-      SubselectBuilder(selection)
+  //TODO decide if this should be removed...parentTable is here only to derive type
+  def subselectFrom[ParentTable, F, Source, B <: SelectionSet[Source]](
+    parentTable: Table.Aux[ParentTable]
+  )(selection: Selection[F, Source, B]) = {
+    val _ = parentTable
+    SubselectBuilder[F, Source, B, ParentTable](selection)
   }
 
   def deleteFrom[T <: Table](table: T): Delete[table.TableType] = Delete(table, true)
@@ -33,5 +37,4 @@ trait Sql extends SelectModule with DeleteModule with UpdateModule with ExprModu
   def renderRead(read: self.Read[_]): String
 
   def renderUpdate(update: self.Update[_]): String
-
 }

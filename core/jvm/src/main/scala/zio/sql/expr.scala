@@ -118,7 +118,6 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
 
     def exprName[F, A, B](expr: Expr[F, A, B]): Option[String] =
       expr match {
-        //TODO what to do with indexed column???
         case Expr.Source(_, c @ Column.Named(name)) => Some(name)
         case _                 => None
       }
@@ -127,6 +126,12 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
       expr: Expr[F, A, B]
     ): Selection[F, A, SelectionSet.Cons[A, B, SelectionSet.Empty]] =
       Selection.computedOption(expr, exprName(expr))
+
+    //TODO needed by suqueries in where clauses
+    implicit def selectionToExpr[F, A, B](subselect: Read.Subselect[F, _, A, A, B, SelectionSet.Empty]) : Expr[F, A, B] = 
+      Expr.Subselect(subselect)
+
+    sealed case class Subselect[F, A, B](subselect: Read.Subselect[F, _, A, A, B, SelectionSet.Empty]) extends Expr[F, A, B]
 
     sealed case class Source[A, B] private[sql] (tableName: TableName, column: Column[B])
         extends InvariantExpr[Features.Source, A, B] {

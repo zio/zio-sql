@@ -345,6 +345,7 @@ trait PostgresModule extends Jdbc { self =>
     }
 
     private[zio] def renderExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
+      case Expr.Subselect(subselect) => ???
       case Expr.Source(table, column)                                                       => {
         (table, column) match {
           case (tableName: TableName, Column.Named(columnName)) => 
@@ -467,8 +468,7 @@ trait PostgresModule extends Jdbc { self =>
     private[zio] def renderReadImpl(read: self.Read[_])(implicit render: Renderer): Unit =
       read match {
         case Read.Mapped(read, _)                        => renderReadImpl(read)
-        case Read.Subselect(selection, table, whereExpr, _, _, _, _, _) => ???
-        case read0 @ Read.Select(_, _, _, _, _, _, _, _) =>
+        case read0 @ Read.Subselect(_, _, _, _, _, _, _, _) =>
           object Dummy {
             type F
             type Repr
@@ -476,7 +476,7 @@ trait PostgresModule extends Jdbc { self =>
             type Head
             type Tail <: SelectionSet[Source]
           }
-          val read = read0.asInstanceOf[Read.Select[Dummy.F, Dummy.Repr, Dummy.Source, Dummy.Head, Dummy.Tail]]
+          val read = read0.asInstanceOf[Read.Subselect[Dummy.F, Dummy.Repr, Dummy.Source, Dummy.Source, Dummy.Head, Dummy.Tail]]
           import read._
 
           render("SELECT ")
@@ -600,9 +600,10 @@ trait PostgresModule extends Jdbc { self =>
 
     def renderTable(table: Table)(implicit render: Renderer): Unit =
       table match {
+        case Table.DialectSpecificTable(tableExtension) => ???
         //The outer reference in this type test cannot be checked at run time?!
         case sourceTable: self.Table.Source             => render(sourceTable.name)
-        case Table.DialectSpecificTable(tableExtension) => ???
+        case Table.DerivedTable(read, name) => ???
         case Table.Joined(joinType, left, right, on)    =>
           renderTable(left)
           render(joinType match {
