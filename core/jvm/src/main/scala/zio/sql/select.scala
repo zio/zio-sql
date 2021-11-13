@@ -56,7 +56,7 @@ trait SelectModule { self: ExprModule with TableModule =>
   }
 
   final class SubselectPartiallyApplied[ParentTable] {
-    def apply[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]): SubselectBuilder[F, A, B, ParentTable] = 
+    def apply[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]): SubselectBuilder[F, A, B, ParentTable] =
       SubselectBuilder(selection)
   }
 
@@ -306,11 +306,11 @@ trait SelectModule { self: ExprModule with TableModule =>
 
       override type ColumnHead = read.ColumnHead
       override type ColumnTail = read.ColumnTail
-      override type CS = read.CS
+      override type CS         = read.CS
 
       override val columnSet: CS = read.columnSet
 
-      override def asTable(name: TableName): Table.DerivedTable[Mapped[Repr, Out, Out2]] = 
+      override def asTable(name: TableName): Table.DerivedTable[Mapped[Repr, Out, Out2]] =
         Table.DerivedTable(self, name)
     }
 
@@ -323,7 +323,7 @@ trait SelectModule { self: ExprModule with TableModule =>
       groupBy: List[Expr[_, Source, Any]] = Nil,
       havingExpr: Expr[_, Source, Boolean] = true,
       orderBy: List[Ordering[Expr[_, Source, Any]]] = Nil,
-      offset: Option[Long] = None,  //todo don't know how to do this outside of postgres/mysql
+      offset: Option[Long] = None, //todo don't know how to do this outside of postgres/mysql
       limit: Option[Long] = None
     ) extends Read[Repr] { self =>
 
@@ -355,7 +355,8 @@ trait SelectModule { self: ExprModule with TableModule =>
         copy(havingExpr = self.havingExpr && havingExpr2)
       }
 
-      override def asTable(name: TableName): Table.DerivedTable[Subselect[F, Repr, Source, Subsource, Head, Tail]] = Table.DerivedTable(self, name)
+      override def asTable(name: TableName): Table.DerivedTable[Subselect[F, Repr, Source, Subsource, Head, Tail]] =
+        Table.DerivedTable(self, name)
 
       override type ResultType = Repr
 
@@ -425,8 +426,8 @@ trait SelectModule { self: ExprModule with TableModule =>
   }
 
   object Selection {
-    import SelectionSet.{ Cons, Empty }
     import ColumnSelection._
+    import SelectionSet.{ Cons, Empty }
 
     // val empty: Selection[Any, Any, Empty] = Selection(Empty)
 

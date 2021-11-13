@@ -1,13 +1,12 @@
 package zio.sql.postgresql
 
-import java.time._
-import java.util.UUID
-
 import zio._
 import zio.test.Assertion._
-import zio.test._
 import zio.test.TestAspect.sequential
+import zio.test._
 
+import java.time._
+import java.util.UUID
 import scala.language.postfixOps
 
 object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
