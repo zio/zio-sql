@@ -1,9 +1,8 @@
 package zio.sql
 
-import java.time._
-
 import com.github.ghik.silencer.silent
 
+import java.time._
 import scala.language.implicitConversions
 
 trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
@@ -119,7 +118,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     def exprName[F, A, B](expr: Expr[F, A, B]): Option[String] =
       expr match {
         case Expr.Source(_, c @ Column.Named(name)) => Some(name)
-        case _                 => None
+        case _                                      => None
       }
 
     implicit def expToSelection[F, A, B](
@@ -128,10 +127,11 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
       Selection.computedOption(expr, exprName(expr))
 
     //TODO needed by suqueries in where clauses
-    implicit def selectionToExpr[F, A, B](subselect: Read.Subselect[F, _, A, A, B, SelectionSet.Empty]) : Expr[F, A, B] = 
+    implicit def selectionToExpr[F, A, B](subselect: Read.Subselect[F, _, A, A, B, SelectionSet.Empty]): Expr[F, A, B] =
       Expr.Subselect(subselect)
 
-    sealed case class Subselect[F, A, B](subselect: Read.Subselect[F, _, A, A, B, SelectionSet.Empty]) extends Expr[F, A, B]
+    sealed case class Subselect[F, A, B](subselect: Read.Subselect[F, _, A, A, B, SelectionSet.Empty])
+        extends Expr[F, A, B]
 
     sealed case class Source[A, B] private[sql] (tableName: TableName, column: Column[B])
         extends InvariantExpr[Features.Source, A, B] {

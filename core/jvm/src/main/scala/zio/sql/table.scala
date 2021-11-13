@@ -1,9 +1,9 @@
 package zio.sql
 
+import zio.Chunk
+
 import java.time._
 import java.util.UUID
-
-import zio.Chunk
 
 trait TableModule { self: ExprModule with SelectModule =>
 
@@ -172,10 +172,10 @@ trait TableModule { self: ExprModule with SelectModule =>
 
     type Aux[A] = Table { type TableType = A }
 
-    type Aux_[ColumnsRepr[_], A, B <: ColumnSet]   = Table.Source {
-        type ColumnHead = A
-        type ColumnTail = B 
-        def columnSet: ColumnSet.ConsAux[A, B, ColumnsRepr]
+    type Aux_[ColumnsRepr[_], A, B <: ColumnSet] = Table.Source {
+      type ColumnHead = A
+      type ColumnTail = B
+      def columnSet: ColumnSet.ConsAux[A, B, ColumnsRepr]
     }
 
     // Absence of "Insanity" trait causes following known problems:
@@ -194,26 +194,6 @@ trait TableModule { self: ExprModule with SelectModule =>
       val columnSchema: ColumnSchema[Cols]
 
       override def ahhhhhhhhhhhhh[A]: A = ??? //don't remove or it'll break
-    }
-
-    object Source {
-
-      type Aux__[FF[_, _], Head, Tail] = Table.Source {
-        type Repr = FF[_, _]
-
-        type ColumnHead = Head
-
-        type ColumnTail = Tail
-      }
-
-      type Aux_[FF[_], B] = Table.Source {
-        type Repr = FF[TableType]
-        type Cols = B
-      }
-
-      type Aux[B] = Table.Source {
-        type Cols = B
-      }
     }
 
     sealed case class Joined[FF, A, B](
@@ -241,10 +221,6 @@ trait TableModule { self: ExprModule with SelectModule =>
       }
     }
 
-    object Joined {
-      type Aux[Left, Right] = Table { type TableType = Left with Right }
-    }
-
     sealed case class DerivedTable[+R <: Read[_]](read: R, name: TableName) extends Table { self =>
 
       override type TableType = read.DerivedTableType
@@ -257,12 +233,6 @@ trait TableModule { self: ExprModule with SelectModule =>
       override def columnToExpr: ColumnToExpr[TableType] = new ColumnToExpr[TableType] {
         def toExpr[A](column: Column[A]): Expr[Features.Source, TableType, A] =
           Expr.Source(name, column)
-      }
-    }
-
-    object DerivedTable {
-      type Aux[R <: Read[_], A] = DerivedTable[R] {
-        type TableType = A
       }
     }
 
@@ -288,7 +258,7 @@ trait TableModule { self: ExprModule with SelectModule =>
       def columnToExpr: ColumnToExpr[A]
     }
   }
-    
+
   type TableExtension[A] <: Table.TableEx[A]
-  
+
 }

@@ -1,15 +1,12 @@
 package zio.sql.sqlserver
 
-import java.time._
-import java.util.UUID
-
 import zio._
 import zio.test.Assertion._
+import zio.test.TestAspect.{ ignore, sequential }
 import zio.test._
 
-import zio.test.TestAspect.ignore
-import zio.test.TestAspect.sequential
-
+import java.time._
+import java.util.UUID
 import scala.language.postfixOps
 
 object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
@@ -167,18 +164,18 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
       } yield assert(r.head)(equalTo(expected))
     },
     /**
-      * select customers.first_name, customers.last_name, ooo.order_date
-      * from customers
-      * cross apply (
-      *     select order_date
-      *     from orders
-      *     where orders.customer_id = customers.id
-      * ) ooo
-      */
+     * select customers.first_name, customers.last_name, ooo.order_date
+     * from customers
+     * cross apply (
+     *     select order_date
+     *     from orders
+     *     where orders.customer_id = customers.id
+     * ) ooo
+     */
     testM("cross apply") {
       import SqlServerSpecific.SqlServerTable._
-
-      val subquery = subselect[customers.TableType](orderDate).from(orders).where(customerId === fkCustomerId).asTable("ooo")
+      val subquery =
+        subselect[customers.TableType](orderDate).from(orders).where(customerId === fkCustomerId).asTable("ooo")
 
       val orderDateDerived :*: _ = subquery.columns
 
@@ -227,7 +224,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-     testM("outer apply") {
+    testM("outer apply") {
       ???
     } @@ ignore,
     testM("Can select from joined tables (inner join)") {
@@ -276,6 +273,5 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
-    
   ) @@ sequential
 }
