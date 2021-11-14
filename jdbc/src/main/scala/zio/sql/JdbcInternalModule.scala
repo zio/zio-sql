@@ -114,8 +114,8 @@ trait JdbcInternalModule { self: Jdbc =>
           case t @ ColumnSelection.Constant(_, _) => t.typeTag
           case t @ ColumnSelection.Computed(_, _) => t.typeTag
         }
-      case Read.Union(left, _, _)                      => getColumns(left)
-      case v @ Read.Literal(_)                         => scala.collection.immutable.Vector(v.typeTag)
+      case Read.Union(left, _, _)                         => getColumns(left)
+      case v @ Read.Literal(_)                            => scala.collection.immutable.Vector(v.typeTag)
     }
 
   private[sql] def unsafeExtractRow[A](

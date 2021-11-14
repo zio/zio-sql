@@ -14,6 +14,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
   import AggregationDef._
   import Customers._
   import Orders._
+  import OrderDetails._
 
   private def customerSelectJoseAssertion(condition: Expr[_, customers.TableType, Boolean]) = {
     case class Customer(id: UUID, fname: String, lname: String, verified: Boolean, dateOfBirth: LocalDate)
@@ -99,31 +100,30 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    //TODO fix tests -> they were just copy pasted from postgres module to find bugs
     testM("Can select with property unary operator") {
       customerSelectJoseAssertion(verified isNotTrue)
-    } @@ ignore,
+    },
     testM("Can select with property binary operator with UUID") {
       customerSelectJoseAssertion(customerId === UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc"))
-    } @@ ignore,
+    },
     testM("Can select with property binary operator with String") {
       customerSelectJoseAssertion(fName === "Jose")
-    } @@ ignore,
+    },
     testM("Can select with property binary operator with LocalDate") {
       customerSelectJoseAssertion(dob === LocalDate.parse("1987-03-23"))
-    } @@ ignore,
+    },
     testM("Can select with property binary operator with LocalDateTime") {
       customerSelectJoseAssertion(dob === LocalDateTime.parse("1987-03-23T00:00:00"))
-    } @@ ignore,
+    },
     testM("Can select with property binary operator with OffsetDateTime") {
       customerSelectJoseAssertion(dob === OffsetDateTime.parse("1987-03-23T00:00:00Z"))
-    } @@ ignore,
+    },
     testM("Can select with property binary operator with ZonedLocalDate") {
       customerSelectJoseAssertion(dob === ZonedDateTime.parse("1987-03-23T00:00:00Z"))
-    } @@ ignore,
+    },
     testM("Can select with property binary operator with Instant") {
       customerSelectJoseAssertion(dob === Instant.parse("1987-03-23T00:00:00Z"))
-    } @@ ignore,
+    },
     testM("Can select from single table with limit, offset and order by") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
@@ -132,10 +132,10 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
       val expected =
         Seq(
           Customer(
-            UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc"),
-            "Jose",
-            "Wiggins",
-            LocalDate.parse("1987-03-23")
+            UUID.fromString("df8215a2-d5fd-4c6c-9984-801a1b3a2a0b"),
+            "Alana",
+            "Murray",
+            LocalDate.parse("1995-11-12")
           )
         )
 
@@ -151,7 +151,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
       } yield assert(r)(hasSameElementsDistinct(expected))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    } @@ ignore,
+    },
     testM("Can count rows") {
       val query = select(Count(customerId)).from(customers)
 
@@ -163,16 +163,102 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
         r <- result.runCollect
       } yield assert(r.head)(equalTo(expected))
     },
-    /**
-     * select customers.first_name, customers.last_name, ooo.order_date
-     * from customers
-     * cross apply (
-     *     select order_date
-     *     from orders
-     *     where orders.customer_id = customers.id
-     * ) ooo
-     */
-    testM("cross apply") {
+    testM("correlated subquery in where clause") {
+
+      /**
+       *  select derived.order_id, derived.product_id, derived.unit_price from order_details derived
+       *  where derived.unit_price  > (select avg(order_details.unit_price) from order_details where derived.product_id = order_details.product_id)
+       */
+
+      val query = select(derivedOrderId ++ derivedProductId ++ derivedUnitPrice)
+        .from(orderDetailsDerived)
+        .where(
+          derivedUnitPrice > subselect[orderDetailsDerived.TableType](AggregationDef.Avg(unitPrice))
+            .from(orderDetails)
+            .where(productId === derivedProductId)
+        )
+
+      case class Row(orderId: UUID, productId: UUID, unitPrice: Double)
+
+      object Row {
+        def apply(orderId: String, productId: String, unitPrice: Double): Row =
+          new Row(UUID.fromString(orderId), UUID.fromString(productId), unitPrice)
+      }
+
+      val expected = Seq(
+        Row("d4e77298-d829-4e36-a6a0-902403f4b7d3", "05182725-f5c8-4fd6-9c43-6671e179bf55", 2.0),
+        Row("d6d8dddc-4b0b-4d74-8edc-a54e9b7f35f7", "05182725-f5c8-4fd6-9c43-6671e179bf55", 2.0),
+        Row("04912093-cc2e-46ac-b64c-1bd7bb7758c3", "105a2701-ef93-4e25-81ab-8952cc7d9daa", 74.0),
+        Row("9022dd0d-06d6-4a43-9121-2993fc7712a1", "105a2701-ef93-4e25-81ab-8952cc7d9daa", 74.0),
+        Row("38d66d44-3cfa-488a-ac77-30277751418f", "105a2701-ef93-4e25-81ab-8952cc7d9daa", 74.0),
+        Row("7b2627d5-0150-44df-9171-3462e20797ee", "105a2701-ef93-4e25-81ab-8952cc7d9daa", 74.0),
+        Row("9473a0bc-396a-4936-96b0-3eea922af36b", "105a2701-ef93-4e25-81ab-8952cc7d9daa", 80.0),
+        Row("618aa21f-700b-4ca7-933c-67066cf4cd97", "105a2701-ef93-4e25-81ab-8952cc7d9daa", 74.0),
+        Row("fd0fa8d4-e1a0-4369-be07-945450db5d36", "105a2701-ef93-4e25-81ab-8952cc7d9daa", 80.0),
+        Row("876b6034-b33c-4497-81ee-b4e8742164c2", "105a2701-ef93-4e25-81ab-8952cc7d9daa", 74.0),
+        Row("91caa28a-a5fe-40d7-979c-bd6a128d0418", "105a2701-ef93-4e25-81ab-8952cc7d9daa", 74.0),
+        Row("763a7c39-833f-4ee8-9939-e80dfdbfc0fc", "105a2701-ef93-4e25-81ab-8952cc7d9daa", 80.0),
+        Row("5011d206-8eff-42c4-868e-f1a625e1f186", "105a2701-ef93-4e25-81ab-8952cc7d9daa", 74.0),
+        Row("0a48ffb0-ec61-4147-af56-fc4dbca8de0a", "105a2701-ef93-4e25-81ab-8952cc7d9daa", 74.0),
+        Row("04912093-cc2e-46ac-b64c-1bd7bb7758c3", "4c770002-4c8f-455a-96ff-36a8186d5290", 22.0),
+        Row("9022dd0d-06d6-4a43-9121-2993fc7712a1", "4c770002-4c8f-455a-96ff-36a8186d5290", 22.0),
+        Row("38d66d44-3cfa-488a-ac77-30277751418f", "4c770002-4c8f-455a-96ff-36a8186d5290", 22.0),
+        Row("618aa21f-700b-4ca7-933c-67066cf4cd97", "4c770002-4c8f-455a-96ff-36a8186d5290", 22.0),
+        Row("fd0fa8d4-e1a0-4369-be07-945450db5d36", "4c770002-4c8f-455a-96ff-36a8186d5290", 22.0),
+        Row("876b6034-b33c-4497-81ee-b4e8742164c2", "4c770002-4c8f-455a-96ff-36a8186d5290", 22.0),
+        Row("91caa28a-a5fe-40d7-979c-bd6a128d0418", "4c770002-4c8f-455a-96ff-36a8186d5290", 22.0),
+        Row("763a7c39-833f-4ee8-9939-e80dfdbfc0fc", "4c770002-4c8f-455a-96ff-36a8186d5290", 22.0),
+        Row("5011d206-8eff-42c4-868e-f1a625e1f186", "4c770002-4c8f-455a-96ff-36a8186d5290", 22.0),
+        Row("0a48ffb0-ec61-4147-af56-fc4dbca8de0a", "4c770002-4c8f-455a-96ff-36a8186d5290", 22.0),
+        Row("5883cb62-d792-4ee3-acbc-fe85b6baa998", "4c770002-4c8f-455a-96ff-36a8186d5290", 22.0),
+        Row("9022dd0d-06d6-4a43-9121-2993fc7712a1", "7368abf4-aed2-421f-b426-1725de756895", 11.0),
+        Row("38d66d44-3cfa-488a-ac77-30277751418f", "7368abf4-aed2-421f-b426-1725de756895", 11.0),
+        Row("7b2627d5-0150-44df-9171-3462e20797ee", "7368abf4-aed2-421f-b426-1725de756895", 11.0),
+        Row("62cd4109-3e5d-40cc-8188-3899fc1f8bdf", "7368abf4-aed2-421f-b426-1725de756895", 10.9),
+        Row("9473a0bc-396a-4936-96b0-3eea922af36b", "7368abf4-aed2-421f-b426-1725de756895", 12.0),
+        Row("618aa21f-700b-4ca7-933c-67066cf4cd97", "7368abf4-aed2-421f-b426-1725de756895", 11.0),
+        Row("fd0fa8d4-e1a0-4369-be07-945450db5d36", "7368abf4-aed2-421f-b426-1725de756895", 12.0),
+        Row("876b6034-b33c-4497-81ee-b4e8742164c2", "7368abf4-aed2-421f-b426-1725de756895", 11.0),
+        Row("91caa28a-a5fe-40d7-979c-bd6a128d0418", "7368abf4-aed2-421f-b426-1725de756895", 11.0),
+        Row("763a7c39-833f-4ee8-9939-e80dfdbfc0fc", "7368abf4-aed2-421f-b426-1725de756895", 12.0),
+        Row("5011d206-8eff-42c4-868e-f1a625e1f186", "7368abf4-aed2-421f-b426-1725de756895", 11.0),
+        Row("0a48ffb0-ec61-4147-af56-fc4dbca8de0a", "7368abf4-aed2-421f-b426-1725de756895", 11.0),
+        Row("5883cb62-d792-4ee3-acbc-fe85b6baa998", "7368abf4-aed2-421f-b426-1725de756895", 12.0),
+        Row("9473a0bc-396a-4936-96b0-3eea922af36b", "d5137d3a-894a-4109-9986-e982541b434f", 55.0),
+        Row("5883cb62-d792-4ee3-acbc-fe85b6baa998", "d5137d3a-894a-4109-9986-e982541b434f", 55.0),
+        Row("04912093-cc2e-46ac-b64c-1bd7bb7758c3", "f35b0053-855b-4145-abe1-dc62bc1fdb96", 6.0),
+        Row("9022dd0d-06d6-4a43-9121-2993fc7712a1", "f35b0053-855b-4145-abe1-dc62bc1fdb96", 6.0),
+        Row("38d66d44-3cfa-488a-ac77-30277751418f", "f35b0053-855b-4145-abe1-dc62bc1fdb96", 6.0),
+        Row("7b2627d5-0150-44df-9171-3462e20797ee", "f35b0053-855b-4145-abe1-dc62bc1fdb96", 6.0),
+        Row("91caa28a-a5fe-40d7-979c-bd6a128d0418", "f35b0053-855b-4145-abe1-dc62bc1fdb96", 6.0),
+        Row("5011d206-8eff-42c4-868e-f1a625e1f186", "f35b0053-855b-4145-abe1-dc62bc1fdb96", 6.0),
+        Row("0a48ffb0-ec61-4147-af56-fc4dbca8de0a", "f35b0053-855b-4145-abe1-dc62bc1fdb96", 6.0)
+      )
+
+      val result = execute(
+        query
+          .to[UUID, UUID, Double, Row] { case row =>
+            Row(row._1, row._2, row._3)
+          }
+      )
+
+      val assertion = for {
+        r <- result.runCollect
+      } yield assert(r)(hasSameElementsDistinct(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("cross apply 1") {
+
+      /**
+       * select customers.first_name, customers.last_name, ooo.order_date
+       * from customers
+       * cross apply (
+       *     select order_date
+       *     from orders
+       *     where orders.customer_id = customers.id
+       * ) ooo
+       */
       import SqlServerSpecific.SqlServerTable._
       val subquery =
         subselect[customers.TableType](orderDate).from(orders).where(customerId === fkCustomerId).asTable("ooo")
