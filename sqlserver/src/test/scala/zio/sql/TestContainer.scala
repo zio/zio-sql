@@ -16,7 +16,9 @@ object TestContainer {
       }
     }(container => effectBlocking(container.stop()).orDie).toLayer
 
-  def postgres(imageName: String = "mcr.microsoft.com/mssql/server:2017-latest"): ZLayer[Blocking, Throwable, Has[MSSQLServerContainer]] =
+  def postgres(
+    imageName: String = "mcr.microsoft.com/mssql/server:2017-latest"
+  ): ZLayer[Blocking, Throwable, Has[MSSQLServerContainer]] =
     ZManaged.make {
       effectBlocking {
         val c = new MSSQLServerContainer(

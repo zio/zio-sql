@@ -126,12 +126,14 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     ): Selection[F, A, SelectionSet.Cons[A, B, SelectionSet.Empty]] =
       Selection.computedOption(expr, exprName(expr))
 
-    //TODO needed by suqueries in where clauses
-    implicit def selectionToExpr[F, A, B](subselect: Read.Subselect[F, _, A, A, B, SelectionSet.Empty]): Expr[F, A, B] =
+    implicit def selectionToExpr[F, Repr, Source, Subsource, Head](
+      subselect: Read.Subselect[F, Repr, _ <: Source, Subsource, Head, SelectionSet.Empty]
+    ): Expr[F, Source, Head] =
       Expr.Subselect(subselect)
 
-    sealed case class Subselect[F, A, B](subselect: Read.Subselect[F, _, A, A, B, SelectionSet.Empty])
-        extends Expr[F, A, B]
+    sealed case class Subselect[F, Repr, Source, Subsource, Head](
+      subselect: Read.Subselect[F, Repr, _ <: Source, Subsource, Head, SelectionSet.Empty]
+    ) extends Expr[F, Source, Head]
 
     sealed case class Source[A, B] private[sql] (tableName: TableName, column: Column[B])
         extends InvariantExpr[Features.Source, A, B] {

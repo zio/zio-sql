@@ -91,7 +91,6 @@ trait SelectModule { self: ExprModule with TableModule =>
    */
   sealed trait Read[+Out] { self =>
     type ResultType
-    type DerivedTableType
 
     val mapper: ResultType => Out
 
@@ -327,7 +326,6 @@ trait SelectModule { self: ExprModule with TableModule =>
       limit: Option[Long] = None
     ) extends Read[Repr] { self =>
 
-      //TODO check if I need copy(whereExpr = self.whereExpr && whereExpr2)
       def where(whereExpr2: Expr[_, Source, Boolean]): Subselect[F, Repr, Source, Subsource, Head, Tail] =
         copy(whereExpr = whereExpr2)
 

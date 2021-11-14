@@ -32,11 +32,11 @@ trait SqlServerModule extends Jdbc { self =>
         override type ColumnTail =
           left.columnSet.tail.Append[ColumnSet.Cons[right.ColumnHead, right.ColumnTail]]
 
-        override val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail] = 
+        override val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail] =
           left.columnSet ++ right.columnSet
 
         override val columnToExpr: ColumnToExpr[A with B] = new ColumnToExpr[A with B] {
-          def toExpr[C](column: Column[C]): Expr[Features.Source, A with B, C] = 
+          def toExpr[C](column: Column[C]): Expr[Features.Source, A with B, C] =
             if (left.columnSet.contains(column))
               left.columnToExpr.toExpr(column)
             else
@@ -92,7 +92,8 @@ trait SqlServerModule extends Jdbc { self =>
 
       val orderId :*: fkCustomerId :*: orderDate :*: _ = orders.columns
 
-      val orderDetails = (uuid("orderId") ++ uuid("product_id") ++ int("quantity") ++ double("unit_price")).table("order_details")
+      val orderDetails =
+        (uuid("orderId") ++ uuid("product_id") ++ int("quantity") ++ double("unit_price")).table("order_details")
 
       val orderDetailsId :*: productId :*: quantity :*: unitPrice :*: _ = orderDetails.columns
 
@@ -101,7 +102,7 @@ trait SqlServerModule extends Jdbc { self =>
       val derived =
         select(customerId ++ fName).from(customers).asTable("derived")
 
-     val derivedId :*: derivedName :*: _ = derived.columns
+      val derivedId :*: derivedName :*: _ = derived.columns
 
       //AS TABLE example
       val e = select(fName ++ lName).from(customers).asTable("derived")
@@ -124,44 +125,36 @@ trait SqlServerModule extends Jdbc { self =>
 
       val orderDateColumn :*: _ = ordersTable.columns
 
-      /*
-                 select customers.id, customers.first_name, customers.last_name, ooo.order_date, ooo.id
-                      from 
-                        customers
-                          cross apply (
-                              select order_date
-                              from orders
-                              where orders.customer_id = customers.id
-                          ) ooo
-       */ 
-
       // Cross Apply example
-     import SqlServerTable._
-
+      import SqlServerTable._
 
       /*TODO
         1. which one do we need ?
-          * table.subquery(select)
-          * subselect[TableType](select)
-          * subselectFrom(parentTable)(query)
+       * table.subquery(select)
+       * subselect[TableType](select)
+       * subselectFrom(parentTable)(query)
         2. rename those subqueries to correlated subqueries, add suppost for normal subqueries (ones which does not access parent table)
-        3. add support for correlated subquery in where clause when accessing the same table
-        4. correlated subqueries in selections /  where clauses
+        
         5. translate DerivedTable also for postgres, Oracle, Mysql
         6. add test for outer apply and real cross apply
-      */
+       */
 
       select(customerId ++ fName ++ lName)
-        .from(customers
-          .crossApply(
-            subselect[customers.TableType](orderDate).from(orders).where(customerId === fkCustomerId).asTable("derived")
-          )
+        .from(
+          customers
+            .crossApply(
+              subselect[customers.TableType](orderDate)
+                .from(orders)
+                .where(customerId === fkCustomerId)
+                .asTable("derived")
+            )
         )
 
-      val newOrdersTable = subselect[customers.TableType](orderDate).from(orders).where(customerId === fkCustomerId).asTable("derived")
+      val newOrdersTable =
+        subselect[customers.TableType](orderDate).from(orders).where(customerId === fkCustomerId).asTable("derived")
 
       val localdate :*: _ = newOrdersTable.columns
-      
+
       val crossApplyExample2 = select(customerId ++ fName ++ lName ++ localdate)
         .from(
           customers
@@ -186,7 +179,7 @@ trait SqlServerModule extends Jdbc { self =>
             )
         )
 
-      val newtable = 
+      val newtable =
         customers
           .subselect(customerId ++ fName ++ lName ++ orderDate)
           .from(orders)
@@ -197,7 +190,6 @@ trait SqlServerModule extends Jdbc { self =>
 
       val crossApplyExample4 = select(dCustomerId ++ dfName ++ dflName ++ dOrderDate)
         .from(newtable)
-
 
       // //JOIN example
       val joinQuery = select(fName ++ lName ++ orderDate).from(customers.join(orders).on(customerId === fkCustomerId))
@@ -212,20 +204,6 @@ trait SqlServerModule extends Jdbc { self =>
       val qqqqq =
         subselect[customers.TableType](orderDate).from(orders).where(customerId === fkCustomerId).asTable("ooo")
 
-
-      //TODO
-      // // ========= CORRELATED SUBQUERY
-
-      // // select order_id, product_id, unit_price from order_details od
-      // // where unit_price  > (select avg(unit_price) from order_details where od.product_id = product_id)
-
-      // val customUUID = java.util.UUID.fromString("48ce2e6e-7258-413f-942f-01eb21acd979")
-
-      // val re = select(AggregationDef.Avg(unitPrice)).from(orderDetails).where(productId === customUUID)
-      
-      // select(orderDetailsId ++ productId ++ unitPrice)
-      //   .from(orderDetails)
-      //   .where(unitPrice > select(AggregationDef.Avg(unitPrice)).from(orderDetails).where(productId === ???))
     }
   }
 
@@ -237,7 +215,10 @@ trait SqlServerModule extends Jdbc { self =>
     val builder = new StringBuilder
 
     def buildExpr[A, B](expr: self.Expr[_, A, B]): Unit = expr match {
-      case Expr.Subselect(subselect) => ???
+      case Expr.Subselect(subselect)                                                            =>
+        builder.append(" (")
+        builder.append(renderRead(subselect))
+        val _ = builder.append(") ")
       case Expr.Source(table, column)                                                           =>
         (table, column) match {
           case (tableName: TableName, Column.Named(columnName)) =>
@@ -249,7 +230,13 @@ trait SqlServerModule extends Jdbc { self =>
         buildExpr(base)
       case Expr.Property(base, op)                                                              =>
         buildExpr(base)
-        val _ = builder.append(" ").append(op.symbol)
+        val symbol = op match {
+          case PropertyOp.IsNull    => "is null"
+          case PropertyOp.IsNotNull => "is not null"
+          case PropertyOp.IsTrue    => "= 1"
+          case PropertyOp.IsNotTrue => "= 0"
+        }
+        val _      = builder.append(" ").append(symbol)
       case Expr.Binary(left, right, op)                                                         =>
         buildExpr(left)
         builder.append(" ").append(op.symbol).append(" ")
@@ -261,8 +248,23 @@ trait SqlServerModule extends Jdbc { self =>
       case Expr.In(value, set)                                                                  =>
         buildExpr(value)
         buildReadString(set)
-      case Expr.Literal(value)                                                                  =>
-        val _ = builder.append(value.toString) //todo fix escaping
+      case literal @ Expr.Literal(value)                                                        =>
+        val lit = literal.typeTag match {
+          case TypeTag.TLocalDateTime  =>
+            value
+              .asInstanceOf[java.time.LocalDateTime]
+              .format(java.time.format.DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss"))
+          case TypeTag.TZonedDateTime  =>
+            value
+              .asInstanceOf[java.time.ZonedDateTime]
+              .format(java.time.format.DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss"))
+          case TypeTag.TOffsetDateTime =>
+            value
+              .asInstanceOf[java.time.OffsetDateTime]
+              .format(java.time.format.DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss"))
+          case _                       => value.toString
+        }
+        val _   = builder.append(s"'${lit}'")
       case Expr.AggregationCall(param, aggregation)                                             =>
         builder.append(aggregation.name.name)
         builder.append("(")
@@ -489,28 +491,26 @@ trait SqlServerModule extends Jdbc { self =>
     def buildTable(table: Table): Unit =
       table match {
 
-        case Table.DerivedTable(read, name) => {
-              builder.append(renderRead(read))
+        case Table.DerivedTable(read, name)             =>
+          builder.append(" ( ")
+          builder.append(renderRead(read))
+          builder.append(" ) ")
+          val _ = builder.append(name)
 
-              builder.append(" ) ")
-              val _ = builder.append(name)
-        }
-        
-        case sourceTable: self.Table.Source    =>
+        case sourceTable: self.Table.Source             =>
           val _ = builder.append(sourceTable.name)
 
         case Table.DialectSpecificTable(tableExtension) =>
           tableExtension match {
-            case SqlServerSpecific.SqlServerTable.CrossOuterApplyTable(crossType, left, derivedTable) => {
+            case SqlServerSpecific.SqlServerTable.CrossOuterApplyTable(crossType, left, derivedTable) =>
               buildTable(left)
 
               crossType match {
-                case SqlServerSpecific.SqlServerTable.CrossType.CrossApply => builder.append(" cross apply ( ")
-                case SqlServerSpecific.SqlServerTable.CrossType.OuterApply => builder.append(" outer apply ( ")
+                case SqlServerSpecific.SqlServerTable.CrossType.CrossApply => builder.append(" cross apply ")
+                case SqlServerSpecific.SqlServerTable.CrossType.OuterApply => builder.append(" outer apply ")
               }
 
               val _ = buildTable(derivedTable)
-            }
           }
 
         case Table.Joined(joinType, left, right, on) =>

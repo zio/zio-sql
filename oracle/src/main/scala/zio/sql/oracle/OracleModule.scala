@@ -9,13 +9,12 @@ trait OracleModule extends Jdbc { self =>
   }
 
   def buildExpr[A, B](expr: self.Expr[_, A, B], builder: StringBuilder): Unit = expr match {
-    case Expr.Subselect(subselect) =>  
-    case Expr.Source(table, column)                                                       => {
-        (table, column) match {
-          case (tableName: TableName, Column.Named(columnName)) => 
-            val _ = builder.append(tableName).append(".").append(columnName)
-          case _ => ()
-        }
+    case Expr.Subselect(subselect)                                                            =>
+    case Expr.Source(table, column)                                                           =>
+      (table, column) match {
+        case (tableName: TableName, Column.Named(columnName)) =>
+          val _ = builder.append(tableName).append(".").append(columnName)
+        case _                                                => ()
       }
     case Expr.Unary(base, op)                                                                 =>
       val _ = builder.append(" ").append(op.symbol)
@@ -132,12 +131,12 @@ trait OracleModule extends Jdbc { self =>
 
       case read0 @ Read.Subselect(_, _, _, _, _, _, _, _) =>
         object Dummy {
-            type F
-            type Repr
-            type Source
-            type Head
-            type Tail <: SelectionSet[Source]
-          }
+          type F
+          type Repr
+          type Source
+          type Head
+          type Tail <: SelectionSet[Source]
+        }
         val read = read0.asInstanceOf[Read.Select[Dummy.F, Dummy.Repr, Dummy.Source, Dummy.Head, Dummy.Tail]]
         import read._
 
@@ -269,10 +268,10 @@ trait OracleModule extends Jdbc { self =>
     table match {
       case Table.DialectSpecificTable(tableExtension) => ???
       //The outer reference in this type test cannot be checked at run time?!
-      case sourceTable: self.Table.Source          =>
+      case sourceTable: self.Table.Source             =>
         val _ = builder.append(sourceTable.name)
-      case Table.DerivedTable(read, name) => ???
-      case Table.Joined(joinType, left, right, on) =>
+      case Table.DerivedTable(read, name)             => ???
+      case Table.Joined(joinType, left, right, on)    =>
         buildTable(left, builder)
         builder.append(joinType match {
           case JoinType.Inner      => " INNER JOIN "
