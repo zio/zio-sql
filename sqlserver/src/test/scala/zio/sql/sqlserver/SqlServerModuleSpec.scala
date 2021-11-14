@@ -2,7 +2,7 @@ package zio.sql.sqlserver
 
 import zio._
 import zio.test.Assertion._
-import zio.test.TestAspect.{ ignore, sequential }
+import zio.test.TestAspect.sequential
 import zio.test._
 
 import java.time._
@@ -12,9 +12,7 @@ import scala.language.postfixOps
 object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
   import AggregationDef._
-  import Customers._
-  import Orders._
-  import OrderDetails._
+  import DbSchema._
 
   private def customerSelectJoseAssertion(condition: Expr[_, customers.TableType, Boolean]) = {
     case class Customer(id: UUID, fname: String, lname: String, verified: Boolean, dateOfBirth: LocalDate)
@@ -248,7 +246,55 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("cross apply 1") {
+    testM("cross apply - top 1 order_date") {
+
+      /**
+       *  select customers.id, customers.first_name, customers.last_name, derived.order_date
+       *  from customers
+       *  cross apply (
+       *      select top 1 order_date
+       *      from orders
+       *      where orders.customer_id = customers.id
+       *      order by orders.order_date DESC
+       *  ) derived
+       *  order by derived.order_date desc
+       */
+
+      case class Row(id: UUID, firstName: String, lastName: String, orderDate: LocalDate)
+
+      val expected = Seq(
+        Row(UUID.fromString("df8215a2-d5fd-4c6c-9984-801a1b3a2a0b"), "Alana", "Murray", LocalDate.parse("2020-05-11")),
+        Row(UUID.fromString("784426a5-b90a-4759-afbb-571b7a0ba35e"), "Mila", "Paterso", LocalDate.parse("2020-04-30")),
+        Row(UUID.fromString("f76c9ace-be07-4bf3-bd4c-4a9c62882e64"), "Terrence", "Noel", LocalDate.parse("2020-04-05")),
+        Row(
+          UUID.fromString("60b01fc9-c902-4468-8d49-3c0f989def37"),
+          "Ronald",
+          "Russell",
+          LocalDate.parse("2020-03-19")
+        ),
+        Row(UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc"), "Jose", "Wiggins", LocalDate.parse("2020-01-15"))
+      )
+      import SqlServerSpecific.SqlServerTable._
+
+      val query =
+        select(customerId ++ fName ++ lName ++ orderDateDerived)
+          .from(customers.crossApply(orderDateDerivedTable))
+          .orderBy(Ordering.Desc(orderDateDerived))
+
+      val result = execute(
+        query
+          .to[UUID, String, String, LocalDate, Row] { case row =>
+            Row(row._1, row._2, row._3, row._4)
+          }
+      )
+
+      val assertion = for {
+        r <- result.runCollect
+      } yield assert(r)(hasSameElementsDistinct(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("cross apply with subselect") {
 
       /**
        * select customers.first_name, customers.last_name, ooo.order_date
@@ -267,52 +313,85 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       val query = select(fName ++ lName ++ orderDateDerived).from(customers.crossApply(subquery))
 
-      case class Row(firstName: String, lastName: String, orderDate: LocalDate)
-
-      val expected = Seq(
-        Row("Ronald", "Russell", LocalDate.parse("2019-03-25")),
-        Row("Ronald", "Russell", LocalDate.parse("2018-06-04")),
-        Row("Alana", "Murray", LocalDate.parse("2019-08-19")),
-        Row("Jose", "Wiggins", LocalDate.parse("2019-08-30")),
-        Row("Jose", "Wiggins", LocalDate.parse("2019-03-07")),
-        Row("Ronald", "Russell", LocalDate.parse("2020-03-19")),
-        Row("Alana", "Murray", LocalDate.parse("2020-05-11")),
-        Row("Alana", "Murray", LocalDate.parse("2019-02-21")),
-        Row("Ronald", "Russell", LocalDate.parse("2018-05-06")),
-        Row("Mila", "Paterso", LocalDate.parse("2019-02-11")),
-        Row("Terrence", "Noel", LocalDate.parse("2019-10-12")),
-        Row("Ronald", "Russell", LocalDate.parse("2019-01-29")),
-        Row("Terrence", "Noel", LocalDate.parse("2019-02-10")),
-        Row("Ronald", "Russell", LocalDate.parse("2019-09-27")),
-        Row("Alana", "Murray", LocalDate.parse("2018-11-13")),
-        Row("Jose", "Wiggins", LocalDate.parse("2020-01-15")),
-        Row("Terrence", "Noel", LocalDate.parse("2018-07-10")),
-        Row("Mila", "Paterso", LocalDate.parse("2019-08-01")),
-        Row("Alana", "Murray", LocalDate.parse("2019-12-08")),
-        Row("Mila", "Paterso", LocalDate.parse("2019-11-04")),
-        Row("Mila", "Paterso", LocalDate.parse("2018-10-14")),
-        Row("Terrence", "Noel", LocalDate.parse("2020-04-05")),
-        Row("Jose", "Wiggins", LocalDate.parse("2019-01-23")),
-        Row("Terrence", "Noel", LocalDate.parse("2019-05-14")),
-        Row("Mila", "Paterso", LocalDate.parse("2020-04-30"))
-      )
-
       val result = execute(
         query
-          .to[String, String, LocalDate, Row] { case row =>
-            Row(row._1, row._2, row._3)
+          .to[String, String, LocalDate, CustomerAndDateRow] { case row =>
+            CustomerAndDateRow(row._1, row._2, row._3)
           }
       )
 
       val assertion = for {
         r <- result.runCollect
-      } yield assert(r)(hasSameElementsDistinct(expected))
+      } yield assert(r)(hasSameElementsDistinct(crossOuterApplyExpected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("cross apply with subquery") {
+      import SqlServerSpecific.SqlServerTable._
+      val subquery =
+        customers.subselect(orderDate).from(orders).where(customerId === fkCustomerId).asTable("ooo")
+
+      val orderDateDerived :*: _ = subquery.columns
+
+      val query = select(fName ++ lName ++ orderDateDerived).from(customers.crossApply(subquery))
+
+      val result = execute(
+        query
+          .to[String, String, LocalDate, CustomerAndDateRow] { case row =>
+            CustomerAndDateRow(row._1, row._2, row._3)
+          }
+      )
+
+      val assertion = for {
+        r <- result.runCollect
+      } yield assert(r)(hasSameElementsDistinct(crossOuterApplyExpected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("cross apply with subselect from") {
+      import SqlServerSpecific.SqlServerTable._
+      val subquery =
+        subselectFrom(customers)(orderDate).from(orders).where(customerId === fkCustomerId).asTable("ooo")
+
+      val orderDateDerived :*: _ = subquery.columns
+
+      val query = select(fName ++ lName ++ orderDateDerived).from(customers.crossApply(subquery))
+
+      val result = execute(
+        query
+          .to[String, String, LocalDate, CustomerAndDateRow] { case row =>
+            CustomerAndDateRow(row._1, row._2, row._3)
+          }
+      )
+
+      val assertion = for {
+        r <- result.runCollect
+      } yield assert(r)(hasSameElementsDistinct(crossOuterApplyExpected))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     testM("outer apply") {
-      ???
-    } @@ ignore,
+      import SqlServerSpecific.SqlServerTable._
+      val subquery =
+        subselect[customers.TableType](orderDate).from(orders).where(customerId === fkCustomerId).asTable("ooo")
+
+      val orderDateDerived :*: _ = subquery.columns
+
+      val query = select(fName ++ lName ++ orderDateDerived).from(customers.outerApply(subquery))
+
+      val result = execute(
+        query
+          .to[String, String, LocalDate, CustomerAndDateRow] { case row =>
+            CustomerAndDateRow(row._1, row._2, row._3)
+          }
+      )
+
+      val assertion = for {
+        r <- result.runCollect
+      } yield assert(r)(hasSameElementsDistinct(crossOuterApplyExpected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
     testM("Can select from joined tables (inner join)") {
       val query = select(fName ++ lName ++ orderDate).from(customers.join(orders).on(fkCustomerId === customerId))
 
@@ -360,4 +439,33 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
   ) @@ sequential
+
+  case class CustomerAndDateRow(firstName: String, lastName: String, orderDate: LocalDate)
+  private val crossOuterApplyExpected = Seq(
+    CustomerAndDateRow("Ronald", "Russell", LocalDate.parse("2019-03-25")),
+    CustomerAndDateRow("Ronald", "Russell", LocalDate.parse("2018-06-04")),
+    CustomerAndDateRow("Alana", "Murray", LocalDate.parse("2019-08-19")),
+    CustomerAndDateRow("Jose", "Wiggins", LocalDate.parse("2019-08-30")),
+    CustomerAndDateRow("Jose", "Wiggins", LocalDate.parse("2019-03-07")),
+    CustomerAndDateRow("Ronald", "Russell", LocalDate.parse("2020-03-19")),
+    CustomerAndDateRow("Alana", "Murray", LocalDate.parse("2020-05-11")),
+    CustomerAndDateRow("Alana", "Murray", LocalDate.parse("2019-02-21")),
+    CustomerAndDateRow("Ronald", "Russell", LocalDate.parse("2018-05-06")),
+    CustomerAndDateRow("Mila", "Paterso", LocalDate.parse("2019-02-11")),
+    CustomerAndDateRow("Terrence", "Noel", LocalDate.parse("2019-10-12")),
+    CustomerAndDateRow("Ronald", "Russell", LocalDate.parse("2019-01-29")),
+    CustomerAndDateRow("Terrence", "Noel", LocalDate.parse("2019-02-10")),
+    CustomerAndDateRow("Ronald", "Russell", LocalDate.parse("2019-09-27")),
+    CustomerAndDateRow("Alana", "Murray", LocalDate.parse("2018-11-13")),
+    CustomerAndDateRow("Jose", "Wiggins", LocalDate.parse("2020-01-15")),
+    CustomerAndDateRow("Terrence", "Noel", LocalDate.parse("2018-07-10")),
+    CustomerAndDateRow("Mila", "Paterso", LocalDate.parse("2019-08-01")),
+    CustomerAndDateRow("Alana", "Murray", LocalDate.parse("2019-12-08")),
+    CustomerAndDateRow("Mila", "Paterso", LocalDate.parse("2019-11-04")),
+    CustomerAndDateRow("Mila", "Paterso", LocalDate.parse("2018-10-14")),
+    CustomerAndDateRow("Terrence", "Noel", LocalDate.parse("2020-04-05")),
+    CustomerAndDateRow("Jose", "Wiggins", LocalDate.parse("2019-01-23")),
+    CustomerAndDateRow("Terrence", "Noel", LocalDate.parse("2019-05-14")),
+    CustomerAndDateRow("Mila", "Paterso", LocalDate.parse("2020-04-30"))
+  )
 }

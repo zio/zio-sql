@@ -4,8 +4,6 @@ import zio.sql.Jdbc
 
 trait SqlServerModule extends Jdbc { self =>
 
-  import self.ColumnSet._
-
   override type TableExtension[A] = SqlServerSpecific.SqlServerTable[A]
 
   object SqlServerSpecific {
@@ -80,131 +78,9 @@ trait SqlServerModule extends Jdbc { self =>
       }
     }
 
-    object QueriesExamples {
-
-      val customers = (uuid("id") ++ string("first_name") ++ string("last_name")).table("customers")
-
-      val customerId :*: fName :*: lName :*: _ = customers.columns
-
-      val q = customers.columns
-
-      val orders = (uuid("id") ++ uuid("customer_id") ++ localDate("order_date")).table("orders")
-
-      val orderId :*: fkCustomerId :*: orderDate :*: _ = orders.columns
-
-      val orderDetails =
-        (uuid("orderId") ++ uuid("product_id") ++ int("quantity") ++ double("unit_price")).table("order_details")
-
-      val orderDetailsId :*: productId :*: quantity :*: unitPrice :*: _ = orderDetails.columns
-
-      // ----------------
-
-      val derived =
-        select(customerId ++ fName).from(customers).asTable("derived")
-
-      val derivedId :*: derivedName :*: _ = derived.columns
-
-      //AS TABLE example
-      val e = select(fName ++ lName).from(customers).asTable("derived")
-
-      val ppp = select(orderId ++ fkCustomerId).from(orders).asTable("derived")
-
-      val orders2 = select(orderDate).from(orders).asTable("derived")
-
-      val wwq = select(fName ++ lName)
-        .from(customers)
-
-      val pok1 = customers.subselect(orderDate ++ fName).from(orders).where(customerId === fkCustomerId)
-
-      val xwe22 = subselect[customers.TableType](orderDate).from(orders).where(customerId === fkCustomerId)
-
-      val pok         =
-        subselectFrom(customers)(orderDate).from(orders).where(customerId === fkCustomerId).asTable("derived")
-      val ordersTable =
-        subselect[customers.TableType](orderDate).from(orders).where(customerId === fkCustomerId).asTable("derived")
-
-      val orderDateColumn :*: _ = ordersTable.columns
-
-      // Cross Apply example
-      import SqlServerTable._
-
-      /*TODO
-        1. which one do we need ?
-       * table.subquery(select)
-       * subselect[TableType](select)
-       * subselectFrom(parentTable)(query)
-        2. rename those subqueries to correlated subqueries, add suppost for normal subqueries (ones which does not access parent table)
-        
-        5. translate DerivedTable also for postgres, Oracle, Mysql
-        6. add test for outer apply and real cross apply
-       */
-
-      select(customerId ++ fName ++ lName)
-        .from(
-          customers
-            .crossApply(
-              subselect[customers.TableType](orderDate)
-                .from(orders)
-                .where(customerId === fkCustomerId)
-                .asTable("derived")
-            )
-        )
-
-      val newOrdersTable =
-        subselect[customers.TableType](orderDate).from(orders).where(customerId === fkCustomerId).asTable("derived")
-
-      val localdate :*: _ = newOrdersTable.columns
-
-      val crossApplyExample2 = select(customerId ++ fName ++ lName ++ localdate)
-        .from(
-          customers
-            .crossApply(
-              newOrdersTable
-            )
-        )
-
-      val crossApplyExample3 = select(customerId ++ fName ++ lName)
-        .from(
-          customers
-            .crossApply(
-              subselectFrom(customers)(orderDate).from(orders).where(customerId === fkCustomerId).asTable("ooo")
-            )
-        )
-
-      val crossApplyExample4Alt = select(customerId ++ fName ++ lName)
-        .from(
-          customers
-            .crossApply(
-              customers.subselect(orderDate).from(orders).where(customerId === fkCustomerId).asTable("derived")
-            )
-        )
-
-      val newtable =
-        customers
-          .subselect(customerId ++ fName ++ lName ++ orderDate)
-          .from(orders)
-          .where(customerId === fkCustomerId)
-          .asTable("")
-
-      val dCustomerId :*: dfName :*: dflName :*: dOrderDate :*: _ = newtable.columns
-
-      val crossApplyExample4 = select(dCustomerId ++ dfName ++ dflName ++ dOrderDate)
-        .from(newtable)
-
-      // //JOIN example
-      val joinQuery = select(fName ++ lName ++ orderDate).from(customers.join(orders).on(customerId === fkCustomerId))
-
-      // // SUBSELECT another example
-      val xww  = subselect[customers.TableType](orderDate ++ fName).from(orders).where(customerId === fkCustomerId)
-      val xwwx = subselect[customers.TableType](orderDate ++ fName)
-        .from(orders)
-        .where(customerId === fkCustomerId)
-        .asTable("")
-
-      val qqqqq =
-        subselect[customers.TableType](orderDate).from(orders).where(customerId === fkCustomerId).asTable("ooo")
-
-    }
+    /*TODO
+        1. translate DerivedTable also for postgres, Oracle, Mysql
+     */
   }
 
   override def renderDelete(delete: Delete[_]): String = ??? // TODO: https://github.com/zio/zio-sql/issues/159

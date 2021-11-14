@@ -10,6 +10,9 @@ trait OracleModule extends Jdbc { self =>
 
   def buildExpr[A, B](expr: self.Expr[_, A, B], builder: StringBuilder): Unit = expr match {
     case Expr.Subselect(subselect)                                                            =>
+      builder.append(" (")
+      builder.append(renderRead(subselect))
+      val _ = builder.append(") ")
     case Expr.Source(table, column)                                                           =>
       (table, column) match {
         case (tableName: TableName, Column.Named(columnName)) =>
@@ -270,7 +273,11 @@ trait OracleModule extends Jdbc { self =>
       //The outer reference in this type test cannot be checked at run time?!
       case sourceTable: self.Table.Source             =>
         val _ = builder.append(sourceTable.name)
-      case Table.DerivedTable(read, name)             => ???
+      case Table.DerivedTable(read, name)             =>
+        builder.append(" ( ")
+        builder.append(renderRead(read))
+        builder.append(" ) ")
+        val _ = builder.append(name)
       case Table.Joined(joinType, left, right, on)    =>
         buildTable(left, builder)
         builder.append(joinType match {
