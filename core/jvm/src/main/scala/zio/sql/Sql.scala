@@ -20,10 +20,11 @@ trait Sql extends SelectModule with DeleteModule with UpdateModule with ExprModu
 
   def subselect[ParentTable]: SubselectPartiallyApplied[ParentTable] = new SubselectPartiallyApplied[ParentTable]
 
-  //TODO decide if this should be removed...parentTable is here only to derive type
   def subselectFrom[ParentTable, F, Source, B <: SelectionSet[Source]](
     parentTable: Table.Aux[ParentTable]
   )(selection: Selection[F, Source, B]) = {
+    // parentTable value is here to infer parent table type parameter when doing subqueries
+    // e.g. subselectFrom(customers)(orderDate).from(orders).where(customers.id == orders.id))
     val _ = parentTable
     SubselectBuilder[F, Source, B, ParentTable](selection)
   }

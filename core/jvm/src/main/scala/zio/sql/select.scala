@@ -327,7 +327,7 @@ trait SelectModule { self: ExprModule with TableModule =>
     ) extends Read[Repr] { self =>
 
       def where(whereExpr2: Expr[_, Source, Boolean]): Subselect[F, Repr, Source, Subsource, Head, Tail] =
-        copy(whereExpr = whereExpr2)
+        copy(whereExpr = self.whereExpr && whereExpr2)
 
       def limit(n: Long): Subselect[F, Repr, Source, Subsource, Head, Tail] = copy(limit = Some(n))
 
@@ -372,11 +372,8 @@ trait SelectModule { self: ExprModule with TableModule =>
         extends Read[Out] { self =>
       override type ResultType = Repr
 
-      //override type TableType = left.TableType
-
       override val mapper: ResultType => Out = left.mapper
 
-      //TODO union is allowed only if two selection are of the same column names and the same column types
       override type ColumnHead = left.ColumnHead
       override type ColumnTail = left.ColumnTail
 
@@ -426,8 +423,6 @@ trait SelectModule { self: ExprModule with TableModule =>
   object Selection {
     import ColumnSelection._
     import SelectionSet.{ Cons, Empty }
-
-    // val empty: Selection[Any, Any, Empty] = Selection(Empty)
 
     def constantOption[A: TypeTag](value: A, option: Option[ColumnName]): Selection[Any, Any, Cons[Any, A, Empty]] =
       Selection(Cons(Constant(value, option), Empty))

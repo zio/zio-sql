@@ -223,8 +223,6 @@ trait TableModule { self: ExprModule with SelectModule =>
 
     sealed case class DerivedTable[+R <: Read[_]](read: R, name: TableName) extends Table { self =>
 
-      //override type TableType = read.DerivedTableType
-
       override type ColumnHead = read.ColumnHead
       override type ColumnTail = read.ColumnTail
 

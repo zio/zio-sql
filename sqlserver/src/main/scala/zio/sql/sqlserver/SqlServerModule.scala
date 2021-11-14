@@ -77,10 +77,6 @@ trait SqlServerModule extends Jdbc { self =>
         }
       }
     }
-
-    /*TODO
-        1. translate DerivedTable also for postgres, Oracle, Mysql
-     */
   }
 
   override def renderDelete(delete: Delete[_]): String = ??? // TODO: https://github.com/zio/zio-sql/issues/159
@@ -126,21 +122,31 @@ trait SqlServerModule extends Jdbc { self =>
         buildReadString(set)
       case literal @ Expr.Literal(value)                                                        =>
         val lit = literal.typeTag match {
+          case TypeTag.TBoolean        =>
+            //MSSQL server variant of true/false
+            if (value.asInstanceOf[Boolean]) {
+              "0 = 0"
+            } else {
+              "0 = 1"
+            }
           case TypeTag.TLocalDateTime  =>
-            value
+            val x = value
               .asInstanceOf[java.time.LocalDateTime]
               .format(java.time.format.DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss"))
+            s"'$x'"
           case TypeTag.TZonedDateTime  =>
-            value
+            val x = value
               .asInstanceOf[java.time.ZonedDateTime]
               .format(java.time.format.DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss"))
+            s"'$x'"
           case TypeTag.TOffsetDateTime =>
-            value
+            val x = value
               .asInstanceOf[java.time.OffsetDateTime]
               .format(java.time.format.DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss"))
-          case _                       => value.toString
+            s"'$x'"
+          case _                       => s"'${value.toString}'"
         }
-        val _   = builder.append(s"'${lit}'")
+        val _   = builder.append(lit)
       case Expr.AggregationCall(param, aggregation)                                             =>
         builder.append(aggregation.name.name)
         builder.append("(")
