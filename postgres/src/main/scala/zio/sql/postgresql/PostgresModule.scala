@@ -345,7 +345,10 @@ trait PostgresModule extends Jdbc { self =>
     }
 
     private[zio] def renderExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
-      case Expr.Subselect(subselect)                                                    => ???
+      case Expr.Subselect(subselect)                                                    =>
+        render(" (")
+        renderRead(subselect)
+        render(") ")
       case Expr.Source(table, column)                                                   =>
         (table, column) match {
           case (tableName: TableName, Column.Named(columnName)) =>
@@ -600,10 +603,14 @@ trait PostgresModule extends Jdbc { self =>
 
     def renderTable(table: Table)(implicit render: Renderer): Unit =
       table match {
-        case Table.DialectSpecificTable(tableExtension) => ???
+        case Table.DialectSpecificTable(tableExtension) =>
         //The outer reference in this type test cannot be checked at run time?!
         case sourceTable: self.Table.Source             => render(sourceTable.name)
-        case Table.DerivedTable(read, name)             => ???
+        case Table.DerivedTable(read, name)             =>
+          render(" ( ")
+          renderRead(read)
+          render(" ) ")
+          render(name)
         case Table.Joined(joinType, left, right, on)    =>
           renderTable(left)
           render(joinType match {
