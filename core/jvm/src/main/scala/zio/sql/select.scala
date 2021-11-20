@@ -368,6 +368,13 @@ trait SelectModule { self: ExprModule with TableModule =>
       override type CS = selection.value.CS
     }
 
+    object Subselect {
+      implicit def subselectToExpr[F <: Features.Aggregated[_], Repr, Source, Subsource, Head](
+        subselect: Read.Subselect[F, Repr, _ <: Source, Subsource, Head, SelectionSet.Empty]
+      ): Expr[F, Any, Head] =
+        Expr.Subselect(subselect)
+    }
+
     sealed case class Union[Repr, Out](left: Read.Aux[Repr, Out], right: Read.Aux[Repr, Out], distinct: Boolean)
         extends Read[Out] { self =>
       override type ResultType = Repr

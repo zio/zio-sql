@@ -106,6 +106,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
   }
 
   object Expr {
+    implicit val subqueryToExpr = self.Read.Subselect.subselectToExpr _
 
     sealed trait InvariantExpr[F, -A, B] extends Expr[F, A, B] {
       def typeTag: TypeTag[B]
@@ -126,14 +127,11 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     ): Selection[F, A, SelectionSet.Cons[A, B, SelectionSet.Empty]] =
       Selection.computedOption(expr, exprName(expr))
 
-    implicit def selectionToExpr[F, Repr, Source, Subsource, Head](
+    sealed case class Subselect[F <: Features.Aggregated[_], Repr, Source, Subsource, Head](
       subselect: Read.Subselect[F, Repr, _ <: Source, Subsource, Head, SelectionSet.Empty]
-    ): Expr[F, Source, Head] =
-      Expr.Subselect(subselect)
-
-    sealed case class Subselect[F, Repr, Source, Subsource, Head](
-      subselect: Read.Subselect[F, Repr, _ <: Source, Subsource, Head, SelectionSet.Empty]
-    ) extends Expr[F, Source, Head]
+    ) extends InvariantExpr[F, Any, Head] {
+      override def typeTag: TypeTag[Head] = subselect.selection.value.head.toColumn.typeTag
+    }
 
     sealed case class Source[A, B] private[sql] (tableName: TableName, column: Column[B])
         extends InvariantExpr[Features.Source, A, B] {

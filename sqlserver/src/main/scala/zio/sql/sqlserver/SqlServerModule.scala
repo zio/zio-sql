@@ -77,6 +77,10 @@ trait SqlServerModule extends Jdbc { self =>
         }
       }
     }
+
+    object SqlServerFunctionDef {
+      val Avg = AggregationDef[BigDecimal, Int](FunctionName("avg"))
+    }
   }
 
   override def renderDelete(delete: Delete[_]): String = ??? // TODO: https://github.com/zio/zio-sql/issues/159
