@@ -14,7 +14,55 @@ trait PostgresModule extends Jdbc { self =>
 
   override type TypeTagExtension[+A] = PostgresSpecific.PostgresTypeTag[A]
 
+  override type TableExtension[A] = PostgresSpecific.PostgresSpecificTable[A]
+
   object PostgresSpecific {
+    sealed trait PostgresSpecificTable[A] extends Table.TableEx[A]
+
+    object PostgresSpecificTable {
+      import scala.language.implicitConversions
+
+      private[PostgresModule] sealed case class LateraLTable[A, B](left: Table.Aux[A], right: Table.Aux[B])
+          extends PostgresSpecificTable[A with B] { self =>
+
+        override type ColumnHead = left.ColumnHead
+        override type ColumnTail =
+          left.columnSet.tail.Append[ColumnSet.Cons[right.ColumnHead, right.ColumnTail]]
+
+        override val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail] =
+          left.columnSet ++ right.columnSet
+
+        override val columnToExpr: ColumnToExpr[A with B] = new ColumnToExpr[A with B] {
+          def toExpr[C](column: Column[C]): Expr[Features.Source, A with B, C] =
+            if (left.columnSet.contains(column))
+              left.columnToExpr.toExpr(column)
+            else
+              right.columnToExpr.toExpr(column)
+        }
+      }
+
+      implicit def tableSourceToSelectedBuilder[A](
+        table: Table.Aux[A]
+      ): LateralTableBuilder[A] =
+        new LateralTableBuilder(table)
+
+      sealed case class LateralTableBuilder[A](left: Table.Aux[A]) {
+        self =>
+
+        final def lateral(
+          right: Table.DerivedTable[Read[_]]
+        ): Table.DialectSpecificTable[A with right.TableType] = {
+
+          val tableExtension = LateraLTable[A, right.TableType](
+            left,
+            right
+          )
+
+          new Table.DialectSpecificTable(tableExtension)
+        }
+      }
+    }
+
     trait PostgresTypeTag[+A] extends Tag[A] with Decodable[A]
     object PostgresTypeTag {
       implicit case object TVoid       extends PostgresTypeTag[Unit]       {
@@ -179,6 +227,39 @@ trait PostgresModule extends Jdbc { self =>
           zdt.getSecond,
           zdt.getZone.getId
         )
+    }
+
+    object LateralTableExample {
+      import self.ColumnSet._
+
+      val customers =
+        (uuid("id") ++ localDate("dob") ++ string("first_name") ++ string("last_name") ++ boolean(
+          "verified"
+        ) ++ string("created_timestamp_string") ++ zonedDateTime("created_timestamp"))
+          .table("customers")
+
+      val customerId :*: dob :*: fName :*: lName :*: verified :*: createdString :*: createdTimestamp :*: _ =
+        customers.columns
+
+      val orders = (uuid("id") ++ uuid("customer_id") ++ localDate("order_date")).table("orders")
+
+      val orderId :*: fkCustomerId :*: orderDate :*: _ = orders.columns
+
+      val products                                     =
+        (uuid("id") ++ string("name") ++ string("description") ++ string("image_url")).table("products")
+      val productId :*: description :*: imageURL :*: _ = products.columns
+
+      val productPrices                             =
+        (uuid("product_id") ++ offsetDateTime("effective") ++ bigDecimal("price")).table("product_prices")
+      val fkProductId :*: effective :*: price :*: _ = productPrices.columns
+
+      val orderDetails                                                         =
+        (uuid("order_id") ++ uuid("product_id") ++ int("quantity") ++ bigDecimal("unit_price"))
+          .table(
+            "order_details"
+          )
+      val fkOrderId :*: orderDetailsProductId :*: quantity :*: unitPrice :*: _ = orderDetails.columns
+
     }
   }
 
@@ -347,7 +428,7 @@ trait PostgresModule extends Jdbc { self =>
     private[zio] def renderExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
       case Expr.Subselect(subselect)                                                    =>
         render(" (")
-        renderRead(subselect)
+        render(renderRead(subselect))
         render(") ")
       case Expr.Source(table, column)                                                   =>
         (table, column) match {
@@ -604,11 +685,19 @@ trait PostgresModule extends Jdbc { self =>
     def renderTable(table: Table)(implicit render: Renderer): Unit =
       table match {
         case Table.DialectSpecificTable(tableExtension) =>
+          tableExtension match {
+            case PostgresSpecific.PostgresSpecificTable.LateraLTable(left, derivedTable) =>
+              renderTable(left)
+
+              render(" ,lateral ")
+
+              renderTable(derivedTable)
+          }
         //The outer reference in this type test cannot be checked at run time?!
         case sourceTable: self.Table.Source             => render(sourceTable.name)
         case Table.DerivedTable(read, name)             =>
           render(" ( ")
-          renderRead(read)
+          render(renderRead(read))
           render(" ) ")
           render(name)
         case Table.Joined(joinType, left, right, on)    =>

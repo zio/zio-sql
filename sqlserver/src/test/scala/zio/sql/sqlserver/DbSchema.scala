@@ -18,8 +18,13 @@ trait DbSchema extends Jdbc { self =>
 
     val orderId :*: fkCustomerId :*: orderDate :*: _ = orders.columns
 
+    val productPrices =
+      (uuid("product_id") ++ offsetDateTime("effective") ++ bigDecimal("price")).table("product_prices")
+
+    val fkProductId :*: effective :*: price :*: _ = productPrices.columns
+
     val orderDetails =
-      (uuid("order_id") ++ uuid("product_id") ++ int("quantity") ++ double("unit_price")).table("order_details")
+      (uuid("order_id") ++ uuid("product_id") ++ int("quantity") ++ bigDecimal("unit_price")).table("order_details")
 
     val orderDetailsId :*: productId :*: quantity :*: unitPrice :*: _ = orderDetails.columns
 
