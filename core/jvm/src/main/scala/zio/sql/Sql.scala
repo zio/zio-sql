@@ -1,6 +1,6 @@
 package zio.sql
 
-trait Sql extends SelectModule with DeleteModule with UpdateModule with ExprModule with TableModule {
+trait Sql extends SelectModule with DeleteModule with UpdateModule with ExprModule with TableModule with InsertModule {
   self =>
 
   /*
@@ -38,4 +38,7 @@ trait Sql extends SelectModule with DeleteModule with UpdateModule with ExprModu
   def renderRead(read: self.Read[_]): String
 
   def renderUpdate(update: self.Update[_]): String
+
+  def insertInto[Source, N <: ColumnCount](table: Table.Source.Aux[Source, N]): InsertBuilder[Source, N] =
+    InsertBuilder(table)
 }

@@ -12,6 +12,7 @@ trait TableModule { self: ExprModule with SelectModule =>
   sealed trait ColumnSet {
     type ColumnsRepr[T]
     type Append[That <: ColumnSet] <: ColumnSet
+    type Size <: ColumnCount
 
     def ++[That <: ColumnSet](that: That): Append[That]
 
@@ -27,6 +28,7 @@ trait TableModule { self: ExprModule with SelectModule =>
     type Empty                  = Empty.type
     type :*:[A, B <: ColumnSet] = Cons[A, B]
     type Singleton[A]           = Cons[A, Empty]
+    import ColumnCount._
 
     type ConsAux[A, B <: ColumnSet, ColumnsRepr0[_]] = ColumnSet.Cons[A, B] {
       type ColumnsRepr[C] = ColumnsRepr0[C]
@@ -39,6 +41,8 @@ trait TableModule { self: ExprModule with SelectModule =>
     case object Empty extends ColumnSet {
       override type ColumnsRepr[T]            = Unit
       override type Append[That <: ColumnSet] = That
+
+      override type Size = _0
 
       override def ++[That <: ColumnSet](that: That): Append[That] = that
 
@@ -54,6 +58,8 @@ trait TableModule { self: ExprModule with SelectModule =>
       override type ColumnsRepr[T]            = (Expr[Features.Source, T, A], tail.ColumnsRepr[T])
       override type Append[That <: ColumnSet] = Cons[A, tail.Append[That]]
 
+      override type Size = Succ[tail.Size]
+
       override def ++[That <: ColumnSet](that: That): Append[That] = Cons(head, tail ++ that)
 
       override def columnsUntyped: List[Column.Untyped] = head :: tail.columnsUntyped
@@ -63,17 +69,19 @@ trait TableModule { self: ExprModule with SelectModule =>
           override type ColumnHead = A
           override type ColumnTail = B
 
+          override type Size = columnSet.Size
+
           override val name: TableName                     = name0
           override val columnSchema: ColumnSchema[A :*: B] = ColumnSchema(self)
 
           override val columnSet: ColumnSet.ConsAux[ColumnHead, ColumnTail, ColumnsRepr] = self
 
-          override def columnToExpr: ColumnToExpr[TableType] = new ColumnToExpr[TableType] {
+          override val columnToExpr: ColumnToExpr[TableType] = new ColumnToExpr[TableType] {
             def toExpr[A](column: Column[A]): Expr[Features.Source, TableType, A] = Expr.Source(name0, column)
           }
         }
 
-      override def makeColumns[T](columnToExpr: ColumnToExpr[T]): ColumnsRepr[T] =
+      def makeColumns[T](columnToExpr: ColumnToExpr[T]): ColumnsRepr[T] =
         (columnToExpr.toExpr(head), tail.makeColumns(columnToExpr))
 
       override def contains[A](column: Column[A]): Boolean =
@@ -141,6 +149,7 @@ trait TableModule { self: ExprModule with SelectModule =>
 
     type ColumnHead
     type ColumnTail <: ColumnSet
+    type Size = columnSet.Size
 
     final def fullOuter[That](that: Table.Aux[That]): Table.JoinBuilder[self.TableType, That] =
       new Table.JoinBuilder[self.TableType, That](JoinType.FullOuter, self, that)
@@ -158,9 +167,11 @@ trait TableModule { self: ExprModule with SelectModule =>
 
     final def columns = columnSet.makeColumns[TableType](columnToExpr)
 
+    //final val columnSize : Size = columnSet.size
+
     val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail]
 
-    def columnToExpr: ColumnToExpr[TableType]
+    val columnToExpr: ColumnToExpr[TableType]
   }
 
   object Table {
@@ -196,6 +207,13 @@ trait TableModule { self: ExprModule with SelectModule =>
       override def ahhhhhhhhhhhhh[A]: A = ??? //don't remove or it'll break
     }
 
+    object Source {
+      type Aux[A, Size0] = Table.Source {
+        type TableType = A
+        type Size      = Size0
+      }
+    }
+
     sealed case class Joined[FF, A, B](
       joinType: JoinType,
       left: Table.Aux[A],
@@ -213,7 +231,7 @@ trait TableModule { self: ExprModule with SelectModule =>
         left.columnSet ++ right.columnSet
 
       override val columnToExpr: ColumnToExpr[TableType] = new ColumnToExpr[TableType] {
-        def toExpr[C](column: Column[C]): Expr[Features.Source, TableType, C] =
+        def toExpr[C](column: Column[C]) =
           if (left.columnSet.contains(column))
             left.columnToExpr.toExpr(column)
           else
@@ -228,7 +246,7 @@ trait TableModule { self: ExprModule with SelectModule =>
 
       override val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail] = read.columnSet
 
-      override def columnToExpr: ColumnToExpr[TableType] = new ColumnToExpr[TableType] {
+      override val columnToExpr: ColumnToExpr[TableType] = new ColumnToExpr[TableType] {
         def toExpr[A](column: Column[A]): Expr[Features.Source, TableType, A] =
           Expr.Source(name, column)
       }
@@ -243,7 +261,7 @@ trait TableModule { self: ExprModule with SelectModule =>
 
       override val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail] = tableExtension.columnSet
 
-      override def columnToExpr: ColumnToExpr[TableType] = tableExtension.columnToExpr
+      override val columnToExpr: ColumnToExpr[TableType] = tableExtension.columnToExpr
     }
 
     trait TableEx[A] {
@@ -259,4 +277,70 @@ trait TableModule { self: ExprModule with SelectModule =>
 
   type TableExtension[A] <: Table.TableEx[A]
 
+  sealed trait ColumnCount {
+
+    type Appended[That <: ColumnCount] <: ColumnCount
+
+    def add[That <: ColumnCount](that: That): Appended[That]
+  }
+  object ColumnCount {
+    case object Zero extends ColumnCount {
+      override type Appended[That <: ColumnCount] = That
+
+      override def add[That <: ColumnCount](that: That): Appended[That] = that
+    }
+
+    sealed case class Succ[C <: ColumnCount](c: C) extends ColumnCount {
+      override type Appended[That <: ColumnCount] = Succ[c.Appended[That]]
+
+      override def add[That <: ColumnCount](that: That): Appended[That] = Succ(c.add(that))
+    }
+
+    type _0 = Zero.type
+    val _0 = Zero
+    // type _1 = Succ[_0]
+    // val _1 = Succ(_0)
+    // type _2 = Succ[_1]
+    // val _2 = Succ(_1)
+    // type _3 = Succ[_2]
+    // val _3 = Succ(_2)
+    // type _4 = Succ[_3]
+    // val _4 = Succ(_3)
+    // type _5 = Succ[_4]
+    // val _5 = Succ(_4)
+    // type _6 = Succ[_5]
+    // val _6 = Succ(_5)
+    // type _7 = Succ[_6]
+    // val  _7 = Succ(_6)
+    // type _8 = Succ[_7]
+    // val  _8 = Succ(_7)
+    // type _9 = Succ[_8]
+    // val  _9 = Succ(_8)
+    // type _10 = Succ[_9]
+    // val  _10 = Succ(_9)
+    // type _11 = Succ[_10]
+    // val  _11 = Succ(_10)
+    // type _12 = Succ[_11]
+    // val  _12 = Succ(_11)
+    // type _13 = Succ[_12]
+    // val  _13 = Succ(_12)
+    // type _14 = Succ[_13]
+    // val  _14 = Succ(_13)
+    // type _15 = Succ[_14]
+    // val  _15 = Succ(_14)
+    // type _16 = Succ[_15]
+    // val  _16 = Succ(_15)
+    // type _17 = Succ[_16]
+    // val  _17 = Succ(_16)
+    // type _18 = Succ[_17]
+    // val  _18 = Succ(_17)
+    // type _19 = Succ[_18]
+    // val  _19 = Succ(_18)
+    // type _20 = Succ[_19]
+    // val  _20 = Succ(_19)
+    // type _21 = Succ[_20]
+    // val  _21 = Succ(_20)
+    // type _22 = Succ[_21]
+    // val  _22 = Succ(_21)
+  }
 }
