@@ -52,16 +52,6 @@ trait InsertModule { self: ExprModule with TableModule =>
     def values(values: InsertRow[Source])(implicit ev: values.Size =:= N): Insert[Source, N] = Insert(table, values)
   }
 
-  sealed trait =!=[A, B]
-
-  object =!= {
-    implicit def neq[A, B]: A =!= B = null
-
-    // This pair excludes the A =:= B case
-    implicit def neqAmbig1[A]: A =!= A = null
-    implicit def neqAmbig2[A]: A =!= A = null
-  }
-
   sealed trait InsertRow[-Source] { self =>
 
     type Append[Source1, Appended] <: InsertRow[Source1]
@@ -124,5 +114,15 @@ trait InsertModule { self: ExprModule with TableModule =>
       ev: A =!= H
     ): Unique[A, InsertRow.Cons[_, H, T]]                     =
       new Unique[A, InsertRow.Cons[_, H, T]] {}
+  }
+
+  sealed trait =!=[A, B]
+
+  object =!= {
+    implicit def neq[A, B]: A =!= B = null
+
+    // This pair excludes the A =:= B case
+    implicit def neqAmbig1[A]: A =!= A = null
+    implicit def neqAmbig2[A]: A =!= A = null
   }
 }
