@@ -12,6 +12,8 @@ trait FeaturesModule {
     type Aggregated[_]
     type Union[_, _]
     type Source
+    //TODO make Derived and Join tables return Expr of type "Derived" when .columns is called
+    type Derived
     type Literal
     type Function0
 

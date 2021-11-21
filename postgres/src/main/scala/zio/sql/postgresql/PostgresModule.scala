@@ -233,12 +233,12 @@ trait PostgresModule extends Jdbc { self =>
       import self.ColumnSet._
 
       val customers =
-        (uuid("id") ++ localDate("dob") ++ string("first_name") ++ string("last_name") ++ boolean(
+        (uuid("id") ++ localDate("dob") ++ string("last_name") ++ boolean(
           "verified"
-        ) ++ string("created_timestamp_string") ++ zonedDateTime("created_timestamp"))
+        ) ++ zonedDateTime("created_timestamp"))
           .table("customers")
 
-      val customerId :*: dob :*: fName :*: lName :*: verified :*: createdString :*: createdTimestamp :*: _ =
+      val customerId :*: dob :*: lName :*: verified :*: createdTimestamp :*: _ =
         customers.columns
 
       val orders = (uuid("id") ++ uuid("customer_id") ++ localDate("order_date")).table("orders")
@@ -260,6 +260,26 @@ trait PostgresModule extends Jdbc { self =>
           )
       val fkOrderId :*: orderDetailsProductId :*: quantity :*: unitPrice :*: _ = orderDetails.columns
 
+      //  ============== INSERTS
+
+      val insertValues = (customerId -> java.util.UUID.fromString("28e880be-c783-43ea-9839-db51834347a8")) ++
+        (dob              -> LocalDate.now()) ++
+        (lName            -> "Regec") ++
+        (verified         -> true) ++
+        (createdTimestamp -> ZonedDateTime.now())
+
+      insertInto(customers)
+        .values(insertValues)
+
+      // works but refuses to store two same column types
+      insertInto(customers)
+        .values(
+          (customerId       -> java.util.UUID.fromString("28e880be-c783-43ea-9839-db51834347a8")) ++
+          (dob              -> LocalDate.now()) ++
+          (lName            -> "Regec") ++
+          (verified         -> true) ++
+          (createdTimestamp -> ZonedDateTime.now())
+        )
     }
   }
 
