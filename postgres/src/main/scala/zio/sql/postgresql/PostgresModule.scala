@@ -279,8 +279,6 @@ trait PostgresModule extends Jdbc { self =>
       insertInto(persons)
         .values(name -> "Jaro")
 
-      //implicitly[persons.AllColumnIdentities =:= name.
-
       //  ============== INSERTS
 
       def test[A, B](expr1: Expr[Features.Source[A], _, _], expr2: Expr[Features.Source[B], _, _])(implicit
