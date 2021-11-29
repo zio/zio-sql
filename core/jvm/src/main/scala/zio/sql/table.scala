@@ -7,12 +7,16 @@ import java.util.UUID
 
 trait TableModule { self: ExprModule with SelectModule =>
 
-  sealed case class ColumnSchema[A](value: A)
+  sealed trait Singleton0[A] {
+    type SingletonIdentity
+  }
 
   sealed trait ColumnSet {
     type ColumnsRepr[T]
     type Append[That <: ColumnSet] <: ColumnSet
     type Size <: ColumnCount
+
+    type AllColumnIdentities
 
     def ++[That <: ColumnSet](that: That): Append[That]
 
@@ -25,12 +29,13 @@ trait TableModule { self: ExprModule with SelectModule =>
   }
 
   object ColumnSet {
-    type Empty                  = Empty.type
-    type :*:[A, B <: ColumnSet] = Cons[A, B]
-    type Singleton[A]           = Cons[A, Empty]
+
+    type Empty                                = Empty.type
+    type :*:[A, B <: ColumnSet, HeadIdentity] = Cons[A, B, HeadIdentity]
+    type Singleton[A, ColumnIdentity]         = Cons[A, Empty, ColumnIdentity]
     import ColumnCount._
 
-    type ConsAux[A, B <: ColumnSet, ColumnsRepr0[_]] = ColumnSet.Cons[A, B] {
+    type ConsAux[A, B <: ColumnSet, ColumnsRepr0[_], HeadIdentity] = ColumnSet.Cons[A, B, HeadIdentity] {
       type ColumnsRepr[C] = ColumnsRepr0[C]
     }
 
@@ -44,6 +49,8 @@ trait TableModule { self: ExprModule with SelectModule =>
 
       override type Size = _0
 
+      override type AllColumnIdentities = Any
+
       override def ++[That <: ColumnSet](that: That): Append[That] = that
 
       override def columnsUntyped: List[Column.Untyped] = Nil
@@ -53,31 +60,39 @@ trait TableModule { self: ExprModule with SelectModule =>
       override def contains[A](column: Column[A]): Boolean = false
     }
 
-    sealed case class Cons[A, B <: ColumnSet](head: Column[A], tail: B) extends ColumnSet { self =>
+    sealed case class Cons[A, B <: ColumnSet, HeadIdentity](head: Column.Aux[A, HeadIdentity], tail: B)
+        extends ColumnSet { self =>
 
-      override type ColumnsRepr[T]            = (Expr[Features.Source, T, A], tail.ColumnsRepr[T])
-      override type Append[That <: ColumnSet] = Cons[A, tail.Append[That]]
+      override type ColumnsRepr[T] = (Expr[Features.Source[HeadIdentity], T, A], tail.ColumnsRepr[T])
 
-      override type Size = Succ[tail.Size]
+      override type Append[That <: ColumnSet] = Cons[A, tail.Append[That], HeadIdentity]
 
       override def ++[That <: ColumnSet](that: That): Append[That] = Cons(head, tail ++ that)
 
+      override type Size = Succ[tail.Size]
+
+      override type AllColumnIdentities = HeadIdentity with tail.AllColumnIdentities
+
       override def columnsUntyped: List[Column.Untyped] = head :: tail.columnsUntyped
 
-      def table(name0: TableName): Table.Aux_[ColumnsRepr, A, B] =
+      def table(name0: TableName): Table.Aux_[ColumnsRepr, A, B, AllColumnIdentities, HeadIdentity] =
         new Table.Source {
           override type ColumnHead = A
           override type ColumnTail = B
 
+          override type HeadIdentity0 = HeadIdentity
+
+          override type AllColumnIdentities = HeadIdentity with tail.AllColumnIdentities
+
           override type Size = columnSet.Size
 
-          override val name: TableName                     = name0
-          override val columnSchema: ColumnSchema[A :*: B] = ColumnSchema(self)
+          override val name: TableName = name0
+          //override val columnSchema: ColumnSchema[A :*: B] = ColumnSchema(self)
 
-          override val columnSet: ColumnSet.ConsAux[ColumnHead, ColumnTail, ColumnsRepr] = self
+          override val columnSet: ColumnSet.ConsAux[ColumnHead, ColumnTail, ColumnsRepr, HeadIdentity] = self
 
           override val columnToExpr: ColumnToExpr[TableType] = new ColumnToExpr[TableType] {
-            def toExpr[A](column: Column[A]): Expr[Features.Source, TableType, A] = Expr.Source(name0, column)
+            def toExpr[A](column: Column[A]): Expr.Source[TableType, A, column.Identity] = Expr.Source(name0, column)
           }
         }
 
@@ -88,42 +103,74 @@ trait TableModule { self: ExprModule with SelectModule =>
         head == column || tail.contains(column)
     }
 
-    def bigDecimal(name: String): Singleton[BigDecimal]         = singleton[BigDecimal](name)
-    def boolean(name: String): Singleton[Boolean]               = singleton[Boolean](name)
-    def byteArray(name: String): Singleton[Chunk[Byte]]         = singleton[Chunk[Byte]](name)
-    def char(name: String): Singleton[Char]                     = singleton[Char](name)
-    def double(name: String): Singleton[Double]                 = singleton[Double](name)
-    def float(name: String): Singleton[Float]                   = singleton[Float](name)
-    def instant(name: String): Singleton[Instant]               = singleton[Instant](name)
-    def int(name: String): Singleton[Int]                       = singleton[Int](name)
-    def localDate(name: String): Singleton[LocalDate]           = singleton[LocalDate](name)
-    def localDateTime(name: String): Singleton[LocalDateTime]   = singleton[LocalDateTime](name)
-    def localTime(name: String): Singleton[LocalTime]           = singleton[LocalTime](name)
-    def long(name: String): Singleton[Long]                     = singleton[Long](name)
-    def offsetDateTime(name: String): Singleton[OffsetDateTime] = singleton[OffsetDateTime](name)
-    def offsetTime(name: String): Singleton[OffsetTime]         = singleton[OffsetTime](name)
-    def short(name: String): Singleton[Short]                   = singleton[Short](name)
-    def singleton[A: TypeTag](name: String): Singleton[A]       = Cons(Column.Named[A](name), Empty)
-    def string(name: String): Singleton[String]                 = singleton[String](name)
-    def uuid(name: String): Singleton[UUID]                     = singleton[UUID](name)
-    def zonedDateTime(name: String): Singleton[ZonedDateTime]   = singleton[ZonedDateTime](name)
+    /**
+     * TODO
+     *
+     * 1. I need a way to mark column as db generated
+     * 2. I need a way to mark column as nullable
+     */
+    def byteArray(name: String): Singleton[Chunk[Byte], name.type] = singleton[Chunk[Byte], name.type](name)
+    def bigDecimal(name: String): Singleton[BigDecimal, name.type]         = singleton[BigDecimal, name.type](name)
+    def boolean(name: String): Singleton[Boolean, name.type]               = singleton[Boolean, name.type](name)
+    def char(name: String): Singleton[Char, name.type]                     = singleton[Char, name.type](name)
+    def double(name: String): Singleton[Double, name.type]                 = singleton[Double, name.type](name)
+    def float(name: String): Singleton[Float, name.type]                   = singleton[Float, name.type](name)
+    def instant(name: String): Singleton[Instant, name.type]               = singleton[Instant, name.type](name)
+    def int(name: String): Singleton[Int, name.type]                       = singleton[Int, name.type](name)
+    def localDate(name: String): Singleton[LocalDate, name.type]           = singleton[LocalDate, name.type](name)
+    def localDateTime(name: String): Singleton[LocalDateTime, name.type]   = singleton[LocalDateTime, name.type](name)
+    def localTime(name: String): Singleton[LocalTime, name.type]           = singleton[LocalTime, name.type](name)
+    def long(name: String): Singleton[Long, name.type]                     = singleton[Long, name.type](name)
+    def offsetDateTime(name: String): Singleton[OffsetDateTime, name.type] = singleton[OffsetDateTime, name.type](name)
+    def offsetTime(name: String): Singleton[OffsetTime, name.type]         = singleton[OffsetTime, name.type](name)
+    def short(name: String): Singleton[Short, name.type]                   = singleton[Short, name.type](name)
+    def string(name: String): Singleton[String, name.type]                 = singleton[String, name.type](name)
+    def uuid(name: String): Singleton[UUID, name.type]                     = singleton[UUID, name.type](name)
+    def zonedDateTime(name: String): Singleton[ZonedDateTime, name.type]   = singleton[ZonedDateTime, name.type](name)
+
+    def singleton[A: TypeTag, ColumnIdentity](name: String): Singleton[A, ColumnIdentity] =
+      Cons(Column.Named[A, ColumnIdentity](name), Empty)
   }
 
   object :*: {
     def unapply[A, B](tuple: (A, B)): Some[(A, B)] = Some(tuple)
   }
 
+  sealed trait ColumnProperty
+  object ColumnProperty {
+    case object Nullable  extends ColumnProperty
+    case object NotNull   extends ColumnProperty
+    case object Generated extends ColumnProperty
+  }
+
   sealed trait Column[+A] {
+    type Identity
     def typeTag: TypeTag[A]
+
+    def name: Option[String]
   }
 
   object Column {
-    sealed case class Named[A: TypeTag](columnName: String) extends Column[A] {
-      def typeTag: TypeTag[A] = implicitly[TypeTag[A]]
+
+    type Aux[+A0, Identity0] = Column[A0] {
+      type Identity = Identity0
     }
 
-    sealed case class Indexed[A: TypeTag]() extends Column[A] {
-      def typeTag: TypeTag[A] = implicitly[TypeTag[A]]
+    sealed case class Named[A: TypeTag, ColumnIdentity](columnName: String) extends Column[A] {
+      override type Identity = ColumnIdentity
+
+      override def typeTag: TypeTag[A] = implicitly[TypeTag[A]]
+
+      override def name = Some(columnName)
+    }
+
+    sealed case class Indexed[A: TypeTag, ColumnIdentity]() extends Column[A] {
+
+      override type Identity = ColumnIdentity
+
+      override def typeTag: TypeTag[A] = implicitly[TypeTag[A]]
+
+      override def name = None
     }
 
     type Untyped = Column[_]
@@ -139,13 +186,15 @@ trait TableModule { self: ExprModule with SelectModule =>
   }
 
   trait ColumnToExpr[TableType] {
-    def toExpr[A](column: Column[A]): Expr[Features.Source, TableType, A]
+    def toExpr[A](column: Column[A]): Expr[Features.Source[column.Identity], TableType, A]
   }
 
   sealed trait Table { self =>
     type TableType
 
-    type Cols = ColumnSet.Cons[ColumnHead, ColumnTail]
+    type Cols = ColumnSet.Cons[ColumnHead, ColumnTail, HeadIdentity0]
+
+    type HeadIdentity0
 
     type ColumnHead
     type ColumnTail <: ColumnSet
@@ -167,9 +216,7 @@ trait TableModule { self: ExprModule with SelectModule =>
 
     final def columns = columnSet.makeColumns[TableType](columnToExpr)
 
-    //final val columnSize : Size = columnSet.size
-
-    val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail]
+    val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail, HeadIdentity0]
 
     val columnToExpr: ColumnToExpr[TableType]
   }
@@ -183,10 +230,13 @@ trait TableModule { self: ExprModule with SelectModule =>
 
     type Aux[A] = Table { type TableType = A }
 
-    type Aux_[ColumnsRepr[_], A, B <: ColumnSet] = Table.Source {
-      type ColumnHead = A
-      type ColumnTail = B
-      def columnSet: ColumnSet.ConsAux[A, B, ColumnsRepr]
+    type Aux_[ColumnsRepr[_], A, B <: ColumnSet, AllColumnIdentities0, HeadIdentity] = Table.Source {
+      type ColumnHead          = A
+      type ColumnTail          = B
+      type AllColumnIdentities = AllColumnIdentities0
+
+      type HeadIdentity0 = HeadIdentity
+      val columnSet: ColumnSet.ConsAux[A, B, ColumnsRepr, HeadIdentity]
     }
 
     // Absence of "Insanity" trait causes following known problems:
@@ -201,14 +251,19 @@ trait TableModule { self: ExprModule with SelectModule =>
 
     sealed trait Source extends Table with Insanity {
 
+      type AllColumnIdentities
+
       val name: TableName
-      val columnSchema: ColumnSchema[Cols]
 
       override def ahhhhhhhhhhhhh[A]: A = ??? //don't remove or it'll break
     }
 
     object Source {
-      type Aux[A, Size0] = Table.Source {
+      type Aux[A] = Table.Source {
+        type TableType = A
+      }
+
+      type AuxN[A, Size0] = Table.Source {
         type TableType = A
         type Size      = Size0
       }
@@ -223,15 +278,17 @@ trait TableModule { self: ExprModule with SelectModule =>
 
       override type TableType = left.TableType with right.TableType
 
+      override type HeadIdentity0 = left.HeadIdentity0
+
       override type ColumnHead = left.ColumnHead
       override type ColumnTail =
-        left.columnSet.tail.Append[ColumnSet.Cons[right.ColumnHead, right.ColumnTail]]
+        left.columnSet.tail.Append[ColumnSet.Cons[right.ColumnHead, right.ColumnTail, right.HeadIdentity0]]
 
-      override val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail] =
+      override val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail, HeadIdentity0] =
         left.columnSet ++ right.columnSet
 
       override val columnToExpr: ColumnToExpr[TableType] = new ColumnToExpr[TableType] {
-        def toExpr[C](column: Column[C]) =
+        def toExpr[C](column: Column[C]): Expr[Features.Source[column.Identity], A with B, C] =
           if (left.columnSet.contains(column))
             left.columnToExpr.toExpr(column)
           else
@@ -244,10 +301,12 @@ trait TableModule { self: ExprModule with SelectModule =>
       override type ColumnHead = read.ColumnHead
       override type ColumnTail = read.ColumnTail
 
-      override val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail] = read.columnSet
+      override type HeadIdentity0 = read.HeadIdentity
+
+      override val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail, HeadIdentity0] = read.columnSet
 
       override val columnToExpr: ColumnToExpr[TableType] = new ColumnToExpr[TableType] {
-        def toExpr[A](column: Column[A]): Expr[Features.Source, TableType, A] =
+        def toExpr[A](column: Column[A]): Expr[Features.Source[column.Identity], TableType, A] =
           Expr.Source(name, column)
       }
     }
@@ -259,7 +318,9 @@ trait TableModule { self: ExprModule with SelectModule =>
       override type ColumnHead = tableExtension.ColumnHead
       override type ColumnTail = tableExtension.ColumnTail
 
-      override val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail] = tableExtension.columnSet
+      override type HeadIdentity0 = tableExtension.HeadIdentity0
+
+      override val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail, HeadIdentity0] = tableExtension.columnSet
 
       override val columnToExpr: ColumnToExpr[TableType] = tableExtension.columnToExpr
     }
@@ -268,8 +329,9 @@ trait TableModule { self: ExprModule with SelectModule =>
 
       type ColumnHead
       type ColumnTail <: ColumnSet
+      type HeadIdentity0
 
-      def columnSet: ColumnSet.Cons[ColumnHead, ColumnTail]
+      def columnSet: ColumnSet.Cons[ColumnHead, ColumnTail, HeadIdentity0]
 
       def columnToExpr: ColumnToExpr[A]
     }
@@ -298,49 +360,5 @@ trait TableModule { self: ExprModule with SelectModule =>
 
     type _0 = Zero.type
     val _0 = Zero
-    // type _1 = Succ[_0]
-    // val _1 = Succ(_0)
-    // type _2 = Succ[_1]
-    // val _2 = Succ(_1)
-    // type _3 = Succ[_2]
-    // val _3 = Succ(_2)
-    // type _4 = Succ[_3]
-    // val _4 = Succ(_3)
-    // type _5 = Succ[_4]
-    // val _5 = Succ(_4)
-    // type _6 = Succ[_5]
-    // val _6 = Succ(_5)
-    // type _7 = Succ[_6]
-    // val  _7 = Succ(_6)
-    // type _8 = Succ[_7]
-    // val  _8 = Succ(_7)
-    // type _9 = Succ[_8]
-    // val  _9 = Succ(_8)
-    // type _10 = Succ[_9]
-    // val  _10 = Succ(_9)
-    // type _11 = Succ[_10]
-    // val  _11 = Succ(_10)
-    // type _12 = Succ[_11]
-    // val  _12 = Succ(_11)
-    // type _13 = Succ[_12]
-    // val  _13 = Succ(_12)
-    // type _14 = Succ[_13]
-    // val  _14 = Succ(_13)
-    // type _15 = Succ[_14]
-    // val  _15 = Succ(_14)
-    // type _16 = Succ[_15]
-    // val  _16 = Succ(_15)
-    // type _17 = Succ[_16]
-    // val  _17 = Succ(_16)
-    // type _18 = Succ[_17]
-    // val  _18 = Succ(_17)
-    // type _19 = Succ[_18]
-    // val  _19 = Succ(_18)
-    // type _20 = Succ[_19]
-    // val  _20 = Succ(_19)
-    // type _21 = Succ[_20]
-    // val  _21 = Succ(_20)
-    // type _22 = Succ[_21]
-    // val  _22 = Succ(_21)
   }
 }

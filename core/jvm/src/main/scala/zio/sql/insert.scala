@@ -3,27 +3,8 @@ package zio.sql
 import scala.language.implicitConversions
 
 /**
- * insert into customers (id, first_name, last_name, verified, dob)
- *   values ('22e37786-af3b-451e-80b4-0baf41c0933e', 'Jaro', 'Regec', 0, '1983-01-05')
- *
- * insertInto(customers)(customerId ++ fName ++ lName ++ verified ++ dob)
- *   .values('22e37786-af3b-451e-80b4-0baf41c0933e', 'Jaro', 'Regec', 0, '1983-01-05')
- *
- * OR
- *
- * insertInto(customers){fName ++ lName ++ dob} values ("Joe" ++ "Bloggs" ++ LocalDate.of(1990, 1, 8), "Matt" ++ "Smith" ++ LocalDate.of(1978, 4, 5))
- *
- * OR
- *  we need all the values for non null & not auto generated columns
- *  we also need columns to link values with columns
- *  could value remember its source? -> maybe then we wouln't need columns at all like:
- *
- *  insertInto(customers).values('22e37786-af3b-451e-80b4-0baf41c0933e', 'Jaro', 'Regec', 0, '1983-01-05')
- *
- * Columns - Values could be:
- *   - selections set -> but would consist only of Expr of type Source
- *   - column set     -> we don't currently have a way to concat raw columns
- *   - own solution   -> like InsertRow below
+ * insert into customers (id, dob, first_name, last_name, verified)
+ *   values ('22e37786-af3b-451e-80b4-0baf41c0933e', '1983-01-05', 'Jaro', 'Regec', true)
  *
  *    insertInto(customers)
  *       .values(
@@ -31,9 +12,7 @@ import scala.language.implicitConversions
  *        (dob                -> LocalDate.now()) ++
  *        (fName              -> "Jaro") ++
  *        (lName              -> "Regec") ++
- *        (verified           -> true) ++
- *        (createdString      -> s"${ZonedDateTime.now().toInstant().toEpochMilli()}") ++
- *        (createdTimestamp   -> ZonedDateTime.now()))
+ *        (verified           -> true)))
  *
  * TODO
  *  1. add to column type capability to contain null values
@@ -45,64 +24,78 @@ import scala.language.implicitConversions
  *      Select S.Test_Date, E.Testno, S.Examno, S.Serialno, 'Non-Flight', (F.STARTED- F.ENDED) as Hours
  *      From Semester S, TIME F, TESTPAPERS e
  *      Where S.Testno = F.Testno And E.Testno = 1
+ * 
+ * TODO
+ * what if i want to insert multiple rows
+ * 
+ *     insert into customers
+ *         (id, first_name, last_name, verified, dob, created_timestamp_string, created_timestamp)
+ *     values
+ *         ('60b01fc9-c902-4468-8d49-3c0f989def37', 'Ronald', 'Russell', true, '1983-01-05', '2020-11-21T19:10:25+00:00', '2020-11-21 19:10:25+00'),
+ *         ('f76c9ace-be07-4bf3-bd4c-4a9c62882e64', 'Terrence', 'Noel', true, '1999-11-02', '2020-11-21T15:10:25-04:00', '2020-11-21 15:10:25-04'))
  */
 trait InsertModule { self: ExprModule with TableModule =>
 
-  sealed case class InsertBuilder[Source, N <: ColumnCount](table: Table.Source.Aux[Source, N]) {
-    def values(values: InsertRow[Source])(implicit ev: values.Size =:= N): Insert[Source, N] = Insert(table, values)
+  sealed case class InsertBuilder[Source, N <: ColumnCount](table: Table.Source.AuxN[Source, N]) {
+    def values(values: InsertRow[Source])(implicit ev: values.Size =:= N): Insert[Source] = Insert(table, values)
   }
 
   sealed trait InsertRow[-Source] { self =>
 
-    type Append[Source1, Appended] <: InsertRow[Source1]
+    type Append[Source1, Appended, ThatIdentity] <: InsertRow[Source1]
 
     type Size <: ColumnCount
 
-    def ++[Source1 <: Source, Appended](
-      that: (Expr[Features.Source, Source1, Appended], Appended)
-    )(implicit unique: Unique[Appended, self.type]): Append[Source1, Appended]
+    def ++[Source1 <: Source, Appended, ThatIdentity](
+      that: (Expr[Features.Source[ThatIdentity], Source1, Appended], Appended)
+    )(implicit unique: Unique[ThatIdentity, self.type], ev: TypeTag[Appended]): Append[Source1, Appended, ThatIdentity]
   }
+
   object InsertRow {
     type Empty = Empty.type
     import ColumnCount._
 
     case object Empty extends InsertRow[Any] {
-      override type Size                      = _0
-      override type Append[Source1, Appended] = InsertRow.Cons[Source1, Appended, InsertRow.Empty]
+      override type Size                                    = _0
+      override type Append[Source1, Appended, ThatIdentity] =
+        InsertRow.Cons[Source1, Appended, InsertRow.Empty, ThatIdentity]
 
-      override def ++[Source1 <: Any, Appended](
-        that: (Expr[Features.Source, Source1, Appended], Appended)
-      )(implicit unique: Unique[Appended, Empty]): Append[Source1, Appended] =
+      override def ++[Source1 <: Any, Appended, ThatIdentity](
+        that: (Expr[Features.Source[ThatIdentity], Source1, Appended], Appended)
+      )(implicit unique: Unique[ThatIdentity, Empty], ev: TypeTag[Appended]): Append[Source1, Appended, ThatIdentity] =
         InsertRow.Cons(that, InsertRow.Empty)
     }
 
-    sealed case class Cons[-Source, H, T <: InsertRow[Source]](
-      tupleHead: (Expr[Features.Source, Source, H], H),
+    sealed case class Cons[-Source, H: TypeTag, T <: InsertRow[Source], HeadIdentity](
+      tupleHead: (Expr[Features.Source[HeadIdentity], Source, H], H),
       tail: T
     ) extends InsertRow[Source] { self =>
 
       override type Size = Succ[tail.Size]
 
-      override type Append[Source1, Appended] = InsertRow.Cons[Source1, H, tail.Append[Source1, Appended]]
+      override type Append[Source1, Appended, ThatIdentity] =
+        InsertRow.Cons[Source1, H, tail.Append[Source1, Appended, ThatIdentity], HeadIdentity]
 
-      override def ++[Source1 <: Source, Appended](
-        that: (Expr[Features.Source, Source1, Appended], Appended)
-      )(implicit unique: Unique[Appended, self.type]): InsertRow.Cons[Source1, H, tail.Append[Source1, Appended]] =
-        InsertRow.Cons[Source1, H, tail.Append[Source1, Appended]](tupleHead, tail.++(that)(new Unique[Appended, T] {}))
+      override def ++[Source1 <: Source, Appended, ThatIdentity](
+        that: (Expr[Features.Source[ThatIdentity], Source1, Appended], Appended)
+      )(implicit
+        unique: Unique[ThatIdentity, self.type], ev: TypeTag[Appended]
+        ): InsertRow.Cons[Source1, H, tail.Append[Source1, Appended, ThatIdentity], HeadIdentity] =
+        InsertRow.Cons[Source1, H, tail.Append[Source1, Appended, ThatIdentity], HeadIdentity](
+          tupleHead,
+          tail.++(that)(new Unique[ThatIdentity, T] {}, implicitly[TypeTag[Appended]])
+        )
     }
   }
 
-  //TODO translate
-  sealed case class Insert[A, N <: ColumnCount](table: Table.Source.Aux[A, N], values: InsertRow[A])
-
-  implicit def tupleToInsertSet[Source, H](
-    tupleHead: (Expr[Features.Source, Source, H], H)
-  ): InsertRow.Cons[Source, H, InsertRow.Empty] =
+  implicit def tupleToInsertSet[Source, H: TypeTag, HeadIdentity](
+    tupleHead: (Expr[Features.Source[HeadIdentity], Source, H], H)
+  ): InsertRow.Cons[Source, H, InsertRow.Empty, HeadIdentity] =
     InsertRow.Cons(tupleHead, InsertRow.Empty)
 
-  //TODO works but following are the same types and therefore rejected
-  // (fName -> "Jaro")  => (Expr[Features.Source, TableType, String], String)
-  // (lName -> "Regec") => (Expr[Features.Source, TableType, String], String)
+  sealed case class Insert[A](table: Table.Source.Aux[A], values: InsertRow[A])
+
+  // A == ColumnIdentities
   sealed trait Unique[A, -Origin <: InsertRow[_]]
 
   object Unique {
@@ -110,10 +103,10 @@ trait InsertModule { self: ExprModule with TableModule =>
       new Unique[A, InsertRow.Empty] {}
 
     implicit def uniqueInCons[A, H, T <: InsertRow[_]](implicit
-      tailNotContain: Unique[A, T],
+      tailNotContain: Unique[H, T],
       ev: A =!= H
-    ): Unique[A, InsertRow.Cons[_, H, T]]                     =
-      new Unique[A, InsertRow.Cons[_, H, T]] {}
+    ): Unique[A, InsertRow.Cons[_, _, T, H]]                     =
+      new Unique[A, InsertRow.Cons[_, _, T, H]] {}
   }
 
   sealed trait =!=[A, B]

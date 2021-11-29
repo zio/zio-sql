@@ -7,6 +7,8 @@ object Example1 extends Sql {
 
   def renderDelete(delete: this.Delete[_]): String = ???
 
+  override def renderInsert(insert: Insert[_]): String = ???
+
   def renderUpdate(update: Example1.Update[_]): String = ???
 
   val columnSet = int("age") ++ string("name")

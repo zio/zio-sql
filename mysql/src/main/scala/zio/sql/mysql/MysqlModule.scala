@@ -42,6 +42,8 @@ trait MysqlModule extends Jdbc { self =>
     render.toString
   }
 
+  override def renderInsert(insert: self.Insert[_]): String = ???
+
   override def renderDelete(delete: self.Delete[_]): String = {
     implicit val render: Renderer = Renderer()
     MysqlRenderModule.renderDeleteImpl(delete)
@@ -189,8 +191,8 @@ trait MysqlModule extends Jdbc { self =>
         renderRead(subselect)
         render(") ")
       case Expr.Source(table, column)                                                   =>
-        (table, column) match {
-          case (tableName: TableName, Column.Named(columnName)) => render(tableName, ".", columnName)
+        (table, column.name) match {
+          case (tableName: TableName, Some(columnName)) => render(tableName, ".", columnName)
           case _                                                => ()
         }
       case Expr.Unary(base, op)                                                         =>

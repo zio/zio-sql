@@ -2,11 +2,12 @@ package zio.sql.postgresql
 
 import org.postgresql.util.PGInterval
 import zio.Chunk
-import zio.sql.{ Jdbc, Renderer }
+import zio.sql.{Jdbc, Renderer}
 
 import java.sql.ResultSet
 import java.text.DecimalFormat
 import java.time._
+import java.time.format.DateTimeFormatter
 import java.util.Calendar
 
 trait PostgresModule extends Jdbc { self =>
@@ -26,14 +27,16 @@ trait PostgresModule extends Jdbc { self =>
           extends PostgresSpecificTable[A with B] { self =>
 
         override type ColumnHead = left.ColumnHead
-        override type ColumnTail =
-          left.columnSet.tail.Append[ColumnSet.Cons[right.ColumnHead, right.ColumnTail]]
 
-        override val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail] =
+        override type HeadIdentity0 = left.HeadIdentity0
+        override type ColumnTail    =
+          left.columnSet.tail.Append[ColumnSet.Cons[right.ColumnHead, right.ColumnTail, right.HeadIdentity0]]
+
+        override val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail, HeadIdentity0] =
           left.columnSet ++ right.columnSet
 
         override val columnToExpr: ColumnToExpr[A with B] = new ColumnToExpr[A with B] {
-          def toExpr[C](column: Column[C]): Expr[Features.Source, A with B, C] =
+          def toExpr[C](column: Column[C]): Expr[Features.Source[column.Identity], A with B, C] =
             if (left.columnSet.contains(column))
               left.columnToExpr.toExpr(column)
             else
@@ -232,13 +235,15 @@ trait PostgresModule extends Jdbc { self =>
     object LateralTableExample {
       import self.ColumnSet._
 
+      val xxxxx = uuid("well") //@@ notNull
+
       val customers =
-        (uuid("id") ++ localDate("dob") ++ string("last_name") ++ boolean(
+        (uuid("id") ++ localDate("dob") ++ string("first_name") ++ string("last_name") ++ boolean(
           "verified"
         ) ++ zonedDateTime("created_timestamp"))
           .table("customers")
 
-      val customerId :*: dob :*: lName :*: verified :*: createdTimestamp :*: _ =
+      val customerId :*: dob :*: fName :*: lName :*: verified :*: createdTimestamp :*: _ =
         customers.columns
 
       val orders = (uuid("id") ++ uuid("customer_id") ++ localDate("order_date")).table("orders")
@@ -260,10 +265,34 @@ trait PostgresModule extends Jdbc { self =>
           )
       val fkOrderId :*: orderDetailsProductId :*: quantity :*: unitPrice :*: _ = orderDetails.columns
 
+      val persons = string("name").table("persons")
+
+      val persons2    = string("name").table("persons2")
+      val name2 :*: _ = persons2.columns
+
+      val name :*: _ = persons.columns
+
+      //does not compile
+      // insertInto(persons)
+      //   .values(name2 -> "Jaro")
+
+      insertInto(persons)
+        .values(name -> "Jaro")
+
+      //implicitly[persons.AllColumnIdentities =:= name.
+
       //  ============== INSERTS
+
+      def test[A, B](expr1: Expr[Features.Source[A], _, _], expr2: Expr[Features.Source[B], _, _])(implicit
+        eq: A =:= B
+      ) = {
+        val _ = expr1
+        val _ = expr2
+      }
 
       val insertValues = (customerId -> java.util.UUID.fromString("28e880be-c783-43ea-9839-db51834347a8")) ++
         (dob              -> LocalDate.now()) ++
+        (fName            -> "Jaro") ++
         (lName            -> "Regec") ++
         (verified         -> true) ++
         (createdTimestamp -> ZonedDateTime.now())
@@ -271,15 +300,10 @@ trait PostgresModule extends Jdbc { self =>
       insertInto(customers)
         .values(insertValues)
 
-      // works but refuses to store two same column types
-      insertInto(customers)
-        .values(
-          (customerId       -> java.util.UUID.fromString("28e880be-c783-43ea-9839-db51834347a8")) ++
-          (dob              -> LocalDate.now()) ++
-          (lName            -> "Regec") ++
-          (verified         -> true) ++
-          (createdTimestamp -> ZonedDateTime.now())
-        )
+      //test(customerId, dob)
+      test(customerId, customerId)
+      //test(fName, lName)
+
     }
   }
 
@@ -361,6 +385,12 @@ trait PostgresModule extends Jdbc { self =>
     render.toString
   }
 
+  override def renderInsert(insert: self.Insert[_]): String = {
+    implicit val render: Renderer = Renderer()
+    PostgresRenderModule.renderInsertImpl(insert)
+    render.toString
+  }
+
   override def renderDelete(delete: Delete[_]): String = {
     implicit val render: Renderer = Renderer()
     PostgresRenderModule.renderDeleteImpl(delete)
@@ -369,6 +399,90 @@ trait PostgresModule extends Jdbc { self =>
 
   object PostgresRenderModule {
     //todo split out to separate module
+
+    def renderInsertImpl(insert: Insert[_])(implicit render: Renderer) = {
+      render("INSERT INTO ")
+      renderTable(insert.table)
+
+      render(" (")
+      renderColumnNames(insert.values)
+      render(") VALUES (")
+
+      renderInsertValues(insert.values)
+      render(" )")
+    }
+
+    def renderInsertValues(values: InsertRow[_])(implicit render: Renderer): Unit =
+      values match {
+        case InsertRow.Empty                            => ()
+        case InsertRow.Cons(tupleHead, InsertRow.Empty) =>
+          val typeTag = Expr.typeTagOf(tupleHead._1)
+          val value = tupleHead._2
+          renderValue(typeTag, value)
+        case InsertRow.Cons(tupleHead, tail)            =>
+          val typeTag = Expr.typeTagOf(tupleHead._1)
+          val value = tupleHead._2
+          renderValue(typeTag, value)
+          render(", ")
+          renderInsertValues(tail)(render)
+      }
+
+    /**
+      * TODO
+      *
+      * Every values is written differently - based on Expr typeTag
+      */
+    def renderValue[A](typeTage: TypeTag[A], value: A)(implicit render: Renderer): Unit =
+      typeTage match {
+        case TBigDecimal =>  render(value.toString)
+        case TBoolean => render(value.toString)
+        case TByte => render(value.toString)
+        case TByteArray => render(value.toString)
+        case TChar => render(value.toString)
+        case TDouble => render(value.toString)
+        case TFloat => render(value.toString)
+        case TInstant => render(value.toString)
+        case TInt => render(value.toString)
+        case TLocalDate => render(s"'${value.toString}'")
+        case TLocalDateTime => render(value.toString)
+        case TLocalTime => render(s"'${value.toString}'")
+        case TLong => render(value.toString)
+        case TOffsetDateTime => render(value.toString)
+        case TOffsetTime => render(value.toString)
+        case TShort => render(value.toString)
+        case TString => render(s"'${value.toString}'")
+        case TUUID => render(s"'${value.toString}'")
+        case TZonedDateTime =>
+          render(s"'${DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(value.asInstanceOf[ZonedDateTime])}'")
+        case TDialectSpecific(typeTagExtension) => render(value.toString)
+        case Nullable() => render("null")
+      }
+
+
+    def renderColumnNames(values: InsertRow[_])(implicit render: Renderer): Unit =
+      values match {
+        case InsertRow.Empty                            => () // table is a collection of at least ONE column
+        case InsertRow.Cons(tupleHead, InsertRow.Empty) =>
+          val expr       = tupleHead._1
+          val columnName = expr match {
+            case Expr.Source(_, c) => c.name
+            case _                 => None
+          }
+          val _ = columnName.map { name =>
+            render(name)
+          }
+        case InsertRow.Cons(tupleHead, tail)            =>
+          val expr       = tupleHead._1
+          val columnName = expr match {
+            case Expr.Source(_, c) => c.name
+            case _                 => None
+          }
+          val _ = columnName.map { name =>
+            render(name)
+            render(", ")
+            renderColumnNames(tail)(render)
+          }
+      }
 
     def renderDeleteImpl(delete: Delete[_])(implicit render: Renderer) = {
       render("DELETE FROM ")
@@ -451,10 +565,10 @@ trait PostgresModule extends Jdbc { self =>
         render(renderRead(subselect))
         render(") ")
       case Expr.Source(table, column)                                                   =>
-        (table, column) match {
-          case (tableName: TableName, Column.Named(columnName)) =>
+        (table, column.name) match {
+          case (tableName: TableName, Some(columnName)) =>
             render(tableName, ".", columnName)
-          case _                                                => ()
+          case _                                        => ()
         }
       case Expr.Unary(base, op)                                                         =>
         render(" ", op.symbol)
