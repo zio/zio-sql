@@ -87,7 +87,6 @@ trait TableModule { self: ExprModule with SelectModule =>
           override type Size = columnSet.Size
 
           override val name: TableName = name0
-          //override val columnSchema: ColumnSchema[A :*: B] = ColumnSchema(self)
 
           override val columnSet: ColumnSet.ConsAux[ColumnHead, ColumnTail, ColumnsRepr, HeadIdentity] = self
 
@@ -103,12 +102,6 @@ trait TableModule { self: ExprModule with SelectModule =>
         head == column || tail.contains(column)
     }
 
-    /**
-     * TODO
-     *
-     * 1. I need a way to mark column as db generated
-     * 2. I need a way to mark column as nullable
-     */
     def byteArray(name: String): Singleton[Chunk[Byte], name.type] = singleton[Chunk[Byte], name.type](name)
     def bigDecimal(name: String): Singleton[BigDecimal, name.type]         = singleton[BigDecimal, name.type](name)
     def boolean(name: String): Singleton[Boolean, name.type]               = singleton[Boolean, name.type](name)
