@@ -82,6 +82,19 @@ trait SqlDriverLiveModule { self: Jdbc =>
         }.refineToOrDie[Exception]
       }
 
+    override def insert(insert: Insert[_]): IO[Exception, Int] = 
+      pool.connection.use(insertOn(insert, _))
+
+    def insertOn(insert: Insert[_], conn: Connection): IO[Exception, Int] =
+      blocking.effectBlocking {
+
+        val query     = renderInsert(insert)
+        
+        val statement = conn.createStatement()
+
+        statement.executeUpdate(query)
+      }.refineToOrDie[Exception]
+
     override def transact[R, A](tx: ZTransaction[R, Exception, A]): ZManaged[R, Exception, A] =
       for {
         connection <- pool.connection

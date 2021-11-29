@@ -376,6 +376,37 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
       } yield assert(r)(equalTo(4))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("simple insert - inserted 1 column") {
+
+      /**
+       * insert into 
+       *     customers 
+       *        (id, first_name, last_name, verifier, dob, created_timestamp_string, created_timestamp)
+       * values 
+       *        ('0511474d-8eed-4307-bdb0-e39a561205b6', 'Jaro', 'Regec, true' 1999-11-02, 2020-11-21T19:10:25+00:00, '2020-11-21 19:10:25+00')
+       */
+
+       val dobValue = LocalDate.now()
+       val created = ZonedDateTime.now()
+
+       val query = insertInto(customers)
+        .values(
+            (customerId -> java.util.UUID.fromString("0511474d-8eed-4307-bdb0-e39a561205b6")) ++
+            (fName -> "Jaro") ++
+            (lName -> "Regec") ++
+            (verified -> false) ++
+            (dob -> dobValue) ++
+            (createdString -> created.toString) ++
+            (createdTimestamp -> created))
+
+      val result = execute(query)
+
+      val assertion = for {
+        r <- result
+      } yield assert(r)(equalTo(1))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
   ) @@ sequential
 }

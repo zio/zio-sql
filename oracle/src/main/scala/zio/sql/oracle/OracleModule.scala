@@ -14,8 +14,8 @@ trait OracleModule extends Jdbc { self =>
       builder.append(renderRead(subselect))
       val _ = builder.append(") ")
     case Expr.Source(table, column)                                                           =>
-      (table, column) match {
-        case (tableName: TableName, Column.Named(columnName)) =>
+      (table, column.name) match {
+        case (tableName: TableName, Some(columnName)) =>
           val _ = builder.append(tableName).append(".").append(columnName)
         case _                                                => ()
       }
@@ -299,6 +299,8 @@ trait OracleModule extends Jdbc { self =>
   }
 
   override def renderDelete(delete: self.Delete[_]): String = ???
+
+  override def renderInsert(insert: self.Insert[_]): String = ???
 
   override def renderUpdate(update: self.Update[_]): String = ???
 }

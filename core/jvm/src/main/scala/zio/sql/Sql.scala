@@ -39,6 +39,8 @@ trait Sql extends SelectModule with DeleteModule with UpdateModule with ExprModu
 
   def renderUpdate(update: self.Update[_]): String
 
-  def insertInto[Source, N <: ColumnCount](table: Table.Source.Aux[Source, N]): InsertBuilder[Source, N] =
+  def insertInto[Source, N <: ColumnCount](table: Table.Source.AuxN[Source, N]): InsertBuilder[Source, N] =
     InsertBuilder(table)
+
+  def renderInsert(insert: self.Insert[_]): String
 }
