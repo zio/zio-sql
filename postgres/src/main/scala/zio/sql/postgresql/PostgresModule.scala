@@ -49,8 +49,8 @@ trait PostgresModule extends Jdbc { self =>
       sealed case class LateralTableBuilder[A](left: Table.Aux[A]) {
         self =>
 
-        final def lateral(
-          right: Table.DerivedTable[Read[_]]
+        final def lateral[Out](
+          right: Table.DerivedTable[Out, Read[Out]]
         ): Table.DialectSpecificTable[A with right.TableType] = {
 
           val tableExtension = LateraLTable[A, right.TableType](
@@ -697,7 +697,7 @@ trait PostgresModule extends Jdbc { self =>
         case sourceTable: self.Table.Source             => render(sourceTable.name)
         case Table.DerivedTable(read, name)             =>
           render(" ( ")
-          render(renderRead(read))
+          render(renderRead(read.asInstanceOf[Read[_]]))
           render(" ) ")
           render(name)
         case Table.Joined(joinType, left, right, on)    =>

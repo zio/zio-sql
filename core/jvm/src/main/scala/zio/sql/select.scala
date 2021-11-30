@@ -101,7 +101,7 @@ trait SelectModule { self: ExprModule with TableModule =>
 
     val columnSet: CS
 
-    def asTable(name: TableName): Table.DerivedTable[Read[Out]]
+    def asTable(name: TableName): Table.DerivedTable[Out, Read[Out]]
 
     /**
      * Maps the [[Read]] query's output to another type by providing a function
@@ -309,8 +309,8 @@ trait SelectModule { self: ExprModule with TableModule =>
 
       override val columnSet: CS = read.columnSet
 
-      override def asTable(name: TableName): Table.DerivedTable[Mapped[Repr, Out, Out2]] =
-        Table.DerivedTable(self, name)
+      override def asTable(name: TableName): Table.DerivedTable[Out2, Mapped[Repr, Out, Out2]] =
+        Table.DerivedTable[Out2, Mapped[Repr, Out, Out2]](self, name)
     }
 
     type Select[F, Repr, Source, Head, Tail <: SelectionSet[Source]] = Subselect[F, Repr, Source, Source, Head, Tail]
@@ -353,8 +353,8 @@ trait SelectModule { self: ExprModule with TableModule =>
         copy(havingExpr = self.havingExpr && havingExpr2)
       }
 
-      override def asTable(name: TableName): Table.DerivedTable[Subselect[F, Repr, Source, Subsource, Head, Tail]] =
-        Table.DerivedTable(self, name)
+      override def asTable(name: TableName): Table.DerivedTable[Repr, Subselect[F, Repr, Source, Subsource, Head, Tail]] =
+        Table.DerivedTable[Repr, Subselect[F, Repr, Source, Subsource, Head, Tail]](self, name)
 
       override type ResultType = Repr
 
@@ -388,7 +388,7 @@ trait SelectModule { self: ExprModule with TableModule =>
 
       override val columnSet: CS = left.columnSet
 
-      override def asTable(name: TableName): Table.DerivedTable[Union[Repr, Out]] = Table.DerivedTable(self, name)
+      override def asTable(name: TableName): Table.DerivedTable[Out, Union[Repr, Out]] = Table.DerivedTable[Out, Union[Repr, Out]](self, name)
     }
 
     // TODO add name to literal selection - e.g. select '1' as one
@@ -406,7 +406,7 @@ trait SelectModule { self: ExprModule with TableModule =>
 
       override val columnSet: CS = ColumnSet.Cons(Column.Indexed[ColumnHead](), ColumnSet.Empty)
 
-      override def asTable(name: TableName): Table.DerivedTable[Literal[B]] = Table.DerivedTable(self, name)
+      override def asTable(name: TableName): Table.DerivedTable[(B, Unit), Literal[B]] = Table.DerivedTable[(B, Unit), Literal[B]](self, name)
     }
 
     def lit[B: TypeTag](values: B*): Read[(B, Unit)] = Literal(values.toSeq)
