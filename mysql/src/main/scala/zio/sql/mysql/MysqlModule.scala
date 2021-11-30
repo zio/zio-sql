@@ -160,13 +160,13 @@ trait MysqlModule extends Jdbc { self =>
 
     private def renderTable(table: Table)(implicit render: Renderer): Unit =
       table match {
-        case Table.DialectSpecificTable(tableExtension) => ???
+        case Table.DialectSpecificTable(_) => ???
         //The outer reference in this type test cannot be checked at run time?!
         case sourceTable: self.Table.Source             =>
           render(sourceTable.name)
         case Table.DerivedTable(read, name)             =>
           render(" ( ")
-          renderRead(read)
+          renderRead(read.asInstanceOf[Read[_]])
           render(" ) ")
           render(name)
         case Table.Joined(joinType, left, right, on)    =>
