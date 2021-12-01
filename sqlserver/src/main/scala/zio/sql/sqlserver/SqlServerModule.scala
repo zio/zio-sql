@@ -89,7 +89,7 @@ trait SqlServerModule extends Jdbc { self =>
 
   override def renderUpdate(update: self.Update[_]): String = ???
 
-  override def renderInsert(insert: self.Insert[_]): String = ???
+  override def renderInsert(insert: self.InsertAlt[_]): String = ???
 
   override def renderRead(read: self.Read[_]): String = {
     val builder = new StringBuilder

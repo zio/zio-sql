@@ -6,7 +6,7 @@ object ProductSchema {
     override def renderRead(read: self.Read[_]): String       = ???
     override def renderUpdate(update: self.Update[_]): String = ???
 
-    override def renderInsert(insert: self.Insert[_]): String = ???
+    override def renderInsert(insert: self.InsertAlt[_]): String = ???
   }
   import sql.ColumnSet._
   import sql._

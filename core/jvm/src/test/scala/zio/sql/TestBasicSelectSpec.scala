@@ -11,7 +11,7 @@ object TestBasicSelect {
     override def renderRead(read: self.Read[_]): String       = ???
     override def renderUpdate(update: self.Update[_]): String = ???
 
-    override def renderInsert(insert: self.Insert[_]): String = ???
+    override def renderInsert(insert: self.InsertAlt[_]): String = ???
 
     val userTable =
       (string("user_id") ++ localDate("dob") ++ string("first_name") ++ string("last_name")).table("users")

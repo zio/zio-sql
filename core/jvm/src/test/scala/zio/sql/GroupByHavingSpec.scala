@@ -20,7 +20,7 @@ object AggregatedProductSchema {
     override def renderRead(read: self.Read[_]): String       = ???
     override def renderUpdate(update: self.Update[_]): String      = ???
 
-    override def renderInsert(insert: self.Insert[_]): String = ???
+    override def renderInsert(insert: self.InsertAlt[_]): String = ???
   }
   import sqldsl.ColumnSet._
   import sqldsl.AggregationDef._

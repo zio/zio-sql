@@ -80,6 +80,8 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio"          % zioVersion % Provided,
       "dev.zio" %% "zio-streams"  % zioVersion % Provided,
+      "dev.zio" %% "zio-schema"   % "0.1.4",
+      "dev.zio" %% "zio-schema-derivation"   % "0.1.4",
       "dev.zio" %% "zio-test"     % zioVersion % Test,
       "dev.zio" %% "zio-test-sbt" % zioVersion % Test
     )

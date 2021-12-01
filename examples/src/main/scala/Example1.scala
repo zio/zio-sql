@@ -7,7 +7,7 @@ object Example1 extends Sql {
 
   def renderDelete(delete: this.Delete[_]): String = ???
 
-  override def renderInsert(insert: Insert[_]): String = ???
+  override def renderInsert(insert: InsertAlt[_]): String = ???
 
   def renderUpdate(update: Example1.Update[_]): String = ???
 

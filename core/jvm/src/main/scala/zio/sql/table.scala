@@ -256,8 +256,10 @@ trait TableModule { self: ExprModule with SelectModule =>
         type TableType = A
       }
 
-      type AuxN[A, Size0] = Table.Source {
+      type AuxN[A, AllColumnIdentities0, Size0] = Table.Source {
         type TableType = A
+
+        type AllColumnIdentities = AllColumnIdentities0
         type Size      = Size0
       }
     }
