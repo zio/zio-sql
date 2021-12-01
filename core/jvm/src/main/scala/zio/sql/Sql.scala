@@ -1,6 +1,6 @@
 package zio.sql
 
-trait Sql extends SelectModule with DeleteModule with UpdateModule with ExprModule with TableModule with InsertModule {
+trait Sql extends SelectModule with DeleteModule with UpdateModule with ExprModule with TableModule with InsertAltModule with InsertModule {
   self =>
 
   /*
@@ -39,8 +39,12 @@ trait Sql extends SelectModule with DeleteModule with UpdateModule with ExprModu
 
   def renderUpdate(update: self.Update[_]): String
 
-  def insertInto[Source, N <: ColumnCount](table: Table.Source.AuxN[Source, N]): InsertBuilder[Source, N] =
-    InsertBuilder(table)
+  def insertAltInto[Source, N <: ColumnCount, AllColumnIdentities](table: Table.Source.AuxN[Source, AllColumnIdentities, N]): InsertAltBuilder[Source, N, AllColumnIdentities] =
+    InsertAltBuilder(table)
 
-  def renderInsert(insert: self.Insert[_]): String
+  def renderInsert(insert: self.InsertAlt[_]): String
+
+  def insertInto[Source, N <: ColumnCount, AllColumnIdentities, SourceTypes, ColsRepr](table: Table.Source.AuxN[Source, AllColumnIdentities, N])
+      (sources: SourceSet.Aux[Source, SourceTypes, ColsRepr])(implicit ev1: AllColumnIdentities =:= SourceTypes, ev2: N =:= sources.Size) = 
+    InsertBuilder(table, sources)
 }

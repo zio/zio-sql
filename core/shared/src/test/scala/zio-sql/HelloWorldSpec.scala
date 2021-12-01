@@ -7,10 +7,11 @@ import zio.test.Assertion._
 import zio.test.environment._
 
 import HelloWorld._
+import java.io.IOException
 
 object HelloWorld {
 
-  def sayHello: ZIO[Console, Nothing, Unit] =
+  def sayHello: ZIO[Console, IOException, Unit] =
     console.putStrLn("Hello, World!")
 }
 

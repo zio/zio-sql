@@ -390,7 +390,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
        val dobValue = LocalDate.now()
        val created = ZonedDateTime.now()
 
-       val query = insertInto(customers)
+       val query = insertAltInto(customers)
         .values(
             (customerId -> java.util.UUID.fromString("0511474d-8eed-4307-bdb0-e39a561205b6")) ++
             (fName -> "Jaro") ++

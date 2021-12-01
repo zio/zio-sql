@@ -9,6 +9,7 @@ import java.text.DecimalFormat
 import java.time._
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
+import zio.schema._
 
 trait PostgresModule extends Jdbc { self =>
   import TypeTag._
@@ -265,21 +266,41 @@ trait PostgresModule extends Jdbc { self =>
           )
       val fkOrderId :*: orderDetailsProductId :*: quantity :*: unitPrice :*: _ = orderDetails.columns
 
-      val persons = string("name").table("persons")
 
-      val persons2    = string("name").table("persons2")
-      val name2 :*: _ = persons2.columns
+      // ============= INSERTS
 
-      val name :*: _ = persons.columns
+      val persons1 = (string("name")).table("persons1")
+      val persons2 = (string("name") ++ int("age")).table("persons2")
+      val persons3 = (string("name") ++ int("age") ++ string("gender")).table("persons3")
+      val persons4 = (string("name") ++ int("age") ++ string("gender") ++ long("birth")).table("persons4")
+      
+      val name1 :*: _ = persons1.columns
+      val name2 :*: age2 :*: _ = persons2.columns
+      val name3 :*: age3 :*: gender3 :*: _ = persons3.columns
+      val name4 :*: age4 :*: gender4 :*: birth4 :*: _ = persons4.columns
 
-      //does not compile
-      // insertInto(persons)
-      //   .values(name2 -> "Jaro")
+      case class Person1(name: String)
+      case class Person2(name: String, age: Int)
+      case class Person3(name: String, age: Int, gender: String)
+      case class Person4(name: String, age: Int, gender: String, dateOfBirth: Long)
 
-      insertInto(persons)
-        .values(name -> "Jaro")
+      implicit val personSchema1 = DeriveSchema.gen[Person1]
+      implicit val personSchema2 = DeriveSchema.gen[Person2]
+      implicit val personSchema3 = DeriveSchema.gen[Person3]
+      implicit val personSchema4 = DeriveSchema.gen[Person4]
 
-      //  ============== INSERTS
+      val personValues1 : List[Person1] = ???
+      val personValues2 : List[Person2] = ???
+      val personValues3 : List[Person3] = ???
+      val personValues4 : List[Person4] = ???
+
+      insertInto(persons1)(name1).values(personValues1)
+      insertInto(persons2)(name2 +++ age2).values(personValues2)
+      insertInto(persons3)(name3 +++ age3 +++ gender3).values(personValues3)
+      insertInto(persons4)(name4 +++ age4 +++ gender4 +++ birth4).values(personValues4)
+
+
+      //  ============== INSERTS ALT
 
       def test[A, B](expr1: Expr[Features.Source[A], _, _], expr2: Expr[Features.Source[B], _, _])(implicit
         eq: A =:= B
@@ -295,13 +316,10 @@ trait PostgresModule extends Jdbc { self =>
         (verified         -> true) ++
         (createdTimestamp -> ZonedDateTime.now())
 
-      insertInto(customers)
+      insertAltInto(customers)
         .values(insertValues)
 
-      //test(customerId, dob)
       test(customerId, customerId)
-      //test(fName, lName)
-
     }
   }
 
@@ -383,7 +401,7 @@ trait PostgresModule extends Jdbc { self =>
     render.toString
   }
 
-  override def renderInsert(insert: self.Insert[_]): String = {
+  override def renderInsert(insert: self.InsertAlt[_]): String = {
     implicit val render: Renderer = Renderer()
     PostgresRenderModule.renderInsertImpl(insert)
     render.toString
@@ -398,7 +416,7 @@ trait PostgresModule extends Jdbc { self =>
   object PostgresRenderModule {
     //todo split out to separate module
 
-    def renderInsertImpl(insert: Insert[_])(implicit render: Renderer) = {
+    def renderInsertImpl(insert: InsertAlt[_])(implicit render: Renderer) = {
       render("INSERT INTO ")
       renderTable(insert.table)
 

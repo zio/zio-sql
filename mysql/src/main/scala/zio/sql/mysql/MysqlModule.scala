@@ -42,7 +42,7 @@ trait MysqlModule extends Jdbc { self =>
     render.toString
   }
 
-  override def renderInsert(insert: self.Insert[_]): String = ???
+  override def renderInsert(insert: self.InsertAlt[_]): String = ???
 
   override def renderDelete(delete: self.Delete[_]): String = {
     implicit val render: Renderer = Renderer()

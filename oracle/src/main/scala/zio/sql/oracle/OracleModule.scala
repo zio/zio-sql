@@ -300,7 +300,7 @@ trait OracleModule extends Jdbc { self =>
 
   override def renderDelete(delete: self.Delete[_]): String = ???
 
-  override def renderInsert(insert: self.Insert[_]): String = ???
+  override def renderInsert(insert: self.InsertAlt[_]): String = ???
 
   override def renderUpdate(update: self.Update[_]): String = ???
 }

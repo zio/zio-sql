@@ -82,10 +82,10 @@ trait SqlDriverLiveModule { self: Jdbc =>
         }.refineToOrDie[Exception]
       }
 
-    override def insert(insert: Insert[_]): IO[Exception, Int] = 
+    override def insert(insert: InsertAlt[_]): IO[Exception, Int] = 
       pool.connection.use(insertOn(insert, _))
 
-    def insertOn(insert: Insert[_], conn: Connection): IO[Exception, Int] =
+    def insertOn(insert: InsertAlt[_], conn: Connection): IO[Exception, Int] =
       blocking.effectBlocking {
 
         val query     = renderInsert(insert)

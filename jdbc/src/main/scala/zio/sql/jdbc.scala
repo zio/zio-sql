@@ -14,7 +14,7 @@ trait Jdbc extends zio.sql.Sql with TransactionModule with JdbcInternalModule wi
 
     def transact[R, A](tx: ZTransaction[R, Exception, A]): ZManaged[R, Exception, A]
 
-    def insert(insert: Insert[_]): IO[Exception, Int]
+    def insert(insert: InsertAlt[_]): IO[Exception, Int]
   }
   object SqlDriver {
     val live: ZLayer[Blocking with Has[ConnectionPool], Nothing, Has[SqlDriver]] =
@@ -35,7 +35,7 @@ trait Jdbc extends zio.sql.Sql with TransactionModule with JdbcInternalModule wi
       _.get.delete(delete)
     )
 
-  def execute(insert: Insert[_]): ZIO[Has[SqlDriver], Exception, Int] =
+  def execute(insert: InsertAlt[_]): ZIO[Has[SqlDriver], Exception, Int] =
     ZIO.accessM[Has[SqlDriver]](
       _.get.insert(insert)
     )
