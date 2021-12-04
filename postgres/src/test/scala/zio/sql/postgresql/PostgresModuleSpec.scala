@@ -8,6 +8,8 @@ import zio.test._
 import java.time._
 import java.util.UUID
 import scala.language.postfixOps
+import zio.schema.Schema
+import java.time.format.DateTimeFormatter
 
 object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
@@ -377,7 +379,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("simple insert - inserted 1 column") {
+    testM("simple insert - inserted 1 row") {
 
       /**
        * insert into 
@@ -405,6 +407,56 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
       val assertion = for {
         r <- result
       } yield assert(r)(equalTo(1))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("insert - insert 10 columns") {
+
+      /**
+          insert into product_prices
+            (product_id, effective, price)
+          values
+            ('7368ABF4-AED2-421F-B426-1725DE756895', '2018-01-01', 10.00),
+            ('7368ABF4-AED2-421F-B426-1725DE756895', '2019-01-01', 11.00),
+            ('D5137D3A-894A-4109-9986-E982541B434F', '2020-01-01', 55.00),
+            .....
+            ('D5137D3A-894A-4109-9986-E982541B43BB', '2020-01-01', 66.00);
+       */
+
+       final case class InputOrders(uuid: UUID, customerId: UUID, localDate: LocalDate)
+
+       implicit val localDateSchema = Schema.CaseClass3[UUID, UUID, LocalDate, InputOrders](
+          Chunk.empty, 
+          Schema.Field("uuid", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
+          Schema.Field("customerId", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
+          Schema.Field("localDate", Schema.primitive[LocalDate](zio.schema.StandardType.LocalDate(DateTimeFormatter.ISO_DATE))),
+          InputOrders.apply,
+          _.uuid,
+          _.customerId,
+          _.localDate
+       )
+
+       val orderValues = List(
+         InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
+         InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
+         InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
+         InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
+         InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
+         InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
+         InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
+         InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
+         InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
+         InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now())
+       )
+
+       val query = insertInto(orders)(orderId +++ fkCustomerId +++ orderDate)
+          .values(orderValues)
+
+      val result = execute(query)
+
+      val assertion = for {
+        r <- result
+      } yield assert(r)(equalTo(10))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     }

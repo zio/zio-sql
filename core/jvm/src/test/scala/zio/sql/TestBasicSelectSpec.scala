@@ -2,6 +2,7 @@ package zio.sql
 
 import zio.test._
 import zio.test.Assertion._
+import zio.schema.Schema
 
 object TestBasicSelect {
   val userSql = new Sql { self =>
@@ -11,7 +12,9 @@ object TestBasicSelect {
     override def renderRead(read: self.Read[_]): String       = ???
     override def renderUpdate(update: self.Update[_]): String = ???
 
-    override def renderInsert(insert: self.InsertAlt[_]): String = ???
+    override def renderInsertAlt(insert: self.InsertAlt[_]): String = ???
+
+    override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = ???
 
     val userTable =
       (string("user_id") ++ localDate("dob") ++ string("first_name") ++ string("last_name")).table("users")

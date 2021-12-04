@@ -5,9 +5,13 @@ import java.sql._
 import zio._
 import zio.blocking.Blocking
 import zio.stream.{ Stream, ZStream }
+import zio.schema.Schema
 
 trait SqlDriverLiveModule { self: Jdbc =>
   private[sql] trait SqlDriverCore {
+    //TODO
+    // add inserts for transaction module
+
     def deleteOn(delete: Delete[_], conn: Connection): IO[Exception, Int]
 
     def updateOn(update: Update[_], conn: Connection): IO[Exception, Int]
@@ -82,13 +86,26 @@ trait SqlDriverLiveModule { self: Jdbc =>
         }.refineToOrDie[Exception]
       }
 
-    override def insert(insert: InsertAlt[_]): IO[Exception, Int] = 
-      pool.connection.use(insertOn(insert, _))
+    override def insertAlt(insert: InsertAlt[_]): IO[Exception, Int] = 
+      pool.connection.use(insertOnAlt(insert, _))
 
-    def insertOn(insert: InsertAlt[_], conn: Connection): IO[Exception, Int] =
+    def insertOn[A: Schema](insert: Insert[_, A], conn: Connection): IO[Exception, Int] =
       blocking.effectBlocking {
 
         val query     = renderInsert(insert)
+        
+        val statement = conn.createStatement()
+
+        statement.executeUpdate(query)
+      }.refineToOrDie[Exception]
+
+    override def insert[A : Schema](insert: Insert[_, A]): IO[Exception, Int] = 
+      pool.connection.use(insertOn(insert, _))
+
+    def insertOnAlt(insert: InsertAlt[_], conn: Connection): IO[Exception, Int] =
+      blocking.effectBlocking {
+
+        val query     = renderInsertAlt(insert)
         
         val statement = conn.createStatement()
 
