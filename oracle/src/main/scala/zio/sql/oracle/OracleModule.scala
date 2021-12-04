@@ -269,16 +269,16 @@ trait OracleModule extends Jdbc { self =>
     }
   def buildTable(table: Table, builder: StringBuilder): Unit                                           =
     table match {
-      case Table.DialectSpecificTable(_) => ???
+      case Table.DialectSpecificTable(_)           => ???
       //The outer reference in this type test cannot be checked at run time?!
-      case sourceTable: self.Table.Source             =>
+      case sourceTable: self.Table.Source          =>
         val _ = builder.append(sourceTable.name)
-      case Table.DerivedTable(read, name)             =>
+      case Table.DerivedTable(read, name)          =>
         builder.append(" ( ")
         builder.append(renderRead(read.asInstanceOf[Read[_]]))
         builder.append(" ) ")
         val _ = builder.append(name)
-      case Table.Joined(joinType, left, right, on)    =>
+      case Table.Joined(joinType, left, right, on) =>
         buildTable(left, builder)
         builder.append(joinType match {
           case JoinType.Inner      => " INNER JOIN "
