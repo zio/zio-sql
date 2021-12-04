@@ -2,7 +2,7 @@ package zio.sql.postgresql
 
 import org.postgresql.util.PGInterval
 import zio.Chunk
-import zio.sql.{Jdbc, Renderer}
+import zio.sql.{ Jdbc, Renderer }
 
 import java.sql.ResultSet
 import java.text.DecimalFormat
@@ -266,17 +266,16 @@ trait PostgresModule extends Jdbc { self =>
           )
       val fkOrderId :*: orderDetailsProductId :*: quantity :*: unitPrice :*: _ = orderDetails.columns
 
-
       // ============= INSERTS
 
       val persons1 = (string("name")).table("persons1")
       val persons2 = (string("name") ++ int("age")).table("persons2")
       val persons3 = (string("name") ++ int("age") ++ string("gender")).table("persons3")
       val persons4 = (string("name") ++ int("age") ++ string("gender") ++ long("birth")).table("persons4")
-      
-      val name1 :*: _ = persons1.columns
-      val name2 :*: age2 :*: _ = persons2.columns
-      val name3 :*: age3 :*: gender3 :*: _ = persons3.columns
+
+      val name1 :*: _                                 = persons1.columns
+      val name2 :*: age2 :*: _                        = persons2.columns
+      val name3 :*: age3 :*: gender3 :*: _            = persons3.columns
       val name4 :*: age4 :*: gender4 :*: birth4 :*: _ = persons4.columns
 
       case class Person1(name: String)
@@ -289,16 +288,15 @@ trait PostgresModule extends Jdbc { self =>
       implicit val personSchema3 = DeriveSchema.gen[Person3]
       implicit val personSchema4 = DeriveSchema.gen[Person4]
 
-      val personValues1 : List[Person1] = ???
-      val personValues2 : List[Person2] = ???
-      val personValues3 : List[Person3] = ???
-      val personValues4 : List[Person4] = ???
+      val personValues1: List[Person1] = ???
+      val personValues2: List[Person2] = ???
+      val personValues3: List[Person3] = ???
+      val personValues4: List[Person4] = ???
 
       insertInto(persons1)(name1).values(personValues1)
       insertInto(persons2)(name2 +++ age2).values(personValues2)
       insertInto(persons3)(name3 +++ age3 +++ gender3).values(personValues3)
       insertInto(persons4)(name4 +++ age4 +++ gender4 +++ birth4).values(personValues4)
-
 
       //  ============== INSERTS ALT
 
@@ -401,7 +399,13 @@ trait PostgresModule extends Jdbc { self =>
     render.toString
   }
 
-  override def renderInsert(insert: self.InsertAlt[_]): String = {
+  override def renderInsertAlt(insert: self.InsertAlt[_]): String = {
+    implicit val render: Renderer = Renderer()
+    PostgresRenderModule.renderInsertAltImpl(insert)
+    render.toString
+  }
+
+  override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = {
     implicit val render: Renderer = Renderer()
     PostgresRenderModule.renderInsertImpl(insert)
     render.toString
@@ -416,66 +420,181 @@ trait PostgresModule extends Jdbc { self =>
   object PostgresRenderModule {
     //todo split out to separate module
 
-    def renderInsertImpl(insert: InsertAlt[_])(implicit render: Renderer) = {
+    def renderInsertImpl[A](insert: Insert[_, A])(implicit render: Renderer, schema: Schema[A]) = {
       render("INSERT INTO ")
       renderTable(insert.table)
 
       render(" (")
-      renderColumnNames(insert.values)
-      render(") VALUES (")
+      renderColumnNames(insert.sources)
+      render(") VALUES ")
 
       renderInsertValues(insert.values)
+    }
+
+    def renderInsertValues[A](col: Seq[A])(implicit render: Renderer, schema: Schema[A]): Unit =
+      //TODO any performance penalty because of toList ?
+      col.toList match {
+        case head :: Nil  =>
+          render("(")
+          renderInserValue(head)
+          render(");")
+        case head :: next =>
+          render("(")
+          renderInserValue(head)(render, schema)
+          render(" ),")
+          renderInsertValues(next)
+        case Nil          => ()
+      }
+
+    def renderInserValue[Z](z: Z)(implicit render: Renderer, schema: Schema[Z]): Unit =
+      schema.toDynamic(z) match {
+        case DynamicValue.Record(listMap) =>
+          listMap.values.toList match {
+            case head :: Nil  => renderDynamicValue(head)
+            case head :: next =>
+              renderDynamicValue(head)
+              render(", ")
+              renderDynamicValues(next)
+            case Nil          => ()
+          }
+        case _                            => ()
+      }
+
+    
+
+    def renderDynamicValues(dynValues: List[DynamicValue])(implicit render: Renderer): Unit =
+      dynValues match {
+        case head :: Nil => renderDynamicValue(head)
+        case head :: tail => {
+          renderDynamicValue(head)
+          render(", ")
+          renderDynamicValues(tail)
+        }
+        case Nil => ()
+      }
+
+
+    def renderDynamicValue(dynValue: DynamicValue)(implicit render: Renderer): Unit =
+      dynValue match {
+        case DynamicValue.Primitive(value, typeTag) =>
+          typeTag match {
+            case _ => render(s"'${value}'")
+            // TODO make StandardType covariant
+            // case StandardType.DayOfWeekType =>  ???
+            // case StandardType.Month => ???
+            // case BigIntegerType => ???
+            // case StandardType.LocalTime(formatter) => ???
+            // case StandardType.LocalDate(formatter) => ???
+            // case BigDecimalType => ???
+            // case StandardType.Instant(formatter) => ???
+            // case StandardType.MonthDay => ???
+            // case DoubleType => ???
+            // case StandardType.ZonedDateTime(formatter) => ???
+            // case StandardType.Duration(temporalUnit) => ???
+            // case StandardType.LocalDateTime(formatter) => ???
+            // case UnitType => ???
+            // case BoolType => ???
+            // case StandardType.ZoneOffset => ???
+            // case StandardType.ZoneId => ???
+            // case CharType => ???
+            // case ShortType => ???
+            // case StringType => ???
+            // case FloatType => ???
+            // case StandardType.Period => ???
+            // case LongType => ???
+            // case UUIDType => ???
+            // case StandardType.OffsetDateTime(formatter) => ???
+            // case StandardType.Year => ???
+            // case BinaryType => ???
+            // case StandardType.YearMonth => ???
+            // case StandardType.OffsetTime(formatter) => ???
+            // case IntType => ???
+          }
+        case _                                      => ()
+      }
+
+    def renderColumnNames(sources: SourceSet[_])(implicit render: Renderer): Unit =
+      sources match {
+        case SourceSet.Empty                       => () // table is a collection of at least ONE column
+        case SourceSet.Cons(expr, SourceSet.Empty) =>
+          val columnName = expr match {
+            case Expr.Source(_, c) => c.name
+            case _                 => None
+          }
+          val _          = columnName.map { name =>
+            render(name)
+          }
+        case SourceSet.Cons(expr, tail)            =>
+          val columnName = expr match {
+            case Expr.Source(_, c) => c.name
+            case _                 => None
+          }
+          val _          = columnName.map { name =>
+            render(name)
+            render(", ")
+            renderColumnNames(tail)(render)
+          }
+      }
+
+    def renderInsertAltImpl(insert: InsertAlt[_])(implicit render: Renderer) = {
+      render("INSERT INTO ")
+      renderTable(insert.table)
+
+      render(" (")
+      renderColumnNamesAlt(insert.values)
+      render(") VALUES (")
+
+      renderInsertAltValues(insert.values)
       render(" )")
     }
 
-    def renderInsertValues(values: InsertRow[_])(implicit render: Renderer): Unit =
+    def renderInsertAltValues(values: InsertRow[_])(implicit render: Renderer): Unit =
       values match {
         case InsertRow.Empty                            => ()
         case InsertRow.Cons(tupleHead, InsertRow.Empty) =>
           val typeTag = Expr.typeTagOf(tupleHead._1)
-          val value = tupleHead._2
+          val value   = tupleHead._2
           renderValue(typeTag, value)
         case InsertRow.Cons(tupleHead, tail)            =>
           val typeTag = Expr.typeTagOf(tupleHead._1)
-          val value = tupleHead._2
+          val value   = tupleHead._2
           renderValue(typeTag, value)
           render(", ")
-          renderInsertValues(tail)(render)
+          renderInsertAltValues(tail)(render)
       }
 
     /**
-      * TODO
-      *
-      * Every values is written differently - based on Expr typeTag
-      */
+     * TODO
+     *
+     * Every values is written differently - based on Expr typeTag
+     */
     def renderValue[A](typeTage: TypeTag[A], value: A)(implicit render: Renderer): Unit =
       typeTage match {
-        case TBigDecimal =>  render(value.toString)
-        case TBoolean => render(value.toString)
-        case TByte => render(value.toString)
-        case TByteArray => render(value.toString)
-        case TChar => render(value.toString)
-        case TDouble => render(value.toString)
-        case TFloat => render(value.toString)
-        case TInstant => render(value.toString)
-        case TInt => render(value.toString)
-        case TLocalDate => render(s"'${value.toString}'")
-        case TLocalDateTime => render(value.toString)
-        case TLocalTime => render(s"'${value.toString}'")
-        case TLong => render(value.toString)
-        case TOffsetDateTime => render(value.toString)
-        case TOffsetTime => render(value.toString)
-        case TShort => render(value.toString)
-        case TString => render(s"'${value.toString}'")
-        case TUUID => render(s"'${value.toString}'")
-        case TZonedDateTime =>
+        case TBigDecimal                        => render(value.toString)
+        case TBoolean                           => render(value.toString)
+        case TByte                              => render(value.toString)
+        case TByteArray                         => render(value.toString)
+        case TChar                              => render(value.toString)
+        case TDouble                            => render(value.toString)
+        case TFloat                             => render(value.toString)
+        case TInstant                           => render(value.toString)
+        case TInt                               => render(value.toString)
+        case TLocalDate                         => render(s"'${value.toString}'")
+        case TLocalDateTime                     => render(value.toString)
+        case TLocalTime                         => render(s"'${value.toString}'")
+        case TLong                              => render(value.toString)
+        case TOffsetDateTime                    => render(value.toString)
+        case TOffsetTime                        => render(value.toString)
+        case TShort                             => render(value.toString)
+        case TString                            => render(s"'${value.toString}'")
+        case TUUID                              => render(s"'${value.toString}'")
+        case TZonedDateTime                     =>
           render(s"'${DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(value.asInstanceOf[ZonedDateTime])}'")
         case TDialectSpecific(typeTagExtension) => render(value.toString)
-        case Nullable() => render("null")
+        case Nullable()                         => render("null")
       }
 
-
-    def renderColumnNames(values: InsertRow[_])(implicit render: Renderer): Unit =
+    def renderColumnNamesAlt(values: InsertRow[_])(implicit render: Renderer): Unit =
       values match {
         case InsertRow.Empty                            => () // table is a collection of at least ONE column
         case InsertRow.Cons(tupleHead, InsertRow.Empty) =>
@@ -484,7 +603,7 @@ trait PostgresModule extends Jdbc { self =>
             case Expr.Source(_, c) => c.name
             case _                 => None
           }
-          val _ = columnName.map { name =>
+          val _          = columnName.map { name =>
             render(name)
           }
         case InsertRow.Cons(tupleHead, tail)            =>
@@ -493,10 +612,10 @@ trait PostgresModule extends Jdbc { self =>
             case Expr.Source(_, c) => c.name
             case _                 => None
           }
-          val _ = columnName.map { name =>
+          val _          = columnName.map { name =>
             render(name)
             render(", ")
-            renderColumnNames(tail)(render)
+            renderColumnNamesAlt(tail)(render)
           }
       }
 

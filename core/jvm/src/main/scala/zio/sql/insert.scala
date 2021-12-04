@@ -19,7 +19,7 @@ import scala.language.implicitConversions
  *    values(customerValues)
  *
  * TODO
- * 1. change SourceSet +++ to :: or something better - cannot use ++ because its selectionSet then
+ * 1. change SourceSet +++ to :: or something better - cannot use ++ because its selectionSet then, && exists on expr
  * 2. make columns null, not null aware
  * 3. automatically generated columns (postgres idenitity) do not accept insert
  * 4. make better error messages
