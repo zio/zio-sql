@@ -223,7 +223,7 @@ lazy val sqlserver = project
       "org.testcontainers"      % "database-commons"                 % testcontainersVersion      % Test,
       "org.testcontainers"      % "mssqlserver"                      % testcontainersVersion      % Test,
       "org.testcontainers"      % "jdbc"                             % testcontainersVersion      % Test,
-      "com.microsoft.sqlserver" % "mssql-jdbc"                       % "9.2.1.jre11"              % Test,
+      "com.microsoft.sqlserver" % "mssql-jdbc"                       % "9.4.0.jre8"               % Test,
       "com.dimafeng"           %% "testcontainers-scala-mssqlserver" % testcontainersScalaVersion % Test
     )
   )
