@@ -3,7 +3,6 @@ package zio.sql
 import java.sql._
 
 import zio._
-import zio.blocking.Blocking
 import zio.stream.{ Stream, ZStream }
 
 trait SqlDriverLiveModule { self: Jdbc =>
@@ -15,14 +14,14 @@ trait SqlDriverLiveModule { self: Jdbc =>
     def readOn[A](read: Read[A], conn: Connection): Stream[Exception, A]
   }
 
-  sealed case class SqlDriverLive(blocking: Blocking.Service, pool: ConnectionPool)
+  sealed case class SqlDriverLive(pool: ConnectionPool)
       extends SqlDriver
       with SqlDriverCore { self =>
     def delete(delete: Delete[_]): IO[Exception, Int] =
       pool.connection.use(deleteOn(delete, _))
 
     def deleteOn(delete: Delete[_], conn: Connection): IO[Exception, Int] =
-      blocking.effectBlocking {
+      ZIO.attemptBlocking {
         val query     = renderDelete(delete)
         val statement = conn.createStatement()
         statement.executeUpdate(query)
@@ -32,7 +31,7 @@ trait SqlDriverLiveModule { self: Jdbc =>
       pool.connection.use(updateOn(update, _))
 
     def updateOn(update: Update[_], conn: Connection): IO[Exception, Int] =
-      blocking.effectBlocking {
+      ZIO.attemptBlocking {
 
         val query = renderUpdate(update)
 
@@ -51,7 +50,7 @@ trait SqlDriverLiveModule { self: Jdbc =>
 
     override def readOn[A](read: Read[A], conn: Connection): Stream[Exception, A] =
       Stream.unwrap {
-        blocking.effectBlocking {
+        ZIO.attemptBlocking {
           val schema = getColumns(read).zipWithIndex.map { case (value, index) =>
             (value, index + 1)
           } // SQL is 1-based indexing
@@ -66,7 +65,7 @@ trait SqlDriverLiveModule { self: Jdbc =>
             val resultSet = statement.getResultSet()
 
             ZStream
-              .unfoldM(resultSet) { rs =>
+              .unfoldZIO(resultSet) { rs =>
                 if (rs.next()) {
                   try unsafeExtractRow[read.ResultType](resultSet, schema) match {
                     case Left(error)  => ZIO.fail(error)
@@ -85,8 +84,8 @@ trait SqlDriverLiveModule { self: Jdbc =>
     override def transact[R, A](tx: ZTransaction[R, Exception, A]): ZManaged[R, Exception, A] =
       for {
         connection <- pool.connection
-        _          <- blocking.effectBlocking(connection.setAutoCommit(false)).refineToOrDie[Exception].toManaged_
-        a          <- tx.run(blocking, Txn(connection, self))
+        _          <- ZIO.attemptBlocking(connection.setAutoCommit(false)).refineToOrDie[Exception].toManaged
+        a          <- tx.run(Txn(connection, self))
       } yield a
   }
 }

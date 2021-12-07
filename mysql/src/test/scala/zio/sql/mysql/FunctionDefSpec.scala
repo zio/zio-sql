@@ -11,7 +11,7 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
   import MysqlFunctionDef._
 
   override def specLayered = suite("MySQL FunctionDef")(
-    testM("lower") {
+    test("lower") {
       val query = select(Lower(fName)) from customers limit (1)
 
       val expected = "ronald"
@@ -27,7 +27,7 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
     // FIXME: lower with string literal should not refer to a column name
     // See: https://www.w3schools.com/sql/trymysql.asp?filename=trysql_func_mysql_lower
     // Uncomment the following test when fixed
-    //    testM("lower with string literal") {
+    //    test("lower with string literal") {
     //      val query = select(Lower("LOWER")) from customers limit(1)
     //
     //      val expected = "lower"
@@ -40,7 +40,7 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
     //
     //      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     //    },
-    testM("sin") {
+    test("sin") {
       val query = select(Sin(1.0))
 
       val expected = 0.8414709848078965
@@ -53,7 +53,7 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("abs") {
+    test("abs") {
       val query = select(Abs(-32.0))
 
       val expected = 32.0
@@ -66,7 +66,7 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("crc32") {
+    test("crc32") {
       val query = select(Crc32("MySQL")) from customers
 
       val expected = 3259397556L
@@ -79,7 +79,7 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("degrees") {
+    test("degrees") {
       val query = select(Degrees(Math.PI)) from customers
 
       val expected = 180d
@@ -92,7 +92,7 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("log2") {
+    test("log2") {
       val query = select(Log2(8d)) from customers
 
       val expected = 3d
@@ -105,7 +105,7 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("log10") {
+    test("log10") {
       val query = select(Log10(1000000d)) from customers
 
       val expected = 6d
@@ -118,7 +118,7 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("pi") {
+    test("pi") {
       val query = select(Pi) from customers
 
       val expected = 3.141593d

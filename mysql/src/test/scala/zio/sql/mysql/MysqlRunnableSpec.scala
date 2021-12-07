@@ -4,7 +4,7 @@ import java.util.Properties
 
 import zio._
 import zio.sql._
-import zio.test.environment.TestEnvironment
+import zio.test.TestEnvironment
 import zio.test._
 
 trait MysqlRunnableSpec extends JdbcRunnableSpec with MysqlModule {
@@ -18,10 +18,17 @@ trait MysqlRunnableSpec extends JdbcRunnableSpec with MysqlModule {
 
   val poolConfigLayer = TestContainer
     .mysql()
-    .map(a => Has(ConnectionPoolConfig(a.get.jdbcUrl, connProperties(a.get.username, a.get.password))))
+    .map(a =>
+      ZEnvironment(
+        ConnectionPoolConfig(
+          a.get.jdbcUrl,
+          connProperties(a.get.username, a.get.password)
+        )
+      )
+    )
 
   override def spec: Spec[TestEnvironment, TestFailure[Any], TestSuccess] =
-    specLayered.provideCustomLayerShared(jdbcLayer)
+    specLayered.provideCustomShared(jdbcLayer)
 
   def specLayered: Spec[JdbcEnvironment, TestFailure[Object], TestSuccess]
 
