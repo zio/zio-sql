@@ -20,9 +20,10 @@ object TransactionSpec extends MysqlRunnableSpec with ShopSchema {
       ).use(ZIO.succeed(_))
 
       val assertion =
-        result.flatMap(_.runCount)
-        .map(count => assertTrue(count == 5))
-        .orDie
+        result
+          .flatMap(_.runCount)
+          .map(count => assertTrue(count == 5))
+          .orDie
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },

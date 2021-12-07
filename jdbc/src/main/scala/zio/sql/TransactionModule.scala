@@ -2,7 +2,7 @@ package zio.sql
 
 import java.sql._
 
-import zio.{Tag => ZTag, _}
+import zio.{ Tag => ZTag, _ }
 import zio.stream._
 
 trait TransactionModule { self: Jdbc =>
@@ -12,7 +12,9 @@ trait TransactionModule { self: Jdbc =>
     def map[B](f: A => B): ZTransaction[R, E, B] =
       ZTransaction(self.unwrap.map(f))
 
-    def flatMap[R1 <: R: ZTag: IsNotIntersection, E1 >: E, B](f: A => ZTransaction[R1, E1, B]): ZTransaction[R1, E1, B] =
+    def flatMap[R1 <: R: ZTag: IsNotIntersection, E1 >: E, B](
+      f: A => ZTransaction[R1, E1, B]
+    ): ZTransaction[R1, E1, B] =
       ZTransaction(self.unwrap.flatMap(a => f(a).unwrap))
 
     private[sql] def run(txn: Txn)(implicit
@@ -25,11 +27,13 @@ trait TransactionModule { self: Jdbc =>
                .provideEnvironment(ZEnvironment((r.get, txn)))
                .tapBoth(
                  _ =>
-                   ZIO.attemptBlocking(txn.connection.rollback())
+                   ZIO
+                     .attemptBlocking(txn.connection.rollback())
                      .refineToOrDie[Exception]
                      .toManaged,
                  _ =>
-                   ZIO.attemptBlocking(txn.connection.commit())
+                   ZIO
+                     .attemptBlocking(txn.connection.commit())
                      .refineToOrDie[Exception]
                      .toManaged
                )
@@ -38,7 +42,9 @@ trait TransactionModule { self: Jdbc =>
     def zip[R1 <: R: ZTag: IsNotIntersection, E1 >: E, B](tx: ZTransaction[R1, E1, B]): ZTransaction[R1, E1, (A, B)] =
       zipWith[R1, E1, B, (A, B)](tx)((_, _))
 
-    def zipWith[R1 <: R: ZTag: IsNotIntersection, E1 >: E, B, C](tx: ZTransaction[R1, E1, B])(f: (A, B) => C): ZTransaction[R1, E1, C] =
+    def zipWith[R1 <: R: ZTag: IsNotIntersection, E1 >: E, B, C](
+      tx: ZTransaction[R1, E1, B]
+    )(f: (A, B) => C): ZTransaction[R1, E1, C] =
       for {
         a <- self
         b <- tx
@@ -58,7 +64,9 @@ trait TransactionModule { self: Jdbc =>
     def zipLeft[R1 <: R: ZTag: IsNotIntersection, E1 >: E, B](tx: ZTransaction[R1, E1, B]): ZTransaction[R1, E1, A] =
       self <* tx
 
-    def catchAllCause[R1 <: R: ZTag: IsNotIntersection, E1 >: E, A1 >: A](f: Cause[E1] => ZTransaction[R1, E1, A1]): ZTransaction[R1, E1, A1] =
+    def catchAllCause[R1 <: R: ZTag: IsNotIntersection, E1 >: E, A1 >: A](
+      f: Cause[E1] => ZTransaction[R1, E1, A1]
+    ): ZTransaction[R1, E1, A1] =
       ZTransaction(self.unwrap.catchAllCause(cause => f(cause).unwrap))
   }
 

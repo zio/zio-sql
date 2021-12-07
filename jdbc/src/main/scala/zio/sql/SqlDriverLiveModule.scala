@@ -14,9 +14,7 @@ trait SqlDriverLiveModule { self: Jdbc =>
     def readOn[A](read: Read[A], conn: Connection): Stream[Exception, A]
   }
 
-  sealed case class SqlDriverLive(pool: ConnectionPool)
-      extends SqlDriver
-      with SqlDriverCore { self =>
+  sealed case class SqlDriverLive(pool: ConnectionPool) extends SqlDriver with SqlDriverCore { self =>
     def delete(delete: Delete[_]): IO[Exception, Int] =
       pool.connection.use(deleteOn(delete, _))
 
