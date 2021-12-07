@@ -1,6 +1,6 @@
 package zio.sql
 
-import zio.{Tag => ZTag, _}
+import zio.{ Tag => ZTag, _ }
 import zio.stream._
 
 trait Jdbc extends zio.sql.Sql with TransactionModule with JdbcInternalModule with SqlDriverLiveModule {
@@ -16,11 +16,13 @@ trait Jdbc extends zio.sql.Sql with TransactionModule with JdbcInternalModule wi
   object SqlDriver {
     val live: ZLayer[ConnectionPool, Nothing, SqlDriver] =
       (for {
-        pool     <- ZIO.service[ConnectionPool]
+        pool <- ZIO.service[ConnectionPool]
       } yield SqlDriverLive(pool)).toLayer
   }
 
-  def execute[R <: SqlDriver: ZTag: IsNotIntersection, A](tx: ZTransaction[R, Exception, A]): ZManaged[R, Exception, A] =
+  def execute[R <: SqlDriver: ZTag: IsNotIntersection, A](
+    tx: ZTransaction[R, Exception, A]
+  ): ZManaged[R, Exception, A] =
     ZManaged.environmentWithManaged[R](_.get.transact(tx))
 
   def execute[A](read: Read[A]): ZStream[SqlDriver, Exception, A] =

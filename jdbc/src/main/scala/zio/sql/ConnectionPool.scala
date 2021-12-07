@@ -46,7 +46,7 @@ final case class ConnectionPoolLive(
   queue: TQueue[TPromise[Nothing, ResettableConnection]],
   available: TRef[List[ResettableConnection]],
   config: ConnectionPoolConfig,
-  clock: Clock,
+  clock: Clock
 ) extends ConnectionPool {
 
   /**
