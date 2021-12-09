@@ -48,7 +48,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
   }
 
   override def specLayered = suite("Postgres module")(
-    testM("Can select from single table") {
+    test("Can select from single table") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
       val query = select(customerId ++ fName ++ lName ++ dob).from(customers)
@@ -100,32 +100,32 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("Can select with property unary operator") {
+    test("Can select with property unary operator") {
       customerSelectJoseAssertion(verified isNotTrue)
     },
-    testM("Can select with property binary operator with UUID") {
+    test("Can select with property binary operator with UUID") {
       customerSelectJoseAssertion(customerId === UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc"))
     },
-    testM("Can select with property binary operator with String") {
+    test("Can select with property binary operator with String") {
       customerSelectJoseAssertion(fName === "Jose")
     },
-    testM("Can select with property binary operator with LocalDate") {
+    test("Can select with property binary operator with LocalDate") {
       customerSelectJoseAssertion(dob === LocalDate.parse("1987-03-23"))
     },
-    testM("Can select with property binary operator with LocalDateTime") {
+    test("Can select with property binary operator with LocalDateTime") {
       customerSelectJoseAssertion(dob === LocalDateTime.parse("1987-03-23T00:00:00"))
     },
-    testM("Can select with property binary operator with OffsetDateTime") {
+    test("Can select with property binary operator with OffsetDateTime") {
       customerSelectJoseAssertion(dob === OffsetDateTime.parse("1987-03-23T00:00:00Z"))
     },
-    testM("Can select with property binary operator with ZonedLocalDate") {
+    test("Can select with property binary operator with ZonedLocalDate") {
       customerSelectJoseAssertion(dob === ZonedDateTime.parse("1987-03-23T00:00:00Z"))
     },
-    testM("Can select with property binary operator with Instant") {
+    test("Can select with property binary operator with Instant") {
       customerSelectJoseAssertion(dob === Instant.parse("1987-03-23T00:00:00Z"))
     },
     // uncomment when we properly handle Postgres' Money type
-    //  testM("Can select with property binary operator with numbers") {
+    //  test("Can select with property binary operator with numbers") {
     //    case class OrderDetails(orderId: UUID, product_id: UUID, quantity: Int, unitPrice: BigDecimal)
 
     //    val orderDetailQuantity  = 3
@@ -156,7 +156,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
     //    assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     //  },
-    testM("Can select from single table with limit, offset and order by") {
+    test("Can select from single table with limit, offset and order by") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
       val query = select(customerId ++ fName ++ lName ++ dob).from(customers).limit(1).offset(1).orderBy(fName)
@@ -184,7 +184,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("Can count rows") {
+    test("Can count rows") {
       val query = select(Count(customerId)).from(customers)
 
       val expected = 5L
@@ -195,7 +195,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
         r <- result.runCollect
       } yield assert(r.head)(equalTo(expected))
     },
-    testM("Can select from joined tables (inner join)") {
+    test("Can select from joined tables (inner join)") {
       val query = select(fName ++ lName ++ orderDate).from(customers.join(orders).on(fkCustomerId === customerId))
 
       case class Row(firstName: String, lastName: String, orderDate: LocalDate)
@@ -241,7 +241,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("Can select using like") {
+    test("Can select using like") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
       val query = select(customerId ++ fName ++ lName ++ dob).from(customers).where(fName like "Jo%")
@@ -268,7 +268,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("Can delete from single table with a condition") {
+    test("Can delete from single table with a condition") {
       val query = deleteFrom(customers) where (verified isNotTrue)
       println(renderDelete(query))
 
@@ -280,7 +280,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("Can delete all from a single table") {
+    test("Can delete all from a single table") {
       val query = deleteFrom(customers)
       println(renderDelete(query))
 

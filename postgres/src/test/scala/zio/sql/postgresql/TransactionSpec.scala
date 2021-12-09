@@ -14,7 +14,7 @@ object TransactionSpec extends PostgresRunnableSpec with ShopSchema {
   import Customers._
 
   override def specLayered = suite("Postgres module")(
-    testM("Transaction is returning the last value") {
+    test("Transaction is returning the last value") {
       val query = select(customerId) from customers
 
       val result = execute(
@@ -25,7 +25,7 @@ object TransactionSpec extends PostgresRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("Transaction is failing") {
+    test("Transaction is failing") {
       val query = select(customerId) from customers
 
       val result = execute(
@@ -34,30 +34,30 @@ object TransactionSpec extends PostgresRunnableSpec with ShopSchema {
 
       assertM(result.flip)(equalTo("failing")).mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("Transaction failed and didn't deleted rows") {
+    test("Transaction failed and didn't deleted rows") {
       val query       = select(customerId) from customers
       val deleteQuery = deleteFrom(customers).where(verified === false)
 
       val result = (for {
-        allCustomersCount       <- execute(query.to(identity[UUID](_))).runCount.toManaged_
+        allCustomersCount       <- execute(query.to(identity[UUID](_))).runCount.toManaged
         _                       <- execute(
                                      ZTransaction(deleteQuery) *> ZTransaction.fail(new Exception("this is error")) *> ZTransaction(query)
                                    ).catchAllCause(_ => ZManaged.succeed("continue"))
-        remainingCustomersCount <- execute(query.to(identity[UUID](_))).runCount.toManaged_
+        remainingCustomersCount <- execute(query.to(identity[UUID](_))).runCount.toManaged
       } yield (allCustomersCount, remainingCustomersCount)).use(ZIO.succeed(_))
 
       assertM(result)(equalTo((5L, 5L))).mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("Transaction succeeded and deleted rows") {
+    test("Transaction succeeded and deleted rows") {
       val query       = select(customerId) from customers
       val deleteQuery = deleteFrom(customers).where(verified === false)
 
       val tx = ZTransaction(deleteQuery)
 
       val result = (for {
-        allCustomersCount       <- execute(query.to(identity[UUID](_))).runCount.toManaged_
+        allCustomersCount       <- execute(query.to(identity[UUID](_))).runCount.toManaged
         _                       <- execute(tx)
-        remainingCustomersCount <- execute(query.to(identity[UUID](_))).runCount.toManaged_
+        remainingCustomersCount <- execute(query.to(identity[UUID](_))).runCount.toManaged
       } yield (allCustomersCount, remainingCustomersCount)).use(ZIO.succeed(_))
 
       assertM(result)(equalTo((5L, 4L))).mapErrorCause(cause => Cause.stackless(cause.untraced))
