@@ -102,7 +102,7 @@ trait TableModule { self: ExprModule with SelectModule =>
         head == column || tail.contains(column)
     }
 
-    def byteArray(name: String): Singleton[Chunk[Byte], name.type] = singleton[Chunk[Byte], name.type](name)
+    def byteArray(name: String): Singleton[Chunk[Byte], name.type]         = singleton[Chunk[Byte], name.type](name)
     def bigDecimal(name: String): Singleton[BigDecimal, name.type]         = singleton[BigDecimal, name.type](name)
     def boolean(name: String): Singleton[Boolean, name.type]               = singleton[Boolean, name.type](name)
     def char(name: String): Singleton[Char, name.type]                     = singleton[Char, name.type](name)
@@ -260,7 +260,7 @@ trait TableModule { self: ExprModule with SelectModule =>
         type TableType = A
 
         type AllColumnIdentities = AllColumnIdentities0
-        type Size      = Size0
+        type Size                = Size0
       }
     }
 

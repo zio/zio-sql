@@ -196,7 +196,7 @@ trait MysqlModule extends Jdbc { self =>
       case Expr.Source(table, column)                                                   =>
         (table, column.name) match {
           case (tableName: TableName, Some(columnName)) => render(tableName, ".", columnName)
-          case _                                                => ()
+          case _                                        => ()
         }
       case Expr.Unary(base, op)                                                         =>
         render(" ", op.symbol)

@@ -3,7 +3,6 @@ package zio.sql
 import scala.language.implicitConversions
 
 /**
- *
  * TODO
  *  1. add to column type capability to contain null values
  *  2. add auto generated capabilities (like identity for postgresql)
@@ -17,7 +16,7 @@ import scala.language.implicitConversions
  *      Select S.Test_Date, E.Testno, S.Examno, S.Serialno, 'Non-Flight', (F.STARTED- F.ENDED) as Hours
  *      From Semester S, TIME F, TESTPAPERS e
  *      Where S.Testno = F.Testno And E.Testno = 1
- * 
+ *
  *  insert into customers
  *      (id, first_name, last_name, verified, dob, created_timestamp_string, created_timestamp)
  *  values
@@ -26,7 +25,9 @@ import scala.language.implicitConversions
  */
 trait InsertAltModule { self: ExprModule with TableModule =>
 
-  sealed case class InsertAltBuilder[Source, N <: ColumnCount, AllColumnIdentities](table: Table.Source.AuxN[Source, AllColumnIdentities, N]) {
+  sealed case class InsertAltBuilder[Source, N <: ColumnCount, AllColumnIdentities](
+    table: Table.Source.AuxN[Source, AllColumnIdentities, N]
+  ) {
     def values(values: InsertRow[Source])(implicit ev: values.Size =:= N): InsertAlt[Source] = InsertAlt(table, values)
   }
 
@@ -69,8 +70,9 @@ trait InsertAltModule { self: ExprModule with TableModule =>
       override def ++[Source1 <: Source, Appended, ThatIdentity](
         that: (Expr[Features.Source[ThatIdentity], Source1, Appended], Appended)
       )(implicit
-        unique: Unique[ThatIdentity, self.type], ev: TypeTag[Appended]
-        ): InsertRow.Cons[Source1, H, tail.Append[Source1, Appended, ThatIdentity], HeadIdentity] =
+        unique: Unique[ThatIdentity, self.type],
+        ev: TypeTag[Appended]
+      ): InsertRow.Cons[Source1, H, tail.Append[Source1, Appended, ThatIdentity], HeadIdentity] =
         InsertRow.Cons[Source1, H, tail.Append[Source1, Appended, ThatIdentity], HeadIdentity](
           tupleHead,
           tail.++(that)(new Unique[ThatIdentity, T] {}, implicitly[TypeTag[Appended]])
@@ -94,7 +96,7 @@ trait InsertAltModule { self: ExprModule with TableModule =>
     implicit def uniqueInCons[A, H, T <: InsertRow[_]](implicit
       tailNotContain: Unique[H, T],
       ev: A =!= H
-    ): Unique[A, InsertRow.Cons[_, _, T, H]]                     =
+    ): Unique[A, InsertRow.Cons[_, _, T, H]]                  =
       new Unique[A, InsertRow.Cons[_, _, T, H]] {}
   }
 

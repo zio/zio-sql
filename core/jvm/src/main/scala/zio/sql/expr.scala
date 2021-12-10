@@ -118,8 +118,8 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
 
     def exprName[F, A, B](expr: Expr[F, A, B]): Option[String] =
       expr match {
-        case Expr.Source(_, c)  => c.name
-        case _                  => None
+        case Expr.Source(_, c) => c.name
+        case _                 => None
       }
 
     implicit def expToSelection[F, A, B](
@@ -133,8 +133,10 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
       override def typeTag: TypeTag[Head] = subselect.selection.value.head.toColumn.typeTag
     }
 
-    sealed case class Source[-A, B, ColumnIdentity] private[sql] (tableName: TableName, column: Column.Aux[B, ColumnIdentity])
-        extends InvariantExpr[Features.Source[ColumnIdentity], A, B] {
+    sealed case class Source[-A, B, ColumnIdentity] private[sql] (
+      tableName: TableName,
+      column: Column.Aux[B, ColumnIdentity]
+    ) extends InvariantExpr[Features.Source[ColumnIdentity], A, B] {
       def typeTag: TypeTag[B] = column.typeTag
     }
 
