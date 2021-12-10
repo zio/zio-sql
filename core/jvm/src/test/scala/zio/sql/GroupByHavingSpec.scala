@@ -19,7 +19,7 @@ object AggregatedProductSchema {
   val sqldsl = new Sql { self =>
     override def renderDelete(delete: self.Delete[_]): String = ???
     override def renderRead(read: self.Read[_]): String       = ???
-    override def renderUpdate(update: self.Update[_]): String      = ???
+    override def renderUpdate(update: self.Update[_]): String = ???
 
     override def renderInsertAlt(insert: self.InsertAlt[_]): String = ???
 

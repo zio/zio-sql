@@ -30,14 +30,14 @@ trait SqlServerModule extends Jdbc { self =>
         override type ColumnHead = left.ColumnHead
 
         override type HeadIdentity0 = left.HeadIdentity0
-        override type ColumnTail =
+        override type ColumnTail    =
           left.columnSet.tail.Append[ColumnSet.Cons[right.ColumnHead, right.ColumnTail, right.HeadIdentity0]]
 
         override val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail, HeadIdentity0] =
           left.columnSet ++ right.columnSet
 
         override val columnToExpr: ColumnToExpr[A with B] = new ColumnToExpr[A with B] {
-          def toExpr[C](column: Column[C]): Expr[Features.Source[column.Identity], A with B, C] = 
+          def toExpr[C](column: Column[C]): Expr[Features.Source[column.Identity], A with B, C] =
             if (left.columnSet.contains(column))
               left.columnToExpr.toExpr(column)
             else
@@ -106,7 +106,7 @@ trait SqlServerModule extends Jdbc { self =>
         (table, column.name) match {
           case (tableName: TableName, Some(columnName)) =>
             val _ = builder.append(tableName).append(".").append(columnName)
-          case _                                                => ()
+          case _                                        => ()
         }
       case Expr.Unary(base, op)                                                                 =>
         val _ = builder.append(" ").append(op.symbol)

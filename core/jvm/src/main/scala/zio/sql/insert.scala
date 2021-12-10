@@ -26,6 +26,8 @@ import scala.language.implicitConversions
  * 5. try to generate DSL tables at compile type from sql file with compiler plugin
  * 6. translate new inserts to sql query
  * 7. how to support tables with more than 22 columns ?
+ * 8. retrieve generated ID from inserted row
+ * 9. explore & add "on conflict do" stuff
  */
 trait InsertModule { self: ExprModule with TableModule =>
 

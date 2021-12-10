@@ -10,6 +10,20 @@ import java.time._
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
 import zio.schema._
+import zio.schema.StandardType.BigDecimalType
+import zio.schema.StandardType.CharType
+import zio.schema.StandardType.IntType
+import zio.schema.StandardType.BinaryType
+import zio.schema.StandardType.UnitType
+import zio.schema.StandardType.DoubleType
+import zio.schema.StandardType.BigIntegerType
+import zio.schema.StandardType.UUIDType
+import zio.schema.StandardType.ShortType
+import zio.schema.StandardType.LongType
+import zio.schema.StandardType.StringType
+import zio.schema.StandardType.BoolType
+import zio.schema.StandardType.DayOfWeekType
+import zio.schema.StandardType.FloatType
 
 trait PostgresModule extends Jdbc { self =>
   import TypeTag._
@@ -460,56 +474,67 @@ trait PostgresModule extends Jdbc { self =>
         case _                            => ()
       }
 
-    
-
     def renderDynamicValues(dynValues: List[DynamicValue])(implicit render: Renderer): Unit =
       dynValues match {
-        case head :: Nil => renderDynamicValue(head)
-        case head :: tail => {
+        case head :: Nil  => renderDynamicValue(head)
+        case head :: tail =>
           renderDynamicValue(head)
           render(", ")
           renderDynamicValues(tail)
-        }
-        case Nil => ()
+        case Nil          => ()
       }
 
-
+    // TODO render each type according to their specifics & test it
     def renderDynamicValue(dynValue: DynamicValue)(implicit render: Renderer): Unit =
       dynValue match {
         case DynamicValue.Primitive(value, typeTag) =>
-          typeTag match {
-            case _ => render(s"'${value}'")
-            // TODO make StandardType covariant
-            // case StandardType.DayOfWeekType =>  ???
-            // case StandardType.Month => ???
-            // case BigIntegerType => ???
-            // case StandardType.LocalTime(formatter) => ???
-            // case StandardType.LocalDate(formatter) => ???
-            // case BigDecimalType => ???
-            // case StandardType.Instant(formatter) => ???
-            // case StandardType.MonthDay => ???
-            // case DoubleType => ???
-            // case StandardType.ZonedDateTime(formatter) => ???
-            // case StandardType.Duration(temporalUnit) => ???
-            // case StandardType.LocalDateTime(formatter) => ???
-            // case UnitType => ???
-            // case BoolType => ???
-            // case StandardType.ZoneOffset => ???
-            // case StandardType.ZoneId => ???
-            // case CharType => ???
-            // case ShortType => ???
-            // case StringType => ???
-            // case FloatType => ???
-            // case StandardType.Period => ???
-            // case LongType => ???
-            // case UUIDType => ???
-            // case StandardType.OffsetDateTime(formatter) => ???
-            // case StandardType.Year => ???
-            // case BinaryType => ???
-            // case StandardType.YearMonth => ???
-            // case StandardType.OffsetTime(formatter) => ???
-            // case IntType => ???
+          // need to do this since StandardType is invariant in A
+          StandardType.fromString(typeTag.tag) match {
+            case Some(v) =>
+              v match {
+                case BigDecimalType                         =>
+                  println("foo")
+                  render(value)
+                case StandardType.Instant(formatter)        => render(s"'${formatter.format(value.asInstanceOf[Instant])}'")
+                case CharType                               => render(s"'${value}'")
+                case IntType                                => render(value)
+                case StandardType.MonthDay                  => render(s"'${value}'")
+                case BinaryType                             => render(s"'${value}'")
+                case StandardType.Month                     => render(s"'${value}'")
+                case StandardType.LocalDateTime(formatter)  =>
+                  render(s"'${formatter.format(value.asInstanceOf[LocalDateTime])}'")
+                case UnitType                               => () // ???
+                case StandardType.YearMonth                 => render(s"'${value}'")
+                case DoubleType                             => render(value)
+                case StandardType.Year                      => render(s"'${value}'")
+                case StandardType.OffsetDateTime(formatter) =>
+                  render(s"'${formatter.format(value.asInstanceOf[OffsetDateTime])}'")
+                case StandardType.ZonedDateTime(formatter)  =>
+                  //render(s"'${formatter.format(value.asInstanceOf[ZonedDateTime])}'")
+                  render(s"'${DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(value.asInstanceOf[ZonedDateTime])}'")
+                case BigIntegerType                         => render(s"'${value}'")
+                case UUIDType                               => render(s"'${value}'")
+                case StandardType.ZoneOffset                => render(s"'${value}'")
+                case ShortType                              => render(value)
+                case StandardType.LocalTime(formatter)      =>
+                  render(s"'${formatter.format(value.asInstanceOf[LocalTime])}'")
+                case StandardType.OffsetTime(formatter)     =>
+                  render(s"'${formatter.format(value.asInstanceOf[OffsetTime])}'")
+                case LongType                               => render(value)
+                case StringType                             => render(s"'${value}'")
+                case StandardType.Period                    => render(s"'${value}'")
+                case StandardType.ZoneId                    => render(s"'${value}'")
+                case StandardType.LocalDate(formatter)      =>
+                  render(s"'${formatter.format(value.asInstanceOf[LocalDate])}'")
+                case BoolType                               => render(value)
+                case DayOfWeekType                          => render(s"'${value}'")
+                case FloatType                              => render(value)
+                case StandardType.Duration(temporalUnit)    => render(s"'${value}'")
+              }
+            case None    => ()
           }
+        //TODO do we need to handle also other cases?
+        case DynamicValue.Transform(that)           => renderDynamicValue(that)
         case _                                      => ()
       }
 

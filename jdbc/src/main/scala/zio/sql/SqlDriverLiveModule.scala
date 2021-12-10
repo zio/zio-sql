@@ -86,27 +86,27 @@ trait SqlDriverLiveModule { self: Jdbc =>
         }.refineToOrDie[Exception]
       }
 
-    override def insertAlt(insert: InsertAlt[_]): IO[Exception, Int] = 
+    override def insertAlt(insert: InsertAlt[_]): IO[Exception, Int] =
       pool.connection.use(insertOnAlt(insert, _))
 
     def insertOn[A: Schema](insert: Insert[_, A], conn: Connection): IO[Exception, Int] =
       blocking.effectBlocking {
 
-        val query     = renderInsert(insert)
-        
+        val query = renderInsert(insert)
+
         val statement = conn.createStatement()
 
         statement.executeUpdate(query)
       }.refineToOrDie[Exception]
 
-    override def insert[A : Schema](insert: Insert[_, A]): IO[Exception, Int] = 
+    override def insert[A: Schema](insert: Insert[_, A]): IO[Exception, Int] =
       pool.connection.use(insertOn(insert, _))
 
     def insertOnAlt(insert: InsertAlt[_], conn: Connection): IO[Exception, Int] =
       blocking.effectBlocking {
 
-        val query     = renderInsertAlt(insert)
-        
+        val query = renderInsertAlt(insert)
+
         val statement = conn.createStatement()
 
         statement.executeUpdate(query)

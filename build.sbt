@@ -78,12 +78,12 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
   .settings(buildInfoSettings("zio.sql"))
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio" %% "zio"          % zioVersion % Provided,
-      "dev.zio" %% "zio-streams"  % zioVersion % Provided,
-      "dev.zio" %% "zio-schema"   % "0.1.4",
-      "dev.zio" %% "zio-schema-derivation"   % "0.1.4",
-      "dev.zio" %% "zio-test"     % zioVersion % Test,
-      "dev.zio" %% "zio-test-sbt" % zioVersion % Test
+      "dev.zio" %% "zio"                   % zioVersion % Provided,
+      "dev.zio" %% "zio-streams"           % zioVersion % Provided,
+      "dev.zio" %% "zio-schema"            % "0.1.4",
+      "dev.zio" %% "zio-schema-derivation" % "0.1.4",
+      "dev.zio" %% "zio-test"              % zioVersion % Test,
+      "dev.zio" %% "zio-test-sbt"          % zioVersion % Test
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))

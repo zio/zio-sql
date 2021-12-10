@@ -18,7 +18,7 @@ trait OracleModule extends Jdbc { self =>
       (table, column.name) match {
         case (tableName: TableName, Some(columnName)) =>
           val _ = builder.append(tableName).append(".").append(columnName)
-        case _                                                => ()
+        case _                                        => ()
       }
     case Expr.Unary(base, op)                                                                 =>
       val _ = builder.append(" ").append(op.symbol)

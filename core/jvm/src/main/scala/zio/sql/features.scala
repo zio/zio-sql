@@ -33,7 +33,7 @@ trait FeaturesModule {
     sealed trait IsSource[A]
 
     object IsSource {
-      implicit def isSource[ColumnIdentity] : IsSource[Source[ColumnIdentity]] = new IsSource[Source[ColumnIdentity]]{}
+      implicit def isSource[ColumnIdentity]: IsSource[Source[ColumnIdentity]] = new IsSource[Source[ColumnIdentity]] {}
     }
   }
 
