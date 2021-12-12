@@ -102,7 +102,7 @@ trait SelectModule { self: ExprModule with TableModule =>
 
     val columnSet: CS
 
-    def asTable(name: TableName): Table.DerivedTable[Read[Out]]
+    def asTable(name: TableName): Table.DerivedTable[Out, Read[Out]]
 
     /**
      * Maps the [[Read]] query's output to another type by providing a function
@@ -312,8 +312,8 @@ trait SelectModule { self: ExprModule with TableModule =>
 
       override val columnSet: CS = read.columnSet
 
-      override def asTable(name: TableName): Table.DerivedTable[Mapped[Repr, Out, Out2]] =
-        Table.DerivedTable(self, name)
+      override def asTable(name: TableName): Table.DerivedTable[Out2, Mapped[Repr, Out, Out2]] =
+        Table.DerivedTable[Out2, Mapped[Repr, Out, Out2]](self, name)
     }
 
     type Select[F, Repr, Source, Head, Tail <: SelectionSet[Source]] = Subselect[F, Repr, Source, Source, Head, Tail]
@@ -356,8 +356,10 @@ trait SelectModule { self: ExprModule with TableModule =>
         copy(havingExpr = self.havingExpr && havingExpr2)
       }
 
-      override def asTable(name: TableName): Table.DerivedTable[Subselect[F, Repr, Source, Subsource, Head, Tail]] =
-        Table.DerivedTable(self, name)
+      override def asTable(
+        name: TableName
+      ): Table.DerivedTable[Repr, Subselect[F, Repr, Source, Subsource, Head, Tail]] =
+        Table.DerivedTable[Repr, Subselect[F, Repr, Source, Subsource, Head, Tail]](self, name)
 
       override type ResultType = Repr
 
@@ -395,7 +397,8 @@ trait SelectModule { self: ExprModule with TableModule =>
 
       override val columnSet: CS = left.columnSet
 
-      override def asTable(name: TableName): Table.DerivedTable[Union[Repr, Out]] = Table.DerivedTable(self, name)
+      override def asTable(name: TableName): Table.DerivedTable[Out, Union[Repr, Out]] =
+        Table.DerivedTable[Out, Union[Repr, Out]](self, name)
     }
 
     // TODO add name to literal selection - e.g. select '1' as one
@@ -413,7 +416,8 @@ trait SelectModule { self: ExprModule with TableModule =>
 
       override val columnSet: CS = ColumnSet.Cons(Column.Indexed[ColumnHead, HeadIdentity](), ColumnSet.Empty)
 
-      override def asTable(name: TableName): Table.DerivedTable[Literal[B]] = Table.DerivedTable(self, name)
+      override def asTable(name: TableName): Table.DerivedTable[(B, Unit), Literal[B]] =
+        Table.DerivedTable[(B, Unit), Literal[B]](self, name)
     }
 
     def lit[B: TypeTag](values: B*): Read[(B, Unit)] = Literal(values.toSeq)
@@ -425,7 +429,7 @@ trait SelectModule { self: ExprModule with TableModule =>
   sealed case class Selection[F, -A, +B <: SelectionSet[A]](value: B) { self =>
 
     type ColsRepr = value.ResultTypeRepr
-    type Size = value.Size
+    type Size     = value.Size
 
     def ++[F2, A1 <: A, C <: SelectionSet[A1]](
       that: Selection[F2, A1, C]
@@ -438,7 +442,7 @@ trait SelectModule { self: ExprModule with TableModule =>
     import ColumnSelection._
     import SelectionSet.{ Cons, Empty }
 
-    type Aux[F, -A, +B <: SelectionSet[A], ColsRepr0] = Selection[F, A, B]{
+    type Aux[F, -A, +B <: SelectionSet[A], ColsRepr0] = Selection[F, A, B] {
       type ColsRepr = ColsRepr0
     }
 
@@ -501,7 +505,7 @@ trait SelectModule { self: ExprModule with TableModule =>
     type ColumnTail <: ColumnSet
     type SelectionTail <: SelectionSet[Source]
     type HeadIdentity
-    
+
     type Size <: ColumnCount
 
     type CS <: ColumnSet
@@ -517,7 +521,7 @@ trait SelectModule { self: ExprModule with TableModule =>
   object SelectionSet {
     import ColumnCount._
 
-    type Aux[-Source, ResultTypeRepr0] = 
+    type Aux[-Source, ResultTypeRepr0] =
       SelectionSet[Source] {
         type ResultTypeRepr = ResultTypeRepr0
       }

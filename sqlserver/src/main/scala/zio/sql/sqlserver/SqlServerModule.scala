@@ -53,8 +53,8 @@ trait SqlServerModule extends Jdbc { self =>
       sealed case class CrossOuterApplyTableBuilder[A](left: Table.Aux[A]) {
         self =>
 
-        final def crossApply(
-          right: Table.DerivedTable[Read[_]]
+        final def crossApply[Out](
+          right: Table.DerivedTable[Out, Read[Out]]
         ): Table.DialectSpecificTable[A with right.TableType] = {
 
           val tableExtension = CrossOuterApplyTable[A, right.TableType](
@@ -66,8 +66,8 @@ trait SqlServerModule extends Jdbc { self =>
           new Table.DialectSpecificTable(tableExtension)
         }
 
-        final def outerApply(
-          right: Table.DerivedTable[Read[_]]
+        final def outerApply[Out](
+          right: Table.DerivedTable[Out, Read[Out]]
         ): Table.DialectSpecificTable[A with right.TableType] = {
 
           val tableExtension = CrossOuterApplyTable[A, right.TableType](
@@ -248,9 +248,9 @@ trait SqlServerModule extends Jdbc { self =>
         val _ = builder.append(")")
     }
 
-    def buildReadString(read: self.Read[_]): Unit =
+    def buildReadString[Out](read: Read[Out]): Unit =
       read match {
-        case Read.Mapped(read, _) => buildReadString(read)
+        case Read.Mapped(read, _) => buildReadString(read.asInstanceOf[Read[Out]])
 
         //todo offset (needs orderBy, must use fetch _instead_ of top)
         case read0 @ Read.Subselect(_, _, _, _, _, _, _, _) =>
@@ -386,7 +386,7 @@ trait SqlServerModule extends Jdbc { self =>
 
         case Table.DerivedTable(read, name)             =>
           builder.append(" ( ")
-          builder.append(renderRead(read))
+          builder.append(renderRead(read.asInstanceOf[Read[_]]))
           builder.append(" ) ")
           val _ = builder.append(name)
 
