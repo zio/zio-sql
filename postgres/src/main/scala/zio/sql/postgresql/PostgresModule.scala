@@ -311,14 +311,19 @@ trait PostgresModule extends Jdbc { self =>
       val personValues3: List[Person3] = ???
       val personValues4: List[Person4] = ???
 
-      val xx = name2 ++ age2
-
-      val ex = Expr.literal("Jaro")
-
       insertInto(persons1)(name1).values(personValues1)
-      insertInto(persons2)(name2 ++ age2)
       insertInto(persons2)(name2 ++ age2).values(personValues2)
       insertInto(persons3)(name3 ++ age3 ++ gender3).values(personValues3)
+
+      val personValues1Tuple: List[String]                = ???
+      val personValues2Tuple: List[(String, Int)]         = ???
+
+      insertInto(persons1)(name1).values(personValues1Tuple)
+      insertInto(persons2)(name2 ++ age2).values(personValues2Tuple)
+
+
+      val personValues3Tuple: List[(String, Int, String)] = ???
+      insertInto(persons3)(name3 ++ age3 ++ gender3).values(personValues3Tuple)
 
       def test[A, B](expr1: Expr[Features.Source[A], _, _], expr2: Expr[Features.Source[B], _, _])(implicit
         eq: A =:= B
@@ -475,7 +480,7 @@ trait PostgresModule extends Jdbc { self =>
               renderDynamicValues(next)
             case Nil          => ()
           }
-        case _                            => ()
+        case value => renderDynamicValue(value)
       }
 
     def renderDynamicValues(dynValues: List[DynamicValue])(implicit render: Renderer): Unit =
@@ -539,6 +544,11 @@ trait PostgresModule extends Jdbc { self =>
           }
         //TODO do we need to handle also other cases?
         case DynamicValue.Transform(that)           => renderDynamicValue(that)
+        case DynamicValue.Tuple(left, right)        => {
+          renderDynamicValue(left)
+          render(", ")
+          renderDynamicValue(right)
+        }
         case _                                      => ()
       }
 
