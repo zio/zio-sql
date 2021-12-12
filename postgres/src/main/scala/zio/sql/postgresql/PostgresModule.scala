@@ -1,19 +1,68 @@
 package zio.sql.postgresql
 
+import org.postgresql.util.PGInterval
+import zio.Chunk
+import zio.sql.{ Jdbc, Renderer }
+
 import java.sql.ResultSet
 import java.text.DecimalFormat
 import java.time._
 import java.util.Calendar
-import org.postgresql.util.PGInterval
-import zio.Chunk
-import zio.sql.{ Jdbc, Renderer }
 
 trait PostgresModule extends Jdbc { self =>
   import TypeTag._
 
   override type TypeTagExtension[+A] = PostgresSpecific.PostgresTypeTag[A]
 
+  override type TableExtension[A] = PostgresSpecific.PostgresSpecificTable[A]
+
   object PostgresSpecific {
+    sealed trait PostgresSpecificTable[A] extends Table.TableEx[A]
+
+    object PostgresSpecificTable {
+      import scala.language.implicitConversions
+
+      private[PostgresModule] sealed case class LateraLTable[A, B](left: Table.Aux[A], right: Table.Aux[B])
+          extends PostgresSpecificTable[A with B] { self =>
+
+        override type ColumnHead = left.ColumnHead
+        override type ColumnTail =
+          left.columnSet.tail.Append[ColumnSet.Cons[right.ColumnHead, right.ColumnTail]]
+
+        override val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail] =
+          left.columnSet ++ right.columnSet
+
+        override val columnToExpr: ColumnToExpr[A with B] = new ColumnToExpr[A with B] {
+          def toExpr[C](column: Column[C]): Expr[Features.Source, A with B, C] =
+            if (left.columnSet.contains(column))
+              left.columnToExpr.toExpr(column)
+            else
+              right.columnToExpr.toExpr(column)
+        }
+      }
+
+      implicit def tableSourceToSelectedBuilder[A](
+        table: Table.Aux[A]
+      ): LateralTableBuilder[A] =
+        new LateralTableBuilder(table)
+
+      sealed case class LateralTableBuilder[A](left: Table.Aux[A]) {
+        self =>
+
+        final def lateral[Out](
+          right: Table.DerivedTable[Out, Read[Out]]
+        ): Table.DialectSpecificTable[A with right.TableType] = {
+
+          val tableExtension = LateraLTable[A, right.TableType](
+            left,
+            right
+          )
+
+          new Table.DialectSpecificTable(tableExtension)
+        }
+      }
+    }
+
     trait PostgresTypeTag[+A] extends Tag[A] with Decodable[A]
     object PostgresTypeTag {
       implicit case object TVoid       extends PostgresTypeTag[Unit]       {
@@ -179,6 +228,39 @@ trait PostgresModule extends Jdbc { self =>
           zdt.getZone.getId
         )
     }
+
+    object LateralTableExample {
+      import self.ColumnSet._
+
+      val customers =
+        (uuid("id") ++ localDate("dob") ++ string("first_name") ++ string("last_name") ++ boolean(
+          "verified"
+        ) ++ string("created_timestamp_string") ++ zonedDateTime("created_timestamp"))
+          .table("customers")
+
+      val customerId :*: dob :*: fName :*: lName :*: verified :*: createdString :*: createdTimestamp :*: _ =
+        customers.columns
+
+      val orders = (uuid("id") ++ uuid("customer_id") ++ localDate("order_date")).table("orders")
+
+      val orderId :*: fkCustomerId :*: orderDate :*: _ = orders.columns
+
+      val products                                     =
+        (uuid("id") ++ string("name") ++ string("description") ++ string("image_url")).table("products")
+      val productId :*: description :*: imageURL :*: _ = products.columns
+
+      val productPrices                             =
+        (uuid("product_id") ++ offsetDateTime("effective") ++ bigDecimal("price")).table("product_prices")
+      val fkProductId :*: effective :*: price :*: _ = productPrices.columns
+
+      val orderDetails                                                         =
+        (uuid("order_id") ++ uuid("product_id") ++ int("quantity") ++ bigDecimal("unit_price"))
+          .table(
+            "order_details"
+          )
+      val fkOrderId :*: orderDetailsProductId :*: quantity :*: unitPrice :*: _ = orderDetails.columns
+
+    }
   }
 
   object PostgresFunctionDef {
@@ -243,6 +325,8 @@ trait PostgresModule extends Jdbc { self =>
     val Format4                     = FunctionDef[(String, Any, Any, Any, Any), String](FunctionName("format"))
     val Format5                     = FunctionDef[(String, Any, Any, Any, Any, Any), String](FunctionName("format"))
     val SetSeed                     = FunctionDef[Double, Unit](FunctionName("setseed"))
+    val BitLength                   = FunctionDef[String, Int](FunctionName("bit_length"))
+    val Pi                          = Expr.FunctionCall0[Double](FunctionDef[Any, Double](FunctionName("pi")))
   }
 
   override def renderRead(read: self.Read[_]): String = {
@@ -342,7 +426,16 @@ trait PostgresModule extends Jdbc { self =>
     }
 
     private[zio] def renderExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
-      case Expr.Source(tableName, column)                                               => render(tableName, ".", column.name)
+      case Expr.Subselect(subselect)                                                    =>
+        render(" (")
+        render(renderRead(subselect))
+        render(") ")
+      case Expr.Source(table, column)                                                   =>
+        (table, column) match {
+          case (tableName: TableName, Column.Named(columnName)) =>
+            render(tableName, ".", columnName)
+          case _                                                => ()
+        }
       case Expr.Unary(base, op)                                                         =>
         render(" ", op.symbol)
         renderExpr(base)
@@ -457,10 +550,17 @@ trait PostgresModule extends Jdbc { self =>
 
     private[zio] def renderReadImpl(read: self.Read[_])(implicit render: Renderer): Unit =
       read match {
-        case Read.Mapped(read, _)                        => renderReadImpl(read)
-        case read0 @ Read.Select(_, _, _, _, _, _, _, _) =>
-          object Dummy { type F; type A; type B <: SelectionSet[A] }
-          val read = read0.asInstanceOf[Read.Select[Dummy.F, Dummy.A, Dummy.B]]
+        case Read.Mapped(read, _)                           => renderReadImpl(read)
+        case read0 @ Read.Subselect(_, _, _, _, _, _, _, _) =>
+          object Dummy {
+            type F
+            type Repr
+            type Source
+            type Head
+            type Tail <: SelectionSet[Source]
+          }
+          val read =
+            read0.asInstanceOf[Read.Subselect[Dummy.F, Dummy.Repr, Dummy.Source, Dummy.Source, Dummy.Head, Dummy.Tail]]
           import read._
 
           render("SELECT ")
@@ -584,9 +684,23 @@ trait PostgresModule extends Jdbc { self =>
 
     def renderTable(table: Table)(implicit render: Renderer): Unit =
       table match {
+        case Table.DialectSpecificTable(tableExtension) =>
+          tableExtension match {
+            case PostgresSpecific.PostgresSpecificTable.LateraLTable(left, derivedTable) =>
+              renderTable(left)
+
+              render(" ,lateral ")
+
+              renderTable(derivedTable)
+          }
         //The outer reference in this type test cannot be checked at run time?!
-        case sourceTable: self.Table.Source          => render(sourceTable.name)
-        case Table.Joined(joinType, left, right, on) =>
+        case sourceTable: self.Table.Source             => render(sourceTable.name)
+        case Table.DerivedTable(read, name)             =>
+          render(" ( ")
+          render(renderRead(read.asInstanceOf[Read[_]]))
+          render(" ) ")
+          render(name)
+        case Table.Joined(joinType, left, right, on)    =>
           renderTable(left)
           render(joinType match {
             case JoinType.Inner      => " INNER JOIN "
