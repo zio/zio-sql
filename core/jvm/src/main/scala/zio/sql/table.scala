@@ -71,6 +71,7 @@ trait TableModule { self: ExprModule with SelectModule =>
 
       override type Size = Succ[tail.Size]
 
+      //TODO AllColumnIdentities could probably be removed, we need just HeadIdentity for Features.Source in inserts
       override type AllColumnIdentities = HeadIdentity with tail.AllColumnIdentities
 
       override def columnsUntyped: List[Column.Untyped] = head :: tail.columnsUntyped
@@ -333,27 +334,4 @@ trait TableModule { self: ExprModule with SelectModule =>
   }
 
   type TableExtension[A] <: Table.TableEx[A]
-
-  sealed trait ColumnCount {
-
-    type Appended[That <: ColumnCount] <: ColumnCount
-
-    def add[That <: ColumnCount](that: That): Appended[That]
-  }
-  object ColumnCount {
-    case object Zero extends ColumnCount {
-      override type Appended[That <: ColumnCount] = That
-
-      override def add[That <: ColumnCount](that: That): Appended[That] = that
-    }
-
-    sealed case class Succ[C <: ColumnCount](c: C) extends ColumnCount {
-      override type Appended[That <: ColumnCount] = Succ[c.Appended[That]]
-
-      override def add[That <: ColumnCount](that: That): Appended[That] = Succ(c.add(that))
-    }
-
-    type _0 = Zero.type
-    val _0 = Zero
-  }
 }

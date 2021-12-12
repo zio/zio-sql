@@ -55,11 +55,11 @@ trait Sql
 
   def renderInsertAlt(insert: self.InsertAlt[_]): String
 
-  def insertInto[Source, N <: ColumnCount, AllColumnIdentities, SourceTypes, ColsRepr](
+  def insertInto[F, Source, N <: ColumnCount, AllColumnIdentities, B <: SelectionSet.Aux[Source, ColsRepr], ColsRepr](
     table: Table.Source.AuxN[Source, AllColumnIdentities, N]
   )(
-    sources: SourceSet.Aux[Source, SourceTypes, ColsRepr]
-  )(implicit ev1: AllColumnIdentities =:= SourceTypes, ev2: N =:= sources.Size) =
+    sources: Selection.Aux[F, Source, B, ColsRepr]
+  )(implicit ev2: N =:= sources.Size) =
     InsertBuilder(table, sources)
 
   def renderInsert[A: Schema](insert: self.Insert[_, A]): String

@@ -250,7 +250,8 @@ trait PostgresModule extends Jdbc { self =>
     object LateralTableExample {
       import self.ColumnSet._
 
-      val xxxxx = uuid("well") //@@ notNull
+      // ColumnSetAspect
+      // val nullableUUID = uuid("id") @@ nullable
 
       val customers =
         (uuid("id") ++ localDate("dob") ++ string("first_name") ++ string("last_name") ++ boolean(
@@ -282,10 +283,13 @@ trait PostgresModule extends Jdbc { self =>
 
       // ============= INSERTS
 
+      // val persons5 = table[Person5]("persons5")
+      // val name5 :*: age5 :*: gender5 :*: birth5 :*: _ = persons5.columns
+
       val persons1 = (string("name")).table("persons1")
       val persons2 = (string("name") ++ int("age")).table("persons2")
       val persons3 = (string("name") ++ int("age") ++ string("gender")).table("persons3")
-      val persons4 = (string("name") ++ int("age") ++ string("gender") ++ long("birth")).table("persons4")
+      val persons4 = (string("name") ++ int("age") ++ string("gender") ++ long("date_of_birth")).table("persons4")
 
       val name1 :*: _                                 = persons1.columns
       val name2 :*: age2 :*: _                        = persons2.columns
@@ -307,12 +311,15 @@ trait PostgresModule extends Jdbc { self =>
       val personValues3: List[Person3] = ???
       val personValues4: List[Person4] = ???
 
-      insertInto(persons1)(name1).values(personValues1)
-      insertInto(persons2)(name2 +++ age2).values(personValues2)
-      insertInto(persons3)(name3 +++ age3 +++ gender3).values(personValues3)
-      insertInto(persons4)(name4 +++ age4 +++ gender4 +++ birth4).values(personValues4)
+      val xx = name2 ++ age2
 
-      //  ============== INSERTS ALT
+      
+      val ex = Expr.literal("Jaro")
+      
+      insertInto(persons1)(name1).values(personValues1)
+      insertInto(persons2)(name2 ++ age2)
+      insertInto(persons2)(name2 ++ age2).values(personValues2)
+      insertInto(persons3)(name3 ++ age3 ++ gender3).values(personValues3)
 
       def test[A, B](expr1: Expr[Features.Source[A], _, _], expr2: Expr[Features.Source[B], _, _])(implicit
         eq: A =:= B
@@ -320,18 +327,16 @@ trait PostgresModule extends Jdbc { self =>
         val _ = expr1
         val _ = expr2
       }
-
-      val insertValues = (customerId -> java.util.UUID.fromString("28e880be-c783-43ea-9839-db51834347a8")) ++
-        (dob              -> LocalDate.now()) ++
-        (fName            -> "Jaro") ++
-        (lName            -> "Regec") ++
-        (verified         -> true) ++
-        (createdTimestamp -> ZonedDateTime.now())
-
+      
       insertAltInto(customers)
-        .values(insertValues)
-
-      test(customerId, customerId)
+        .values(
+          (customerId         -> java.util.UUID.fromString("28e880be-c783-43ea-9839-db51834347a8")) ++
+            (dob              -> LocalDate.now()) ++
+            (fName            -> "Jaro") ++
+            (lName            -> "Regec") ++
+            (verified         -> true) ++
+            (createdTimestamp -> ZonedDateTime.now())
+        )
     }
   }
 
@@ -538,23 +543,15 @@ trait PostgresModule extends Jdbc { self =>
         case _                                      => ()
       }
 
-    def renderColumnNames(sources: SourceSet[_])(implicit render: Renderer): Unit =
+    def renderColumnNames(sources: SelectionSet[_])(implicit render: Renderer): Unit =
       sources match {
-        case SourceSet.Empty                       => () // table is a collection of at least ONE column
-        case SourceSet.Cons(expr, SourceSet.Empty) =>
-          val columnName = expr match {
-            case Expr.Source(_, c) => c.name
-            case _                 => None
-          }
-          val _          = columnName.map { name =>
+        case SelectionSet.Empty                       => () // table is a collection of at least ONE column
+        case SelectionSet.Cons(columnSelection, SelectionSet.Empty) =>
+          val _          = columnSelection.name.map { name =>
             render(name)
           }
-        case SourceSet.Cons(expr, tail)            =>
-          val columnName = expr match {
-            case Expr.Source(_, c) => c.name
-            case _                 => None
-          }
-          val _          = columnName.map { name =>
+        case SelectionSet.Cons(columnSelection, tail)            =>
+          val _          = columnSelection.name.map { name =>
             render(name)
             render(", ")
             renderColumnNames(tail)(render)
