@@ -601,6 +601,66 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
       } yield assert(r)(equalTo(4))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("insert into orderDetails with tuples") {
+
+      /**
+       * insert into order_details
+       *            (order_id, product_id, quantity, unit_price)
+       *        values
+       *            ('9022DD0D-06D6-4A43-9121-2993FC7712A1', '7368ABF4-AED2-421F-B426-1725DE756895', 4, 11.00))
+       */
+
+      import OrderDetails._
+
+      val rows = List(
+        ((UUID.randomUUID(), UUID.randomUUID(), 4, BigDecimal.valueOf(11.00)))
+      )
+
+      val query = insertInto(orderDetails)(orderDetailsOrderId ++ orderDetailsProductId ++ quantity ++ unitPrice)
+        .values(rows)
+
+      val result = execute(query)
+
+      val assertion = for {
+        r <- result
+      } yield assert(r)(equalTo(1))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("insert into customers with tuples") {
+
+      /**
+       * insert into customers
+       *              (id, first_name, last_name, verified, dob, created_timestamp_string, created_timestamp)
+       *          values
+       *              ('60b01fc9-c902-4468-8d49-3c0f989def37', 'Ronald', 'Russell', true, '1983-01-05', '2020-11-21T19:10:25+00:00', '2020-11-21 19:10:25+00'),
+       */
+
+      val created = ZonedDateTime.now()
+
+      val rows = List(
+        ((UUID.randomUUID(), "Jaro", "Regec", true, LocalDate.ofYearDay(1990, 1), created.toString, created))
+      )
+
+      //TODO move these implicits to PostgresModule (+ others needed for postgres data types)
+      implicit val localDateSchema =
+        Schema.primitive[LocalDate](zio.schema.StandardType.LocalDate(DateTimeFormatter.ISO_DATE))
+
+      implicit val zonedDateTimeShema =
+        Schema.primitive[ZonedDateTime](zio.schema.StandardType.ZonedDateTime(DateTimeFormatter.ISO_ZONED_DATE_TIME))
+
+      val query = insertInto(customers)(
+        customerId ++ fName ++ lName ++ verified ++ dob ++ createdString ++ createdTimestamp
+      ).values(rows)
+
+      val result = execute(query)
+
+      val assertion = for {
+        r <- result
+      } yield assert(r)(equalTo(1))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
   ) @@ sequential
 }

@@ -59,6 +59,7 @@ trait Sql
     table: Table.Source.AuxN[Source, AllColumnIdentities, N]
   )(
     sources: Selection.Aux[F, Source, B, ColsRepr]
+    //TODO verify if I really need to check Size
   )(implicit ev2: N =:= sources.Size) =
     InsertBuilder(table, sources)
 
