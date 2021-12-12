@@ -3,27 +3,22 @@ package zio.sql
 import scala.language.implicitConversions
 
 /**
- * TODO
- *  1. add to column type capability to contain null values
- *  2. add auto generated capabilities (like identity for postgresql)
- *  3. foreign key...
- *  4. insert multiple rows at once
- *  5. translate for other modules than just postgres
- *  6. OPTIONAL we could compare table's "AllColumnIdentities" with Expr[Features.Source[Identity]] instead of comparing length and uniqness (decide what makes most sense with regards to other points)
- *
- * TODO research => there exists also complex inserts - values could be "subselect" that returns values ....
- *      Insert Into Test (Test_Date, Testno, Examno, Serialno, Type, Hours)
- *      Select S.Test_Date, E.Testno, S.Examno, S.Serialno, 'Non-Flight', (F.STARTED- F.ENDED) as Hours
- *      From Semester S, TIME F, TESTPAPERS e
- *      Where S.Testno = F.Testno And E.Testno = 1
- *
  *  insert into customers
  *      (id, first_name, last_name, verified, dob, created_timestamp_string, created_timestamp)
  *  values
  *      ('60b01fc9-c902-4468-8d49-3c0f989def37', 'Ronald', 'Russell', true, '1983-01-05', '2020-11-21T19:10:25+00:00', '2020-11-21 19:10:25+00'),
  *      ('f76c9ace-be07-4bf3-bd4c-4a9c62882e64', 'Terrence', 'Noel', true, '1999-11-02', '2020-11-21T15:10:25-04:00', '2020-11-21 15:10:25-04'))
+ *
+ * insertInto(customers)
+ *       .values(
+ *         (customerId -> java.util.UUID.fromString("28e880be-c783-43ea-9839-db51834347a8")) ++
+ *         (dob              -> LocalDate.now()) ++
+ *         (fName            -> "Jaro") ++
+ *         (lName            -> "Regec") ++
+ *         (verified         -> true) ++
+ *         (createdTimestamp -> ZonedDateTime.now()))
  */
-trait InsertAltModule { self: ExprModule with TableModule =>
+trait InsertAltModule { self: ExprModule with TableModule with SelectModule =>
 
   sealed case class InsertAltBuilder[Source, N <: ColumnCount, AllColumnIdentities](
     table: Table.Source.AuxN[Source, AllColumnIdentities, N]

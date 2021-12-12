@@ -424,19 +424,23 @@ trait SelectModule { self: ExprModule with TableModule =>
    */
   sealed case class Selection[F, -A, +B <: SelectionSet[A]](value: B) { self =>
 
-    type SelectionType
+    type ColsRepr = value.ResultTypeRepr
+    type Size = value.Size
 
     def ++[F2, A1 <: A, C <: SelectionSet[A1]](
       that: Selection[F2, A1, C]
     ): Selection[F :||: F2, A1, self.value.Append[A1, C]] =
       Selection(self.value ++ that.value)
 
-    def columns[A1 <: A]: value.SelectionsRepr[A1, SelectionType] = value.selections[A1, SelectionType]
   }
 
   object Selection {
     import ColumnSelection._
     import SelectionSet.{ Cons, Empty }
+
+    type Aux[F, -A, +B <: SelectionSet[A], ColsRepr0] = Selection[F, A, B]{
+      type ColsRepr = ColsRepr0
+    }
 
     def constantOption[A: TypeTag](value: A, option: Option[ColumnName]): Selection[Any, Any, Cons[Any, A, Empty]] =
       Selection(Cons(Constant(value, option), Empty))
@@ -465,7 +469,6 @@ trait SelectModule { self: ExprModule with TableModule =>
   }
 
   object ColumnSelection {
-
     sealed case class Constant[ColumnType: TypeTag](value: ColumnType, name: Option[ColumnName])
         extends ColumnSelection[Any, ColumnType] {
       def typeTag: TypeTag[ColumnType] = implicitly[TypeTag[ColumnType]]
@@ -498,6 +501,8 @@ trait SelectModule { self: ExprModule with TableModule =>
     type ColumnTail <: ColumnSet
     type SelectionTail <: SelectionSet[Source]
     type HeadIdentity
+    
+    type Size <: ColumnCount
 
     type CS <: ColumnSet
     def columnSet: CS
@@ -510,7 +515,9 @@ trait SelectModule { self: ExprModule with TableModule =>
   }
 
   object SelectionSet {
-    type Aux[ResultTypeRepr0, -Source] =
+    import ColumnCount._
+
+    type Aux[-Source, ResultTypeRepr0] = 
       SelectionSet[Source] {
         type ResultTypeRepr = ResultTypeRepr0
       }
@@ -519,8 +526,6 @@ trait SelectModule { self: ExprModule with TableModule =>
       SelectionSet.Cons[Source, A, B] {
         type ResultTypeRepr = ResultTypeRepr0
       }
-
-    type Singleton[-Source, A] = Cons[Source, A, Empty]
 
     type Empty = Empty.type
 
@@ -540,6 +545,8 @@ trait SelectModule { self: ExprModule with TableModule =>
       override type ResultTypeRepr = Unit
 
       override type Append[Source1, That <: SelectionSet[Source1]] = That
+
+      override type Size = _0
 
       override def ++[Source1 <: Any, That <: SelectionSet[Source1]](that: That): Append[Source1, That] =
         that
@@ -569,6 +576,8 @@ trait SelectModule { self: ExprModule with TableModule =>
 
       override type Append[Source1, That <: SelectionSet[Source1]] =
         Cons[Source1, A, tail.Append[Source1, That]]
+
+      override type Size = Succ[tail.Size]
 
       override def ++[Source1 <: Source, That <: SelectionSet[Source1]](that: That): Append[Source1, That] =
         Cons[Source1, A, tail.Append[Source1, That]](head, tail ++ that)
@@ -612,5 +621,28 @@ trait SelectModule { self: ExprModule with TableModule =>
     case object Closed                                                  extends DecodingError {
       def message = s"The ResultSet has been closed, so decoding is impossible"
     }
+  }
+
+  sealed trait ColumnCount {
+
+    type Appended[That <: ColumnCount] <: ColumnCount
+
+    def add[That <: ColumnCount](that: That): Appended[That]
+  }
+  object ColumnCount {
+    case object Zero extends ColumnCount {
+      override type Appended[That <: ColumnCount] = That
+
+      override def add[That <: ColumnCount](that: That): Appended[That] = that
+    }
+
+    sealed case class Succ[C <: ColumnCount](c: C) extends ColumnCount {
+      override type Appended[That <: ColumnCount] = Succ[c.Appended[That]]
+
+      override def add[That <: ColumnCount](that: That): Appended[That] = Succ(c.add(that))
+    }
+
+    type _0 = Zero.type
+    val _0 = Zero
   }
 }

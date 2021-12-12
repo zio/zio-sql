@@ -387,6 +387,11 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
        *        (id, first_name, last_name, verifier, dob, created_timestamp_string, created_timestamp)
        * values
        *        ('0511474d-8eed-4307-bdb0-e39a561205b6', 'Jaro', 'Regec', true, 1999-11-02, 2020-11-21T19:10:25+00:00, '2020-11-21 19:10:25+00')
+       *        ('0511474d-8eed-4307-bdb0-e39a561205b6', 'Jaro', 'Regec', true, 1999-11-02, 2020-11-21T19:10:25+00:00, '2020-11-21 19:10:25+00')
+       *        ('0511474d-8eed-4307-bdb0-e39a561205b6', 'Jaro', 'Regec', true, 1999-11-02, 2020-11-21T19:10:25+00:00, '2020-11-21 19:10:25+00')
+       *        ('0511474d-8eed-4307-bdb0-e39a561205b6', 'Jaro', 'Regec', true, 1999-11-02, 2020-11-21T19:10:25+00:00, '2020-11-21 19:10:25+00')
+       *        ('0511474d-8eed-4307-bdb0-e39a561205b6', 'Jaro', 'Regec', true, 1999-11-02, 2020-11-21T19:10:25+00:00, '2020-11-21 19:10:25+00')
+       *        ('0511474d-8eed-4307-bdb0-e39a561205b6', 'Jaro', 'Regec', true, 1999-11-02, 2020-11-21T19:10:25+00:00, '2020-11-21 19:10:25+00')
        */
 
       val dobValue = LocalDate.now()
@@ -408,6 +413,82 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
       val assertion = for {
         r <- result
       } yield assert(r)(equalTo(1))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("insert - 2 rows into cutomers") {
+
+      /**
+       * insert into customers
+       *              (id, first_name, last_name, verified, dob, created_timestamp_string, created_timestamp)
+       *          values
+       *              ('60b01fc9-c902-4468-8d49-3c0f989def37', 'Ronald', 'Russell', true, '1983-01-05', '2020-11-21T19:10:25+00:00', '2020-11-21 19:10:25+00'),
+       *              ('f76c9ace-be07-4bf3-bd4c-4a9c62882e64', 'Terrence', 'Noel', true, '1999-11-02', '2020-11-21T15:10:25-04:00', '2020-11-21 15:10:25-04'),
+       */
+
+      final case class CustomerRow(
+        id: UUID,
+        firstName: String,
+        lastName: String,
+        verified: Boolean,
+        dateOfBirth: LocalDate,
+        cretedTimestampString: String,
+        createdTimestamp: ZonedDateTime
+      )
+
+      val created = ZonedDateTime.now()
+      import java.time._
+
+      implicit val customerRowSchema = // DeriveSchema.gen[CustomerRow]
+        Schema.CaseClass7[UUID, String, String, Boolean, LocalDate, String, ZonedDateTime, CustomerRow](
+          Chunk.empty,
+          Schema.Field("id", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
+          Schema.Field("firstName", Schema.primitive[String](zio.schema.StandardType.StringType)),
+          Schema.Field("lastName", Schema.primitive[String](zio.schema.StandardType.StringType)),
+          Schema.Field("verified", Schema.primitive[Boolean](zio.schema.StandardType.BoolType)),
+          Schema.Field(
+            "localDate",
+            Schema.primitive[LocalDate](zio.schema.StandardType.LocalDate(DateTimeFormatter.ISO_DATE))
+          ),
+          Schema.Field("cretedTimestampString", Schema.primitive[String](zio.schema.StandardType.StringType)),
+          Schema.Field(
+            "createdTimestamp",
+            Schema.primitive[ZonedDateTime](
+              zio.schema.StandardType.ZonedDateTime(DateTimeFormatter.ISO_ZONED_DATE_TIME)
+            )
+          ),
+          CustomerRow.apply,
+          _.id,
+          _.firstName,
+          _.lastName,
+          _.verified,
+          _.dateOfBirth,
+          _.cretedTimestampString,
+          _.createdTimestamp
+        )
+
+      val rows = List(
+        CustomerRow(UUID.randomUUID(), "Jaro", "Regec", true, LocalDate.ofYearDay(1990, 1), created.toString, created),
+        CustomerRow(
+          UUID.randomUUID(),
+          "Martin",
+          "Mrkva",
+          false,
+          LocalDate.ofYearDay(1980, 1),
+          created.toString,
+          created
+        )
+      )
+
+      val query = insertInto(customers)(
+        customerId ++ fName ++ lName ++ verified ++ dob ++ createdString ++ createdTimestamp
+      ).values(rows)
+
+      val result = execute(query)
+
+      val assertion = for {
+        r <- result
+      } yield assert(r)(equalTo(2))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
@@ -454,7 +535,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
         InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now())
       )
 
-      val query = insertInto(orders)(orderId +++ fkCustomerId +++ orderDate)
+      val query = insertInto(orders)(orderId ++ fkCustomerId ++ orderDate)
         .values(orderValues)
 
       val result = execute(query)
@@ -510,7 +591,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
         OrderDetailsRow(UUID.randomUUID(), UUID.randomUUID(), 2, BigDecimal.valueOf(10.50))
       )
 
-      val query = insertInto(orderDetails)(orderDetailsOrderId +++ orderDetailsProductId +++ quantity +++ unitPrice)
+      val query = insertInto(orderDetails)(orderDetailsOrderId ++ orderDetailsProductId ++ quantity ++ unitPrice)
         .values(rows)
 
       val result = execute(query)
@@ -518,82 +599,6 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
       val assertion = for {
         r <- result
       } yield assert(r)(equalTo(4))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    },
-    testM("insert - 2 rows into cutomers") {
-
-      /**
-       * insert into customers
-       *              (id, first_name, last_name, verified, dob, created_timestamp_string, created_timestamp)
-       *          values
-       *              ('60b01fc9-c902-4468-8d49-3c0f989def37', 'Ronald', 'Russell', true, '1983-01-05', '2020-11-21T19:10:25+00:00', '2020-11-21 19:10:25+00'),
-       *              ('f76c9ace-be07-4bf3-bd4c-4a9c62882e64', 'Terrence', 'Noel', true, '1999-11-02', '2020-11-21T15:10:25-04:00', '2020-11-21 15:10:25-04'),
-       */
-
-      final case class CustomerRow(
-        id: UUID,
-        firstName: String,
-        lastName: String,
-        verified: Boolean,
-        dateOfBirth: LocalDate,
-        cretedTimestampString: String,
-        createdTimestamp: ZonedDateTime
-      )
-
-      val created = ZonedDateTime.now()
-      import java.time._
-
-      implicit val customerRowSchema =
-        Schema.CaseClass7[UUID, String, String, Boolean, LocalDate, String, ZonedDateTime, CustomerRow](
-          Chunk.empty,
-          Schema.Field("id", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
-          Schema.Field("firstName", Schema.primitive[String](zio.schema.StandardType.StringType)),
-          Schema.Field("lastName", Schema.primitive[String](zio.schema.StandardType.StringType)),
-          Schema.Field("verified", Schema.primitive[Boolean](zio.schema.StandardType.BoolType)),
-          Schema.Field(
-            "localDate",
-            Schema.primitive[LocalDate](zio.schema.StandardType.LocalDate(DateTimeFormatter.ISO_DATE))
-          ),
-          Schema.Field("cretedTimestampString", Schema.primitive[String](zio.schema.StandardType.StringType)),
-          Schema.Field(
-            "createdTimestamp",
-            Schema.primitive[ZonedDateTime](
-              zio.schema.StandardType.ZonedDateTime(DateTimeFormatter.ISO_ZONED_DATE_TIME)
-            )
-          ),
-          CustomerRow.apply,
-          _.id,
-          _.firstName,
-          _.lastName,
-          _.verified,
-          _.dateOfBirth,
-          _.cretedTimestampString,
-          _.createdTimestamp
-        )
-
-      val rows = List(
-        CustomerRow(UUID.randomUUID(), "Jaro", "Regec", true, LocalDate.ofYearDay(1990, 1), created.toString, created),
-        CustomerRow(
-          UUID.randomUUID(),
-          "Martin",
-          "Mrkva",
-          false,
-          LocalDate.ofYearDay(1980, 1),
-          created.toString,
-          created
-        )
-      )
-
-      val query = insertInto(customers)(
-        customerId +++ fName +++ lName +++ verified +++ dob +++ createdString +++ createdTimestamp
-      ).values(rows)
-
-      val result = execute(query)
-
-      val assertion = for {
-        r <- result
-      } yield assert(r)(equalTo(2))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
