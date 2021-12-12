@@ -26,15 +26,14 @@ import zio.schema.Schema
  * 7. retrieve generated ID from inserted row
  * 8. explore & add "on conflict do" stuff
  * 9 do we want to keep supporting insertAltInto stuff?
- * 
- * 
+ *
  * TODO
  * 1. support for tuples by inserting
- * 2. add possibility to select and insert source columns separated by comma 
+ * 2. add possibility to select and insert source columns separated by comma
  * 3. deal with trailing unit in tuples
  * 4. rollout zio-schema for other APIs ( select, delete, update)
- *
  */
+
 trait InsertModule { self: ExprModule with TableModule with SelectModule =>
 
   sealed case class InsertBuilder[F, Source, AllColumnIdentities, N, B <: SelectionSet.Aux[Source, ColsRepr], ColsRepr](
@@ -44,7 +43,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
 
     def values[Z](values: Seq[Z])(implicit
       schemaCC: Schema[Z],
-      schemaValidity: SchemaValidity[F, Z, ColsRepr, AllColumnIdentities],
+      schemaValidity: SchemaValidity[F, Z, ColsRepr, AllColumnIdentities]
     ): Insert[Source, Z] = Insert(table, sources.value, values)
   }
 
@@ -55,6 +54,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
   //TODO should be moved to separate file ?
   sealed trait SchemaValidity[F, Z, ColsRepr, AllColumnIdentities]
 
+  // format: off
   object SchemaValidity {
 
     implicit def caseClass1[F, A, Z, ColsRepr, AllColumnIdentities, Identity1](implicit
@@ -206,27 +206,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
       new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
     implicit def caseClass18[
-      F,
-      A1,
-      A2,
-      A3,
-      A4,
-      A5,
-      A6,
-      A7,
-      A8,
-      A9,
-      A10,
-      A11,
-      A12,
-      A13,
-      A14,
-      A15,
-      A16,
-      A17,
-      A18,
-      Z,
-      ColsRepr, AllColumnIdentities, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15, Identity16, Identity17, Identity18
+      F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, Z, ColsRepr, AllColumnIdentities, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15, Identity16, Identity17, Identity18
     ](implicit
       ccSchema: Schema.CaseClass18[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, Z],
       ev: ColsRepr <:< (
@@ -242,51 +222,9 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
       new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
     implicit def caseClass19[
-      F, 
-      A1,
-      A2,
-      A3,
-      A4,
-      A5,
-      A6,
-      A7,
-      A8,
-      A9,
-      A10,
-      A11,
-      A12,
-      A13,
-      A14,
-      A15,
-      A16,
-      A17,
-      A18,
-      A19,
-      Z,
-      ColsRepr, AllColumnIdentities, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15, Identity16, Identity17, Identity18, Identity19
+      F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, Z, ColsRepr, AllColumnIdentities, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15, Identity16, Identity17, Identity18, Identity19
     ](implicit
-      ccSchema: Schema.CaseClass19[
-        A1,
-        A2,
-        A3,
-        A4,
-        A5,
-        A6,
-        A7,
-        A8,
-        A9,
-        A10,
-        A11,
-        A12,
-        A13,
-        A14,
-        A15,
-        A16,
-        A17,
-        A18,
-        A19,
-        Z
-      ],
+      ccSchema: Schema.CaseClass19[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, Z],
       ev: ColsRepr <:< (
         A1,
         (
@@ -306,53 +244,9 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
       new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
     implicit def caseClass20[
-      F,
-      A1,
-      A2,
-      A3,
-      A4,
-      A5,
-      A6,
-      A7,
-      A8,
-      A9,
-      A10,
-      A11,
-      A12,
-      A13,
-      A14,
-      A15,
-      A16,
-      A17,
-      A18,
-      A19,
-      A20,
-      Z,
-      ColsRepr, AllColumnIdentities, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15, Identity16, Identity17, Identity18, Identity19, Identity20
+       F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, Z, ColsRepr, AllColumnIdentities, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15, Identity16, Identity17, Identity18, Identity19, Identity20
     ](implicit
-      ccSchema: Schema.CaseClass20[
-        A1,
-        A2,
-        A3,
-        A4,
-        A5,
-        A6,
-        A7,
-        A8,
-        A9,
-        A10,
-        A11,
-        A12,
-        A13,
-        A14,
-        A15,
-        A16,
-        A17,
-        A18,
-        A19,
-        A20,
-        Z
-      ],
+      ccSchema: Schema.CaseClass20[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, Z],
       ev: ColsRepr <:< (
         A1,
         (
@@ -377,56 +271,9 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
     ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] =
       new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
-    implicit def caseClass21[
-      F,
-      A1,
-      A2,
-      A3,
-      A4,
-      A5,
-      A6,
-      A7,
-      A8,
-      A9,
-      A10,
-      A11,
-      A12,
-      A13,
-      A14,
-      A15,
-      A16,
-      A17,
-      A18,
-      A19,
-      A20,
-      A21,
-      Z,
-      ColsRepr, AllColumnIdentities, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15, Identity16, Identity17, Identity18, Identity19, Identity20, Identity21
+    implicit def caseClass21[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, Z, ColsRepr, AllColumnIdentities, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15, Identity16, Identity17, Identity18, Identity19, Identity20, Identity21
     ](implicit
-      ccSchema: Schema.CaseClass21[
-        A1,
-        A2,
-        A3,
-        A4,
-        A5,
-        A6,
-        A7,
-        A8,
-        A9,
-        A10,
-        A11,
-        A12,
-        A13,
-        A14,
-        A15,
-        A16,
-        A17,
-        A18,
-        A19,
-        A20,
-        A21,
-        Z
-      ],
+      ccSchema: Schema.CaseClass21[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, Z],
       ev: ColsRepr <:< (
         A1,
         (
@@ -454,58 +301,9 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
     ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] =
       new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
-    implicit def caseClass22[
-      F,
-      A1,
-      A2,
-      A3,
-      A4,
-      A5,
-      A6,
-      A7,
-      A8,
-      A9,
-      A10,
-      A11,
-      A12,
-      A13,
-      A14,
-      A15,
-      A16,
-      A17,
-      A18,
-      A19,
-      A20,
-      A21,
-      A22,
-      Z,
-      ColsRepr, AllColumnIdentities, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15, Identity16, Identity17, Identity18, Identity19, Identity20, Identity21, Identity22
+    implicit def caseClass22[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, A22, Z, ColsRepr, AllColumnIdentities, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15, Identity16, Identity17, Identity18, Identity19, Identity20, Identity21, Identity22
     ](implicit
-      ccSchema: Schema.CaseClass22[
-        A1,
-        A2,
-        A3,
-        A4,
-        A5,
-        A6,
-        A7,
-        A8,
-        A9,
-        A10,
-        A11,
-        A12,
-        A13,
-        A14,
-        A15,
-        A16,
-        A17,
-        A18,
-        A19,
-        A20,
-        A21,
-        A22,
-        Z
-      ],
+      ccSchema: Schema.CaseClass22[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, A22, Z],
       ev: ColsRepr <:< (
         A1,
         (
@@ -539,4 +337,5 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
     ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] =
       new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
   }
+  // format: on
 }

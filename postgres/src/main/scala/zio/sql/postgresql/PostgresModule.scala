@@ -67,8 +67,8 @@ trait PostgresModule extends Jdbc { self =>
       sealed case class LateralTableBuilder[A](left: Table.Aux[A]) {
         self =>
 
-        final def lateral(
-          right: Table.DerivedTable[Read[_]]
+        final def lateral[Out](
+          right: Table.DerivedTable[Out, Read[Out]]
         ): Table.DialectSpecificTable[A with right.TableType] = {
 
           val tableExtension = LateraLTable[A, right.TableType](
@@ -313,9 +313,8 @@ trait PostgresModule extends Jdbc { self =>
 
       val xx = name2 ++ age2
 
-      
       val ex = Expr.literal("Jaro")
-      
+
       insertInto(persons1)(name1).values(personValues1)
       insertInto(persons2)(name2 ++ age2)
       insertInto(persons2)(name2 ++ age2).values(personValues2)
@@ -327,7 +326,7 @@ trait PostgresModule extends Jdbc { self =>
         val _ = expr1
         val _ = expr2
       }
-      
+
       insertAltInto(customers)
         .values(
           (customerId         -> java.util.UUID.fromString("28e880be-c783-43ea-9839-db51834347a8")) ++
@@ -545,13 +544,13 @@ trait PostgresModule extends Jdbc { self =>
 
     def renderColumnNames(sources: SelectionSet[_])(implicit render: Renderer): Unit =
       sources match {
-        case SelectionSet.Empty                       => () // table is a collection of at least ONE column
+        case SelectionSet.Empty                                     => () // table is a collection of at least ONE column
         case SelectionSet.Cons(columnSelection, SelectionSet.Empty) =>
-          val _          = columnSelection.name.map { name =>
+          val _ = columnSelection.name.map { name =>
             render(name)
           }
-        case SelectionSet.Cons(columnSelection, tail)            =>
-          val _          = columnSelection.name.map { name =>
+        case SelectionSet.Cons(columnSelection, tail)               =>
+          val _ = columnSelection.name.map { name =>
             render(name)
             render(", ")
             renderColumnNames(tail)(render)
@@ -988,7 +987,7 @@ trait PostgresModule extends Jdbc { self =>
         case sourceTable: self.Table.Source             => render(sourceTable.name)
         case Table.DerivedTable(read, name)             =>
           render(" ( ")
-          render(renderRead(read))
+          render(renderRead(read.asInstanceOf[Read[_]]))
           render(" ) ")
           render(name)
         case Table.Joined(joinType, left, right, on)    =>
