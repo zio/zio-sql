@@ -154,7 +154,7 @@ object BuildHelper {
     libraryDependencies ++= {
       if (scalaVersion.value == ScalaDotty)
         Seq(
-          "com.github.ghik"                 % s"silencer-lib_2.13.6" % "1.7.5"         % Provided
+          "com.github.ghik"                 % s"silencer-lib_2.13.6" % "1.7.7"         % Provided
         )
       else
         Seq(
