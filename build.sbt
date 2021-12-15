@@ -183,7 +183,7 @@ lazy val oracle = project
       "org.testcontainers"       % "database-commons"                    % testcontainersVersion      % Test,
       "org.testcontainers"       % "oracle-xe"                           % testcontainersVersion      % Test,
       "org.testcontainers"       % "jdbc"                                % testcontainersVersion      % Test,
-      "com.oracle.database.jdbc" % "ojdbc8"                              % "21.1.0.0"                 % Test,
+      "com.oracle.database.jdbc" % "ojdbc8"                              % "21.3.0.0"                 % Test,
       "com.dimafeng"             % "testcontainers-scala-oracle-xe_2.13" % testcontainersScalaVersion % Test
     )
   )
@@ -217,12 +217,14 @@ lazy val sqlserver = project
   .settings(buildInfoSettings("zio.sql.sqlserver"))
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio"           %% "zio"              % zioVersion            % Provided,
-      "dev.zio"           %% "zio-streams"      % zioVersion            % Provided,
-      "org.testcontainers" % "testcontainers"   % testcontainersVersion % Test,
-      "org.testcontainers" % "database-commons" % testcontainersVersion % Test,
-      "org.testcontainers" % "mssqlserver"      % testcontainersVersion % Test,
-      "org.testcontainers" % "jdbc"             % testcontainersVersion % Test
+      "dev.zio"                %% "zio"                              % zioVersion                 % Provided,
+      "dev.zio"                %% "zio-streams"                      % zioVersion                 % Provided,
+      "org.testcontainers"      % "testcontainers"                   % testcontainersVersion      % Test,
+      "org.testcontainers"      % "database-commons"                 % testcontainersVersion      % Test,
+      "org.testcontainers"      % "mssqlserver"                      % testcontainersVersion      % Test,
+      "org.testcontainers"      % "jdbc"                             % testcontainersVersion      % Test,
+      "com.microsoft.sqlserver" % "mssql-jdbc"                       % "9.4.0.jre8"               % Test,
+      "com.dimafeng"           %% "testcontainers-scala-mssqlserver" % testcontainersScalaVersion % Test
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))

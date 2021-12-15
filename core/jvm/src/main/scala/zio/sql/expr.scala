@@ -1,9 +1,8 @@
 package zio.sql
 
-import java.time._
-
 import com.github.ghik.silencer.silent
 
+import java.time._
 import scala.language.implicitConversions
 
 trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
@@ -107,6 +106,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
   }
 
   object Expr {
+    implicit val subqueryToExpr = self.Read.Subselect.subselectToExpr _
 
     sealed trait InvariantExpr[F, -A, B] extends Expr[F, A, B] {
       def typeTag: TypeTag[B]
@@ -118,14 +118,20 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
 
     def exprName[F, A, B](expr: Expr[F, A, B]): Option[String] =
       expr match {
-        case Expr.Source(_, c) => Some(c.name)
-        case _                 => None
+        case Expr.Source(_, Column.Named(name)) => Some(name)
+        case _                                  => None
       }
 
     implicit def expToSelection[F, A, B](
       expr: Expr[F, A, B]
     ): Selection[F, A, SelectionSet.Cons[A, B, SelectionSet.Empty]] =
       Selection.computedOption(expr, exprName(expr))
+
+    sealed case class Subselect[F <: Features.Aggregated[_], Repr, Source, Subsource, Head](
+      subselect: Read.Subselect[F, Repr, _ <: Source, Subsource, Head, SelectionSet.Empty]
+    ) extends InvariantExpr[F, Any, Head] {
+      override def typeTag: TypeTag[Head] = subselect.selection.value.head.toColumn.typeTag
+    }
 
     sealed case class Source[A, B] private[sql] (tableName: TableName, column: Column[B])
         extends InvariantExpr[Features.Source, A, B] {
