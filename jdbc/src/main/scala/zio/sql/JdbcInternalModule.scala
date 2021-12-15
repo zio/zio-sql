@@ -109,13 +109,13 @@ trait JdbcInternalModule { self: Jdbc =>
     read match {
       case Read.Mapped(read, _) => getColumns(read)
 
-      case Read.Select(selection, _, _, _, _, _, _, _) =>
+      case Read.Subselect(selection, _, _, _, _, _, _, _) =>
         selection.value.selectionsUntyped.toVector.map(_.asInstanceOf[ColumnSelection[_, _]]).map {
           case t @ ColumnSelection.Constant(_, _) => t.typeTag
           case t @ ColumnSelection.Computed(_, _) => t.typeTag
         }
-      case Read.Union(left, _, _)                      => getColumns(left)
-      case v @ Read.Literal(_)                         => Vector(v.typeTag)
+      case Read.Union(left, _, _)                         => getColumns(left)
+      case v @ Read.Literal(_)                            => scala.collection.immutable.Vector(v.typeTag)
     }
 
   private[sql] def unsafeExtractRow[A](
