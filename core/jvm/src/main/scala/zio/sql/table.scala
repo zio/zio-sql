@@ -1,9 +1,9 @@
 package zio.sql
 
+import zio.Chunk
+
 import java.time._
 import java.util.UUID
-
-import zio.Chunk
 
 trait TableModule { self: ExprModule with SelectModule =>
 
@@ -17,7 +17,10 @@ trait TableModule { self: ExprModule with SelectModule =>
 
     def columnsUntyped: List[Column.Untyped]
 
-    protected def mkColumns[T](name: TableName): ColumnsRepr[T]
+    // TODO figure out how to make Column equality well defined
+    def contains[A](column: Column[A]): Boolean
+
+    def makeColumns[T](columnToExpr: ColumnToExpr[T]): ColumnsRepr[T]
   }
 
   object ColumnSet {
@@ -25,38 +28,56 @@ trait TableModule { self: ExprModule with SelectModule =>
     type :*:[A, B <: ColumnSet] = Cons[A, B]
     type Singleton[A]           = Cons[A, Empty]
 
+    type ConsAux[A, B <: ColumnSet, ColumnsRepr0[_]] = ColumnSet.Cons[A, B] {
+      type ColumnsRepr[C] = ColumnsRepr0[C]
+    }
+
+    type Aux[ColumnsRepr0] = ColumnSet {
+      type ColumnsRepr = ColumnsRepr0
+    }
+
     case object Empty extends ColumnSet {
-      type ColumnsRepr[_]            = Unit
-      type Append[That <: ColumnSet] = That
+      override type ColumnsRepr[T]            = Unit
+      override type Append[That <: ColumnSet] = That
 
       override def ++[That <: ColumnSet](that: That): Append[That] = that
 
       override def columnsUntyped: List[Column.Untyped] = Nil
 
-      override protected def mkColumns[T](name: TableName): ColumnsRepr[T] = ()
+      override def makeColumns[T](columnToExpr: ColumnToExpr[T]): ColumnsRepr[T] = ()
+
+      override def contains[A](column: Column[A]): Boolean = false
     }
 
     sealed case class Cons[A, B <: ColumnSet](head: Column[A], tail: B) extends ColumnSet { self =>
-      type ColumnsRepr[T]            = (Expr[Features.Source, T, A], tail.ColumnsRepr[T])
-      type Append[That <: ColumnSet] = Cons[A, tail.Append[That]]
+
+      override type ColumnsRepr[T]            = (Expr[Features.Source, T, A], tail.ColumnsRepr[T])
+      override type Append[That <: ColumnSet] = Cons[A, tail.Append[That]]
 
       override def ++[That <: ColumnSet](that: That): Append[That] = Cons(head, tail ++ that)
 
       override def columnsUntyped: List[Column.Untyped] = head :: tail.columnsUntyped
 
-      def table(name0: TableName): Table.Source.Aux_[ColumnsRepr, A :*: B] =
+      def table(name0: TableName): Table.Aux_[ColumnsRepr, A, B] =
         new Table.Source {
-          type Repr[C] = ColumnsRepr[C]
-          type Cols    = A :*: B
-          val name: TableName                      = name0
-          val columnSchema: ColumnSchema[A :*: B]  = ColumnSchema(self)
-          val columns: ColumnsRepr[TableType]      = mkColumns[TableType](name0)
-          val columnsUntyped: List[Column.Untyped] = self.columnsUntyped
+          override type ColumnHead = A
+          override type ColumnTail = B
 
+          override val name: TableName                     = name0
+          override val columnSchema: ColumnSchema[A :*: B] = ColumnSchema(self)
+
+          override val columnSet: ColumnSet.ConsAux[ColumnHead, ColumnTail, ColumnsRepr] = self
+
+          override def columnToExpr: ColumnToExpr[TableType] = new ColumnToExpr[TableType] {
+            def toExpr[A](column: Column[A]): Expr[Features.Source, TableType, A] = Expr.Source(name0, column)
+          }
         }
 
-      override protected def mkColumns[T](name: TableName): ColumnsRepr[T] =
-        (Expr.Source(name, head), tail.mkColumns(name))
+      override def makeColumns[T](columnToExpr: ColumnToExpr[T]): ColumnsRepr[T] =
+        (columnToExpr.toExpr(head), tail.makeColumns(columnToExpr))
+
+      override def contains[A](column: Column[A]): Boolean =
+        head == column || tail.contains(column)
     }
 
     def bigDecimal(name: String): Singleton[BigDecimal]         = singleton[BigDecimal](name)
@@ -74,7 +95,7 @@ trait TableModule { self: ExprModule with SelectModule =>
     def offsetDateTime(name: String): Singleton[OffsetDateTime] = singleton[OffsetDateTime](name)
     def offsetTime(name: String): Singleton[OffsetTime]         = singleton[OffsetTime](name)
     def short(name: String): Singleton[Short]                   = singleton[Short](name)
-    def singleton[A: TypeTag](name: String): Singleton[A]       = Cons(Column[A](name), Empty)
+    def singleton[A: TypeTag](name: String): Singleton[A]       = Cons(Column.Named[A](name), Empty)
     def string(name: String): Singleton[String]                 = singleton[String](name)
     def uuid(name: String): Singleton[UUID]                     = singleton[UUID](name)
     def zonedDateTime(name: String): Singleton[ZonedDateTime]   = singleton[ZonedDateTime](name)
@@ -84,11 +105,19 @@ trait TableModule { self: ExprModule with SelectModule =>
     def unapply[A, B](tuple: (A, B)): Some[(A, B)] = Some(tuple)
   }
 
-  sealed case class Column[A: TypeTag](name: String) {
-    def typeTag: TypeTag[A] = implicitly[TypeTag[A]]
+  sealed trait Column[+A] {
+    def typeTag: TypeTag[A]
   }
 
   object Column {
+    sealed case class Named[A: TypeTag](columnName: String) extends Column[A] {
+      def typeTag: TypeTag[A] = implicitly[TypeTag[A]]
+    }
+
+    sealed case class Indexed[A: TypeTag]() extends Column[A] {
+      def typeTag: TypeTag[A] = implicitly[TypeTag[A]]
+    }
+
     type Untyped = Column[_]
   }
 
@@ -101,11 +130,17 @@ trait TableModule { self: ExprModule with SelectModule =>
     case object FullOuter  extends JoinType
   }
 
-  /**
-   * (left join right) on (...)
-   */
+  trait ColumnToExpr[TableType] {
+    def toExpr[A](column: Column[A]): Expr[Features.Source, TableType, A]
+  }
+
   sealed trait Table { self =>
     type TableType
+
+    type Cols = ColumnSet.Cons[ColumnHead, ColumnTail]
+
+    type ColumnHead
+    type ColumnTail <: ColumnSet
 
     final def fullOuter[That](that: Table.Aux[That]): Table.JoinBuilder[self.TableType, That] =
       new Table.JoinBuilder[self.TableType, That](JoinType.FullOuter, self, that)
@@ -119,7 +154,13 @@ trait TableModule { self: ExprModule with SelectModule =>
     final def rightOuter[That](that: Table.Aux[That]): Table.JoinBuilder[self.TableType, That] =
       new Table.JoinBuilder[self.TableType, That](JoinType.RightOuter, self, that)
 
-    val columnsUntyped: List[Column.Untyped]
+    final val subselect: SubselectPartiallyApplied[TableType] = new SubselectPartiallyApplied[TableType]
+
+    final def columns = columnSet.makeColumns[TableType](columnToExpr)
+
+    val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail]
+
+    def columnToExpr: ColumnToExpr[TableType]
   }
 
   object Table {
@@ -131,40 +172,91 @@ trait TableModule { self: ExprModule with SelectModule =>
 
     type Aux[A] = Table { type TableType = A }
 
-    //you need insanity in your life
+    type Aux_[ColumnsRepr[_], A, B <: ColumnSet] = Table.Source {
+      type ColumnHead = A
+      type ColumnTail = B
+      def columnSet: ColumnSet.ConsAux[A, B, ColumnsRepr]
+    }
+
+    // Absence of "Insanity" trait causes following known problems:
+    // * in db modules
+    //     - The outer reference in this type test cannot be checked at run time?!
+    //       case sourceTable: self.Table.Source    =>
+    // * compiletime error in updating of table like
+    //     - update(table).set(age, age + 2)...
     trait Insanity {
       def ahhhhhhhhhhhhh[A]: A
     }
+
     sealed trait Source extends Table with Insanity {
-      type Repr[_]
-      type Cols
+
       val name: TableName
       val columnSchema: ColumnSchema[Cols]
-      val columns: Repr[TableType]
 
       override def ahhhhhhhhhhhhh[A]: A = ??? //don't remove or it'll break
     }
-    object Source {
-      type Aux_[F[_], B]   = Table.Source {
-        type Repr[X] = F[X]
-        type Cols    = B
-      }
-      type Aux[F[_], A, B] = Table.Source {
-        type Repr[X]   = F[X]
-        type TableType = A
-        type Cols      = B
-      }
-    }
 
-    sealed case class Joined[F, A, B](
+    sealed case class Joined[FF, A, B](
       joinType: JoinType,
       left: Table.Aux[A],
       right: Table.Aux[B],
-      on: Expr[F, A with B, Boolean]
+      on: Expr[FF, A with B, Boolean]
     ) extends Table {
-      type TableType = left.TableType with right.TableType
 
-      val columnsUntyped: List[Column.Untyped] = left.columnsUntyped ++ right.columnsUntyped
+      override type TableType = left.TableType with right.TableType
+
+      override type ColumnHead = left.ColumnHead
+      override type ColumnTail =
+        left.columnSet.tail.Append[ColumnSet.Cons[right.ColumnHead, right.ColumnTail]]
+
+      override val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail] =
+        left.columnSet ++ right.columnSet
+
+      override val columnToExpr: ColumnToExpr[TableType] = new ColumnToExpr[TableType] {
+        def toExpr[C](column: Column[C]): Expr[Features.Source, TableType, C] =
+          if (left.columnSet.contains(column))
+            left.columnToExpr.toExpr(column)
+          else
+            right.columnToExpr.toExpr(column)
+      }
+    }
+
+    sealed case class DerivedTable[+Out, +R <: Read[Out]](read: R, name: TableName) extends Table { self =>
+
+      override type ColumnHead = read.ColumnHead
+      override type ColumnTail = read.ColumnTail
+
+      override val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail] = read.columnSet
+
+      override def columnToExpr: ColumnToExpr[TableType] = new ColumnToExpr[TableType] {
+        def toExpr[A](column: Column[A]): Expr[Features.Source, TableType, A] =
+          Expr.Source(name, column)
+      }
+    }
+
+    sealed case class DialectSpecificTable[A](tableExtension: TableExtension[A]) extends Table {
+
+      override type TableType = A
+
+      override type ColumnHead = tableExtension.ColumnHead
+      override type ColumnTail = tableExtension.ColumnTail
+
+      override val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail] = tableExtension.columnSet
+
+      override def columnToExpr: ColumnToExpr[TableType] = tableExtension.columnToExpr
+    }
+
+    trait TableEx[A] {
+
+      type ColumnHead
+      type ColumnTail <: ColumnSet
+
+      def columnSet: ColumnSet.Cons[ColumnHead, ColumnTail]
+
+      def columnToExpr: ColumnToExpr[A]
     }
   }
+
+  type TableExtension[A] <: Table.TableEx[A]
+
 }

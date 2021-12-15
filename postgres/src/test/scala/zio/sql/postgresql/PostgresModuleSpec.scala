@@ -1,13 +1,12 @@
 package zio.sql.postgresql
 
-import java.time._
-import java.util.UUID
-
 import zio._
 import zio.test.Assertion._
-import zio.test._
 import zio.test.TestAspect.sequential
+import zio.test._
 
+import java.time._
+import java.util.UUID
 import scala.language.postfixOps
 
 object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
@@ -124,38 +123,38 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
     testM("Can select with property binary operator with Instant") {
       customerSelectJoseAssertion(dob === Instant.parse("1987-03-23T00:00:00Z"))
     },
-    // uncomment when we properly handle Postgres' Money type
-    //  testM("Can select with property binary operator with numbers") {
-    //    case class OrderDetails(orderId: UUID, product_id: UUID, quantity: Int, unitPrice: BigDecimal)
-
-    //    val orderDetailQuantity  = 3
-    //    val orderDetailUnitPrice = BigDecimal(80.0)
-    //    val condition            = (quantity === orderDetailQuantity) && (unitPrice === orderDetailUnitPrice)
-    //    val query                =
-    //      select(fkOrderId ++ fkProductId ++ quantity ++ unitPrice).from(orderDetails).where(condition)
-
-    //    println(renderRead(query))
-
-    //    val expected =
-    //      Seq(
-    //        OrderDetails(
-    //          UUID.fromString("763a7c39-833f-4ee8-9939-e80dfdbfc0fc"),
-    //          UUID.fromString("105a2701-ef93-4e25-81ab-8952cc7d9daa"),
-    //          orderDetailQuantity,
-    //          orderDetailUnitPrice
-    //        )
-    //      )
-
-    //    val testResult = execute(query.to[UUID, UUID, Int, BigDecimal, OrderDetails] { case row =>
-    //        OrderDetails(row._1, row._2, row._3, row._4)
-    //      })
-
-    //    val assertion = for {
-    //      r <- testResult.runCollect
-    //    } yield assert(r)(hasSameElementsDistinct(expected))
-
-    //    assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    //  },
+    //TODO try to translate money as "::numeric"
+//    testM("Can select with property binary operator with numbers") {
+//      case class OrderDetails(orderId: UUID, product_id: UUID, quantity: Int, unitPrice: BigDecimal)
+//
+//      val orderDetailQuantity  = 3
+//      val orderDetailUnitPrice = BigDecimal(80.0)
+//      val condition            = (quantity === orderDetailQuantity) && (unitPrice === orderDetailUnitPrice)
+//      val query                =
+//        select(fkOrderId ++ fkProductId ++ quantity ++ unitPrice).from(orderDetails).where(condition)
+//
+//      println(renderRead(query))
+//
+//      val expected =
+//        Seq(
+//          OrderDetails(
+//            UUID.fromString("763a7c39-833f-4ee8-9939-e80dfdbfc0fc"),
+//            UUID.fromString("105a2701-ef93-4e25-81ab-8952cc7d9daa"),
+//            orderDetailQuantity,
+//            orderDetailUnitPrice
+//          )
+//        )
+//
+//      val testResult = execute(query.to[UUID, UUID, Int, BigDecimal, OrderDetails] { case row =>
+//        OrderDetails(row._1, row._2, row._3, row._4)
+//      })
+//
+//      val assertion = for {
+//        r <- testResult.runCollect
+//      } yield assert(r)(hasSameElementsDistinct(expected))
+//
+//      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+//    },
     testM("Can select from single table with limit, offset and order by") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
@@ -231,6 +230,92 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
       val result = execute(
         query
           .to[String, String, LocalDate, Row] { case row =>
+            Row(row._1, row._2, row._3)
+          }
+      )
+
+      val assertion = for {
+        r <- result.runCollect
+      } yield assert(r)(hasSameElementsDistinct(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("Can do lateral join") {
+      import PostgresSpecific.PostgresSpecificTable._
+
+      /**
+       *  select customers.id, customers.first_name, customers.last_name, derived.order_date
+       *          from customers,
+       *          lateral  (
+       *              select orders.order_date
+       *              from orders
+       *              where customers.id = orders.customer_id
+       *              order by orders.order_date desc limit 1 ) derived order by derived.order_date desc
+       */
+
+      case class Row(id: UUID, firstName: String, lastName: String, orderDate: LocalDate)
+
+      val expected = Seq(
+        Row(UUID.fromString("df8215a2-d5fd-4c6c-9984-801a1b3a2a0b"), "Alana", "Murray", LocalDate.parse("2020-05-11")),
+        Row(UUID.fromString("784426a5-b90a-4759-afbb-571b7a0ba35e"), "Mila", "Paterso", LocalDate.parse("2020-04-30")),
+        Row(UUID.fromString("f76c9ace-be07-4bf3-bd4c-4a9c62882e64"), "Terrence", "Noel", LocalDate.parse("2020-04-05")),
+        Row(
+          UUID.fromString("60b01fc9-c902-4468-8d49-3c0f989def37"),
+          "Ronald",
+          "Russell",
+          LocalDate.parse("2020-03-19")
+        ),
+        Row(UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc"), "Jose", "Wiggins", LocalDate.parse("2020-01-15"))
+      )
+
+      import DerivedTables._
+
+      val query =
+        select(customerId ++ fName ++ lName ++ orderDateDerived)
+          .from(customers.lateral(orderDateDerivedTable))
+          .orderBy(Ordering.Desc(orderDateDerived))
+
+      val result = execute(
+        query
+          .to[UUID, String, String, LocalDate, Row] { case row =>
+            Row(row._1, row._2, row._3, row._4)
+          }
+      )
+
+      val assertion = for {
+        r <- result.runCollect
+      } yield assert(r)(hasSameElementsDistinct(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("can do correlated subqueries in selections - counts orders for each customer") {
+
+      /**
+       * select first_name, last_name, (
+       *    select count(orders.id) from orders
+       *    where customers.id = orders.customer_id
+       * ) as "count"
+       * from customers
+       */
+
+      case class Row(firstName: String, lastName: String, count: Long)
+
+      val expected = Seq(
+        Row("Alana", "Murray", 5),
+        Row("Mila", "Paterso", 5),
+        Row("Terrence", "Noel", 5),
+        Row("Ronald", "Russell", 6),
+        Row("Jose", "Wiggins", 4)
+      )
+
+      val subquery =
+        customers.subselect(Count(orderId)).from(orders).where(fkCustomerId === customerId)
+
+      val query = select(fName ++ lName ++ (subquery as "Count")).from(customers)
+
+      val result = execute(
+        query
+          .to[String, String, Long, Row] { case row =>
             Row(row._1, row._2, row._3)
           }
       )
