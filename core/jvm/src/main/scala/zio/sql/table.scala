@@ -120,13 +120,6 @@ trait TableModule { self: ExprModule with SelectModule =>
     def unapply[A, B](tuple: (A, B)): Some[(A, B)] = Some(tuple)
   }
 
-  sealed trait ColumnProperty
-  object ColumnProperty {
-    case object Nullable  extends ColumnProperty
-    case object NotNull   extends ColumnProperty
-    case object Generated extends ColumnProperty
-  }
-
   sealed trait Column[+A] {
     type Identity
     def typeTag: TypeTag[A]
@@ -247,8 +240,7 @@ trait TableModule { self: ExprModule with SelectModule =>
       }
 
       type Aux_[A, AllColumnIdentities0] = Table.Source {
-        type TableType = A
-
+        type TableType           = A
         type AllColumnIdentities = AllColumnIdentities0
       }
     }

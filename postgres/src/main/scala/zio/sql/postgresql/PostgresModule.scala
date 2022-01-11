@@ -423,7 +423,6 @@ trait PostgresModule extends Jdbc { self =>
                 case StandardType.OffsetDateTime(formatter) =>
                   render(s"'${formatter.format(value.asInstanceOf[OffsetDateTime])}'")
                 case StandardType.ZonedDateTime(formatter)  =>
-                  //render(s"'${formatter.format(value.asInstanceOf[ZonedDateTime])}'")
                   render(s"'${DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(value.asInstanceOf[ZonedDateTime])}'")
                 case BigIntegerType                         => render(s"'${value}'")
                 case UUIDType                               => render(s"'${value}'")
@@ -446,7 +445,7 @@ trait PostgresModule extends Jdbc { self =>
               }
             case None    => ()
           }
-        //TODO do we need to handle also other cases?
+        //TODO what about other cases?
         case DynamicValue.Transform(that)           => renderDynamicValue(that)
         case DynamicValue.Tuple(left, right)        =>
           renderDynamicValue(left)
@@ -468,37 +467,6 @@ trait PostgresModule extends Jdbc { self =>
             render(", ")
             renderColumnNames(tail)(render)
           }
-      }
-
-    /**
-     * TODO
-     *
-     * Every values is written differently - based on Expr typeTag
-     */
-    def renderValue[A](typeTage: TypeTag[A], value: A)(implicit render: Renderer): Unit =
-      typeTage match {
-        case TBigDecimal                        => render(value.toString)
-        case TBoolean                           => render(value.toString)
-        case TByte                              => render(value.toString)
-        case TByteArray                         => render(value.toString)
-        case TChar                              => render(value.toString)
-        case TDouble                            => render(value.toString)
-        case TFloat                             => render(value.toString)
-        case TInstant                           => render(value.toString)
-        case TInt                               => render(value.toString)
-        case TLocalDate                         => render(s"'${value.toString}'")
-        case TLocalDateTime                     => render(value.toString)
-        case TLocalTime                         => render(s"'${value.toString}'")
-        case TLong                              => render(value.toString)
-        case TOffsetDateTime                    => render(value.toString)
-        case TOffsetTime                        => render(value.toString)
-        case TShort                             => render(value.toString)
-        case TString                            => render(s"'${value.toString}'")
-        case TUUID                              => render(s"'${value.toString}'")
-        case TZonedDateTime                     =>
-          render(s"'${DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(value.asInstanceOf[ZonedDateTime])}'")
-        case TDialectSpecific(typeTagExtension) => render(value.toString)
-        case Nullable()                         => render("null")
       }
 
     def renderDeleteImpl(delete: Delete[_])(implicit render: Renderer) = {
