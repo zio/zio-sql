@@ -301,8 +301,6 @@ trait OracleModule extends Jdbc { self =>
 
   override def renderDelete(delete: self.Delete[_]): String = ???
 
-  override def renderInsertAlt(insert: self.InsertAlt[_]): String = ???
-
   override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = ???
 
   override def renderUpdate(update: self.Update[_]): String = ???

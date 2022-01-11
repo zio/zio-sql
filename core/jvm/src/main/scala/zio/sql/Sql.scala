@@ -2,14 +2,7 @@ package zio.sql
 
 import zio.schema.Schema
 
-trait Sql
-    extends SelectModule
-    with DeleteModule
-    with UpdateModule
-    with ExprModule
-    with TableModule
-    with InsertAltModule
-    with InsertModule {
+trait Sql extends SelectModule with DeleteModule with UpdateModule with ExprModule with TableModule with InsertModule {
   self =>
 
   /*
@@ -48,19 +41,11 @@ trait Sql
 
   def renderUpdate(update: self.Update[_]): String
 
-  def insertAltInto[Source, N <: ColumnCount, AllColumnIdentities](
-    table: Table.Source.AuxN[Source, AllColumnIdentities, N]
-  ): InsertAltBuilder[Source, N, AllColumnIdentities] =
-    InsertAltBuilder(table)
-
-  def renderInsertAlt(insert: self.InsertAlt[_]): String
-
-  def insertInto[F, Source, N <: ColumnCount, AllColumnIdentities, B <: SelectionSet.Aux[Source, ColsRepr], ColsRepr](
-    table: Table.Source.AuxN[Source, AllColumnIdentities, N]
+  def insertInto[F, Source, AllColumnIdentities, B <: SelectionSet.Aux[Source, ColsRepr], ColsRepr](
+    table: Table.Source.Aux_[Source, AllColumnIdentities]
   )(
     sources: Selection.Aux[F, Source, B, ColsRepr]
-    //TODO verify if I really need to check Size
-  )(implicit ev2: N =:= sources.Size) =
+  ) =
     InsertBuilder(table, sources)
 
   def renderInsert[A: Schema](insert: self.Insert[_, A]): String
