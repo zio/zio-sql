@@ -43,8 +43,6 @@ trait MysqlModule extends Jdbc { self =>
     render.toString
   }
 
-  override def renderInsertAlt(insert: self.InsertAlt[_]): String = ???
-
   override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = ???
 
   override def renderDelete(delete: self.Delete[_]): String = {

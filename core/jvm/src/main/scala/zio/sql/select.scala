@@ -429,7 +429,6 @@ trait SelectModule { self: ExprModule with TableModule =>
   sealed case class Selection[F, -A, +B <: SelectionSet[A]](value: B) { self =>
 
     type ColsRepr = value.ResultTypeRepr
-    type Size     = value.Size
 
     def ++[F2, A1 <: A, C <: SelectionSet[A1]](
       that: Selection[F2, A1, C]
@@ -506,8 +505,6 @@ trait SelectModule { self: ExprModule with TableModule =>
     type SelectionTail <: SelectionSet[Source]
     type HeadIdentity
 
-    type Size <: ColumnCount
-
     type CS <: ColumnSet
     def columnSet: CS
 
@@ -519,7 +516,6 @@ trait SelectModule { self: ExprModule with TableModule =>
   }
 
   object SelectionSet {
-    import ColumnCount._
 
     type Aux[-Source, ResultTypeRepr0] =
       SelectionSet[Source] {
@@ -550,8 +546,6 @@ trait SelectModule { self: ExprModule with TableModule =>
 
       override type Append[Source1, That <: SelectionSet[Source1]] = That
 
-      override type Size = _0
-
       override def ++[Source1 <: Any, That <: SelectionSet[Source1]](that: That): Append[Source1, That] =
         that
 
@@ -580,8 +574,6 @@ trait SelectModule { self: ExprModule with TableModule =>
 
       override type Append[Source1, That <: SelectionSet[Source1]] =
         Cons[Source1, A, tail.Append[Source1, That]]
-
-      override type Size = Succ[tail.Size]
 
       override def ++[Source1 <: Source, That <: SelectionSet[Source1]](that: That): Append[Source1, That] =
         Cons[Source1, A, tail.Append[Source1, That]](head, tail ++ that)
@@ -625,28 +617,5 @@ trait SelectModule { self: ExprModule with TableModule =>
     case object Closed                                                  extends DecodingError {
       def message = s"The ResultSet has been closed, so decoding is impossible"
     }
-  }
-
-  sealed trait ColumnCount {
-
-    type Appended[That <: ColumnCount] <: ColumnCount
-
-    def add[That <: ColumnCount](that: That): Appended[That]
-  }
-  object ColumnCount {
-    case object Zero extends ColumnCount {
-      override type Appended[That <: ColumnCount] = That
-
-      override def add[That <: ColumnCount](that: That): Appended[That] = that
-    }
-
-    sealed case class Succ[C <: ColumnCount](c: C) extends ColumnCount {
-      override type Appended[That <: ColumnCount] = Succ[c.Appended[That]]
-
-      override def add[That <: ColumnCount](that: That): Appended[That] = Succ(c.add(that))
-    }
-
-    type _0 = Zero.type
-    val _0 = Zero
   }
 }

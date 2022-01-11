@@ -379,51 +379,13 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("simple insert - inserted 1 row") {
-
-      /**
-       * insert into
-       *     customers
-       *        (id, first_name, last_name, verifier, dob, created_timestamp_string, created_timestamp)
-       * values
-       *        ('0511474d-8eed-4307-bdb0-e39a561205b6', 'Jaro', 'Regec', true, 1999-11-02, 2020-11-21T19:10:25+00:00, '2020-11-21 19:10:25+00')
-       *        ('0511474d-8eed-4307-bdb0-e39a561205b6', 'Jaro', 'Regec', true, 1999-11-02, 2020-11-21T19:10:25+00:00, '2020-11-21 19:10:25+00')
-       *        ('0511474d-8eed-4307-bdb0-e39a561205b6', 'Jaro', 'Regec', true, 1999-11-02, 2020-11-21T19:10:25+00:00, '2020-11-21 19:10:25+00')
-       *        ('0511474d-8eed-4307-bdb0-e39a561205b6', 'Jaro', 'Regec', true, 1999-11-02, 2020-11-21T19:10:25+00:00, '2020-11-21 19:10:25+00')
-       *        ('0511474d-8eed-4307-bdb0-e39a561205b6', 'Jaro', 'Regec', true, 1999-11-02, 2020-11-21T19:10:25+00:00, '2020-11-21 19:10:25+00')
-       *        ('0511474d-8eed-4307-bdb0-e39a561205b6', 'Jaro', 'Regec', true, 1999-11-02, 2020-11-21T19:10:25+00:00, '2020-11-21 19:10:25+00')
-       */
-
-      val dobValue = LocalDate.now()
-      val created  = ZonedDateTime.now()
-
-      val query = insertAltInto(customers)
-        .values(
-          (customerId         -> java.util.UUID.fromString("0511474d-8eed-4307-bdb0-e39a561205b6")) ++
-            (fName            -> "Jaro") ++
-            (lName            -> "Regec") ++
-            (verified         -> false) ++
-            (dob              -> dobValue) ++
-            (createdString    -> created.toString) ++
-            (createdTimestamp -> created)
-        )
-
-      val result = execute(query)
-
-      val assertion = for {
-        r <- result
-      } yield assert(r)(equalTo(1))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    },
-    testM("insert - 2 rows into cutomers") {
+    testM("insert - 1 rows into customers") {
 
       /**
        * insert into customers
        *              (id, first_name, last_name, verified, dob, created_timestamp_string, created_timestamp)
        *          values
-       *              ('60b01fc9-c902-4468-8d49-3c0f989def37', 'Ronald', 'Russell', true, '1983-01-05', '2020-11-21T19:10:25+00:00', '2020-11-21 19:10:25+00'),
-       *              ('f76c9ace-be07-4bf3-bd4c-4a9c62882e64', 'Terrence', 'Noel', true, '1999-11-02', '2020-11-21T15:10:25-04:00', '2020-11-21 15:10:25-04'),
+       *              ('60b01fc9-c902-4468-8d49-3c0f989def37', 'Ronald', 'Russell', true, '1983-01-05', '2020-11-21T19:10:25+00:00', '2020-11-21 19:10:25+00'))
        */
 
       final case class CustomerRow(
@@ -439,7 +401,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
       val created = ZonedDateTime.now()
       import java.time._
 
-      implicit val customerRowSchema = // DeriveSchema.gen[CustomerRow]
+      implicit val customerRowSchema =
         Schema.CaseClass7[UUID, String, String, Boolean, LocalDate, String, ZonedDateTime, CustomerRow](
           Chunk.empty,
           Schema.Field("id", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
@@ -467,30 +429,14 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
           _.createdTimestamp
         )
 
-      val rows = List(
-        CustomerRow(UUID.randomUUID(), "Jaro", "Regec", true, LocalDate.ofYearDay(1990, 1), created.toString, created),
-        CustomerRow(
-          UUID.randomUUID(),
-          "Martin",
-          "Mrkva",
-          false,
-          LocalDate.ofYearDay(1980, 1),
-          created.toString,
-          created
-        )
-      )
+      val data =
+        CustomerRow(UUID.randomUUID(), "Jaro", "Regec", true, LocalDate.ofYearDay(1990, 1), created.toString, created)
 
       val query = insertInto(customers)(
         customerId ++ fName ++ lName ++ verified ++ dob ++ createdString ++ createdTimestamp
-      ).values(rows)
+      ).values(data)
 
-      val result = execute(query)
-
-      val assertion = for {
-        r <- result
-      } yield assert(r)(equalTo(2))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertM(execute(query))(equalTo(1))
     },
     testM("insert - insert 10 rows into orders") {
 
@@ -507,7 +453,6 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
       final case class InputOrders(uuid: UUID, customerId: UUID, localDate: LocalDate)
 
-      //TODO why does DeriveSchema.gen[T] does not work?
       implicit val inputOrdersSchema = Schema.CaseClass3[UUID, UUID, LocalDate, InputOrders](
         Chunk.empty,
         Schema.Field("uuid", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
@@ -522,7 +467,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
         _.localDate
       )
 
-      val orderValues = List(
+      val data = List(
         InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
         InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
         InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
@@ -536,15 +481,9 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
       )
 
       val query = insertInto(orders)(orderId ++ fkCustomerId ++ orderDate)
-        .values(orderValues)
+        .values(data)
 
-      val result = execute(query)
-
-      val assertion = for {
-        r <- result
-      } yield assert(r)(equalTo(10))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertM(execute(query))(equalTo(10))
     },
     testM("insert - 4 rows into orderDetails") {
 
@@ -562,7 +501,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
       case class OrderDetailsRow(orderId: UUID, productId: UUID, quantity: Int, unitPrice: BigDecimal)
 
-      //TODO we need schema for scala.math.BigDecimal
+      //TODO we need schema for scala.math.BigDecimal. Probably directly in zio-schema ?
       implicit val bigDecimalSchema: Schema[BigDecimal] =
         Schema.Transform(
           Schema.primitive[java.math.BigDecimal](zio.schema.StandardType.BigDecimalType),
@@ -594,13 +533,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
       val query = insertInto(orderDetails)(orderDetailsOrderId ++ orderDetailsProductId ++ quantity ++ unitPrice)
         .values(rows)
 
-      val result = execute(query)
-
-      val assertion = for {
-        r <- result
-      } yield assert(r)(equalTo(4))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertM(execute(query))(equalTo(4))
     },
     testM("insert into orderDetails with tuples") {
 
@@ -613,20 +546,10 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
       import OrderDetails._
 
-      val rows = List(
-        ((UUID.randomUUID(), UUID.randomUUID(), 4, BigDecimal.valueOf(11.00)))
-      )
-
       val query = insertInto(orderDetails)(orderDetailsOrderId ++ orderDetailsProductId ++ quantity ++ unitPrice)
-        .values(rows)
+        .values(((UUID.randomUUID(), UUID.randomUUID(), 4, BigDecimal.valueOf(11.00))))
 
-      val result = execute(query)
-
-      val assertion = for {
-        r <- result
-      } yield assert(r)(equalTo(1))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertM(execute(query))(equalTo(1))
     },
     testM("insert into customers with tuples") {
 
@@ -639,28 +562,28 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
       val created = ZonedDateTime.now()
 
-      val rows = List(
+      val row =
         ((UUID.randomUUID(), "Jaro", "Regec", true, LocalDate.ofYearDay(1990, 1), created.toString, created))
-      )
-
-      //TODO move these implicits to PostgresModule (+ others needed for postgres data types)
-      implicit val localDateSchema =
-        Schema.primitive[LocalDate](zio.schema.StandardType.LocalDate(DateTimeFormatter.ISO_DATE))
-
-      implicit val zonedDateTimeShema =
-        Schema.primitive[ZonedDateTime](zio.schema.StandardType.ZonedDateTime(DateTimeFormatter.ISO_ZONED_DATE_TIME))
 
       val query = insertInto(customers)(
         customerId ++ fName ++ lName ++ verified ++ dob ++ createdString ++ createdTimestamp
-      ).values(rows)
+      ).values(row)
 
-      val result = execute(query)
+      assertM(execute(query))(equalTo(1))
+    },
+    testM("insert into products") {
+      import Products._
 
-      val assertion = for {
-        r <- result
-      } yield assert(r)(equalTo(1))
+      val tupleData = List(
+        (UUID.randomUUID(), "product 1", "product desription", "image url"),
+        (UUID.randomUUID(), "product 2", "product desription", "image url"),
+        (UUID.randomUUID(), "product 3", "product desription", "image url"),
+        (UUID.randomUUID(), "product 4", "product desription", "image url")
+      )
 
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      val query = insertInto(products)(productId ++ productName ++ description ++ imageURL).values(tupleData)
+
+      assertM(execute(query))(equalTo(4))
     }
   ) @@ sequential
 }

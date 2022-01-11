@@ -8,12 +8,9 @@ object TestBasicSelect {
   val userSql = new Sql { self =>
     import self.ColumnSet._
 
-    override def renderDelete(delete: self.Delete[_]): String = ???
-    override def renderRead(read: self.Read[_]): String       = ???
-    override def renderUpdate(update: self.Update[_]): String = ???
-
-    override def renderInsertAlt(insert: self.InsertAlt[_]): String = ???
-
+    override def renderDelete(delete: self.Delete[_]): String               = ???
+    override def renderRead(read: self.Read[_]): String                     = ???
+    override def renderUpdate(update: self.Update[_]): String               = ???
     override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = ???
 
     val userTable =

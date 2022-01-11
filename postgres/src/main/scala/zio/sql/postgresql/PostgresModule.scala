@@ -246,103 +246,13 @@ trait PostgresModule extends Jdbc { self =>
           zdt.getZone.getId
         )
     }
-
-    object LateralTableExample {
-      import self.ColumnSet._
-
-      // ColumnSetAspect
-      // val nullableUUID = uuid("id") @@ nullable
-
-      val customers =
-        (uuid("id") ++ localDate("dob") ++ string("first_name") ++ string("last_name") ++ boolean(
-          "verified"
-        ) ++ zonedDateTime("created_timestamp"))
-          .table("customers")
-
-      val customerId :*: dob :*: fName :*: lName :*: verified :*: createdTimestamp :*: _ =
-        customers.columns
-
-      val orders = (uuid("id") ++ uuid("customer_id") ++ localDate("order_date")).table("orders")
-
-      val orderId :*: fkCustomerId :*: orderDate :*: _ = orders.columns
-
-      val products                                     =
-        (uuid("id") ++ string("name") ++ string("description") ++ string("image_url")).table("products")
-      val productId :*: description :*: imageURL :*: _ = products.columns
-
-      val productPrices                             =
-        (uuid("product_id") ++ offsetDateTime("effective") ++ bigDecimal("price")).table("product_prices")
-      val fkProductId :*: effective :*: price :*: _ = productPrices.columns
-
-      val orderDetails                                                         =
-        (uuid("order_id") ++ uuid("product_id") ++ int("quantity") ++ bigDecimal("unit_price"))
-          .table(
-            "order_details"
-          )
-      val fkOrderId :*: orderDetailsProductId :*: quantity :*: unitPrice :*: _ = orderDetails.columns
-
-      // ============= INSERTS
-
-      // val persons5 = table[Person5]("persons5")
-      // val name5 :*: age5 :*: gender5 :*: birth5 :*: _ = persons5.columns
-
-      val persons1 = (string("name")).table("persons1")
-      val persons2 = (string("name") ++ int("age")).table("persons2")
-      val persons3 = (string("name") ++ int("age") ++ string("gender")).table("persons3")
-      val persons4 = (string("name") ++ int("age") ++ string("gender") ++ long("date_of_birth")).table("persons4")
-
-      val name1 :*: _                                 = persons1.columns
-      val name2 :*: age2 :*: _                        = persons2.columns
-      val name3 :*: age3 :*: gender3 :*: _            = persons3.columns
-      val name4 :*: age4 :*: gender4 :*: birth4 :*: _ = persons4.columns
-
-      case class Person1(name: String)
-      case class Person2(name: String, age: Int)
-      case class Person3(name: String, age: Int, gender: String)
-      case class Person4(name: String, age: Int, gender: String, dateOfBirth: Long)
-
-      implicit val personSchema1 = DeriveSchema.gen[Person1]
-      implicit val personSchema2 = DeriveSchema.gen[Person2]
-      implicit val personSchema3 = DeriveSchema.gen[Person3]
-      implicit val personSchema4 = DeriveSchema.gen[Person4]
-
-      val personValues1: List[Person1] = ???
-      val personValues2: List[Person2] = ???
-      val personValues3: List[Person3] = ???
-      val personValues4: List[Person4] = ???
-
-      insertInto(persons1)(name1).values(personValues1)
-      insertInto(persons2)(name2 ++ age2).values(personValues2)
-      insertInto(persons3)(name3 ++ age3 ++ gender3).values(personValues3)
-
-      val personValues1Tuple: List[String]                = ???
-      val personValues2Tuple: List[(String, Int)]         = ???
-
-      insertInto(persons1)(name1).values(personValues1Tuple)
-      insertInto(persons2)(name2 ++ age2).values(personValues2Tuple)
-
-
-      val personValues3Tuple: List[(String, Int, String)] = ???
-      insertInto(persons3)(name3 ++ age3 ++ gender3).values(personValues3Tuple)
-
-      def test[A, B](expr1: Expr[Features.Source[A], _, _], expr2: Expr[Features.Source[B], _, _])(implicit
-        eq: A =:= B
-      ) = {
-        val _ = expr1
-        val _ = expr2
-      }
-
-      insertAltInto(customers)
-        .values(
-          (customerId         -> java.util.UUID.fromString("28e880be-c783-43ea-9839-db51834347a8")) ++
-            (dob              -> LocalDate.now()) ++
-            (fName            -> "Jaro") ++
-            (lName            -> "Regec") ++
-            (verified         -> true) ++
-            (createdTimestamp -> ZonedDateTime.now())
-        )
-    }
   }
+
+  implicit val localDateSchema =
+    Schema.primitive[LocalDate](zio.schema.StandardType.LocalDate(DateTimeFormatter.ISO_DATE))
+
+  implicit val zonedDateTimeShema =
+    Schema.primitive[ZonedDateTime](zio.schema.StandardType.ZonedDateTime(DateTimeFormatter.ISO_ZONED_DATE_TIME))
 
   object PostgresFunctionDef {
     import PostgresSpecific._
@@ -422,12 +332,6 @@ trait PostgresModule extends Jdbc { self =>
     render.toString
   }
 
-  override def renderInsertAlt(insert: self.InsertAlt[_]): String = {
-    implicit val render: Renderer = Renderer()
-    PostgresRenderModule.renderInsertAltImpl(insert)
-    render.toString
-  }
-
   override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = {
     implicit val render: Renderer = Renderer()
     PostgresRenderModule.renderInsertImpl(insert)
@@ -480,7 +384,7 @@ trait PostgresModule extends Jdbc { self =>
               renderDynamicValues(next)
             case Nil          => ()
           }
-        case value => renderDynamicValue(value)
+        case value                        => renderDynamicValue(value)
       }
 
     def renderDynamicValues(dynValues: List[DynamicValue])(implicit render: Renderer): Unit =
@@ -544,11 +448,10 @@ trait PostgresModule extends Jdbc { self =>
           }
         //TODO do we need to handle also other cases?
         case DynamicValue.Transform(that)           => renderDynamicValue(that)
-        case DynamicValue.Tuple(left, right)        => {
+        case DynamicValue.Tuple(left, right)        =>
           renderDynamicValue(left)
           render(", ")
           renderDynamicValue(right)
-        }
         case _                                      => ()
       }
 
@@ -565,33 +468,6 @@ trait PostgresModule extends Jdbc { self =>
             render(", ")
             renderColumnNames(tail)(render)
           }
-      }
-
-    def renderInsertAltImpl(insert: InsertAlt[_])(implicit render: Renderer) = {
-      render("INSERT INTO ")
-      renderTable(insert.table)
-
-      render(" (")
-      renderColumnNamesAlt(insert.values)
-      render(") VALUES (")
-
-      renderInsertAltValues(insert.values)
-      render(" )")
-    }
-
-    def renderInsertAltValues(values: InsertRow[_])(implicit render: Renderer): Unit =
-      values match {
-        case InsertRow.Empty                            => ()
-        case InsertRow.Cons(tupleHead, InsertRow.Empty) =>
-          val typeTag = Expr.typeTagOf(tupleHead._1)
-          val value   = tupleHead._2
-          renderValue(typeTag, value)
-        case InsertRow.Cons(tupleHead, tail)            =>
-          val typeTag = Expr.typeTagOf(tupleHead._1)
-          val value   = tupleHead._2
-          renderValue(typeTag, value)
-          render(", ")
-          renderInsertAltValues(tail)(render)
       }
 
     /**
@@ -623,31 +499,6 @@ trait PostgresModule extends Jdbc { self =>
           render(s"'${DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(value.asInstanceOf[ZonedDateTime])}'")
         case TDialectSpecific(typeTagExtension) => render(value.toString)
         case Nullable()                         => render("null")
-      }
-
-    def renderColumnNamesAlt(values: InsertRow[_])(implicit render: Renderer): Unit =
-      values match {
-        case InsertRow.Empty                            => () // table is a collection of at least ONE column
-        case InsertRow.Cons(tupleHead, InsertRow.Empty) =>
-          val expr       = tupleHead._1
-          val columnName = expr match {
-            case Expr.Source(_, c) => c.name
-            case _                 => None
-          }
-          val _          = columnName.map { name =>
-            render(name)
-          }
-        case InsertRow.Cons(tupleHead, tail)            =>
-          val expr       = tupleHead._1
-          val columnName = expr match {
-            case Expr.Source(_, c) => c.name
-            case _                 => None
-          }
-          val _          = columnName.map { name =>
-            render(name)
-            render(", ")
-            renderColumnNamesAlt(tail)(render)
-          }
       }
 
     def renderDeleteImpl(delete: Delete[_])(implicit render: Renderer) = {

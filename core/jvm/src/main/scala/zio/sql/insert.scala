@@ -5,43 +5,18 @@ import zio.schema.Schema
 import scala.annotation.implicitNotFound
 
 /**
- * insert into
- *     customers
- *        (id, first_name, last_name, verified, dob)
- * values
- *        ('0511474d-8eed-4307-bdb0-e39a561205b6', 'Jaro', 'Regec, true' 1999-11-02)
- *
- * final case class Customer(id: UUID, fName: String, lName: Strng, verified: Boolean, dob: LocalDate)
- *
- * implicit val Customer = DeriveSchema.gen[Customer]
- * val customerValues : List[Customer] = ???
+ * val data = List(
+ *  ('0511474d-8eed-4307-bdb0-e39a561205b6', 'Richard', 'Dent, true' 1999-11-02),
+ *   ....
+ * )
  *
  * insertInto(customers)(customerId +++ fName +++ lName +++ verified +++ dob)
- *    values(customerValues)
- *
- * TODO
- * 1. make columns null, not null aware
- * 2. automatically generated columns (postgres idenitity) do not accept values by insert
- * 3. make better error messages  ==> explore @implicitNotFound("")
- * 4. try to generate DSL tables at compile type from sql file with compiler plugin
- * 5. how to support tables with more than 22 columns ? - changes to zio-schema required
- * 6. retrieve generated ID from inserted row
- * 7. explore & add "on conflict do" stuff
- * 8. do we want to keep supporting insertAltInto stuff?
- *
- * TODO
- * 1. add possibility to select and insert source columns separated by comma
- * 2. deal with trailing unit in tuples
- * 3. rollout zio-schema for other APIs ( select, delete, update)
- * 4. explore:
- *        val persons5 = table[Person5]("persons5")
- *        val name5 :*: age5 :*: gender5 :*: birth5 :*: _ = persons5.columns
+ *    .values(data)
  */
-
 trait InsertModule { self: ExprModule with TableModule with SelectModule =>
 
-  sealed case class InsertBuilder[F, Source, AllColumnIdentities, N, B <: SelectionSet.Aux[Source, ColsRepr], ColsRepr](
-    table: Table.Source.AuxN[Source, AllColumnIdentities, N],
+  sealed case class InsertBuilder[F, Source, AllColumnIdentities, B <: SelectionSet.Aux[Source, ColsRepr], ColsRepr](
+    table: Table.Source.Aux_[Source, AllColumnIdentities],
     sources: Selection.Aux[F, Source, B, ColsRepr]
   ) {
 
@@ -49,21 +24,24 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
       schemaCC: Schema[Z],
       schemaValidity: SchemaValidity[F, Z, ColsRepr, AllColumnIdentities]
     ): Insert[Source, Z] = Insert(table, sources.value, values)
+
+    def values[Z](value: Z)(implicit
+      schemaCC: Schema[Z],
+      schemaValidity: SchemaValidity[F, Z, ColsRepr, AllColumnIdentities]
+    ): Insert[Source, Z] = Insert(table, sources.value, Seq(value))
   }
 
-  sealed case class Insert[A, N](table: Table.Source.Aux[A], sources: SelectionSet[A], values: Seq[N])(implicit
-    schemaN: Schema[N]
+  sealed case class Insert[A, Z](table: Table.Source.Aux[A], sources: SelectionSet[A], values: Seq[Z])(implicit
+    schemaN: Schema[Z]
   )
 
-  //TODO should be moved to separate file ?
+  //TODO find a way for more meaningful error messages
   @implicitNotFound("This insert would blow up at runtime!!!")
   sealed trait SchemaValidity[F, Z, ColsRepr, AllColumnIdentities]
 
   // format: off
   object SchemaValidity extends SchemaValidityCaseClasses {
-
-    implicit def tuple1[F, A1, Z, ColsRepr,  AllColumnIdentities, Identity1](implicit
-      schema: Schema[Z],
+     implicit def tuple1[F, A1, Z, ColsRepr,  AllColumnIdentities, Identity1](implicit
       ev1: Z =:= A1,
       ev2: ColsRepr <:< (A1, Unit),
       ev3: F <:< Features.Source[Identity1],
@@ -72,7 +50,6 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
       new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
     implicit def tuple2[F, A1, A2, Z, ColsRepr,  AllColumnIdentities, Identity1, Identity2](implicit
-      schema: Schema[Z],
       ev1: Z =:= (A1, A2),
       ev2: ColsRepr <:< (A1, (A2, Unit)),
       ev3: F <:< Features.Union[Features.Source[Identity1], Features.Source[Identity2]],
@@ -81,7 +58,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
       new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
     implicit def tuple3[F, A1, A2, A3, Z, ColsRepr,  AllColumnIdentities, Identity1, Identity2, Identity3](implicit
-      ccSchema: Schema[Z],
+  
       ev1: Z =:= (A1, A2, A3),
       ev2: ColsRepr <:< (A1, (A2, (A3, Unit))),
       ev3: F <:< Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]],
@@ -90,7 +67,6 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
       new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
     implicit def tuple4[F, A1, A2, A3, A4, Z, ColsRepr,  AllColumnIdentities, Identity1, Identity2, Identity3, Identity4](implicit
-      schema: Schema[Z],
       ev1: Z =:= (A1, A2, A3, A4),
       ev2: ColsRepr <:< (A1, (A2, (A3, (A4, Unit)))),
       ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],
@@ -99,7 +75,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
       new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
     implicit def tuple5[F, A1, A2, A3, A4, A5, Z, ColsRepr, AllColumnIdentities, Identity1, Identity2, Identity3, Identity4, Identity5]
-      (implicit schema: Schema[Z],
+      (implicit 
         ev1: Z =:= (A1, A2, A3, A4, A5),
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, Unit))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]],
@@ -108,7 +84,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
     implicit def tuple6[F, A1, A2, A3, A4, A5, A6, Z, ColsRepr, AllColumnIdentities, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6]
-      (implicit schema: Schema[Z],
+      (implicit 
         ev1: Z =:= (A1, A2, A3, A4, A5, A6),
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, Unit)))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]],
@@ -117,7 +93,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
     implicit def tuple7[F, A1, A2, A3, A4, A5, A6, A7, Z, ColsRepr, AllColumnIdentities, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7]
-      (implicit schema: Schema[Z],
+      (implicit 
         ev1: Z =:= (A1, A2, A3, A4, A5, A6, A7),
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, Unit))))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]],
@@ -126,17 +102,16 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
     implicit def tuple8[F, A1, A2, A3, A4, A5, A6, A7, A8, Z, ColsRepr, AllColumnIdentities, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8]
-      (implicit schema: Schema[Z],
+      (implicit 
         ev1: Z =:= (A1, A2, A3, A4, A5, A6, A7, A8),
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, Unit)))))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]],
         ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8
       ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] =
         new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
-
   
     implicit def tuple9[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, Z, ColsRepr, AllColumnIdentities, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9]
-      (implicit schema: Schema[Z],
+      (implicit 
         ev1: Z =:= (A1, A2, A3, A4, A5, A6, A7, A8, A9),
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, Unit))))))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]],
@@ -145,7 +120,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
     implicit def tuple10[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, Z, ColsRepr, AllColumnIdentities, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10]
-      (implicit schema: Schema[Z],
+      (implicit 
         ev1: Z =:= (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10),
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, Unit)))))))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]],
@@ -154,7 +129,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
     implicit def tuple11[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, Z, ColsRepr, AllColumnIdentities, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11]
-      (implicit schema: Schema[Z],
+      (implicit 
         ev1: Z =:= (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11),
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, Unit))))))))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]],
@@ -163,7 +138,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
     implicit def tuple12[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, Z, ColsRepr, AllColumnIdentities, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12]
-      (implicit schema: Schema[Z],
+      (implicit 
         ev1: Z =:= (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12),
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, Unit)))))))))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]],
@@ -172,7 +147,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
     implicit def tuple13[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, Z, ColsRepr, AllColumnIdentities, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13]
-      (implicit schema: Schema[Z],
+      (implicit 
         ev1: Z =:= (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13),
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, Unit))))))))))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]],
@@ -181,7 +156,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
     implicit def tuple14[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, Z, ColsRepr, AllColumnIdentities, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14]
-      (implicit schema: Schema[Z],
+      (implicit 
         ev1: Z =:= (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14),
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, Unit)))))))))))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]], Features.Source[Identity14]],
@@ -190,7 +165,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
     implicit def tuple15[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, Z, ColsRepr, AllColumnIdentities, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15]
-      (implicit schema: Schema[Z],
+      (implicit 
         ev1: Z =:= (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15),
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, Unit))))))))))))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]], Features.Source[Identity14]], Features.Source[Identity15]],
@@ -199,7 +174,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
     implicit def tuple16[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, Z, ColsRepr, AllColumnIdentities, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15, Identity16]
-      (implicit schema: Schema[Z],
+      (implicit 
         ev1: Z =:= (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16),
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, (A16, Unit)))))))))))))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]], Features.Source[Identity14]], Features.Source[Identity15]], Features.Source[Identity16]],
@@ -208,7 +183,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
     implicit def tuple17[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, Z, ColsRepr, AllColumnIdentities, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15, Identity16, Identity17]
-      (implicit schema: Schema[Z],
+      (implicit 
         ev1: Z =:= (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17),
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, (A16, (A17, Unit))))))))))))))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]], Features.Source[Identity14]], Features.Source[Identity15]], Features.Source[Identity16]], Features.Source[Identity17]],
@@ -217,7 +192,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
     implicit def tuple18[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, Z, ColsRepr, AllColumnIdentities, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15, Identity16, Identity17, Identity18]
-      (implicit schema: Schema[Z],
+      (implicit
         ev1: Z =:= (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18),
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, (A16, (A17, (A18, Unit)))))))))))))))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]], Features.Source[Identity14]], Features.Source[Identity15]], Features.Source[Identity16]], Features.Source[Identity17]], Features.Source[Identity18]],
@@ -226,7 +201,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
     implicit def tuple19[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, Z, ColsRepr, AllColumnIdentities, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15, Identity16, Identity17, Identity18, Identity19]
-      (implicit schema: Schema[Z],
+      (implicit 
         ev1: Z =:= (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19),
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, (A16, (A17, (A18, (A19, Unit))))))))))))))))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]], Features.Source[Identity14]], Features.Source[Identity15]], Features.Source[Identity16]], Features.Source[Identity17]], Features.Source[Identity18]], Features.Source[Identity19]],
@@ -235,7 +210,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
     
     implicit def tuple20[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, Z, ColsRepr, AllColumnIdentities, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15, Identity16, Identity17, Identity18, Identity19, Identity20]
-      (implicit schema: Schema[Z],
+      (implicit
         ev1: Z =:= (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20),
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, (A16, (A17, (A18, (A19, (A20, Unit)))))))))))))))))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]], Features.Source[Identity14]], Features.Source[Identity15]], Features.Source[Identity16]], Features.Source[Identity17]], Features.Source[Identity18]], Features.Source[Identity19]], Features.Source[Identity20]],
@@ -244,7 +219,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
     implicit def tuple21[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, Z, ColsRepr, AllColumnIdentities, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15, Identity16, Identity17, Identity18, Identity19, Identity20, Identity21]
-      (implicit schema: Schema[Z],
+      (implicit 
         ev1: Z =:= (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21),
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, (A16, (A17, (A18, (A19, (A20, (A21, Unit))))))))))))))))))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]], Features.Source[Identity14]], Features.Source[Identity15]], Features.Source[Identity16]], Features.Source[Identity17]], Features.Source[Identity18]], Features.Source[Identity19]], Features.Source[Identity20]], Features.Source[Identity21]],
@@ -253,7 +228,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
     implicit def tuple22[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, A22, Z, ColsRepr, AllColumnIdentities, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15, Identity16, Identity17, Identity18, Identity19, Identity20, Identity21, Identity22]
-      (implicit schema: Schema[Z],
+      (implicit
         ev1: Z =:= (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, A22),
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, (A16, (A17, (A18, (A19, (A20, (A21, (A22, Unit)))))))))))))))))))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]], Features.Source[Identity14]], Features.Source[Identity15]], Features.Source[Identity16]], Features.Source[Identity17]], Features.Source[Identity18]], Features.Source[Identity19]], Features.Source[Identity20]], Features.Source[Identity21]], Features.Source[Identity22]],
@@ -261,6 +236,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
       ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] =
         new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
   }
+
 
   trait SchemaValidityCaseClasses {
 

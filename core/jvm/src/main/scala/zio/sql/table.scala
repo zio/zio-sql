@@ -14,8 +14,6 @@ trait TableModule { self: ExprModule with SelectModule =>
   sealed trait ColumnSet {
     type ColumnsRepr[T]
     type Append[That <: ColumnSet] <: ColumnSet
-    type Size <: ColumnCount
-
     type AllColumnIdentities
 
     def ++[That <: ColumnSet](that: That): Append[That]
@@ -33,7 +31,6 @@ trait TableModule { self: ExprModule with SelectModule =>
     type Empty                                = Empty.type
     type :*:[A, B <: ColumnSet, HeadIdentity] = Cons[A, B, HeadIdentity]
     type Singleton[A, ColumnIdentity]         = Cons[A, Empty, ColumnIdentity]
-    import ColumnCount._
 
     type ConsAux[A, B <: ColumnSet, ColumnsRepr0[_], HeadIdentity] = ColumnSet.Cons[A, B, HeadIdentity] {
       type ColumnsRepr[C] = ColumnsRepr0[C]
@@ -46,8 +43,6 @@ trait TableModule { self: ExprModule with SelectModule =>
     case object Empty extends ColumnSet {
       override type ColumnsRepr[T]            = Unit
       override type Append[That <: ColumnSet] = That
-
-      override type Size = _0
 
       override type AllColumnIdentities = Any
 
@@ -69,9 +64,6 @@ trait TableModule { self: ExprModule with SelectModule =>
 
       override def ++[That <: ColumnSet](that: That): Append[That] = Cons(head, tail ++ that)
 
-      override type Size = Succ[tail.Size]
-
-      //TODO AllColumnIdentities could probably be removed, we need just HeadIdentity for Features.Source in inserts
       override type AllColumnIdentities = HeadIdentity with tail.AllColumnIdentities
 
       override def columnsUntyped: List[Column.Untyped] = head :: tail.columnsUntyped
@@ -84,8 +76,6 @@ trait TableModule { self: ExprModule with SelectModule =>
           override type HeadIdentity0 = HeadIdentity
 
           override type AllColumnIdentities = HeadIdentity with tail.AllColumnIdentities
-
-          override type Size = columnSet.Size
 
           override val name: TableName = name0
 
@@ -192,7 +182,6 @@ trait TableModule { self: ExprModule with SelectModule =>
 
     type ColumnHead
     type ColumnTail <: ColumnSet
-    type Size = columnSet.Size
 
     final def fullOuter[That](that: Table.Aux[That]): Table.JoinBuilder[self.TableType, That] =
       new Table.JoinBuilder[self.TableType, That](JoinType.FullOuter, self, that)
@@ -257,11 +246,10 @@ trait TableModule { self: ExprModule with SelectModule =>
         type TableType = A
       }
 
-      type AuxN[A, AllColumnIdentities0, Size0] = Table.Source {
+      type Aux_[A, AllColumnIdentities0] = Table.Source {
         type TableType = A
 
         type AllColumnIdentities = AllColumnIdentities0
-        type Size                = Size0
       }
     }
 

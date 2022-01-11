@@ -9,14 +9,14 @@ import zio.schema.Schema
 
 trait SqlDriverLiveModule { self: Jdbc =>
   private[sql] trait SqlDriverCore {
-    //TODO
-    // add inserts for transaction module
 
     def deleteOn(delete: Delete[_], conn: Connection): IO[Exception, Int]
 
     def updateOn(update: Update[_], conn: Connection): IO[Exception, Int]
 
     def readOn[A](read: Read[A], conn: Connection): Stream[Exception, A]
+
+    def insertOn[A: Schema](insert: Insert[_, A], conn: Connection): IO[Exception, Int]
   }
 
   sealed case class SqlDriverLive(blocking: Blocking.Service, pool: ConnectionPool)
@@ -86,10 +86,7 @@ trait SqlDriverLiveModule { self: Jdbc =>
         }.refineToOrDie[Exception]
       }
 
-    override def insertAlt(insert: InsertAlt[_]): IO[Exception, Int] =
-      pool.connection.use(insertOnAlt(insert, _))
-
-    def insertOn[A: Schema](insert: Insert[_, A], conn: Connection): IO[Exception, Int] =
+    override def insertOn[A: Schema](insert: Insert[_, A], conn: Connection): IO[Exception, Int] =
       blocking.effectBlocking {
 
         val query = renderInsert(insert)
@@ -101,16 +98,6 @@ trait SqlDriverLiveModule { self: Jdbc =>
 
     override def insert[A: Schema](insert: Insert[_, A]): IO[Exception, Int] =
       pool.connection.use(insertOn(insert, _))
-
-    def insertOnAlt(insert: InsertAlt[_], conn: Connection): IO[Exception, Int] =
-      blocking.effectBlocking {
-
-        val query = renderInsertAlt(insert)
-
-        val statement = conn.createStatement()
-
-        statement.executeUpdate(query)
-      }.refineToOrDie[Exception]
 
     override def transact[R, A](tx: ZTransaction[R, Exception, A]): ZManaged[R, Exception, A] =
       for {
