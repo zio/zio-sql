@@ -1,6 +1,7 @@
 package zio.sql.oracle
 
 import zio.sql.Jdbc
+import zio.schema.Schema
 
 trait OracleModule extends Jdbc { self =>
 
@@ -14,10 +15,10 @@ trait OracleModule extends Jdbc { self =>
       builder.append(renderRead(subselect))
       val _ = builder.append(") ")
     case Expr.Source(table, column)                                                           =>
-      (table, column) match {
-        case (tableName: TableName, Column.Named(columnName)) =>
+      (table, column.name) match {
+        case (tableName: TableName, Some(columnName)) =>
           val _ = builder.append(tableName).append(".").append(columnName)
-        case _                                                => ()
+        case _                                        => ()
       }
     case Expr.Unary(base, op)                                                                 =>
       val _ = builder.append(" ").append(op.symbol)
@@ -299,6 +300,8 @@ trait OracleModule extends Jdbc { self =>
   }
 
   override def renderDelete(delete: self.Delete[_]): String = ???
+
+  override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = ???
 
   override def renderUpdate(update: self.Update[_]): String = ???
 }
