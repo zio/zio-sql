@@ -93,7 +93,6 @@ lazy val coreJS = core.js
   .settings(scalaJSUseMainModuleInitializer := true)
 
 lazy val coreJVM = core.jvm
-  .settings(dottySettings)
 
 lazy val docs = project
   .in(file("zio-sql-docs"))
@@ -122,7 +121,6 @@ lazy val examples = project
       "dev.zio" %% "zio-schema-derivation" % zioSchemaVersion % Provided
     )
   )
-  .settings(dottySettings)
   .dependsOn(sqlserver)
 
 lazy val driver = project
@@ -139,7 +137,6 @@ lazy val driver = project
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
-  .settings(dottySettings)
 
 lazy val jdbc = project
   .in(file("jdbc"))
@@ -156,7 +153,6 @@ lazy val jdbc = project
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
-  .settings(dottySettings)
   .dependsOn(core.jvm)
 
 lazy val mysql = project
@@ -179,7 +175,6 @@ lazy val mysql = project
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
-  .settings(dottySettings)
 
 lazy val oracle = project
   .in(file("oracle"))
@@ -201,7 +196,6 @@ lazy val oracle = project
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
-  .settings(dottySettings)
 
 lazy val postgres = project
   .in(file("postgres"))
@@ -223,7 +217,6 @@ lazy val postgres = project
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
-  .settings(dottySettings)
 
 lazy val sqlserver = project
   .in(file("sqlserver"))
@@ -245,4 +238,3 @@ lazy val sqlserver = project
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
-  .settings(dottySettings)
