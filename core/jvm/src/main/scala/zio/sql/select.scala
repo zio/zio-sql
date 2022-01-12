@@ -95,9 +95,10 @@ trait SelectModule { self: ExprModule with TableModule =>
     val mapper: ResultType => Out
 
     type ColumnHead
+    type HeadIdentity
     type ColumnTail <: ColumnSet
 
-    type CS <: ColumnSet.Cons[ColumnHead, ColumnTail]
+    type CS <: ColumnSet.Cons[ColumnHead, ColumnTail, HeadIdentity]
 
     val columnSet: CS
 
@@ -307,6 +308,8 @@ trait SelectModule { self: ExprModule with TableModule =>
       override type ColumnTail = read.ColumnTail
       override type CS         = read.CS
 
+      override type HeadIdentity = read.HeadIdentity
+
       override val columnSet: CS = read.columnSet
 
       override def asTable(name: TableName): Table.DerivedTable[Out2, Mapped[Repr, Out, Out2]] =
@@ -365,6 +368,8 @@ trait SelectModule { self: ExprModule with TableModule =>
       override type ColumnHead = selection.value.ColumnHead
       override type ColumnTail = selection.value.ColumnTail
 
+      override type HeadIdentity = selection.value.HeadIdentity
+
       override val columnSet: CS = selection.value.columnSet
 
       override type CS = selection.value.CS
@@ -386,6 +391,8 @@ trait SelectModule { self: ExprModule with TableModule =>
       override type ColumnHead = left.ColumnHead
       override type ColumnTail = left.ColumnTail
 
+      override type HeadIdentity = left.HeadIdentity
+
       override type CS = left.CS
 
       override val columnSet: CS = left.columnSet
@@ -405,9 +412,9 @@ trait SelectModule { self: ExprModule with TableModule =>
       override type ColumnHead = B
       override type ColumnTail = ColumnSet.Empty
 
-      override type CS = ColumnSet.Cons[ColumnHead, ColumnTail]
+      override type CS = ColumnSet.Cons[ColumnHead, ColumnTail, HeadIdentity]
 
-      override val columnSet: CS = ColumnSet.Cons(Column.Indexed[ColumnHead](), ColumnSet.Empty)
+      override val columnSet: CS = ColumnSet.Cons(Column.Indexed[ColumnHead, HeadIdentity](), ColumnSet.Empty)
 
       override def asTable(name: TableName): Table.DerivedTable[(B, Unit), Literal[B]] =
         Table.DerivedTable[(B, Unit), Literal[B]](self, name)
@@ -421,19 +428,22 @@ trait SelectModule { self: ExprModule with TableModule =>
    */
   sealed case class Selection[F, -A, +B <: SelectionSet[A]](value: B) { self =>
 
-    type SelectionType
+    type ColsRepr = value.ResultTypeRepr
 
     def ++[F2, A1 <: A, C <: SelectionSet[A1]](
       that: Selection[F2, A1, C]
     ): Selection[F :||: F2, A1, self.value.Append[A1, C]] =
       Selection(self.value ++ that.value)
 
-    def columns[A1 <: A]: value.SelectionsRepr[A1, SelectionType] = value.selections[A1, SelectionType]
   }
 
   object Selection {
     import ColumnSelection._
     import SelectionSet.{ Cons, Empty }
+
+    type Aux[F, -A, +B <: SelectionSet[A], ColsRepr0] = Selection[F, A, B] {
+      type ColsRepr = ColsRepr0
+    }
 
     def constantOption[A: TypeTag](value: A, option: Option[ColumnName]): Selection[Any, Any, Cons[Any, A, Empty]] =
       Selection(Cons(Constant(value, option), Empty))
@@ -458,16 +468,15 @@ trait SelectModule { self: ExprModule with TableModule =>
 
     def name: Option[ColumnName]
 
-    def toColumn: Column[ColumnType]
+    val toColumn: Column[ColumnType]
   }
 
   object ColumnSelection {
-
     sealed case class Constant[ColumnType: TypeTag](value: ColumnType, name: Option[ColumnName])
         extends ColumnSelection[Any, ColumnType] {
       def typeTag: TypeTag[ColumnType] = implicitly[TypeTag[ColumnType]]
 
-      def toColumn: Column[ColumnType] = name match {
+      val toColumn: Column[ColumnType] = name match {
         case Some(value) => Column.Named(value)
         case None        => Column.Indexed()
       }
@@ -477,7 +486,7 @@ trait SelectModule { self: ExprModule with TableModule =>
         extends ColumnSelection[Source, ColumnType] {
       implicit def typeTag: TypeTag[ColumnType] = Expr.typeTagOf(expr)
 
-      def toColumn: Column[ColumnType] = name match {
+      val toColumn: Column[ColumnType] = name match {
         case Some(value) => Column.Named(value)
         case None        => Column.Indexed()
       }
@@ -494,6 +503,7 @@ trait SelectModule { self: ExprModule with TableModule =>
     type ColumnHead
     type ColumnTail <: ColumnSet
     type SelectionTail <: SelectionSet[Source]
+    type HeadIdentity
 
     type CS <: ColumnSet
     def columnSet: CS
@@ -506,7 +516,8 @@ trait SelectModule { self: ExprModule with TableModule =>
   }
 
   object SelectionSet {
-    type Aux[ResultTypeRepr0, -Source] =
+
+    type Aux[-Source, ResultTypeRepr0] =
       SelectionSet[Source] {
         type ResultTypeRepr = ResultTypeRepr0
       }
@@ -516,8 +527,6 @@ trait SelectModule { self: ExprModule with TableModule =>
         type ResultTypeRepr = ResultTypeRepr0
       }
 
-    type Singleton[-Source, A] = Cons[Source, A, Empty]
-
     type Empty = Empty.type
 
     case object Empty extends SelectionSet[Any] {
@@ -525,6 +534,8 @@ trait SelectModule { self: ExprModule with TableModule =>
       override type ColumnHead    = Unit
       override type ColumnTail    = ColumnSet.Empty
       override type SelectionTail = SelectionSet.Empty
+
+      override type HeadIdentity = Any
 
       override type CS = ColumnSet.Empty
       override def columnSet: CS = ColumnSet.Empty
@@ -550,10 +561,12 @@ trait SelectModule { self: ExprModule with TableModule =>
       override type ColumnTail    = tail.CS
       override type SelectionTail = B
 
-      override type CS = ColumnSet.Cons[ColumnHead, ColumnTail]
+      override type HeadIdentity = head.toColumn.Identity
+
+      override type CS = ColumnSet.Cons[ColumnHead, ColumnTail, HeadIdentity]
 
       override def columnSet: CS =
-        ColumnSet.Cons[ColumnHead, ColumnTail](head.toColumn, tail.columnSet)
+        ColumnSet.Cons[ColumnHead, ColumnTail, HeadIdentity](head.toColumn, tail.columnSet)
 
       override type SelectionsRepr[Source1, T] = (ColumnSelection[Source1, A], tail.SelectionsRepr[Source1, T])
 

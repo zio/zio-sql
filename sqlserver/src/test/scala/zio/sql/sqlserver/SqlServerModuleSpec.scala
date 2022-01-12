@@ -204,7 +204,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       /**
        * select derived.order_id, derived.product_id, derived.unit_price from order_details derived
-       * where derived.unit_price::numeric > (select AVG(price)
+       * where derived.unit_price > (select AVG(price)
        *                                       from product_prices )
        */
 
