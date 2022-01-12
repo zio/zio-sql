@@ -547,7 +547,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
       import OrderDetails._
 
       val query = insertInto(orderDetails)(orderDetailsOrderId ++ orderDetailsProductId ++ quantity ++ unitPrice)
-        .values(((UUID.randomUUID(), UUID.randomUUID(), 4, BigDecimal.valueOf(11.00))))
+        .values((UUID.randomUUID(), UUID.randomUUID(), 4, BigDecimal.valueOf(11.00)))
 
       assertM(execute(query))(equalTo(1))
     },

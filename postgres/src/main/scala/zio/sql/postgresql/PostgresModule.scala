@@ -147,7 +147,7 @@ trait PostgresModule extends Jdbc { self =>
       hours: Int = 0,
       minutes: Int = 0,
       seconds: BigDecimal = 0.0
-    ) {
+    ) { self =>
       private val secondsFormat = {
         val format = new DecimalFormat("0.00####")
         val dfs    = format.getDecimalFormatSymbols()
@@ -171,7 +171,7 @@ trait PostgresModule extends Jdbc { self =>
       def +:(date: java.util.Date): java.util.Date = {
         val cal = Calendar.getInstance
         cal.setTime(date)
-        date.setTime((cal +: this).getTime.getTime)
+        date.setTime((cal +: self).getTime.getTime)
         date
       }
 
@@ -422,7 +422,7 @@ trait PostgresModule extends Jdbc { self =>
                 case StandardType.Year                      => render(s"'${value}'")
                 case StandardType.OffsetDateTime(formatter) =>
                   render(s"'${formatter.format(value.asInstanceOf[OffsetDateTime])}'")
-                case StandardType.ZonedDateTime(formatter)  =>
+                case StandardType.ZonedDateTime(_)          =>
                   render(s"'${DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(value.asInstanceOf[ZonedDateTime])}'")
                 case BigIntegerType                         => render(s"'${value}'")
                 case UUIDType                               => render(s"'${value}'")
@@ -441,7 +441,7 @@ trait PostgresModule extends Jdbc { self =>
                 case BoolType                               => render(value)
                 case DayOfWeekType                          => render(s"'${value}'")
                 case FloatType                              => render(value)
-                case StandardType.Duration(temporalUnit)    => render(s"'${value}'")
+                case StandardType.Duration(_)               => render(s"'${value}'")
               }
             case None    => ()
           }
@@ -456,16 +456,16 @@ trait PostgresModule extends Jdbc { self =>
 
     def renderColumnNames(sources: SelectionSet[_])(implicit render: Renderer): Unit =
       sources match {
-        case SelectionSet.Empty                                     => () // table is a collection of at least ONE column
-        case SelectionSet.Cons(columnSelection, SelectionSet.Empty) =>
+        case SelectionSet.Empty                       => () // table is a collection of at least ONE column
+        case SelectionSet.Cons(columnSelection, tail) =>
           val _ = columnSelection.name.map { name =>
             render(name)
           }
-        case SelectionSet.Cons(columnSelection, tail)               =>
-          val _ = columnSelection.name.map { name =>
-            render(name)
-            render(", ")
-            renderColumnNames(tail)(render)
+          tail.asInstanceOf[SelectionSet[_]] match {
+            case SelectionSet.Empty             => ()
+            case next @ SelectionSet.Cons(_, _) =>
+              render(", ")
+              renderColumnNames(next.asInstanceOf[SelectionSet[_]])(render)
           }
       }
 
