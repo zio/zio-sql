@@ -24,7 +24,7 @@ addCommandAlias("fmtOnce", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("fmt", "fmtOnce;fmtOnce")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
-val zioVersion                 = "1.0.7"
+val zioVersion                 = "1.0.13"
 val zioSchemaVersion           = "0.1.4"
 val testcontainersVersion      = "1.16.0"
 val testcontainersScalaVersion = "0.39.12"
@@ -102,10 +102,13 @@ lazy val docs = project
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
     libraryDependencies ++= Seq(
-      "dev.zio" %% "zio" % zioVersion
+      "dev.zio" %% "zio"                   % zioVersion,
+      "dev.zio" %% "zio-streams"           % zioVersion,
+      "dev.zio" %% "zio-schema"            % zioSchemaVersion,
+      "dev.zio" %% "zio-schema-derivation" % zioSchemaVersion
     )
   )
-  .dependsOn(coreJVM)
+  .dependsOn(postgres)
   .enablePlugins(MdocPlugin, DocusaurusPlugin)
 
 lazy val examples = project

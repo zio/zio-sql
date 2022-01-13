@@ -65,6 +65,7 @@ class HomeSplash extends React.Component {
                     <PromoSection>
                         <Button href={docUrl('overview/overview_index')}>Overview</Button>
                         <Button href={docUrl('usecases/usecases_index')}>Use Cases</Button>
+                        <Button href={docUrl('resources/resources_index')}>Resources</Button>
                         <Button href="https://github.com/zio/zio-sql" target="_blank">GitHub</Button>
                     </PromoSection>
                 </div>
@@ -91,46 +92,46 @@ class Index extends React.Component {
             </Container>
         );
 
-        const FeatureCallout = () => (
-            <div
-                className="productShowcaseSection paddingBottom"
-                style={{textAlign: 'center'}}>
-                <h2>Welcome to zio-sql</h2>
-                <MarkdownBlock>
-                    TODO: Tagline
-                </MarkdownBlock>
+        // const FeatureCallout = () => (
+        //     <div
+        //         className="productShowcaseSection paddingBottom"
+        //         style={{textAlign: 'center'}}>
+        //         <h2>Welcome to zio-sql</h2>
+        //         <MarkdownBlock>
+        //             TODO: Tagline
+        //         </MarkdownBlock>
 
-                <MarkdownBlock>
-                    TODO: Long description (paragraph)
-                </MarkdownBlock>
-            </div>
-        );
+        //         <MarkdownBlock>
+        //             TODO: Long description (paragraph)
+        //         </MarkdownBlock>
+        //     </div>
+        // );
 
-        const Features = () => (
-            <Block layout="fourColumn">
-                {[
-                    {
-                        content: 'TODO: Content 1',
-                        image: `${baseUrl}img/undraw_tweetstorm.svg`,
-                        imageAlign: 'top',
-                        title: 'TODO: Title 1',
-                    },
-                    {
-                        content: 'TODO: Content 2',
-                        image: `${baseUrl}img/undraw_operating_system.svg`,
-                        imageAlign: 'top',
-                        title: 'TODO: Title 2',
-                    },
-                ]}
-            </Block>
-        );
+        // const Features = () => (
+        //     <Block layout="fourColumn">
+        //         {[
+        //             {
+        //                 content: 'TODO: Content 1',
+        //                 image: `${baseUrl}img/undraw_tweetstorm.svg`,
+        //                 imageAlign: 'top',
+        //                 title: 'TODO: Title 1',
+        //             },
+        //             {
+        //                 content: 'TODO: Content 2',
+        //                 image: `${baseUrl}img/undraw_operating_system.svg`,
+        //                 imageAlign: 'top',
+        //                 title: 'TODO: Title 2',
+        //             },
+        //         ]}
+        //     </Block>
+        // );
 
         return (
             <div>
                 <HomeSplash siteConfig={siteConfig} language={language}/>
                 <div className="mainContainer">
-                    <Features/>
-                    <FeatureCallout/>
+                    {/* <Features/>
+                    <FeatureCallout/> */}
                 </div>
             </div>
         );
