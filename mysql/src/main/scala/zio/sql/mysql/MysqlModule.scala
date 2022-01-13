@@ -5,6 +5,7 @@ import zio.sql.{ Jdbc, Renderer }
 
 import java.sql.ResultSet
 import java.time.Year
+import zio.schema.Schema
 
 trait MysqlModule extends Jdbc { self =>
 
@@ -41,6 +42,8 @@ trait MysqlModule extends Jdbc { self =>
     MysqlRenderModule.renderReadImpl(read)
     render.toString
   }
+
+  override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = ???
 
   override def renderDelete(delete: self.Delete[_]): String = {
     implicit val render: Renderer = Renderer()
@@ -189,9 +192,9 @@ trait MysqlModule extends Jdbc { self =>
         renderRead(subselect)
         render(") ")
       case Expr.Source(table, column)                                                   =>
-        (table, column) match {
-          case (tableName: TableName, Column.Named(columnName)) => render(tableName, ".", columnName)
-          case _                                                => ()
+        (table, column.name) match {
+          case (tableName: TableName, Some(columnName)) => render(tableName, ".", columnName)
+          case _                                        => ()
         }
       case Expr.Unary(base, op)                                                         =>
         render(" ", op.symbol)
