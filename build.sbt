@@ -102,10 +102,13 @@ lazy val docs = project
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
     libraryDependencies ++= Seq(
-      "dev.zio" %% "zio" % zioVersion
+      "dev.zio" %% "zio"                   % zioVersion,
+      "dev.zio" %% "zio-streams"           % zioVersion,
+      "dev.zio" %% "zio-schema"            % zioSchemaVersion,
+      "dev.zio" %% "zio-schema-derivation" % zioSchemaVersion
     )
   )
-  .dependsOn(coreJVM)
+  .dependsOn(postgres)
   .enablePlugins(MdocPlugin, DocusaurusPlugin)
 
 lazy val examples = project
