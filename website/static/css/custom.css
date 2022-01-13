@@ -1,9 +1,16 @@
 /* your custom css */
 
+.mainContainer .wrapper .post .postHeaderTitle {
+    margin-top: 45px;
+}
+
 @media only screen and (min-device-width: 360px) and (max-device-width: 736px) {
 }
 
 @media only screen and (min-width: 1024px) {
+    .mainContainer .wrapper .post .postHeaderTitle {
+        margin-top: 10px;
+    }
 }
 
 @media only screen and (max-width: 1023px) {
@@ -39,3 +46,4 @@ a {
 .input-group-append {
     margin-left: -1px;
 }
+
