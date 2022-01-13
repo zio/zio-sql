@@ -1,4 +1,5 @@
 import zio.sql.Sql
+import zio.schema.Schema
 
 object Example1 extends Sql {
   import ColumnSet._
@@ -6,6 +7,8 @@ object Example1 extends Sql {
   def renderRead(read: this.Read[_]): String = ???
 
   def renderDelete(delete: this.Delete[_]): String = ???
+
+  override def renderInsert[A: Schema](insert: Insert[_, A]): String = ???
 
   def renderUpdate(update: Example1.Update[_]): String = ???
 

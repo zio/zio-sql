@@ -1,6 +1,7 @@
 package zio.sql.sqlserver
 
 import zio.sql.Jdbc
+import zio.schema.Schema
 
 trait SqlServerModule extends Jdbc { self =>
 
@@ -27,14 +28,16 @@ trait SqlServerModule extends Jdbc { self =>
       ) extends SqlServerTable[A with B] { self =>
 
         override type ColumnHead = left.ColumnHead
-        override type ColumnTail =
-          left.columnSet.tail.Append[ColumnSet.Cons[right.ColumnHead, right.ColumnTail]]
 
-        override val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail] =
+        override type HeadIdentity0 = left.HeadIdentity0
+        override type ColumnTail    =
+          left.columnSet.tail.Append[ColumnSet.Cons[right.ColumnHead, right.ColumnTail, right.HeadIdentity0]]
+
+        override val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail, HeadIdentity0] =
           left.columnSet ++ right.columnSet
 
         override val columnToExpr: ColumnToExpr[A with B] = new ColumnToExpr[A with B] {
-          def toExpr[C](column: Column[C]): Expr[Features.Source, A with B, C] =
+          def toExpr[C](column: Column[C]): Expr[Features.Source[column.Identity], A with B, C] =
             if (left.columnSet.contains(column))
               left.columnToExpr.toExpr(column)
             else
@@ -87,6 +90,8 @@ trait SqlServerModule extends Jdbc { self =>
 
   override def renderUpdate(update: self.Update[_]): String = ???
 
+  override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = ???
+
   override def renderRead(read: self.Read[_]): String = {
     val builder = new StringBuilder
 
@@ -96,10 +101,10 @@ trait SqlServerModule extends Jdbc { self =>
         builder.append(renderRead(subselect))
         val _ = builder.append(") ")
       case Expr.Source(table, column)                                                           =>
-        (table, column) match {
-          case (tableName: TableName, Column.Named(columnName)) =>
+        (table, column.name) match {
+          case (tableName: TableName, Some(columnName)) =>
             val _ = builder.append(tableName).append(".").append(columnName)
-          case _                                                => ()
+          case _                                        => ()
         }
       case Expr.Unary(base, op)                                                                 =>
         val _ = builder.append(" ").append(op.symbol)
