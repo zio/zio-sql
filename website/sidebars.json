@@ -9,6 +9,11 @@
       "usecases/usecases_index"
     ]
   },
+  "resources-sidebar": {
+    "Resources": [
+      "resources/resources_index"
+    ]
+  },
   "about-sidebar": {
       "About": [
           "about/about_index",
