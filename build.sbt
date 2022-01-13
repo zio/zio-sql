@@ -24,7 +24,8 @@ addCommandAlias("fmtOnce", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("fmt", "fmtOnce;fmtOnce")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
-val zioVersion                 = "1.0.7"
+val zioVersion                 = "1.0.13"
+val zioSchemaVersion           = "0.1.4"
 val testcontainersVersion      = "1.16.0"
 val testcontainersScalaVersion = "0.39.5"
 
@@ -78,10 +79,12 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
   .settings(buildInfoSettings("zio.sql"))
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio" %% "zio"          % zioVersion % Provided,
-      "dev.zio" %% "zio-streams"  % zioVersion % Provided,
-      "dev.zio" %% "zio-test"     % zioVersion % Test,
-      "dev.zio" %% "zio-test-sbt" % zioVersion % Test
+      "dev.zio" %% "zio"                   % zioVersion       % Provided,
+      "dev.zio" %% "zio-streams"           % zioVersion       % Provided,
+      "dev.zio" %% "zio-schema"            % zioSchemaVersion % Provided,
+      "dev.zio" %% "zio-schema-derivation" % zioSchemaVersion % Provided,
+      "dev.zio" %% "zio-test"              % zioVersion       % Test,
+      "dev.zio" %% "zio-test-sbt"          % zioVersion       % Test
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
@@ -90,7 +93,6 @@ lazy val coreJS = core.js
   .settings(scalaJSUseMainModuleInitializer := true)
 
 lazy val coreJVM = core.jvm
-  .settings(dottySettings)
 
 lazy val docs = project
   .in(file("zio-sql-docs"))
@@ -100,10 +102,13 @@ lazy val docs = project
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
     libraryDependencies ++= Seq(
-      "dev.zio" %% "zio" % zioVersion
+      "dev.zio" %% "zio"                   % zioVersion,
+      "dev.zio" %% "zio-streams"           % zioVersion,
+      "dev.zio" %% "zio-schema"            % zioSchemaVersion,
+      "dev.zio" %% "zio-schema-derivation" % zioSchemaVersion
     )
   )
-  .dependsOn(coreJVM)
+  .dependsOn(postgres)
   .enablePlugins(MdocPlugin, DocusaurusPlugin)
 
 lazy val examples = project
@@ -113,11 +118,12 @@ lazy val examples = project
     publish / skip := true,
     moduleName := "examples",
     libraryDependencies ++= Seq(
-      "dev.zio" %% "zio"         % zioVersion % Provided,
-      "dev.zio" %% "zio-streams" % zioVersion % Provided
+      "dev.zio" %% "zio"                   % zioVersion       % Provided,
+      "dev.zio" %% "zio-streams"           % zioVersion       % Provided,
+      "dev.zio" %% "zio-schema"            % zioSchemaVersion % Provided,
+      "dev.zio" %% "zio-schema-derivation" % zioSchemaVersion % Provided
     )
   )
-  .settings(dottySettings)
   .dependsOn(sqlserver)
 
 lazy val driver = project
@@ -126,13 +132,14 @@ lazy val driver = project
   .settings(buildInfoSettings("zio.sql.driver"))
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio" %% "zio"          % zioVersion % Provided,
-      "dev.zio" %% "zio-test"     % zioVersion % Test,
-      "dev.zio" %% "zio-test-sbt" % zioVersion % Test
+      "dev.zio" %% "zio"                   % zioVersion       % Provided,
+      "dev.zio" %% "zio-schema"            % zioSchemaVersion % Provided,
+      "dev.zio" %% "zio-schema-derivation" % zioSchemaVersion % Provided,
+      "dev.zio" %% "zio-test"              % zioVersion       % Test,
+      "dev.zio" %% "zio-test-sbt"          % zioVersion       % Test
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
-  .settings(dottySettings)
 
 lazy val jdbc = project
   .in(file("jdbc"))
@@ -140,14 +147,15 @@ lazy val jdbc = project
   .settings(buildInfoSettings("zio.sql.jdbc"))
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio" %% "zio"          % zioVersion % Provided,
-      "dev.zio" %% "zio-streams"  % zioVersion % Provided,
-      "dev.zio" %% "zio-test"     % zioVersion % Test,
-      "dev.zio" %% "zio-test-sbt" % zioVersion % Test
+      "dev.zio" %% "zio"                   % zioVersion       % Provided,
+      "dev.zio" %% "zio-streams"           % zioVersion       % Provided,
+      "dev.zio" %% "zio-schema"            % zioSchemaVersion % Provided,
+      "dev.zio" %% "zio-schema-derivation" % zioSchemaVersion % Provided,
+      "dev.zio" %% "zio-test"              % zioVersion       % Test,
+      "dev.zio" %% "zio-test-sbt"          % zioVersion       % Test
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
-  .settings(dottySettings)
   .dependsOn(core.jvm)
 
 lazy val mysql = project
@@ -159,6 +167,8 @@ lazy val mysql = project
     libraryDependencies ++= Seq(
       "dev.zio"           %% "zio"                        % zioVersion                 % Provided,
       "dev.zio"           %% "zio-streams"                % zioVersion                 % Provided,
+      "dev.zio"           %% "zio-schema"                 % zioSchemaVersion           % Provided,
+      "dev.zio"           %% "zio-schema-derivation"      % zioSchemaVersion           % Provided,
       "org.testcontainers" % "testcontainers"             % testcontainersVersion      % Test,
       "org.testcontainers" % "database-commons"           % testcontainersVersion      % Test,
       "org.testcontainers" % "jdbc"                       % testcontainersVersion      % Test,
@@ -168,7 +178,6 @@ lazy val mysql = project
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
-  .settings(dottySettings)
 
 lazy val oracle = project
   .in(file("oracle"))
@@ -179,6 +188,8 @@ lazy val oracle = project
     libraryDependencies ++= Seq(
       "dev.zio"                 %% "zio"                                 % zioVersion                 % Provided,
       "dev.zio"                 %% "zio-streams"                         % zioVersion                 % Provided,
+      "dev.zio"                 %% "zio-schema"                          % zioSchemaVersion           % Provided,
+      "dev.zio"                 %% "zio-schema-derivation"               % zioSchemaVersion           % Provided,
       "org.testcontainers"       % "testcontainers"                      % testcontainersVersion      % Test,
       "org.testcontainers"       % "database-commons"                    % testcontainersVersion      % Test,
       "org.testcontainers"       % "oracle-xe"                           % testcontainersVersion      % Test,
@@ -188,7 +199,6 @@ lazy val oracle = project
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
-  .settings(dottySettings)
 
 lazy val postgres = project
   .in(file("postgres"))
@@ -199,6 +209,8 @@ lazy val postgres = project
     libraryDependencies ++= Seq(
       "dev.zio"           %% "zio"                             % zioVersion                 % Provided,
       "dev.zio"           %% "zio-streams"                     % zioVersion                 % Provided,
+      "dev.zio"           %% "zio-schema"                      % zioSchemaVersion           % Provided,
+      "dev.zio"           %% "zio-schema-derivation"           % zioSchemaVersion           % Provided,
       "org.testcontainers" % "testcontainers"                  % testcontainersVersion      % Test,
       "org.testcontainers" % "database-commons"                % testcontainersVersion      % Test,
       "org.testcontainers" % "postgresql"                      % testcontainersVersion      % Test,
@@ -208,7 +220,6 @@ lazy val postgres = project
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
-  .settings(dottySettings)
 
 lazy val sqlserver = project
   .in(file("sqlserver"))
@@ -219,6 +230,8 @@ lazy val sqlserver = project
     libraryDependencies ++= Seq(
       "dev.zio"                %% "zio"                              % zioVersion                 % Provided,
       "dev.zio"                %% "zio-streams"                      % zioVersion                 % Provided,
+      "dev.zio"                %% "zio-schema"                       % zioSchemaVersion           % Provided,
+      "dev.zio"                %% "zio-schema-derivation"            % zioSchemaVersion           % Provided,
       "org.testcontainers"      % "testcontainers"                   % testcontainersVersion      % Test,
       "org.testcontainers"      % "database-commons"                 % testcontainersVersion      % Test,
       "org.testcontainers"      % "mssqlserver"                      % testcontainersVersion      % Test,
@@ -228,4 +241,3 @@ lazy val sqlserver = project
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
-  .settings(dottySettings)

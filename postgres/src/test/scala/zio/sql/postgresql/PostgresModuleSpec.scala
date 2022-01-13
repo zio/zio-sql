@@ -8,6 +8,8 @@ import zio.test._
 import java.time._
 import java.util.UUID
 import scala.language.postfixOps
+import zio.schema.Schema
+import java.time.format.DateTimeFormatter
 
 object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
@@ -376,6 +378,212 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
       } yield assert(r)(equalTo(4))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    testM("insert - 1 rows into customers") {
+
+      /**
+       * insert into customers
+       *              (id, first_name, last_name, verified, dob, created_timestamp_string, created_timestamp)
+       *          values
+       *              ('60b01fc9-c902-4468-8d49-3c0f989def37', 'Ronald', 'Russell', true, '1983-01-05', '2020-11-21T19:10:25+00:00', '2020-11-21 19:10:25+00'))
+       */
+
+      final case class CustomerRow(
+        id: UUID,
+        firstName: String,
+        lastName: String,
+        verified: Boolean,
+        dateOfBirth: LocalDate,
+        cretedTimestampString: String,
+        createdTimestamp: ZonedDateTime
+      )
+
+      val created = ZonedDateTime.now()
+      import java.time._
+
+      implicit val customerRowSchema =
+        Schema.CaseClass7[UUID, String, String, Boolean, LocalDate, String, ZonedDateTime, CustomerRow](
+          Chunk.empty,
+          Schema.Field("id", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
+          Schema.Field("firstName", Schema.primitive[String](zio.schema.StandardType.StringType)),
+          Schema.Field("lastName", Schema.primitive[String](zio.schema.StandardType.StringType)),
+          Schema.Field("verified", Schema.primitive[Boolean](zio.schema.StandardType.BoolType)),
+          Schema.Field(
+            "localDate",
+            Schema.primitive[LocalDate](zio.schema.StandardType.LocalDate(DateTimeFormatter.ISO_DATE))
+          ),
+          Schema.Field("cretedTimestampString", Schema.primitive[String](zio.schema.StandardType.StringType)),
+          Schema.Field(
+            "createdTimestamp",
+            Schema.primitive[ZonedDateTime](
+              zio.schema.StandardType.ZonedDateTime(DateTimeFormatter.ISO_ZONED_DATE_TIME)
+            )
+          ),
+          CustomerRow.apply,
+          _.id,
+          _.firstName,
+          _.lastName,
+          _.verified,
+          _.dateOfBirth,
+          _.cretedTimestampString,
+          _.createdTimestamp
+        )
+
+      val data =
+        CustomerRow(UUID.randomUUID(), "Jaro", "Regec", true, LocalDate.ofYearDay(1990, 1), created.toString, created)
+
+      val query = insertInto(customers)(
+        customerId ++ fName ++ lName ++ verified ++ dob ++ createdString ++ createdTimestamp
+      ).values(data)
+
+      assertM(execute(query))(equalTo(1))
+    },
+    testM("insert - insert 10 rows into orders") {
+
+      /**
+       *       insert into product_prices
+       *            (product_id, effective, price)
+       *       values
+       *            ('7368ABF4-AED2-421F-B426-1725DE756895', '2018-01-01', 10.00),
+       *            ('7368ABF4-AED2-421F-B426-1725DE756895', '2019-01-01', 11.00),
+       *            ('D5137D3A-894A-4109-9986-E982541B434F', '2020-01-01', 55.00),
+       *            .....
+       *            ('D5137D3A-894A-4109-9986-E982541B43BB', '2020-01-01', 66.00);
+       */
+
+      final case class InputOrders(uuid: UUID, customerId: UUID, localDate: LocalDate)
+
+      implicit val inputOrdersSchema = Schema.CaseClass3[UUID, UUID, LocalDate, InputOrders](
+        Chunk.empty,
+        Schema.Field("uuid", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
+        Schema.Field("customerId", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
+        Schema.Field(
+          "localDate",
+          Schema.primitive[LocalDate](zio.schema.StandardType.LocalDate(DateTimeFormatter.ISO_DATE))
+        ),
+        InputOrders.apply,
+        _.uuid,
+        _.customerId,
+        _.localDate
+      )
+
+      val data = List(
+        InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
+        InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
+        InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
+        InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
+        InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
+        InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
+        InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
+        InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
+        InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
+        InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now())
+      )
+
+      val query = insertInto(orders)(orderId ++ fkCustomerId ++ orderDate)
+        .values(data)
+
+      assertM(execute(query))(equalTo(10))
+    },
+    testM("insert - 4 rows into orderDetails") {
+
+      /**
+       * insert into order_details
+       *            (order_id, product_id, quantity, unit_price)
+       *        values
+       *            ('9022DD0D-06D6-4A43-9121-2993FC7712A1', '7368ABF4-AED2-421F-B426-1725DE756895', 4, 11.00),
+       *            ('38D66D44-3CFA-488A-AC77-30277751418F', '7368ABF4-AED2-421F-B426-1725DE756895', 1, 11.00),
+       *            ('7B2627D5-0150-44DF-9171-3462E20797EE', '7368ABF4-AED2-421F-B426-1725DE756895', 1, 11.50),
+       *            ('62CD4109-3E5D-40CC-8188-3899FC1F8BDF', '7368ABF4-AED2-421F-B426-1725DE756895', 2, 10.90),
+       */
+
+      import OrderDetails._
+
+      case class OrderDetailsRow(orderId: UUID, productId: UUID, quantity: Int, unitPrice: BigDecimal)
+
+      //TODO we need schema for scala.math.BigDecimal. Probably directly in zio-schema ?
+      implicit val bigDecimalSchema: Schema[BigDecimal] =
+        Schema.Transform(
+          Schema.primitive[java.math.BigDecimal](zio.schema.StandardType.BigDecimalType),
+          (bigDec: java.math.BigDecimal) => Right(new BigDecimal(bigDec, java.math.MathContext.DECIMAL128)),
+          bigDec => Right(bigDec.bigDecimal),
+          Chunk.empty
+        )
+
+      implicit val orderDetailsRowSchema = Schema.CaseClass4[UUID, UUID, Int, BigDecimal, OrderDetailsRow](
+        Chunk.empty,
+        Schema.Field("orderId", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
+        Schema.Field("productId", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
+        Schema.Field("quantity", Schema.primitive[Int](zio.schema.StandardType.IntType)),
+        Schema.Field("unitPrice", bigDecimalSchema),
+        OrderDetailsRow.apply,
+        _.orderId,
+        _.productId,
+        _.quantity,
+        _.unitPrice
+      )
+
+      val rows = List(
+        OrderDetailsRow(UUID.randomUUID(), UUID.randomUUID(), 4, BigDecimal.valueOf(11.00)),
+        OrderDetailsRow(UUID.randomUUID(), UUID.randomUUID(), 1, BigDecimal.valueOf(11.00)),
+        OrderDetailsRow(UUID.randomUUID(), UUID.randomUUID(), 1, BigDecimal.valueOf(11.50)),
+        OrderDetailsRow(UUID.randomUUID(), UUID.randomUUID(), 2, BigDecimal.valueOf(10.50))
+      )
+
+      val query = insertInto(orderDetails)(orderDetailsOrderId ++ orderDetailsProductId ++ quantity ++ unitPrice)
+        .values(rows)
+
+      assertM(execute(query))(equalTo(4))
+    },
+    testM("insert into orderDetails with tuples") {
+
+      /**
+       * insert into order_details
+       *            (order_id, product_id, quantity, unit_price)
+       *        values
+       *            ('9022DD0D-06D6-4A43-9121-2993FC7712A1', '7368ABF4-AED2-421F-B426-1725DE756895', 4, 11.00))
+       */
+
+      import OrderDetails._
+
+      val query = insertInto(orderDetails)(orderDetailsOrderId ++ orderDetailsProductId ++ quantity ++ unitPrice)
+        .values((UUID.randomUUID(), UUID.randomUUID(), 4, BigDecimal.valueOf(11.00)))
+
+      assertM(execute(query))(equalTo(1))
+    },
+    testM("insert into customers with tuples") {
+
+      /**
+       * insert into customers
+       *              (id, first_name, last_name, verified, dob, created_timestamp_string, created_timestamp)
+       *          values
+       *              ('60b01fc9-c902-4468-8d49-3c0f989def37', 'Ronald', 'Russell', true, '1983-01-05', '2020-11-21T19:10:25+00:00', '2020-11-21 19:10:25+00'),
+       */
+
+      val created = ZonedDateTime.now()
+
+      val row =
+        ((UUID.randomUUID(), "Jaro", "Regec", true, LocalDate.ofYearDay(1990, 1), created.toString, created))
+
+      val query = insertInto(customers)(
+        customerId ++ fName ++ lName ++ verified ++ dob ++ createdString ++ createdTimestamp
+      ).values(row)
+
+      assertM(execute(query))(equalTo(1))
+    },
+    testM("insert into products") {
+      import Products._
+
+      val tupleData = List(
+        (UUID.randomUUID(), "product 1", "product desription", "image url"),
+        (UUID.randomUUID(), "product 2", "product desription", "image url"),
+        (UUID.randomUUID(), "product 3", "product desription", "image url"),
+        (UUID.randomUUID(), "product 4", "product desription", "image url")
+      )
+
+      val query = insertInto(products)(productId ++ productName ++ description ++ imageURL).values(tupleData)
+
+      assertM(execute(query))(equalTo(4))
     }
   ) @@ sequential
 }
