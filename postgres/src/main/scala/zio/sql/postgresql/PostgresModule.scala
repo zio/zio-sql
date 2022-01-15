@@ -249,10 +249,10 @@ trait PostgresModule extends Jdbc { self =>
   }
 
   implicit val localDateSchema =
-    Schema.primitive[LocalDate](zio.schema.StandardType.LocalDate(DateTimeFormatter.ISO_DATE))
+    Schema.primitive[LocalDate](zio.schema.StandardType.LocalDateType(DateTimeFormatter.ISO_DATE))
 
   implicit val zonedDateTimeShema =
-    Schema.primitive[ZonedDateTime](zio.schema.StandardType.ZonedDateTime(DateTimeFormatter.ISO_ZONED_DATE_TIME))
+    Schema.primitive[ZonedDateTime](zio.schema.StandardType.ZonedDateTimeType(DateTimeFormatter.ISO_ZONED_DATE_TIME))
 
   object PostgresFunctionDef {
     import PostgresSpecific._
@@ -405,43 +405,44 @@ trait PostgresModule extends Jdbc { self =>
           StandardType.fromString(typeTag.tag) match {
             case Some(v) =>
               v match {
-                case BigDecimalType                         =>
+                case BigDecimalType                             =>
                   println("foo")
                   render(value)
-                case StandardType.Instant(formatter)        => render(s"'${formatter.format(value.asInstanceOf[Instant])}'")
-                case CharType                               => render(s"'${value}'")
-                case IntType                                => render(value)
-                case StandardType.MonthDay                  => render(s"'${value}'")
-                case BinaryType                             => render(s"'${value}'")
-                case StandardType.Month                     => render(s"'${value}'")
-                case StandardType.LocalDateTime(formatter)  =>
+                case StandardType.InstantType(formatter)        =>
+                  render(s"'${formatter.format(value.asInstanceOf[Instant])}'")
+                case CharType                                   => render(s"'${value}'")
+                case IntType                                    => render(value)
+                case StandardType.MonthDayType                  => render(s"'${value}'")
+                case BinaryType                                 => render(s"'${value}'")
+                case StandardType.MonthType                     => render(s"'${value}'")
+                case StandardType.LocalDateTimeType(formatter)  =>
                   render(s"'${formatter.format(value.asInstanceOf[LocalDateTime])}'")
-                case UnitType                               => () // ???
-                case StandardType.YearMonth                 => render(s"'${value}'")
-                case DoubleType                             => render(value)
-                case StandardType.Year                      => render(s"'${value}'")
-                case StandardType.OffsetDateTime(formatter) =>
+                case UnitType                                   => () // ???
+                case StandardType.YearMonthType                 => render(s"'${value}'")
+                case DoubleType                                 => render(value)
+                case StandardType.YearType                      => render(s"'${value}'")
+                case StandardType.OffsetDateTimeType(formatter) =>
                   render(s"'${formatter.format(value.asInstanceOf[OffsetDateTime])}'")
-                case StandardType.ZonedDateTime(_)          =>
+                case StandardType.ZonedDateTimeType(_)          =>
                   render(s"'${DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(value.asInstanceOf[ZonedDateTime])}'")
-                case BigIntegerType                         => render(s"'${value}'")
-                case UUIDType                               => render(s"'${value}'")
-                case StandardType.ZoneOffset                => render(s"'${value}'")
-                case ShortType                              => render(value)
-                case StandardType.LocalTime(formatter)      =>
+                case BigIntegerType                             => render(s"'${value}'")
+                case UUIDType                                   => render(s"'${value}'")
+                case StandardType.ZoneOffsetType                => render(s"'${value}'")
+                case ShortType                                  => render(value)
+                case StandardType.LocalTimeType(formatter)      =>
                   render(s"'${formatter.format(value.asInstanceOf[LocalTime])}'")
-                case StandardType.OffsetTime(formatter)     =>
+                case StandardType.OffsetTimeType(formatter)     =>
                   render(s"'${formatter.format(value.asInstanceOf[OffsetTime])}'")
-                case LongType                               => render(value)
-                case StringType                             => render(s"'${value}'")
-                case StandardType.Period                    => render(s"'${value}'")
-                case StandardType.ZoneId                    => render(s"'${value}'")
-                case StandardType.LocalDate(formatter)      =>
+                case LongType                                   => render(value)
+                case StringType                                 => render(s"'${value}'")
+                case StandardType.PeriodType                    => render(s"'${value}'")
+                case StandardType.ZoneIdType                    => render(s"'${value}'")
+                case StandardType.LocalDateType(formatter)      =>
                   render(s"'${formatter.format(value.asInstanceOf[LocalDate])}'")
-                case BoolType                               => render(value)
-                case DayOfWeekType                          => render(s"'${value}'")
-                case FloatType                              => render(value)
-                case StandardType.Duration(_)               => render(s"'${value}'")
+                case BoolType                                   => render(value)
+                case DayOfWeekType                              => render(s"'${value}'")
+                case FloatType                                  => render(value)
+                case StandardType.Duration(_)                   => render(s"'${value}'")
               }
             case None    => ()
           }
