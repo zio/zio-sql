@@ -203,17 +203,15 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
       import SqlServerSpecific.SqlServerFunctionDef._
 
       /**
-       * select derived.order_id, derived.product_id, derived.unit_price from order_details derived
-       * where derived.unit_price > (select AVG(price)
+       * select order_id, product_id, unit_price from order_details
+       * where unit_price > (select AVG(price)
        *                                       from product_prices )
        */
 
-      val subquery = select(Avg(price)).from(productPrices)
-
-      val query = select(derivedOrderId ++ derivedProductId ++ derivedUnitPrice)
-        .from(orderDetailsDerived)
+      val query = select(orderDetailsId ++ productId ++ unitPrice)
+        .from(orderDetails)
         .where(
-          derivedUnitPrice > subquery
+          unitPrice > select(Avg(price)).from(productPrices)
         )
 
       case class Row(orderId: UUID, productId: UUID, unitPrice: BigDecimal)
@@ -251,12 +249,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
         Row("5883CB62-D792-4EE3-ACBC-FE85B6BAA998", "D5137D3A-894A-4109-9986-E982541B434F", 55.0000)
       )
 
-      val result = execute(
-        query
-          .to[UUID, UUID, BigDecimal, Row] { case row =>
-            Row(row._1, row._2, row._3)
-          }
-      )
+      val result = execute(query.to[UUID, UUID, BigDecimal, Row](Row.apply))
 
       val assertion = for {
         r <- result.runCollect
