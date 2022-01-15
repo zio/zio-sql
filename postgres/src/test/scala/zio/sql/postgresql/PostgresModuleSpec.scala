@@ -403,20 +403,19 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
       implicit val customerRowSchema =
         Schema.CaseClass7[UUID, String, String, Boolean, LocalDate, String, ZonedDateTime, CustomerRow](
-          Chunk.empty,
           Schema.Field("id", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
           Schema.Field("firstName", Schema.primitive[String](zio.schema.StandardType.StringType)),
           Schema.Field("lastName", Schema.primitive[String](zio.schema.StandardType.StringType)),
           Schema.Field("verified", Schema.primitive[Boolean](zio.schema.StandardType.BoolType)),
           Schema.Field(
             "localDate",
-            Schema.primitive[LocalDate](zio.schema.StandardType.LocalDate(DateTimeFormatter.ISO_DATE))
+            Schema.primitive[LocalDate](zio.schema.StandardType.LocalDateType(DateTimeFormatter.ISO_DATE))
           ),
           Schema.Field("cretedTimestampString", Schema.primitive[String](zio.schema.StandardType.StringType)),
           Schema.Field(
             "createdTimestamp",
             Schema.primitive[ZonedDateTime](
-              zio.schema.StandardType.ZonedDateTime(DateTimeFormatter.ISO_ZONED_DATE_TIME)
+              zio.schema.StandardType.ZonedDateTimeType(DateTimeFormatter.ISO_ZONED_DATE_TIME)
             )
           ),
           CustomerRow.apply,
@@ -454,12 +453,11 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
       final case class InputOrders(uuid: UUID, customerId: UUID, localDate: LocalDate)
 
       implicit val inputOrdersSchema = Schema.CaseClass3[UUID, UUID, LocalDate, InputOrders](
-        Chunk.empty,
         Schema.Field("uuid", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
         Schema.Field("customerId", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
         Schema.Field(
           "localDate",
-          Schema.primitive[LocalDate](zio.schema.StandardType.LocalDate(DateTimeFormatter.ISO_DATE))
+          Schema.primitive[LocalDate](zio.schema.StandardType.LocalDateType(DateTimeFormatter.ISO_DATE))
         ),
         InputOrders.apply,
         _.uuid,
@@ -511,7 +509,6 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
         )
 
       implicit val orderDetailsRowSchema = Schema.CaseClass4[UUID, UUID, Int, BigDecimal, OrderDetailsRow](
-        Chunk.empty,
         Schema.Field("orderId", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
         Schema.Field("productId", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
         Schema.Field("quantity", Schema.primitive[Int](zio.schema.StandardType.IntType)),
