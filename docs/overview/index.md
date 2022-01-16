@@ -149,11 +149,11 @@ val query = insertInto(customers)(
       ).values(data)
 ```
 
-In this case, data is of type *List[(UUID, LocalDate, String, String, Boolean, ZonedDateTime)]*
+In this case, data is of type `List[(UUID, LocalDate, String, String, Boolean, ZonedDateTime)]`
 
 ### Insert custom case class
-ZIO_SQL lets you insert also your own case classes.
-Let’s define a customer case class
+ZIO SQL lets you insert also your own case classes.
+Let’s define a *customer* case class:
 
 ```scala
 final case class Customer(
@@ -183,7 +183,7 @@ val query = insertInto(customers)(
         customerId ++ dob ++ fName ++ lName ++ verified ++ createdString ++ createdTimestamp
       ).values(data)
 ```
-Or you can insert multiple rows at once. Just define data as a List.
+Or you can insert multiple rows at once. Just define data as a `List` or any collection of your choice.
 
 ```scala
 val data : List[Customer] = ???
@@ -210,13 +210,13 @@ val query = insertInto(customers)(
 
 val executed : ZIO[Has[SqlDriver], Exception, Int] = execute(query)
 ```
-As the type of `executed` indicates, you need to provide an SqlDriver in order to run this effect. The result *Int* is the number of rows updated.
+As the type of `executed` indicates, you need to provide an `SqlDriver` in order to run this effect. The result *Int* is the number of rows updated.
 
 ### More examples
-More examples can be found in zio-sql test suite (PostgresModuleSpec, SqlServerModuleSpec, …) or in zio-sql-example application in resources.
+More examples can be found in zio-sql test suite (`PostgresModuleSpec`, `SqlServerModuleSpec`, …) or in zio-sql-example application in resources.
 
 ### What is missing
-As of now (February 2022) zio team is actively working on:
+As of now - Q1 2022 - zio-sql contributors is actively working on:
 - returning generated IDs from inserts
 - introduce nullable columns - for which user won’t need to input values
 - introduce auto generated columns - for which user cannot input values
@@ -235,7 +235,7 @@ select order_id, product_id, unit_price
 from order_details
 where unit_price > (select AVG(price) from product_prices )
 ```
-We want to match details about orders, but we are interested only in those orders where price is higher than average price of all the products from product_prices table. 
+We want to match details about orders, but we are interested only in those orders where price is higher than average price of all the products from `product_prices` table. 
 
 This is the meta model that we are working with:
 ```scala
@@ -266,7 +266,7 @@ val result: ZStream[Has[SqlDriver],Exception,Row] = execute(query.to[UUID, UUID,
 
 val sqlQuery: String = renderRead(query)
 ```
-Similarly you can use subqueries inside select clause.
+Similarly you can use subqueries inside `select` clause.
 
 ### Correlated subqueries
 Correlated subqueries are the ones that are executed after the outer query. They can be dependent on the result of the outer query and therefore they are executed for each resulting row of the outer query.
@@ -299,9 +299,7 @@ val query = select(fName ++ lName ++ (subquery as "Count")).from(customers)
 All of these examples and more can be found and run in zio-sql tests.
 
 ### Correlated subquery in from clause & Derived tables
-Just one last, a little more complex example before we wrap up this section.
-
-Now we would use the same *customers* and *orders* tables as before.
+Just one last, a little more complex example before we wrap up this section, for which we would use the same *customers* and *orders* tables as before.
 ```scala
 val customers = (uuid("id") ++ string("first_name") ++ string("last_name"))).table("customers")
 
@@ -311,7 +309,7 @@ val orders = (uuid("id") ++ uuid("customer_id") ++ localDate("order_date")).tabl
 
 val orderId :*: fkCustomerId :*: orderDate :*: _ = orders.columns
 ```
-Imagine we would want to write a query that would select all customers with the date of their last order. If you approach this problem with JOIN, you end up with one row of a customer with the newest order. In fact, this is a good example of correlated subquery inside *from* clause, where subquery needs to access *customer_id* of the outer query. For this type of problems postgres introduced **LATERAL** keyword and MSSQL Server have **CROSS APPLY** and **OUTER APPLY**.
+Imagine we want to write a query that selects all customers with the date of their last order. If you approach this problem with JOIN, you end up with one row of a customer with the newest order. In fact, this is a good example of correlated subquery inside `from` clause, where subquery needs to access `customer_id` of the outer query. For this type of problems postgres introduced **LATERAL** keyword and MSSQL Server have **CROSS APPLY** and **OUTER APPLY**.
 ```sql
 select customers.id, customers.first_name, customers.last_name, derived.order_date
                 from customers,
