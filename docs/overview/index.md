@@ -100,18 +100,18 @@ trait TableModel extends PostgresModule {
   val customerId :*: dob :*: fName :*: lName :*: verified :*: created :*: _ = customers.columns
 } 
 ```
-Then, to use zio-sql ’s inserts, just mix in *TableModel* trait from above, to your repository. 
+Then, to use zio-sql ’s inserts, just mix in `TableModel` trait from above, to your repository. 
 
 In case you’re wondering what those extracted columns are (customerId, dob etc), they are of a type called *Expr*.
-*Expr[F, A, B]* is fundamental abstraction in zio-sql which basically represents description of any SQL expression of type **B**, having a source of type **A** and a phantom type **F**. 
-To give specific example, type of *fName* is 
+`Expr[F, A, B]` is fundamental abstraction in zio-sql which basically represents description of any SQL expression of type `B`, having a source of type `A` and a phantom type `F`. 
+To give specific example, type of `fName` is 
 ```scala
 Expr[Features.Source[String(“first_name”)], customers.TableType, String]. 
 ```
 This gives DSL huge power to remember table from which the column comes from, type of the columns and what kind of Expr we are dealing with. Don’t worry, you don’t need to remember any of this, but from now on we will use those Expr instances in our inserts.
 
 In general, DSL is giving us two options how to approach inserts. We can insert either tuple values or used defined case class - which requires zio-schema instance (more on that later). 
-Also your custom data type or tuple need to consist only of the types for which there is a **TypeTag** instance defined. Each sql module has a finite set of such types - those are the types that particular module can work with. In other words, types inside your tuples or case class need to correspond with the types of the extracted Exprs.
+Also your custom data type or tuple need to consist only of the types for which there is a `TypeTag` instance defined. Each sql module has a finite set of such types - those are the types that particular module can work with. In other words, types inside your tuples or case class need to correspond with the types of the extracted Exprs.
 
 ### Insert tuples
 Let’s say we want to build the query like the following one:
@@ -127,12 +127,15 @@ insertInto(customers)
     (customerId ++ dob ++ fName ++ lName ++ verified ++ created)
   .values((UUID.randomUUID(), LocalDate.ofYearDay(1990, 1), "Ronald", "Russell", true, ZonedDateTime.now()))
 ```
-In case you mess up the order of values - like e.g. you put Boolean where String is expected - or you don’t specify all the not null columns of the table, above query fails with compile-time error.
+Compiler verifies your inserts and your query fails with compile-time error at any of the following situations:
+- you mess up the order of values - e.g. you put Boolean where String is expected
+- you don’t specify all the not null columns of the table
+- you try to insert to columns from another table
 
-Some  details about syntax: *insertInto* method takes two value parameters. One is our table *customers* that we created before in *Table description* section. The other is an *HList like* collection of Expr’s, called *Selection*. You create it by appending Exprs with “++” operator. 
-*values* method takes a Tuple6 of type (UUID, LocalDate, String, String, Boolean, ZonedDateTime). The required tuple is dependent on combination of Exprs. Just like with normal sql insert, you could swap *fName* with *dob* Expr and corresponding values and your query will work just fine. Compiler will only let you build such queries that won’t explode in runtime (in case you described your table correctly of course ! )
+Some  details about syntax: `insertInto` method takes two value parameters. One is our table `customers` that we created before in *Table description* section. The other is an *HList like* collection of Expr’s, called `Selection`. You create it by appending Exprs with “++” operator. 
+`values` method takes a Tuple6 of type (UUID, LocalDate, String, String, Boolean, ZonedDateTime). The required tuple is dependent on combination of Exprs. Just like with normal sql insert, you could swap `fName` with `dob` Expr and corresponding values and your query will work just fine. Compiler will only let you build such queries that won’t explode in runtime (in case you described your table correctly of course ! )
 
-If we need to insert multiple values at once, all we need to do is to create any *Seq* of tuples and stick it into the overloaded *values* method. 
+If we need to insert multiple values at once, all we need to do is to create any `Seq` of tuples and stick it into the overloaded `values` method. 
 ```scala
 val data =
         List(
@@ -188,7 +191,7 @@ val data : List[Customer] = ???
 
 ### Show generated SQL query 
 
-In case you want to see the exact query that zio-sql generated, you can use *renderInsert* method inside repo that has PostgresModule (or TableModel from above example) mixed in.
+In case you want to see the exact query that zio-sql generated, you can use `renderInsert` method inside repo that has PostgresModule (or TableModel from above example) mixed in.
 ```scala
 val query = insertInto(customers)(
         customerId ++ dob ++ fName ++ lName ++ verified ++ createdString ++ createdTimestamp
@@ -199,7 +202,7 @@ val sqlString: String = renderInsert(query)
 
 ### Execute the query
 
-In order to execute a query, we use *execute* method inside repo that has PostgresModule (or TableModel from the above example) mixed in.
+In order to execute a query, we use `execute` method inside repo that has PostgresModule (or TableModel from the above example) mixed in.
 ```scala
 val query = insertInto(customers)(
         customerId ++ dob ++ fName ++ lName ++ verified ++ createdString ++ createdTimestamp
@@ -207,7 +210,7 @@ val query = insertInto(customers)(
 
 val executed : ZIO[Has[SqlDriver], Exception, Int] = execute(query)
 ```
-As the type of *executed* indicates, you need to provide an SqlDriver in order to run this effect. The result *Int* is the number of rows updated.
+As the type of `executed` indicates, you need to provide an SqlDriver in order to run this effect. The result *Int* is the number of rows updated.
 
 ### More examples
 More examples can be found in zio-sql test suite (PostgresModuleSpec, SqlServerModuleSpec, …) or in zio-sql-example application in resources.
@@ -318,7 +321,7 @@ select customers.id, customers.first_name, customers.last_name, derived.order_da
                      where customers.id = orders.customer_id
                      order by orders.order_date desc limit 1 ) derived order by derived.order_date desc
 ```
-Now it’s starting to be a little more complicated. First we need to create a *subselect* which can access columns from another source table - *customers* in our case. Then we specify this source as a type parameter to *subselect*. In order to build the whole query we also need *derived.order_date* which is coming from *derived* table, so that we can extract that column.
+Now it’s starting to be a little more complicated. First we need to create a `subselect` which can access columns from another source table - `customers` in our case. Then we specify this source as a type parameter to `subselect`. In order to build the whole query we also need `derived.order_date` which is coming from `derived` table, so that we can extract that column. We create `derivedTable` by calling `asTable(tableName: String)` method on `subselect`. 
 ```scala
  val derivedTable  = subselect[customers.TableType](orderDate)
         .from(orders)
