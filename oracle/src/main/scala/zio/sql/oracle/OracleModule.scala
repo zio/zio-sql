@@ -133,7 +133,7 @@ trait OracleModule extends Jdbc { self =>
     read match {
       case Read.Mapped(read, _) => buildReadString(read, builder)
 
-      case read0 @ Read.Subselect(_, _, _, _, _, _, _, _) =>
+      case read0 @ Read.Subselect(_, _, _, _, _, _, _, _, _) =>
         object Dummy {
           type F
           type Repr
@@ -156,10 +156,10 @@ trait OracleModule extends Jdbc { self =>
             builder.append(" WHERE ")
             buildExpr(whereExpr, builder)
         }
-        groupBy match {
+        groupByExprs match {
           case _ :: _ =>
             builder.append(" GROUP BY ")
-            buildExprList(groupBy, builder)
+            buildExprList(groupByExprs, builder)
 
             havingExpr match {
               case Expr.Literal(true) => ()
@@ -169,10 +169,10 @@ trait OracleModule extends Jdbc { self =>
             }
           case Nil    => ()
         }
-        orderBy match {
+        orderByExprs match {
           case _ :: _ =>
             builder.append(" ORDER BY ")
-            buildOrderingList(orderBy, builder)
+            buildOrderingList(orderByExprs, builder)
           case Nil    => ()
         }
         // NOTE: Limit doesn't exist in oracle 11g (>=12), for now replacing it with rownum keyword of oracle

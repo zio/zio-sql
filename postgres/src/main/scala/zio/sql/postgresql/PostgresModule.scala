@@ -406,7 +406,6 @@ trait PostgresModule extends Jdbc { self =>
             case Some(v) =>
               v match {
                 case BigDecimalType                             =>
-                  println("foo")
                   render(value)
                 case StandardType.InstantType(formatter)        =>
                   render(s"'${formatter.format(value.asInstanceOf[Instant])}'")
@@ -671,7 +670,7 @@ trait PostgresModule extends Jdbc { self =>
     private[zio] def renderReadImpl(read: self.Read[_])(implicit render: Renderer): Unit =
       read match {
         case Read.Mapped(read, _)                           => renderReadImpl(read)
-        case read0 @ Read.Subselect(_, _, _, _, _, _, _, _) =>
+        case read0 @ Read.Subselect(_, _, _, _, _, _, _, _, _) =>
           object Dummy {
             type F
             type Repr
@@ -695,10 +694,10 @@ trait PostgresModule extends Jdbc { self =>
               render(" WHERE ")
               renderExpr(whereExpr)
           }
-          groupBy match {
+          groupByExprs match {
             case _ :: _ =>
               render(" GROUP BY ")
-              renderExprList(groupBy)
+              renderExprList(groupByExprs)
 
               havingExpr match {
                 case Expr.Literal(true) => ()
@@ -708,10 +707,10 @@ trait PostgresModule extends Jdbc { self =>
               }
             case Nil    => ()
           }
-          orderBy match {
+          orderByExprs match {
             case _ :: _ =>
               render(" ORDER BY ")
-              renderOrderingList(orderBy)
+              renderOrderingList(orderByExprs)
             case Nil    => ()
           }
           limit match {

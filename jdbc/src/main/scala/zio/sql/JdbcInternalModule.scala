@@ -109,7 +109,7 @@ trait JdbcInternalModule { self: Jdbc =>
     read match {
       case Read.Mapped(read, _) => getColumns(read)
 
-      case Read.Subselect(selection, _, _, _, _, _, _, _) =>
+      case Read.Subselect(selection, _, _, _, _, _, _, _, _) =>
         selection.value.selectionsUntyped.toVector.map(_.asInstanceOf[ColumnSelection[_, _]]).map {
           case t @ ColumnSelection.Constant(_, _) => t.typeTag
           case t @ ColumnSelection.Computed(_, _) => t.typeTag

@@ -251,7 +251,7 @@ trait SqlServerModule extends Jdbc { self =>
         case Read.Mapped(read, _) => buildReadString(read.asInstanceOf[Read[Out]])
 
         //todo offset (needs orderBy, must use fetch _instead_ of top)
-        case read0 @ Read.Subselect(_, _, _, _, _, _, _, _) =>
+        case read0 @ Read.Subselect(_, _, _, _, _, _, _, _, _) =>
           object Dummy {
             type F
             type Repr
@@ -279,10 +279,10 @@ trait SqlServerModule extends Jdbc { self =>
               builder.append(" where ")
               buildExpr(whereExpr)
           }
-          groupBy match {
+          groupByExprs match {
             case _ :: _ =>
               builder.append(" group by ")
-              buildExprList(groupBy)
+              buildExprList(groupByExprs)
 
               havingExpr match {
                 case Expr.Literal(true) => ()
@@ -292,10 +292,10 @@ trait SqlServerModule extends Jdbc { self =>
               }
             case Nil    => ()
           }
-          orderBy match {
+          orderByExprs match {
             case _ :: _ =>
               builder.append(" order by ")
-              buildOrderingList(orderBy)
+              buildOrderingList(orderByExprs)
             case Nil    => ()
           }
 

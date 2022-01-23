@@ -379,6 +379,29 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
+    testM("group by / order by order is correct") {    
+      /**
+        select customer_id, count(id)
+          from orders
+          group by customer_id
+          order by count(id) desc
+        */
+
+        import AggregationDef._
+        import Ordering._
+
+        val expected = List(6,5,5,5,4)
+
+        val query = select(fkCustomerId ++ Count(orderId))
+          .from(orders)
+          //.groupBy(fkCustomerId)
+
+        val actual = execute(query.to[Long, Int](_.toInt)).runCollect.map(_.toList)
+
+        assertM(actual)(equalTo(expected))
+
+        ???
+    },
     testM("insert - 1 rows into customers") {
 
       /**

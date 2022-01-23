@@ -1,14 +1,12 @@
 package zio.sql
 
-import com.github.ghik.silencer.silent
-
 import scala.annotation.implicitNotFound
 
 trait FeaturesModule {
 
   type :||:[A, B] = Features.Union[A, B]
 
-  object Features {
+  object Features extends PartialAggregationLowerPrio {
     type Aggregated[_]
     type Union[_, _]
     type Source[_]
@@ -17,16 +15,33 @@ trait FeaturesModule {
     type Literal
     type Function0
 
-    sealed trait IsAggregated[A]
+    sealed trait IsNotAggregated[A] 
+    object IsNotAggregated {
+      implicit def UnionIsNotAgregated[A: IsNotAggregated, B: IsNotAggregated]: IsNotAggregated[Union[A, B]] = 
+        new IsNotAggregated[Union[A, B]] {}
 
-    object IsAggregated {
-      def apply[A](implicit is: IsAggregated[A]): IsAggregated[A] = is
+      implicit def SourceIsNotAggregated[A]: IsNotAggregated[Source[A]] = 
+        new IsNotAggregated[Source[A]] {}
 
-      implicit def AggregatedIsAggregated[A]: IsAggregated[Aggregated[A]] = new IsAggregated[Aggregated[A]] {}
+      implicit val DerivedIsNotAggregated: IsNotAggregated[Derived] = 
+        new IsNotAggregated[Derived] {}
 
-      @silent
-      implicit def UnionIsAggregated[A: IsAggregated, B: IsAggregated]: IsAggregated[Union[A, B]] =
-        new IsAggregated[Union[A, B]] {}
+      implicit val LiteralIsNotAggregated: IsNotAggregated[Literal] = 
+        new IsNotAggregated[Literal] {}
+
+      implicit val Function0IsNotAggregated: IsNotAggregated[Function0] = 
+        new IsNotAggregated[Function0] {}
+    }
+
+    sealed trait IsFullyAggregated[A] 
+
+    object IsFullyAggregated {
+      def apply[A](implicit is: IsFullyAggregated[A]): IsFullyAggregated[A] = is
+
+      implicit def AggregatedIsAggregated[A]: IsFullyAggregated[Aggregated[A]] = new IsFullyAggregated[Aggregated[A]] {}
+
+      implicit def UnionIsAggregated[A: IsFullyAggregated, B: IsFullyAggregated]: IsFullyAggregated[Union[A, B]] =
+        new IsFullyAggregated[Union[A, B]] {}
     }
 
     @implicitNotFound("You can only use this function on a column in the source table")
@@ -37,4 +52,20 @@ trait FeaturesModule {
     }
   }
 
+  trait PartialAggregationLowerPrio {
+    sealed trait IsPartiallyAggregated[A]
+
+    object IsPartiallyAggregated {
+      
+      def apply[A](implicit is: IsPartiallyAggregated[A]): IsPartiallyAggregated[A] = is
+
+      implicit def AggregatedIsAggregated[A]: IsPartiallyAggregated[Features.Aggregated[A]] = new IsPartiallyAggregated[Features.Aggregated[A]] {}
+
+      implicit def UnionIsAggregatedInB[A, B](implicit instB: IsPartiallyAggregated[B]): IsPartiallyAggregated[Features.Union[A, B]] =
+        new IsPartiallyAggregated[Features.Union[A, B]] {}
+
+      implicit def UnionIsAggregatedInA[A, B](implicit instB: IsPartiallyAggregated[A]): IsPartiallyAggregated[Features.Union[A, B]] =
+        new IsPartiallyAggregated[Features.Union[A, B]] {}
+    }
+  }
 }

@@ -85,7 +85,7 @@ trait MysqlModule extends Jdbc { self =>
         case Read.Mapped(read, _) =>
           renderReadImpl(read)
 
-        case read0 @ Read.Subselect(_, _, _, _, _, _, _, _) =>
+        case read0 @ Read.Subselect(_, _, _, _, _, _, _, _, _) =>
           object Dummy {
             type F
             type Repr
@@ -108,10 +108,10 @@ trait MysqlModule extends Jdbc { self =>
               render(" WHERE ")
               renderExpr(whereExpr)
           }
-          groupBy match {
+          groupByExprs match {
             case _ :: _ =>
               render(" GROUP BY ")
-              renderExprList(groupBy)
+              renderExprList(groupByExprs)
 
               havingExpr match {
                 case Expr.Literal(true) => ()
@@ -121,10 +121,10 @@ trait MysqlModule extends Jdbc { self =>
               }
             case Nil    => ()
           }
-          orderBy match {
+          orderByExprs match {
             case _ :: _ =>
               render(" ORDER BY ")
-              renderOrderingList(orderBy)
+              renderOrderingList(orderByExprs)
             case Nil    => ()
           }
           limit match {
