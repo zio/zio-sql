@@ -32,9 +32,13 @@ object Example1 extends Sql {
       .offset(1000)
       .orderBy(age.descending)
 
+  val tt =    ((age + 2) as "age")
+
   val joined =
     select((age as "age") ++ (age2 as "age2"))
       .from(table.join(table2).on(name === name2))
+
+  val xx = (Arbitrary(age) as "age") ++ (Count(1) as "count")
 
   val aggregated =
     select((Arbitrary(age) as "age") ++ (Count(1) as "count"))
@@ -48,4 +52,12 @@ object Example1 extends Sql {
       .set(age, age + 2)
       .set(name, "foo")
       .where(age > 100)
+
+  val orders = (uuid("id") ++ uuid("customer_id") ++ localDate("order_date")).table("orders")
+
+  val orderId :*: fkCustomerId :*: orderDate :*: _ = orders.columns
+
+  val query = select(fkCustomerId ++ Count(orderId))
+          .from(orders)
+          .groupBy(fkCustomerId)
 }

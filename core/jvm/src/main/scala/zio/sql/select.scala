@@ -4,6 +4,84 @@ import scala.language.implicitConversions
 
 trait SelectModule { self: ExprModule with TableModule =>
 
+  sealed case class AggSelectBuilder[F0, Source, B <: SelectionSet[Source]](selection: AggSelection[F0, Source, B]){
+
+    def from[Source0 <: Source](table: Table.Aux[Source0])(implicit
+      ev: B <:< SelectionSet.Cons[Source0, selection.value.ColumnHead, selection.value.SelectionTail]
+    ): AggSelectBuilderGroupBy[
+      F0,
+      selection.value.ResultTypeRepr,
+      Source0, 
+      selection.value.ColumnHead,
+      selection.value.SelectionTail
+    ] = {
+      type B0 = SelectionSet.ConsAux[
+        selection.value.ResultTypeRepr,
+        Source0,
+        selection.value.ColumnHead,
+        selection.value.SelectionTail
+      ]
+      val b: B0 = selection.value.asInstanceOf[B0]
+
+      AggSelectBuilderGroupBy(Read.Subselect(Selection[F0, Source0, B0](b), Some(table), true, Nil))
+    }
+  }
+
+  sealed trait AggVerifier[MainF, F1]
+  object AggVerifier {
+
+    implicit def unionOf[MainF, F1, Remainder](
+      implicit
+        ev1: MainF <:< Features.Union[F1, Remainder],
+        ev2: Features.IsFullyAggregated[Remainder]
+    ) : AggVerifier[MainF, F1] = new AggVerifier[MainF, F1] {}
+
+    implicit def unionOfB[MainF, F1, Remainder](
+      implicit
+        ev1: MainF <:< Features.Union[Remainder, F1],
+        ev2: Features.IsFullyAggregated[Remainder]
+    ) : AggVerifier[MainF, F1] = new AggVerifier[MainF, F1] {}
+  }
+
+    // Features.Union[Features.Union[Features.Source[String("customer_id")], Features.Source[String("order_date")],]
+    //                Features.Aggregated[Features.Source[String("id")]]]
+
+   // select customer_id, order_date, count(id)
+   //     from orders
+   //     group by customer_id
+
+
+   // Features.Source[String("customer_id")]
+   //Features.Source[String("order_date")]
+
+  // we require all the Exprs which are not aggregated from partially aggregated F and any other
+  // F here is always aggregated
+  sealed case class AggSelectBuilderGroupBy[F, Repr, Source, Head, Tail <: SelectionSet[Source]](
+      select: Read.Select[F, Repr, Source, Head, Tail]) {
+    import Read.ExprSet._
+
+    // format: off
+    def groupBy[F1, B](expr: Expr[F1, Source, B])(
+      implicit 
+        ev1: Features.IsNotAggregated[F1],
+        ev2: AggVerifier[F, F1]
+      ): Read.Select[F, Repr, Source, Head, Tail] = 
+      select.copy(groupByExprs2 = NoExpr ++ expr)
+      
+    def groupBy[F1, F2](expr: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any]): Read.Select[F, Repr, Source, Head, Tail] = 
+      select.copy(groupByExprs2 = NoExpr ++ expr ++ expr2)
+
+    def groupBy[F1, F2, F3](expr: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any]): Read.Select[F, Repr, Source, Head, Tail] = 
+      select.copy(groupByExprs2 = NoExpr ++ expr ++ expr2 ++ expr3)
+
+    def groupBy[F1, F2, F3, F4](expr: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any]): Read.Select[F, Repr, Source, Head, Tail] = 
+      select.copy(groupByExprs2 = NoExpr ++ expr ++ expr2 ++ expr3 ++ expr4)
+
+    def groupBy[F1, F2, F3, F4, F5](expr: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any]): Read.Select[F, Repr, Source, Head, Tail] = 
+      select.copy(groupByExprs2 = NoExpr ++ expr ++ expr2 ++ expr3 ++ expr4 ++ expr5)
+    // format: on
+  }
+
   sealed case class SelectBuilder[F0, Source, B <: SelectionSet[Source]](selection: Selection[F0, Source, B]) {
 
     def from[Source0 <: Source](table: Table.Aux[Source0])(implicit
@@ -58,6 +136,10 @@ trait SelectModule { self: ExprModule with TableModule =>
   final class SubselectPartiallyApplied[ParentTable] {
     def apply[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]): SubselectBuilder[F, A, B, ParentTable] =
       SubselectBuilder(selection)
+
+      //TODO fix
+    def apply[F, A, B <: SelectionSet[A]](selection: AggSelection[F, A, B]): SubselectBuilder[F, A, B, ParentTable] =
+      ??? //SubselectBuilder(selection)
   }
 
   sealed case class SubselectBuilder[F, Source, B <: SelectionSet[Source], ParentTable](
@@ -318,15 +400,36 @@ trait SelectModule { self: ExprModule with TableModule =>
 
     type Select[F, Repr, Source, Head, Tail <: SelectionSet[Source]] = Subselect[F, Repr, Source, Source, Head, Tail]
 
+    sealed trait ExprSet[-Source] {
+      type Append[F2, Source1 <: Source, B2] <: ExprSet[Source1]
+      def ++[F2, Source1 <: Source, B2](that: Expr[F2, Source1, B2]): Append[F2, Source1, B2]
+    }
+
+    object ExprSet {
+      type NoExpr = NoExpr.type
+      case object NoExpr extends ExprSet[Any] {
+       override type Append[F2, Source1 <: Any, B2] = ExprCons[F2, Source1, B2, NoExpr]
+       override def ++[F2, Source1 <: Any, B2](that: Expr[F2, Source1, B2]): Append[F2, Source1, B2] = ExprCons(that, NoExpr)
+      }
+
+      sealed case class ExprCons[F, Source, B, T <: ExprSet[Source]](head: Expr[F, Source, B], tail: T) extends ExprSet[Source] {
+        override type Append[F2, Source1 <: Source, B2] = 
+          ExprCons[F, Source1, B, tail.Append[F2, Source1, B2]]
+        override def ++[F2, Source1 <: Source, B2](that: Expr[F2, Source1, B2]): Append[F2, Source1, B2] = 
+            ExprCons(head, tail.++[F2, Source1, B2](that))
+      }
+    }
+
     sealed case class Subselect[F, Repr, Source, Subsource, Head, Tail <: SelectionSet[Source]](
       selection: Selection[F, Source, SelectionSet.ConsAux[Repr, Source, Head, Tail]],
       table: Option[Table.Aux[Subsource]],
       whereExpr: Expr[_, Source, Boolean],
-      groupBy: List[Expr[_, Source, Any]] = Nil,
+      groupByExprs: List[Expr[_, Source, Any]] = Nil,
       havingExpr: Expr[_, Source, Boolean] = true,
-      orderBy: List[Ordering[Expr[_, Source, Any]]] = Nil,
+      orderByExprs: List[Ordering[Expr[_, Source, Any]]] = Nil,
       offset: Option[Long] = None, //todo don't know how to do this outside of postgres/mysql
-      limit: Option[Long] = None
+      limit: Option[Long] = None,
+      groupByExprs2: ExprSet[Source] = ExprSet.NoExpr
     ) extends Read[Repr] { self =>
 
       def where(whereExpr2: Expr[_, Source, Boolean]): Subselect[F, Repr, Source, Subsource, Head, Tail] =
@@ -340,20 +443,27 @@ trait SelectModule { self: ExprModule with TableModule =>
         o: Ordering[Expr[_, Source, Any]],
         os: Ordering[Expr[_, Source, Any]]*
       ): Subselect[F, Repr, Source, Subsource, Head, Tail] =
-        copy(orderBy = self.orderBy ++ (o :: os.toList))
+        copy(orderByExprs = self.orderByExprs ++ (o :: os.toList))
 
-      def groupBy(key: Expr[_, Source, Any], keys: Expr[_, Source, Any]*)(implicit
-        ev: Features.IsAggregated[F]
-      ): Subselect[F, Repr, Source, Subsource, Head, Tail] = {
-        val _ = ev
-        copy(groupBy = groupBy ++ (key :: keys.toList))
+      def having(havingExpr2: Expr[_, Source, Boolean])
+      // (implicit
+      //   ev: Features.IsAggregated[F]
+      // )
+      : Subselect[F, Repr, Source, Subsource, Head, Tail] = {
+        //val _ = ev
+        copy(havingExpr = self.havingExpr && havingExpr2)
       }
 
-      def having(havingExpr2: Expr[_, Source, Boolean])(implicit
-        ev: Features.IsAggregated[F]
-      ): Subselect[F, Repr, Source, Subsource, Head, Tail] = {
-        val _ = ev
-        copy(havingExpr = self.havingExpr && havingExpr2)
+      /**
+       * what about this? xD
+       * select count(customer_id), count(id), '1' as "Hi"
+            from orders
+            group by "Hi"
+        */
+      //TODO we can allow group by but only by Source.Expr, (at this point F is FullyAggregated)
+      // TODO found a way how to make Features.IsSource implicit for all Fs in varargs
+      def groupBy[X: Features.IsNotAggregated](key: Expr[X, Source, Any], keys: Expr[_, Source, Any]*): Subselect[F, Repr, Source, Subsource, Head, Tail] = {
+        copy(groupByExprs = groupByExprs ++ (key :: keys.toList))
       }
 
       override def asTable(
@@ -423,6 +533,29 @@ trait SelectModule { self: ExprModule with TableModule =>
     def lit[B: TypeTag](values: B*): Read[(B, Unit)] = Literal(values.toSeq)
   }
 
+  sealed case class AggSelection[F, -A, +B <: SelectionSet[A]](value: B) { self =>
+
+    type ColsRepr = value.ResultTypeRepr
+
+    def ++[F2, A1 <: A, C <: SelectionSet[A1]](
+      that: Selection[F2, A1, C]
+    ): AggSelection[F :||: F2, A1, self.value.Append[A1, C]] =
+      AggSelection(self.value ++ that.value)
+
+    //TODO this is not correct by =>  age ++ Count(id) ++ Count(id)
+    def ++[F2, A1 <: A, C <: SelectionSet[A1]](
+      that: AggSelection[F2, A1, C]
+    )(implicit ev: Features.IsFullyAggregated[F]): Selection[F :||: F2, A1, self.value.Append[A1, C]] =
+      Selection(self.value ++ that.value)
+  }
+
+  object AggSelection {
+    import ColumnSelection._
+    import SelectionSet.{ Cons, Empty }
+    def computedOption[F, A, B](expr: Expr[F, A, B], name: Option[ColumnName]): AggSelection[F, A, Cons[A, B, Empty]] =
+      AggSelection(Cons(Computed(expr, name), Empty))
+  }
+
   /**
    * A columnar selection of `B` from a source `A`, modeled as `A => B`.
    */
@@ -435,6 +568,15 @@ trait SelectModule { self: ExprModule with TableModule =>
     ): Selection[F :||: F2, A1, self.value.Append[A1, C]] =
       Selection(self.value ++ that.value)
 
+    def ++[F2, A1 <: A, C <: SelectionSet[A1]](
+      that: AggSelection[F2, A1, C]
+    ): AggSelection[F :||: F2, A1, self.value.Append[A1, C]] =
+      AggSelection(self.value ++ that.value)
+
+    // (Arbitrary(age)) ++ (Count(1))  => Selection
+    // age ++ (Count(1))               => AggSelection
+    // (Count(1)) ++ age               => AggSelection 
+    // age ++ name                     => Selection 
   }
 
   object Selection {

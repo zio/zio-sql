@@ -85,8 +85,11 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     def isNotTrue[A1 <: A](implicit ev: B <:< Boolean): Expr[F, A1, Boolean] =
       Expr.Property(self, PropertyOp.IsNotTrue)
 
-    def as[B1 >: B](name: String): Selection[F, A, SelectionSet.Cons[A, B1, SelectionSet.Empty]] =
-      Selection.computedAs(self, name)
+    //TODO
+    def as[B1 >: B](name: String): Expr[F, A, B1] = {
+      val _ = name
+      self
+    }
 
     def ascending: Ordering[Expr[F, A, B]] = Ordering.Asc(self)
 
@@ -105,7 +108,14 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     }
   }
 
-  object Expr {
+  trait ExprToSelectionLowerPrio {
+    implicit def expToSelection[F: Features.IsNotAggregated, A, B](
+      expr: Expr[F, A, B]
+    ): Selection[F, A, SelectionSet.Cons[A, B, SelectionSet.Empty]] =
+      Selection.computedOption(expr, Expr.exprName(expr))
+  }
+
+  object Expr extends ExprToSelectionLowerPrio {
     implicit val subqueryToExpr = self.Read.Subselect.subselectToExpr _
 
     sealed trait InvariantExpr[F, -A, B] extends Expr[F, A, B] {
@@ -122,10 +132,10 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
         case _                                  => None
       }
 
-    implicit def expToSelection[F, A, B](
+    implicit def aggregatedExprToSelection[F: Features.IsFullyAggregated, A, B](
       expr: Expr[F, A, B]
-    ): Selection[F, A, SelectionSet.Cons[A, B, SelectionSet.Empty]] =
-      Selection.computedOption(expr, exprName(expr))
+    ): AggSelection[F, A, SelectionSet.Cons[A, B, SelectionSet.Empty]] =
+      AggSelection.computedOption(expr, exprName(expr))
 
     sealed case class Subselect[F <: Features.Aggregated[_], Repr, Source, Subsource, Head](
       subselect: Read.Subselect[F, Repr, _ <: Source, Subsource, Head, SelectionSet.Empty]
@@ -273,6 +283,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
   object AggregationDef {
     val Count                                            = AggregationDef[Any, Long](FunctionName("count"))
     val Sum                                              = AggregationDef[Double, Double](FunctionName("sum"))
+    //TODO what is Arbitrary??? it does not exists on postgresql
     def Arbitrary[F, A, B: TypeTag](expr: Expr[F, A, B]) = AggregationDef[B, B](FunctionName("arbitrary"))(expr)
     val Avg                                              = AggregationDef[Double, Double](FunctionName("avg"))
     def Min[F, A, B: TypeTag](expr: Expr[F, A, B])       = AggregationDef[B, B](FunctionName("min"))(expr)
