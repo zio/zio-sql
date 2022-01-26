@@ -38,8 +38,6 @@ object Example1 extends Sql {
     select((age as "age") ++ (age2 as "age2"))
       .from(table.join(table2).on(name === name2))
 
-  val xx = (Arbitrary(age) as "age") ++ (Count(1) as "count")
-
   val aggregated =
     select((Arbitrary(age) as "age") ++ (Count(1) as "count"))
       .from(table)
@@ -59,5 +57,10 @@ object Example1 extends Sql {
 
   val query = select(fkCustomerId ++ Count(orderId))
           .from(orders)
-          .groupBy(fkCustomerId)
+          .groupBy(fkCustomerId, orderDate)
+
+  //TODO remove - just to test group by / having
+  def test[F, A, B](expr: Expr[F,A, B])(implicit in: Features.IsPartiallyAggregated[F]) : in.Unaggregated = ???
+  def test2[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B])(implicit in: Features.IsPartiallyAggregated[F]) : in.Unaggregated = ???
+
 }

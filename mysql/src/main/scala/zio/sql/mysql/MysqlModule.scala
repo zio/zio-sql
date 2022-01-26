@@ -85,7 +85,7 @@ trait MysqlModule extends Jdbc { self =>
         case Read.Mapped(read, _) =>
           renderReadImpl(read)
 
-        case read0 @ Read.Subselect(_, _, _, _, _, _, _, _, _) =>
+        case read0 @ Read.Subselect(_, _, _, _, _, _, _, _) =>
           object Dummy {
             type F
             type Repr
@@ -109,7 +109,7 @@ trait MysqlModule extends Jdbc { self =>
               renderExpr(whereExpr)
           }
           groupByExprs match {
-            case _ :: _ =>
+            case Read.ExprSet.ExprCons(_, _) =>
               render(" GROUP BY ")
               renderExprList(groupByExprs)
 
@@ -119,7 +119,7 @@ trait MysqlModule extends Jdbc { self =>
                   render(" HAVING ")
                   renderExpr(havingExpr)
               }
-            case Nil    => ()
+            case Read.ExprSet.NoExpr    => ()
           }
           orderByExprs match {
             case _ :: _ =>
@@ -401,17 +401,17 @@ trait MysqlModule extends Jdbc { self =>
           }
       }
 
-    private def renderExprList(expr: List[Expr[_, _, _]])(implicit render: Renderer): Unit =
+    private def renderExprList(expr: Read.ExprSet[_])(implicit render: Renderer): Unit =
       expr match {
-        case head :: tail =>
+        case Read.ExprSet.ExprCons(head, tail) => 
           renderExpr(head)
           tail match {
-            case _ :: _ =>
+            case Read.ExprSet.ExprCons(_, _) =>
               render(", ")
               renderExprList(tail)
-            case Nil    => ()
+            case Read.ExprSet.NoExpr    => ()
           }
-        case Nil          => ()
+        case Read.ExprSet.NoExpr    => ()
       }
 
     def renderOrderingList(expr: List[Ordering[Expr[_, _, _]]])(implicit render: Renderer): Unit =

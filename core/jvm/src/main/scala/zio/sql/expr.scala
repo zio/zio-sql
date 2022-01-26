@@ -108,14 +108,8 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     }
   }
 
-  trait ExprToSelectionLowerPrio {
-    implicit def expToSelection[F: Features.IsNotAggregated, A, B](
-      expr: Expr[F, A, B]
-    ): Selection[F, A, SelectionSet.Cons[A, B, SelectionSet.Empty]] =
-      Selection.computedOption(expr, Expr.exprName(expr))
-  }
+  object Expr {
 
-  object Expr extends ExprToSelectionLowerPrio {
     implicit val subqueryToExpr = self.Read.Subselect.subselectToExpr _
 
     sealed trait InvariantExpr[F, -A, B] extends Expr[F, A, B] {
@@ -132,14 +126,15 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
         case _                                  => None
       }
 
-    implicit def aggregatedExprToSelection[F: Features.IsFullyAggregated, A, B](
+    implicit def expToSelection[F, A, B](
       expr: Expr[F, A, B]
-    ): AggSelection[F, A, SelectionSet.Cons[A, B, SelectionSet.Empty]] =
-      AggSelection.computedOption(expr, exprName(expr))
+    ): Selection[F, A, SelectionSet.Cons[A, B, SelectionSet.Empty]] =
+      Selection.computedOption[F, A, B](expr, Expr.exprName(expr))
 
+    // aggregated F should not be propagated  
     sealed case class Subselect[F <: Features.Aggregated[_], Repr, Source, Subsource, Head](
       subselect: Read.Subselect[F, Repr, _ <: Source, Subsource, Head, SelectionSet.Empty]
-    ) extends InvariantExpr[F, Any, Head] {
+    ) extends InvariantExpr[Features.Derived, Any, Head] {
       override def typeTag: TypeTag[Head] = subselect.selection.value.head.toColumn.typeTag
     }
 
