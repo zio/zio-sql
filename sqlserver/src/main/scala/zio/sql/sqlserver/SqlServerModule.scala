@@ -251,7 +251,7 @@ trait SqlServerModule extends Jdbc { self =>
         case Read.Mapped(read, _) => buildReadString(read.asInstanceOf[Read[Out]])
 
         //todo offset (needs orderBy, must use fetch _instead_ of top)
-        case read0 @ Read.Subselect(_, _, _, _, _, _, _, _, _) =>
+        case read0 @ Read.Subselect(_, _, _, _, _, _, _, _) =>
           object Dummy {
             type F
             type Repr
@@ -280,7 +280,7 @@ trait SqlServerModule extends Jdbc { self =>
               buildExpr(whereExpr)
           }
           groupByExprs match {
-            case _ :: _ =>
+            case Read.ExprSet.ExprCons(_, _) =>
               builder.append(" group by ")
               buildExprList(groupByExprs)
 
@@ -290,7 +290,7 @@ trait SqlServerModule extends Jdbc { self =>
                   builder.append(" having ")
                   buildExpr(havingExpr)
               }
-            case Nil    => ()
+            case Read.ExprSet.NoExpr    => ()
           }
           orderByExprs match {
             case _ :: _ =>
@@ -309,17 +309,17 @@ trait SqlServerModule extends Jdbc { self =>
           val _ = builder.append(" (").append(values.mkString(",")).append(") ") //todo fix needs escaping
       }
 
-    def buildExprList(expr: List[Expr[_, _, _]]): Unit               =
+    def buildExprList(expr: Read.ExprSet[_]): Unit               =
       expr match {
-        case head :: tail =>
+        case Read.ExprSet.ExprCons(head, tail) => 
           buildExpr(head)
           tail match {
-            case _ :: _ =>
+            case Read.ExprSet.ExprCons(_, _) =>
               builder.append(", ")
               buildExprList(tail)
-            case Nil    => ()
+            case Read.ExprSet.NoExpr    => ()
           }
-        case Nil          => ()
+        case Read.ExprSet.NoExpr    => ()
       }
     def buildOrderingList(expr: List[Ordering[Expr[_, _, _]]]): Unit =
       expr match {

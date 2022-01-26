@@ -133,7 +133,7 @@ trait OracleModule extends Jdbc { self =>
     read match {
       case Read.Mapped(read, _) => buildReadString(read, builder)
 
-      case read0 @ Read.Subselect(_, _, _, _, _, _, _, _, _) =>
+      case read0 @ Read.Subselect(_, _, _, _, _, _, _, _) =>
         object Dummy {
           type F
           type Repr
@@ -157,7 +157,7 @@ trait OracleModule extends Jdbc { self =>
             buildExpr(whereExpr, builder)
         }
         groupByExprs match {
-          case _ :: _ =>
+          case Read.ExprSet.ExprCons(_, _) =>
             builder.append(" GROUP BY ")
             buildExprList(groupByExprs, builder)
 
@@ -167,7 +167,7 @@ trait OracleModule extends Jdbc { self =>
                 builder.append(" HAVING ")
                 buildExpr(havingExpr, builder)
             }
-          case Nil    => ()
+          case Read.ExprSet.NoExpr    => ()
         }
         orderByExprs match {
           case _ :: _ =>
@@ -199,17 +199,17 @@ trait OracleModule extends Jdbc { self =>
         val _ = builder.append(" (").append(values.mkString(",")).append(") ") //todo fix needs escaping
     }
 
-  def buildExprList(expr: List[Expr[_, _, _]], builder: StringBuilder): Unit               =
+  def buildExprList(expr: Read.ExprSet[_], builder: StringBuilder): Unit               =
     expr match {
-      case head :: tail =>
+      case Read.ExprSet.ExprCons(head, tail) => 
         buildExpr(head, builder)
         tail match {
-          case _ :: _ =>
+          case Read.ExprSet.ExprCons(_, _) =>
             builder.append(", ")
             buildExprList(tail, builder)
-          case Nil    => ()
+          case Read.ExprSet.NoExpr    => ()
         }
-      case Nil          => ()
+      case Read.ExprSet.NoExpr => ()
     }
   def buildOrderingList(expr: List[Ordering[Expr[_, _, _]]], builder: StringBuilder): Unit =
     expr match {

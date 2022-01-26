@@ -388,19 +388,17 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
         */
 
         import AggregationDef._
-        import Ordering._
 
         val expected = List(6,5,5,5,4)
 
         val query = select(fkCustomerId ++ Count(orderId))
           .from(orders)
-          //.groupBy(fkCustomerId)
+          .groupBy(fkCustomerId)
+          .orderBy(Ordering.Desc(Count(orderId)))
 
-        val actual = execute(query.to[Long, Int](_.toInt)).runCollect.map(_.toList)
+        val actual = execute(query.to[UUID, Long, Int]((_: UUID, count: Long) => count.toInt)).runCollect.map(_.toList)
 
         assertM(actual)(equalTo(expected))
-
-        ???
     },
     testM("insert - 1 rows into customers") {
 
