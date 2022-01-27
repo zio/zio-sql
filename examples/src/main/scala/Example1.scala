@@ -32,14 +32,14 @@ object Example1 extends Sql {
       .offset(1000)
       .orderBy(age.descending)
 
-  val tt =    ((age + 2) as "age")
+  val tt = ((age + 2) as "age")
 
   val joined =
     select((age as "age") ++ (age2 as "age2"))
       .from(table.join(table2).on(name === name2))
 
   val aggregated =
-    select((Arbitrary(age) as "age") ++ (Count(1) as "count"))
+    select((age as "age") ++ (Count(1) as "count"))
       .from(table)
       .groupBy(age)
 
@@ -56,11 +56,62 @@ object Example1 extends Sql {
   val orderId :*: fkCustomerId :*: orderDate :*: _ = orders.columns
 
   val query = select(fkCustomerId ++ Count(orderId))
-          .from(orders)
-          .groupBy(fkCustomerId, orderDate)
+    .from(orders)
+    .groupBy(fkCustomerId, orderDate)
 
   //TODO remove - just to test group by / having
-  def test[F, A, B](expr: Expr[F,A, B])(implicit in: Features.IsPartiallyAggregated[F]) : in.Unaggregated = ???
-  def test2[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B])(implicit in: Features.IsPartiallyAggregated[F]) : in.Unaggregated = ???
+  def test[F, A, B](expr: Expr[F, A, B])(implicit in: Features.IsPartiallyAggregated[F]): in.Unaggregated = ???
+  def test2[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B])(implicit
+    in: Features.IsPartiallyAggregated[F]
+  ): in.Unaggregated                                                                                      = ???
+
+  //HAVING OK
+
+  // select(fkCustomerId)
+  //   .from(orders)
+  //   .groupBy(fkCustomerId)
+  //   .having(Count(orderId) > 4)
+
+  // select(Count(orderId))
+  //   .from(orders)
+  //   .having(Count(orderId) > 26)
+
+  // select(Count(orderId))
+  //   .from(orders)
+  //   .groupBy(fkCustomerId)
+  //   .having(Count(orderId) > 4)
+
+  // select(Count(id), customerId)
+  //   .from(orders)
+  //   .groupBy(fkCustomerId)
+  //   .having(Count(orderId) > 4)
+
+  //HAVING FAIL
+
+  // select(fkCustomerId)
+  //   .from(orders)
+  //   .having(Count(orderId) > 4)
+
+  //RESTRICTIONS
+  // 1. Having needs to be aggregated
+  // 2. fully agregated expr do not need Group By
+
+  type Value[_]
+
+  sealed trait SomeTypeclass[F]
+
+  object SomeTypeclass {
+    //instances
+  }
+
+  def test(values: Value[_]*) = ???
+
+  def test[F1: SomeTypeclass](value1: Value[F1])                                       = ???
+  def test[F1: SomeTypeclass, F2: SomeTypeclass](value1: Value[F1], value2: Value[F2]) = ???
+  def test[F1: SomeTypeclass, F2: SomeTypeclass, F3: SomeTypeclass](
+    value1: Value[F1],
+    value2: Value[F2],
+    value3: Value[F3]
+  )                                                                                    = ???
 
 }

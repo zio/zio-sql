@@ -4,24 +4,26 @@ import scala.language.implicitConversions
 
 trait SelectModule { self: ExprModule with TableModule =>
 
-sealed case class Selector[F, Source, B <: SelectionSet[Source], Unaggregated](selection: Selection[F, Source, B])
+  sealed case class Selector[F, Source, B <: SelectionSet[Source], Unaggregated](selection: Selection[F, Source, B])
 
-object Selector extends SelectorImplicitLowerPriority {
-  implicit def aggregatedSelectorToBuilder[F, Source, B <: SelectionSet[Source]]
-      (selector: Selector[F, Source, B, Any])(implicit i: Features.IsFullyAggregated[F]): SelectBuilder[F, Source, B] =
-        SelectBuilder(selector.selection)
+  object Selector extends SelectorImplicitLowerPriority {
+    implicit def aggregatedSelectorToBuilder[F, Source, B <: SelectionSet[Source]](
+      selector: Selector[F, Source, B, Any]
+    )(implicit i: Features.IsFullyAggregated[F]): SelectBuilder[F, Source, B] =
+      SelectBuilder(selector.selection)
 
-  implicit def notAggregatedSelectorToBuilder[F, Source, B <: SelectionSet[Source], Unaggregated]
-      (selector: Selector[F, Source, B, Unaggregated])(implicit i: Features.IsNotAggregated[F]): SelectBuilder[F, Source, B] =
-        SelectBuilder(selector.selection)
-}
+    implicit def notAggregatedSelectorToBuilder[F, Source, B <: SelectionSet[Source], Unaggregated](
+      selector: Selector[F, Source, B, Unaggregated]
+    )(implicit i: Features.IsNotAggregated[F]): SelectBuilder[F, Source, B] =
+      SelectBuilder(selector.selection)
+  }
 
-trait SelectorImplicitLowerPriority {
-    implicit def partiallyAggregatedSelectorToBuilder[F, Source, B <: SelectionSet[Source], Unaggregated]
-      (selector: Selector[F, Source, B, Unaggregated]): AggSelectBuilder[F, Source, B, Unaggregated] =
-        AggSelectBuilder[F, Source, B, Unaggregated](selector.selection)
+  trait SelectorImplicitLowerPriority {
+    implicit def partiallyAggregatedSelectorToBuilder[F, Source, B <: SelectionSet[Source], Unaggregated](
+      selector: Selector[F, Source, B, Unaggregated]
+    ): AggSelectBuilder[F, Source, B, Unaggregated] =
+      AggSelectBuilder[F, Source, B, Unaggregated](selector.selection)
 
-    // select(Sin(1.0))
     implicit def noTable[F, Source >: Any, B <: SelectionSet[Source]](
       selectBuilder: Selector[F, Source, B, Any]
     )(implicit
@@ -47,16 +49,18 @@ trait SelectorImplicitLowerPriority {
 
       Read.Subselect(Selection[F, Source, B0](b), None, true)
     }
-}
+  }
 
-  sealed case class AggSelectBuilder[F0, Source, B <: SelectionSet[Source], Unaggregated](selection: Selection[F0, Source, B]){
+  sealed case class AggSelectBuilder[F0, Source, B <: SelectionSet[Source], Unaggregated](
+    selection: Selection[F0, Source, B]
+  ) {
 
     def from[Source0 <: Source](table: Table.Aux[Source0])(implicit
       ev: B <:< SelectionSet.Cons[Source0, selection.value.ColumnHead, selection.value.SelectionTail]
     ): AggSelectBuilderGroupBy[
       F0,
       selection.value.ResultTypeRepr,
-      Source0, 
+      Source0,
       selection.value.ColumnHead,
       selection.value.SelectionTail,
       Unaggregated
@@ -69,13 +73,21 @@ trait SelectorImplicitLowerPriority {
       ]
       val b: B0 = selection.value.asInstanceOf[B0]
 
-      AggSelectBuilderGroupBy[F0, selection.value.ResultTypeRepr, Source0, selection.value.ColumnHead, selection.value.SelectionTail, Unaggregated](Read.Subselect(Selection[F0, Source0, B0](b), Some(table), true))
+      AggSelectBuilderGroupBy[
+        F0,
+        selection.value.ResultTypeRepr,
+        Source0,
+        selection.value.ColumnHead,
+        selection.value.SelectionTail,
+        Unaggregated
+      ](Read.Subselect(Selection[F0, Source0, B0](b), Some(table), true))
     }
   }
 
-  //TODO add having
+  //TODO add having !!!!
   sealed case class AggSelectBuilderGroupBy[F, Repr, Source, Head, Tail <: SelectionSet[Source], Unaggregated](
-      select: Read.Select[F, Repr, Source, Head, Tail]) {
+    select: Read.Select[F, Repr, Source, Head, Tail]
+  ) {
     import Read.ExprSet._
 
     // format: off
@@ -485,15 +497,17 @@ trait SelectorImplicitLowerPriority {
     object ExprSet {
       type NoExpr = NoExpr.type
       case object NoExpr extends ExprSet[Any] {
-       override type Append[F2, Source1 <: Any, B2] = ExprCons[F2, Source1, B2, NoExpr]
-       override def ++[F2, Source1 <: Any, B2](that: Expr[F2, Source1, B2]): Append[F2, Source1, B2] = ExprCons(that, NoExpr)
+        override type Append[F2, Source1 <: Any, B2] = ExprCons[F2, Source1, B2, NoExpr]
+        override def ++[F2, Source1 <: Any, B2](that: Expr[F2, Source1, B2]): Append[F2, Source1, B2] =
+          ExprCons(that, NoExpr)
       }
 
-      sealed case class ExprCons[F, Source, B, T <: ExprSet[Source]](head: Expr[F, Source, B], tail: T) extends ExprSet[Source] {
-        override type Append[F2, Source1 <: Source, B2] = 
+      sealed case class ExprCons[F, Source, B, T <: ExprSet[Source]](head: Expr[F, Source, B], tail: T)
+          extends ExprSet[Source] {
+        override type Append[F2, Source1 <: Source, B2] =
           ExprCons[F, Source1, B, tail.Append[F2, Source1, B2]]
-        override def ++[F2, Source1 <: Source, B2](that: Expr[F2, Source1, B2]): Append[F2, Source1, B2] = 
-            ExprCons(head, tail.++[F2, Source1, B2](that))
+        override def ++[F2, Source1 <: Source, B2](that: Expr[F2, Source1, B2]): Append[F2, Source1, B2] =
+          ExprCons(head, tail.++[F2, Source1, B2](that))
       }
     }
 
@@ -508,7 +522,9 @@ trait SelectorImplicitLowerPriority {
       limit: Option[Long] = None
     ) extends Read[Repr] { self =>
 
-      def where(whereExpr2: Expr[_, Source, Boolean]): Subselect[F, Repr, Source, Subsource, Head, Tail] =
+      def where[F2: Features.IsNotAggregated](
+        whereExpr2: Expr[F2, Source, Boolean]
+      ): Subselect[F, Repr, Source, Subsource, Head, Tail] =
         copy(whereExpr = self.whereExpr && whereExpr2)
 
       def limit(n: Long): Subselect[F, Repr, Source, Subsource, Head, Tail] = copy(limit = Some(n))
@@ -521,19 +537,38 @@ trait SelectorImplicitLowerPriority {
       ): Subselect[F, Repr, Source, Subsource, Head, Tail] =
         copy(orderByExprs = self.orderByExprs ++ (o :: os.toList))
 
-      def having(havingExpr2: Expr[_, Source, Boolean])(implicit
-        ev: Features.IsFullyAggregated[F]
-      ): Subselect[F, Repr, Source, Subsource, Head, Tail] = {
-        val _ = ev
+      /**
+       * TODO
+       *
+       * need to restrict varargs _ : IsAggregated
+       */
+      def having(havingExpr2: Expr[_, Source, Boolean])
+      //(implicit ev: Features.IsFullyAggregated[F])
+        : Subselect[F, Repr, Source, Subsource, Head, Tail] =
+        // val _ = ev
         copy(havingExpr = self.havingExpr && havingExpr2)
-      }
 
-      def groupBy(key: Expr[_, Source, Any], keys: Expr[_, Source, Any]*)(implicit
-           ev: Features.IsFullyAggregated[F]
-       ): Subselect[F, Repr, Source, Subsource, Head, Tail] = {
-         val _ = ev
-         copy(groupByExprs = (key :: keys.toList).foldLeft[ExprSet[Source]](ExprSet.NoExpr)((tail, head) => ExprSet.ExprCons(head, tail)))
-      }
+      /**
+       *         TODO support
+       *         select(fkCustomerId)
+       *          .from(orders)
+       *          .groupBy(fkCustomerId)
+       *
+       *          DONT allow
+       *          select(Count(orderId) ++ Count(orderId))
+       *          .from(orders)
+       *          .groupBy(Count(orderId))
+       *
+       *          is there a way to restrict _ : IsNotAggregated
+       *          (cannot move it up to AggBuilder because select(fkCustomerId).from(orders) is valid sql)
+       */
+      def groupBy(
+        key: Expr[_, Source, Any],
+        keys: Expr[_, Source, Any]*
+      ): Subselect[F, Repr, Source, Subsource, Head, Tail] =
+        copy(groupByExprs =
+          (key :: keys.toList).foldLeft[ExprSet[Source]](ExprSet.NoExpr)((tail, head) => ExprSet.ExprCons(head, tail))
+        )
 
       override def asTable(
         name: TableName
@@ -612,7 +647,7 @@ trait SelectorImplicitLowerPriority {
     def ++[F2, A1 <: A, C <: SelectionSet[A1]](
       that: Selection[F2, A1, C]
     ): Selection[F :||: F2, A1, self.value.Append[A1, C]] =
-        Selection[F :||: F2, A1, self.value.Append[A1, C]](self.value ++ that.value) 
+      Selection[F :||: F2, A1, self.value.Append[A1, C]](self.value ++ that.value)
   }
 
   object Selection {

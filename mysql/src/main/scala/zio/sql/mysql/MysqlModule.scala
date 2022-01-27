@@ -119,7 +119,7 @@ trait MysqlModule extends Jdbc { self =>
                   render(" HAVING ")
                   renderExpr(havingExpr)
               }
-            case Read.ExprSet.NoExpr    => ()
+            case Read.ExprSet.NoExpr         => ()
           }
           orderByExprs match {
             case _ :: _ =>
@@ -403,15 +403,15 @@ trait MysqlModule extends Jdbc { self =>
 
     private def renderExprList(expr: Read.ExprSet[_])(implicit render: Renderer): Unit =
       expr match {
-        case Read.ExprSet.ExprCons(head, tail) => 
+        case Read.ExprSet.ExprCons(head, tail) =>
           renderExpr(head)
-          tail match {
+          tail.asInstanceOf[Read.ExprSet[_]] match {
             case Read.ExprSet.ExprCons(_, _) =>
               render(", ")
-              renderExprList(tail)
-            case Read.ExprSet.NoExpr    => ()
+              renderExprList(tail.asInstanceOf[Read.ExprSet[_]])
+            case Read.ExprSet.NoExpr         => ()
           }
-        case Read.ExprSet.NoExpr    => ()
+        case Read.ExprSet.NoExpr               => ()
       }
 
     def renderOrderingList(expr: List[Ordering[Expr[_, _, _]]])(implicit render: Renderer): Unit =
