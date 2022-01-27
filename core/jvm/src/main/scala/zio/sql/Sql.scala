@@ -17,10 +17,10 @@ trait Sql extends SelectModule with DeleteModule with UpdateModule with ExprModu
    *
    * SELECT ARBITRARY(age), COUNT(*) FROM person GROUP BY age
    */
-  def select[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B])(
-    implicit i: Features.IsPartiallyAggregated[F]
-    ): Selector[F, A, B, i.Unaggregated] =
-      Selector[F, A, B, i.Unaggregated](selection)
+  def select[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B])(implicit
+    i: Features.IsPartiallyAggregated[F]
+  ): Selector[F, A, B, i.Unaggregated] =
+    Selector[F, A, B, i.Unaggregated](selection)
 
   def subselect[ParentTable]: SubselectPartiallyApplied[ParentTable] = new SubselectPartiallyApplied[ParentTable]
 

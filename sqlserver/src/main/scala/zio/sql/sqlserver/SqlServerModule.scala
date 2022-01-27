@@ -290,7 +290,7 @@ trait SqlServerModule extends Jdbc { self =>
                   builder.append(" having ")
                   buildExpr(havingExpr)
               }
-            case Read.ExprSet.NoExpr    => ()
+            case Read.ExprSet.NoExpr         => ()
           }
           orderByExprs match {
             case _ :: _ =>
@@ -309,17 +309,17 @@ trait SqlServerModule extends Jdbc { self =>
           val _ = builder.append(" (").append(values.mkString(",")).append(") ") //todo fix needs escaping
       }
 
-    def buildExprList(expr: Read.ExprSet[_]): Unit               =
+    def buildExprList(expr: Read.ExprSet[_]): Unit                   =
       expr match {
-        case Read.ExprSet.ExprCons(head, tail) => 
+        case Read.ExprSet.ExprCons(head, tail) =>
           buildExpr(head)
-          tail match {
+          tail.asInstanceOf[Read.ExprSet[_]] match {
             case Read.ExprSet.ExprCons(_, _) =>
               builder.append(", ")
-              buildExprList(tail)
-            case Read.ExprSet.NoExpr    => ()
+              buildExprList(tail.asInstanceOf[Read.ExprSet[_]])
+            case Read.ExprSet.NoExpr         => ()
           }
-        case Read.ExprSet.NoExpr    => ()
+        case Read.ExprSet.NoExpr               => ()
       }
     def buildOrderingList(expr: List[Ordering[Expr[_, _, _]]]): Unit =
       expr match {

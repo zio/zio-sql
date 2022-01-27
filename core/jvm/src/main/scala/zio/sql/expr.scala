@@ -131,7 +131,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     ): Selection[F, A, SelectionSet.Cons[A, B, SelectionSet.Empty]] =
       Selection.computedOption[F, A, B](expr, Expr.exprName(expr))
 
-    // aggregated F should not be propagated  
+    // aggregated F should not be propagated
     sealed case class Subselect[F <: Features.Aggregated[_], Repr, Source, Subsource, Head](
       subselect: Read.Subselect[F, Repr, _ <: Source, Subsource, Head, SelectionSet.Empty]
     ) extends InvariantExpr[Features.Derived, Any, Head] {
@@ -276,13 +276,11 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
   }
 
   object AggregationDef {
-    val Count                                            = AggregationDef[Any, Long](FunctionName("count"))
-    val Sum                                              = AggregationDef[Double, Double](FunctionName("sum"))
-    //TODO what is Arbitrary??? it does not exists on postgresql
-    def Arbitrary[F, A, B: TypeTag](expr: Expr[F, A, B]) = AggregationDef[B, B](FunctionName("arbitrary"))(expr)
-    val Avg                                              = AggregationDef[Double, Double](FunctionName("avg"))
-    def Min[F, A, B: TypeTag](expr: Expr[F, A, B])       = AggregationDef[B, B](FunctionName("min"))(expr)
-    def Max[F, A, B: TypeTag](expr: Expr[F, A, B])       = AggregationDef[B, B](FunctionName("max"))(expr)
+    val Count                                      = AggregationDef[Any, Long](FunctionName("count"))
+    val Sum                                        = AggregationDef[Double, Double](FunctionName("sum"))
+    val Avg                                        = AggregationDef[Double, Double](FunctionName("avg"))
+    def Min[F, A, B: TypeTag](expr: Expr[F, A, B]) = AggregationDef[B, B](FunctionName("min"))(expr)
+    def Max[F, A, B: TypeTag](expr: Expr[F, A, B]) = AggregationDef[B, B](FunctionName("max"))(expr)
   }
 
   sealed case class FunctionDef[-A, +B](name: FunctionName) { self =>

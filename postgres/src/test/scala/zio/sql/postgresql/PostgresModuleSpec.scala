@@ -17,7 +17,9 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
   import Customers._
   import Orders._
 
-  private def customerSelectJoseAssertion(condition: Expr[_, customers.TableType, Boolean]) = {
+  private def customerSelectJoseAssertion[F: Features.IsNotAggregated](
+    condition: Expr[F, customers.TableType, Boolean]
+  ) = {
     case class Customer(id: UUID, fname: String, lname: String, verified: Boolean, dateOfBirth: LocalDate)
 
     val query =
@@ -379,26 +381,51 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("group by / order by order is correct") {    
+    testM("group by can be called on non aggregated collumn") {
+
       /**
-        select customer_id, count(id)
-          from orders
-          group by customer_id
-          order by count(id) desc
-        */
+       *        select customer_id
+       *          from orders
+       *          group by customer_id
+       */
 
-        import AggregationDef._
+      val expected = List(
+        "636ae137-5b1a-4c8c-b11f-c47c624d9cdc",
+        "60b01fc9-c902-4468-8d49-3c0f989def37",
+        "df8215a2-d5fd-4c6c-9984-801a1b3a2a0b",
+        "784426a5-b90a-4759-afbb-571b7a0ba35e",
+        "f76c9ace-be07-4bf3-bd4c-4a9c62882e64"
+      )
 
-        val expected = List(6,5,5,5,4)
+      val query = select(fkCustomerId)
+        .from(orders)
+        .groupBy(fkCustomerId)
 
-        val query = select(fkCustomerId ++ Count(orderId))
-          .from(orders)
-          .groupBy(fkCustomerId)
-          .orderBy(Ordering.Desc(Count(orderId)))
+      val actual = execute(query.to[UUID, String](_.toString())).runCollect.map(_.toList)
 
-        val actual = execute(query.to[UUID, Long, Int]((_: UUID, count: Long) => count.toInt)).runCollect.map(_.toList)
+      assertM(actual)(equalTo(expected))
+    },
+    testM("group by have to be called on column from selection") {
 
-        assertM(actual)(equalTo(expected))
+      /**
+       *        select customer_id, count(id)
+       *          from orders
+       *          group by customer_id
+       *          order by count(id) desc
+       */
+
+      import AggregationDef._
+
+      val expected = List(6, 5, 5, 5, 4)
+
+      val query = select(fkCustomerId ++ Count(orderId))
+        .from(orders)
+        .groupBy(fkCustomerId)
+        .orderBy(Ordering.Desc(Count(orderId)))
+
+      val actual = execute(query.to[UUID, Long, Int]((_: UUID, count: Long) => count.toInt)).runCollect.map(_.toList)
+
+      assertM(actual)(equalTo(expected))
     },
     testM("insert - 1 rows into customers") {
 

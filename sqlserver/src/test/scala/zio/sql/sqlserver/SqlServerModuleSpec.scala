@@ -14,7 +14,9 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
   import AggregationDef._
   import DbSchema._
 
-  private def customerSelectJoseAssertion(condition: Expr[_, customers.TableType, Boolean]) = {
+  private def customerSelectJoseAssertion[F: Features.IsNotAggregated](
+    condition: Expr[F, customers.TableType, Boolean]
+  ) = {
     case class Customer(id: UUID, fname: String, lname: String, verified: Boolean, dateOfBirth: LocalDate)
 
     val query =

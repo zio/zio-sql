@@ -167,7 +167,7 @@ trait OracleModule extends Jdbc { self =>
                 builder.append(" HAVING ")
                 buildExpr(havingExpr, builder)
             }
-          case Read.ExprSet.NoExpr    => ()
+          case Read.ExprSet.NoExpr         => ()
         }
         orderByExprs match {
           case _ :: _ =>
@@ -199,17 +199,17 @@ trait OracleModule extends Jdbc { self =>
         val _ = builder.append(" (").append(values.mkString(",")).append(") ") //todo fix needs escaping
     }
 
-  def buildExprList(expr: Read.ExprSet[_], builder: StringBuilder): Unit               =
+  def buildExprList(expr: Read.ExprSet[_], builder: StringBuilder): Unit                   =
     expr match {
-      case Read.ExprSet.ExprCons(head, tail) => 
+      case Read.ExprSet.ExprCons(head, tail) =>
         buildExpr(head, builder)
-        tail match {
+        tail.asInstanceOf[Read.ExprSet[_]] match {
           case Read.ExprSet.ExprCons(_, _) =>
             builder.append(", ")
-            buildExprList(tail, builder)
-          case Read.ExprSet.NoExpr    => ()
+            buildExprList(tail.asInstanceOf[Read.ExprSet[_]], builder)
+          case Read.ExprSet.NoExpr         => ()
         }
-      case Read.ExprSet.NoExpr => ()
+      case Read.ExprSet.NoExpr               => ()
     }
   def buildOrderingList(expr: List[Ordering[Expr[_, _, _]]], builder: StringBuilder): Unit =
     expr match {
