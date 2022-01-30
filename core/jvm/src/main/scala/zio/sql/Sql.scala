@@ -2,7 +2,7 @@ package zio.sql
 
 import zio.schema.Schema
 
-trait Sql extends SelectModule with DeleteModule with UpdateModule with ExprModule with TableModule with InsertModule {
+trait Sql extends SelectModule with DeleteModule with UpdateModule with ExprModule with TableModule with InsertModule with UtilsModule {
   self =>
 
   /*

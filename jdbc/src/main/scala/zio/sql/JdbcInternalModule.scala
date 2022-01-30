@@ -122,17 +122,41 @@ trait JdbcInternalModule { self: Jdbc =>
     resultSet: ResultSet,
     schema: Vector[(TypeTag[_], Int)]
   ): Either[DecodingError, A] = {
-    val result: Either[DecodingError, Any] = Right(())
+
+    val result: Either[DecodingError, List[Any]] = Right(List())
 
     schema
       .foldRight(result) {
-        case (_, err @ Left(_))            => err // TODO: Accumulate errors
+        case (_, err@Left(_)) => err // TODO: Accumulate errors
         case ((typeTag, index), Right(vs)) =>
           extractColumn(Left(index), resultSet, typeTag) match {
             case Left(err) => Left(err)
-            case Right(v)  => Right((v, vs))
+            case Right(v) => Right(v :: vs)
           }
-      }
-      .map(_.asInstanceOf[A])
+      }.map {
+      case List(a) => (a)
+      case List(a, b) => (a, b)
+      case List(a, b, c) => (a, b, c)
+      case List(a, b, c, d) => (a, b, c, d)
+      case List(a, b, c, d, e) => (a, b, c, d, e)
+      case List(a, b, c, d, e, f) => (a, b, c, d, e, f)
+      case List(a, b, c, d, e, f, g) => (a, b, c, d, e, f, g)
+      case List(a, b, c, d, e, f, g, h) => (a, b, c, d, e, f, g, h)
+      case List(a, b, c, d, e, f, g, h, i) => (a, b, c, d, e, f, g, h, i)
+      case List(a, b, c, d, e, f, g, h, i, j) => (a, b, c, d, e, f, g, h, i, j)
+      case List(a, b, c, d, e, f, g, h, i, j, k) => (a, b, c, d, e, f, g, h, i, j, k)
+      case List(a, b, c, d, e, f, g, h, i, j, k, l) => (a, b, c, d, e, f, g, h, i, j, k, l)
+      case List(a, b, c, d, e, f, g, h, i, j, k, l, m) => (a, b, c, d, e, f, g, h, i, j, k, l, m)
+      case List(a, b, c, d, e, f, g, h, i, j, k, l, m, n) => (a, b, c, d, e, f, g, h, i, j, k, l, m, n)
+      case List(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o) => (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o)
+      case List(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p) => (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p)
+      case List(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q) => (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q)
+      case List(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r) => (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r)
+      case List(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s) => (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s)
+      case List(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t) => (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t)
+      case List(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u) => (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u)
+      case List(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v) => (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v)
+      case _ => ()
+    }.map(_.asInstanceOf[A])
   }
 }

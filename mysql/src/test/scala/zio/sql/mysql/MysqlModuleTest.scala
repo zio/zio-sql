@@ -57,7 +57,7 @@ object MysqlModuleTest extends MysqlRunnableSpec with ShopSchema {
 
       val testResult = execute(
         query
-          .to[UUID, String, String, LocalDate, Customer] { case row =>
+          .to { case row =>
             Customer(row._1, row._2, row._3, row._4)
           }
       )
@@ -88,7 +88,7 @@ object MysqlModuleTest extends MysqlRunnableSpec with ShopSchema {
 
       val testResult = execute(
         query
-          .to[UUID, String, String, Boolean, LocalDate, Customer] { case row =>
+          .to { case row =>
             Customer(row._1, row._2, row._3, row._4, row._5)
           }
       )
@@ -118,7 +118,7 @@ object MysqlModuleTest extends MysqlRunnableSpec with ShopSchema {
 
       val testResult = execute(
         query
-          .to[UUID, String, String, LocalDate, Customer] { case row =>
+          .to { case row =>
             Customer(row._1, row._2, row._3, row._4)
           }
       )
@@ -162,7 +162,7 @@ object MysqlModuleTest extends MysqlRunnableSpec with ShopSchema {
 
       val result = execute(
         query
-          .to[String, String, LocalDate, Row] { case row =>
+          .to { case row =>
             Row(row._1, row._2, row._3)
           }
       )

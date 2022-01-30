@@ -35,7 +35,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
     val testResult = execute(
       query
-        .to[UUID, String, String, Boolean, LocalDate, Customer] { case row =>
+        .to { case row =>
           Customer(row._1, row._2, row._3, row._4, row._5)
         }
     )
@@ -89,7 +89,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       val testResult = execute(
         query
-          .to[UUID, String, String, LocalDate, Customer] { case row =>
+          .to { case row =>
             Customer(row._1, row._2, row._3, row._4)
           }
       )
@@ -141,7 +141,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       val testResult = execute(
         query
-          .to[UUID, String, String, LocalDate, Customer] { case row =>
+          .to { case row =>
             Customer(row._1, row._2, row._3, row._4)
           }
       )
@@ -157,7 +157,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       val expected = 5L
 
-      val result = execute(query.to[Long, Long](identity))
+      val result = execute(query.to(identity))
 
       for {
         r <- result.runCollect
@@ -190,7 +190,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       val result = execute(
         query
-          .to[String, String, Long, Row] { case row =>
+          .to { case row =>
             Row(row._1, row._2, row._3)
           }
       )
@@ -216,42 +216,46 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
           unitPrice > select(Avg(price)).from(productPrices)
         )
 
-      case class Row(orderId: UUID, productId: UUID, unitPrice: BigDecimal)
+      case class Row(orderId: UUID, productId: UUID, unitPrice: scala.math.BigDecimal)
 
       object Row {
-        def apply(orderId: String, productId: String, unitPrice: BigDecimal): Row =
+        def create(orderId: String, productId: String, unitPrice: BigDecimal): Row =
           new Row(UUID.fromString(orderId), UUID.fromString(productId), unitPrice)
       }
 
       val expected = Seq(
-        Row("04912093-CC2E-46AC-B64C-1BD7BB7758C3", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
-        Row("9022DD0D-06D6-4A43-9121-2993FC7712A1", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
-        Row("38D66D44-3CFA-488A-AC77-30277751418F", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
-        Row("7B2627D5-0150-44DF-9171-3462E20797EE", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
-        Row("62CD4109-3E5D-40CC-8188-3899FC1F8BDF", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 72.7200),
-        Row("9473A0BC-396A-4936-96B0-3EEA922AF36B", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 80.0000),
-        Row("B8BAC18D-769F-48ED-809D-4B6C0E4D1795", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 67.2700),
-        Row("BEBBFE4D-4EC3-4389-BDC2-50E9EAC2B15B", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 67.2700),
-        Row("742D45A0-E81A-41CE-95AD-55B4CABBA258", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 67.2700),
-        Row("618AA21F-700B-4CA7-933C-67066CF4CD97", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
-        Row("606DA090-DD33-4A77-8746-6ED0E8443AB2", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 67.2700),
-        Row("FD0FA8D4-E1A0-4369-BE07-945450DB5D36", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 80.0000),
-        Row("876B6034-B33C-4497-81EE-B4E8742164C2", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
-        Row("91CAA28A-A5FE-40D7-979C-BD6A128D0418", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
-        Row("2C3FC180-D0DF-4D7B-A271-E6CCD2440393", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 70.0000),
-        Row("763A7C39-833F-4EE8-9939-E80DFDBFC0FC", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 80.0000),
-        Row("5011D206-8EFF-42C4-868E-F1A625E1F186", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
-        Row("0A48FFB0-EC61-4147-AF56-FC4DBCA8DE0A", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
-        Row("A243FA42-817A-44EC-8B67-22193D212D82", "D5137D3A-894A-4109-9986-E982541B434F", 45.4500),
-        Row("62CD4109-3E5D-40CC-8188-3899FC1F8BDF", "D5137D3A-894A-4109-9986-E982541B434F", 50.0000),
-        Row("9473A0BC-396A-4936-96B0-3EEA922AF36B", "D5137D3A-894A-4109-9986-E982541B434F", 55.0000),
-        Row("852E2DC9-4EC3-4225-A6F7-4F42F8FF728E", "D5137D3A-894A-4109-9986-E982541B434F", 45.4500),
-        Row("D6D8DDDC-4B0B-4D74-8EDC-A54E9B7F35F7", "D5137D3A-894A-4109-9986-E982541B434F", 50.0000),
-        Row("2C3FC180-D0DF-4D7B-A271-E6CCD2440393", "D5137D3A-894A-4109-9986-E982541B434F", 50.0000),
-        Row("5883CB62-D792-4EE3-ACBC-FE85B6BAA998", "D5137D3A-894A-4109-9986-E982541B434F", 55.0000)
+        Row.create("04912093-CC2E-46AC-B64C-1BD7BB7758C3", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
+        Row.create("9022DD0D-06D6-4A43-9121-2993FC7712A1", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
+        Row.create("38D66D44-3CFA-488A-AC77-30277751418F", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
+        Row.create("7B2627D5-0150-44DF-9171-3462E20797EE", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
+        Row.create("62CD4109-3E5D-40CC-8188-3899FC1F8BDF", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 72.7200),
+        Row.create("9473A0BC-396A-4936-96B0-3EEA922AF36B", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 80.0000),
+        Row.create("B8BAC18D-769F-48ED-809D-4B6C0E4D1795", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 67.2700),
+        Row.create("BEBBFE4D-4EC3-4389-BDC2-50E9EAC2B15B", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 67.2700),
+        Row.create("742D45A0-E81A-41CE-95AD-55B4CABBA258", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 67.2700),
+        Row.create("618AA21F-700B-4CA7-933C-67066CF4CD97", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
+        Row.create("606DA090-DD33-4A77-8746-6ED0E8443AB2", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 67.2700),
+        Row.create("FD0FA8D4-E1A0-4369-BE07-945450DB5D36", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 80.0000),
+        Row.create("876B6034-B33C-4497-81EE-B4E8742164C2", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
+        Row.create("91CAA28A-A5FE-40D7-979C-BD6A128D0418", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
+        Row.create("2C3FC180-D0DF-4D7B-A271-E6CCD2440393", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 70.0000),
+        Row.create("763A7C39-833F-4EE8-9939-E80DFDBFC0FC", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 80.0000),
+        Row.create("5011D206-8EFF-42C4-868E-F1A625E1F186", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
+        Row.create("0A48FFB0-EC61-4147-AF56-FC4DBCA8DE0A", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
+        Row.create("A243FA42-817A-44EC-8B67-22193D212D82", "D5137D3A-894A-4109-9986-E982541B434F", 45.4500),
+        Row.create("62CD4109-3E5D-40CC-8188-3899FC1F8BDF", "D5137D3A-894A-4109-9986-E982541B434F", 50.0000),
+        Row.create("9473A0BC-396A-4936-96B0-3EEA922AF36B", "D5137D3A-894A-4109-9986-E982541B434F", 55.0000),
+        Row.create("852E2DC9-4EC3-4225-A6F7-4F42F8FF728E", "D5137D3A-894A-4109-9986-E982541B434F", 45.4500),
+        Row.create("D6D8DDDC-4B0B-4D74-8EDC-A54E9B7F35F7", "D5137D3A-894A-4109-9986-E982541B434F", 50.0000),
+        Row.create("2C3FC180-D0DF-4D7B-A271-E6CCD2440393", "D5137D3A-894A-4109-9986-E982541B434F", 50.0000),
+        Row.create("5883CB62-D792-4EE3-ACBC-FE85B6BAA998", "D5137D3A-894A-4109-9986-E982541B434F", 55.0000)
       )
 
-      val result = execute(query.to[UUID, UUID, BigDecimal, Row](Row.apply))
+      //TODO try to support apply
+      //val result = execute(query.to[Row](Row.apply))
+      val result = execute(query.to{
+        case (id, productId, price) => Row(id, productId, price)
+      })
 
       val assertion = for {
         r <- result.runCollect
@@ -334,7 +338,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       val result = execute(
         query
-          .to[UUID, UUID, BigDecimal, Row] { case row =>
+          .to { case row =>
             Row(row._1, row._2, row._3)
           }
       )
@@ -382,7 +386,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       val result = execute(
         query
-          .to[UUID, String, String, LocalDate, Row] { case row =>
+          .to { case row =>
             Row(row._1, row._2, row._3, row._4)
           }
       )
@@ -414,7 +418,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       val result = execute(
         query
-          .to[String, String, LocalDate, CustomerAndDateRow] { case row =>
+          .to { case row =>
             CustomerAndDateRow(row._1, row._2, row._3)
           }
       )
@@ -436,7 +440,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       val result = execute(
         query
-          .to[String, String, LocalDate, CustomerAndDateRow] { case row =>
+          .to { case row =>
             CustomerAndDateRow(row._1, row._2, row._3)
           }
       )
@@ -458,7 +462,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       val result = execute(
         query
-          .to[String, String, LocalDate, CustomerAndDateRow] { case row =>
+          .to { case row =>
             CustomerAndDateRow(row._1, row._2, row._3)
           }
       )
@@ -480,7 +484,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       val result = execute(
         query
-          .to[String, String, LocalDate, CustomerAndDateRow] { case row =>
+          .to { case row =>
             CustomerAndDateRow(row._1, row._2, row._3)
           }
       )
@@ -526,7 +530,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       val result = execute(
         query
-          .to[String, String, LocalDate, Row] { case row =>
+          .to { case row =>
             Row(row._1, row._2, row._3)
           }
       )
