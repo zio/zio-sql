@@ -2,7 +2,7 @@ package zio.sql
 
 import scala.language.implicitConversions
 
-trait SelectModule { self: ExprModule with TableModule =>
+trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
 
   sealed case class Selector[F, Source, B <: SelectionSet[Source], Unaggregated](selection: Selection[F, Source, B])
 
@@ -25,16 +25,17 @@ trait SelectModule { self: ExprModule with TableModule =>
       AggSelectBuilder[F, Source, B, Unaggregated](selector.selection)
 
     implicit def noTable[F, Source >: Any, B <: SelectionSet[Source]](
-      selectBuilder: Selector[F, Source, B, Any]
+      selectBuilder: Selector[F, Source, B, Any],
     )(implicit
       ev: B <:< SelectionSet.Cons[
         Source,
         selectBuilder.selection.value.ColumnHead,
         selectBuilder.selection.value.SelectionTail
-      ]
+      ],
+      normalizer: TrailingUnitNormalizer[selectBuilder.selection.value.ResultTypeRepr]
     ): Read.Select[
       F,
-      selectBuilder.selection.value.ResultTypeRepr,
+      normalizer.Out,
       Source,
       selectBuilder.selection.value.ColumnHead,
       selectBuilder.selection.value.SelectionTail
@@ -47,7 +48,7 @@ trait SelectModule { self: ExprModule with TableModule =>
       ]
       val b: B0 = selectBuilder.selection.value.asInstanceOf[B0]
 
-      Read.Subselect(Selection[F, Source, B0](b), None, true)
+      Read.Subselect(Selection[F, Source, B0](b), None, true).normalize
     }
   }
 
@@ -56,10 +57,11 @@ trait SelectModule { self: ExprModule with TableModule =>
   ) {
 
     def from[Source0 <: Source](table: Table.Aux[Source0])(implicit
-      ev: B <:< SelectionSet.Cons[Source0, selection.value.ColumnHead, selection.value.SelectionTail]
+      ev: B <:< SelectionSet.Cons[Source0, selection.value.ColumnHead, selection.value.SelectionTail],
+      normalizer: TrailingUnitNormalizer[selection.value.ResultTypeRepr]
     ): AggSelectBuilderGroupBy[
       F0,
-      selection.value.ResultTypeRepr,
+      normalizer.Out,
       Source0,
       selection.value.ColumnHead,
       selection.value.SelectionTail,
@@ -75,12 +77,12 @@ trait SelectModule { self: ExprModule with TableModule =>
 
       AggSelectBuilderGroupBy[
         F0,
-        selection.value.ResultTypeRepr,
+        normalizer.Out,
         Source0,
         selection.value.ColumnHead,
         selection.value.SelectionTail,
         Unaggregated
-      ](Read.Subselect(Selection[F0, Source0, B0](b), Some(table), true))
+      ](Read.Subselect(Selection[F0, Source0, B0](b), Some(table), true).normalize)
     }
   }
 
@@ -206,10 +208,11 @@ trait SelectModule { self: ExprModule with TableModule =>
   sealed case class SelectBuilder[F0, Source, B <: SelectionSet[Source]](selection: Selection[F0, Source, B]) {
 
     def from[Source0 <: Source](table: Table.Aux[Source0])(implicit
-      ev: B <:< SelectionSet.Cons[Source0, selection.value.ColumnHead, selection.value.SelectionTail]
+      ev: B <:< SelectionSet.Cons[Source0, selection.value.ColumnHead, selection.value.SelectionTail],
+      normalizer: TrailingUnitNormalizer[selection.value.ResultTypeRepr]
     ): Read.Select[
       F0,
-      selection.value.ResultTypeRepr,
+      normalizer.Out,
       Source0,
       selection.value.ColumnHead,
       selection.value.SelectionTail
@@ -222,7 +225,7 @@ trait SelectModule { self: ExprModule with TableModule =>
       ]
       val b: B0 = selection.value.asInstanceOf[B0]
 
-      Read.Subselect(Selection[F0, Source0, B0](b), Some(table), true)
+      Read.Subselect(Selection[F0, Source0, B0](b), Some(table), true).normalize
     }
   }
 
@@ -281,181 +284,10 @@ trait SelectModule { self: ExprModule with TableModule =>
      */
     def map[Out2](f: Out => Out2): Read.Aux[ResultType, Out2] =
       Read.Mapped(self, f)
-
-    def to[A, Target](f: A => Target)(implicit ev: Out <:< (A, Unit)): Read[Target] =
+  
+    def to[Target](f: Out => Target): Read[Target] =
       self.map { resultType =>
-        val (a, _) = ev(resultType)
-
-        f(a)
-      }
-
-    def to[A, B, Target](
-      f: (A, B) => Target
-    )(implicit ev: Out <:< (A, (B, Unit))): Read[Target] =
-      self.map { resultType =>
-        val (a, (b, _)) = ev(resultType)
-
-        f(a, b)
-      }
-
-    def to[A, B, C, Target](
-      f: (A, B, C) => Target
-    )(implicit ev: Out <:< (A, (B, (C, Unit)))): Read[Target] =
-      self.map { resultType =>
-        val (a, (b, (c, _))) = ev(resultType)
-
-        f(a, b, c)
-      }
-
-    def to[A, B, C, D, Target](
-      f: (A, B, C, D) => Target
-    )(implicit ev: Out <:< (A, (B, (C, (D, Unit))))): Read[Target] =
-      self.map { resultType =>
-        val (a, (b, (c, (d, _)))) = ev(resultType)
-
-        f(a, b, c, d)
-      }
-
-    def to[A, B, C, D, E, Target](
-      f: (A, B, C, D, E) => Target
-    )(implicit ev: Out <:< (A, (B, (C, (D, (E, Unit)))))): Read[Target] =
-      self.map { resultType =>
-        val (a, (b, (c, (d, (e, _))))) = ev(resultType)
-
-        f(a, b, c, d, e)
-      }
-
-    def to[A, B, C, D, E, F, G, H, Target](
-      f: (A, B, C, D, E, F, G, H) => Target
-    )(implicit
-      ev: Out <:< (A, (B, (C, (D, (E, (F, (G, (H, Unit))))))))
-    ): Read[Target] =
-      self.map { resultType =>
-        val (a, (b, (c, (d, (e, (fArg, (g, (h, _)))))))) = ev(resultType)
-
-        f(a, b, c, d, e, fArg, g, h)
-      }
-
-    def to[A, B, C, D, E, F, G, H, I, Target](
-      f: (A, B, C, D, E, F, G, H, I) => Target
-    )(implicit
-      ev: Out <:< (A, (B, (C, (D, (E, (F, (G, (H, (I, Unit)))))))))
-    ): Read[Target] =
-      self.map { resultType =>
-        val (a, (b, (c, (d, (e, (fArg, (g, (h, (i, _))))))))) = ev(resultType)
-
-        f(a, b, c, d, e, fArg, g, h, i)
-      }
-
-    def to[A, B, C, D, E, F, G, H, I, J, K, L, Target](
-      f: (A, B, C, D, E, F, G, H, I, J, K, L) => Target
-    )(implicit
-      ev: Out <:< (A, (B, (C, (D, (E, (F, (G, (H, (I, (J, (K, (L, Unit))))))))))))
-    ): Read[Target] =
-      self.map { resultType =>
-        val (a, (b, (c, (d, (e, (fArg, (g, (h, (i, (j, (k, (l, _)))))))))))) = ev(resultType)
-
-        f(a, b, c, d, e, fArg, g, h, i, j, k, l)
-      }
-
-    def to[A, B, C, D, E, F, G, H, I, J, K, L, M, Target](
-      f: (A, B, C, D, E, F, G, H, I, J, K, L, M) => Target
-    )(implicit
-      ev: Out <:< (A, (B, (C, (D, (E, (F, (G, (H, (I, (J, (K, (L, (M, Unit)))))))))))))
-    ): Read[Target] =
-      self.map { resultType =>
-        val (a, (b, (c, (d, (e, (fArg, (g, (h, (i, (j, (k, (l, (m, _))))))))))))) = ev(resultType)
-
-        f(a, b, c, d, e, fArg, g, h, i, j, k, l, m)
-      }
-
-    def to[A, B, C, D, E, F, G, H, I, J, K, L, M, N, Target](
-      f: (A, B, C, D, E, F, G, H, I, J, K, L, M, N) => Target
-    )(implicit
-      ev: Out <:< (A, (B, (C, (D, (E, (F, (G, (H, (I, (J, (K, (L, (M, (N, Unit))))))))))))))
-    ): Read[Target] =
-      self.map { resultType =>
-        val (a, (b, (c, (d, (e, (fArg, (g, (h, (i, (j, (k, (l, (m, (n, _)))))))))))))) = ev(resultType)
-
-        f(a, b, c, d, e, fArg, g, h, i, j, k, l, m, n)
-      }
-
-    def to[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, Target](
-      f: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O) => Target
-    )(implicit
-      ev: Out <:< (A, (B, (C, (D, (E, (F, (G, (H, (I, (J, (K, (L, (M, (N, (O, Unit)))))))))))))))
-    ): Read[Target] =
-      self.map { resultType =>
-        val (a, (b, (c, (d, (e, (fArg, (g, (h, (i, (j, (k, (l, (m, (n, (o, _))))))))))))))) = ev(resultType)
-
-        f(a, b, c, d, e, fArg, g, h, i, j, k, l, m, n, o)
-      }
-
-    def to[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Target](
-      f: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P) => Target
-    )(implicit
-      ev: Out <:< (A, (B, (C, (D, (E, (F, (G, (H, (I, (J, (K, (L, (M, (N, (O, (P, Unit))))))))))))))))
-    ): Read[Target] =
-      self.map { resultType =>
-        val (a, (b, (c, (d, (e, (fArg, (g, (h, (i, (j, (k, (l, (m, (n, (o, (p, _)))))))))))))))) = ev(resultType)
-
-        f(a, b, c, d, e, fArg, g, h, i, j, k, l, m, n, o, p)
-      }
-
-    def to[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, Target](
-      f: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q) => Target
-    )(implicit
-      ev: Out <:< (A, (B, (C, (D, (E, (F, (G, (H, (I, (J, (K, (L, (M, (N, (O, (P, (Q, Unit)))))))))))))))))
-    ): Read[Target] =
-      self.map { resultType =>
-        val (a, (b, (c, (d, (e, (fArg, (g, (h, (i, (j, (k, (l, (m, (n, (o, (p, (q, _))))))))))))))))) = ev(resultType)
-
-        f(a, b, c, d, e, fArg, g, h, i, j, k, l, m, n, o, p, q)
-      }
-
-    def to[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, Target](
-      f: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R) => Target
-    )(implicit
-      ev: Out <:< (
-        A,
-        (B, (C, (D, (E, (F, (G, (H, (I, (J, (K, (L, (M, (N, (O, (P, (Q, (R, Unit)))))))))))))))))
-      )
-    ): Read[Target] =
-      self.map { resultType =>
-        val (a, (b, (c, (d, (e, (fArg, (g, (h, (i, (j, (k, (l, (m, (n, (o, (p, (q, (r, _)))))))))))))))))) =
-          ev(resultType)
-
-        f(a, b, c, d, e, fArg, g, h, i, j, k, l, m, n, o, p, q, r)
-      }
-
-    def to[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, Target](
-      f: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S) => Target
-    )(implicit
-      ev: Out <:< (
-        A,
-        (B, (C, (D, (E, (F, (G, (H, (I, (J, (K, (L, (M, (N, (O, (P, (Q, (R, (S, Unit))))))))))))))))))
-      )
-    ): Read[Target] =
-      self.map { resultType =>
-        val (a, (b, (c, (d, (e, (fArg, (g, (h, (i, (j, (k, (l, (m, (n, (o, (p, (q, (r, (s, _))))))))))))))))))) =
-          ev(resultType)
-
-        f(a, b, c, d, e, fArg, g, h, i, j, k, l, m, n, o, p, q, r, s)
-      }
-
-    def to[A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, Target](
-      f: (A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T) => Target
-    )(implicit
-      ev: Out <:< (
-        A,
-        (B, (C, (D, (E, (F, (G, (H, (I, (J, (K, (L, (M, (N, (O, (P, (Q, (R, (S, (T, Unit)))))))))))))))))))
-      )
-    ): Read[Target] =
-      self.map { resultType =>
-        val (a, (b, (c, (d, (e, (fArg, (g, (h, (i, (j, (k, (l, (m, (n, (o, (p, (q, (r, (s, (t, _)))))))))))))))))))) =
-          ev(resultType)
-
-        f(a, b, c, d, e, fArg, g, h, i, j, k, l, m, n, o, p, q, r, s, t)
+        f(resultType)
       }
 
     def union[Out1 >: Out](that: Read.Aux[ResultType, Out1]): Read.Aux[ResultType, Out1] =
@@ -466,6 +298,28 @@ trait SelectModule { self: ExprModule with TableModule =>
   }
 
   object Read {
+    sealed trait ExprSet[-Source] {
+      type Append[F2, Source1 <: Source, B2] <: ExprSet[Source1]
+      def ++[F2, Source1 <: Source, B2](that: Expr[F2, Source1, B2]): Append[F2, Source1, B2]
+    }
+
+    object ExprSet {
+      type NoExpr = NoExpr.type
+      case object NoExpr extends ExprSet[Any] {
+        override type Append[F2, Source1 <: Any, B2] = ExprCons[F2, Source1, B2, NoExpr]
+        override def ++[F2, Source1 <: Any, B2](that: Expr[F2, Source1, B2]): Append[F2, Source1, B2] =
+          ExprCons(that, NoExpr)
+      }
+
+      sealed case class ExprCons[F, Source, B, T <: ExprSet[Source]](head: Expr[F, Source, B], tail: T)
+          extends ExprSet[Source] {
+        override type Append[F2, Source1 <: Source, B2] =
+          ExprCons[F, Source1, B, tail.Append[F2, Source1, B2]]
+        override def ++[F2, Source1 <: Source, B2](that: Expr[F2, Source1, B2]): Append[F2, Source1, B2] =
+          ExprCons(head, tail.++[F2, Source1, B2](that))
+      }
+    }
+
     type Aux[ResultType0, Out] = Read[Out] {
       type ResultType = ResultType0
     }
@@ -489,28 +343,6 @@ trait SelectModule { self: ExprModule with TableModule =>
 
     type Select[F, Repr, Source, Head, Tail <: SelectionSet[Source]] = Subselect[F, Repr, Source, Source, Head, Tail]
 
-    sealed trait ExprSet[-Source] {
-      type Append[F2, Source1 <: Source, B2] <: ExprSet[Source1]
-      def ++[F2, Source1 <: Source, B2](that: Expr[F2, Source1, B2]): Append[F2, Source1, B2]
-    }
-
-    object ExprSet {
-      type NoExpr = NoExpr.type
-      case object NoExpr extends ExprSet[Any] {
-        override type Append[F2, Source1 <: Any, B2] = ExprCons[F2, Source1, B2, NoExpr]
-        override def ++[F2, Source1 <: Any, B2](that: Expr[F2, Source1, B2]): Append[F2, Source1, B2] =
-          ExprCons(that, NoExpr)
-      }
-
-      sealed case class ExprCons[F, Source, B, T <: ExprSet[Source]](head: Expr[F, Source, B], tail: T)
-          extends ExprSet[Source] {
-        override type Append[F2, Source1 <: Source, B2] =
-          ExprCons[F, Source1, B, tail.Append[F2, Source1, B2]]
-        override def ++[F2, Source1 <: Source, B2](that: Expr[F2, Source1, B2]): Append[F2, Source1, B2] =
-          ExprCons(head, tail.++[F2, Source1, B2](that))
-      }
-    }
-
     sealed case class Subselect[F, Repr, Source, Subsource, Head, Tail <: SelectionSet[Source]](
       selection: Selection[F, Source, SelectionSet.ConsAux[Repr, Source, Head, Tail]],
       table: Option[Table.Aux[Subsource]],
@@ -522,7 +354,8 @@ trait SelectModule { self: ExprModule with TableModule =>
       limit: Option[Long] = None
     ) extends Read[Repr] { self =>
 
-      def where[F2: Features.IsNotAggregated](
+      //def where[F2: Features.IsNotAggregated](
+      def where[F2](
         whereExpr2: Expr[F2, Source, Boolean]
       ): Subselect[F, Repr, Source, Subsource, Head, Tail] =
         copy(whereExpr = self.whereExpr && whereExpr2)
@@ -569,6 +402,9 @@ trait SelectModule { self: ExprModule with TableModule =>
         copy(groupByExprs =
           (key :: keys.toList).foldLeft[ExprSet[Source]](ExprSet.NoExpr)((tail, head) => ExprSet.ExprCons(head, tail))
         )
+
+      def normalize(implicit instance: TrailingUnitNormalizer[ResultType]): Subselect[F, instance.Out, Source, Subsource, Head, Tail] =
+        self.asInstanceOf[Subselect[F, instance.Out, Source, Subsource, Head, Tail]]
 
       override def asTable(
         name: TableName
@@ -640,14 +476,14 @@ trait SelectModule { self: ExprModule with TableModule =>
   /**
    * A columnar selection of `B` from a source `A`, modeled as `A => B`.
    */
-  sealed case class Selection[F, -A, +B <: SelectionSet[A]](value: B) { self =>
+  sealed case class Selection[F, -Source, +B <: SelectionSet[Source]](value: B) { self =>
 
     type ColsRepr = value.ResultTypeRepr
 
-    def ++[F2, A1 <: A, C <: SelectionSet[A1]](
-      that: Selection[F2, A1, C]
-    ): Selection[F :||: F2, A1, self.value.Append[A1, C]] =
-      Selection[F :||: F2, A1, self.value.Append[A1, C]](self.value ++ that.value)
+    def ++[F2, Source1 <: Source, C <: SelectionSet[Source1]](
+      that: Selection[F2, Source1, C]
+    ): Selection[F :||: F2, Source1, self.value.Append[Source1, C]] =
+      Selection[F :||: F2, Source1, self.value.Append[Source1, C]](self.value ++ that.value)
   }
 
   object Selection {

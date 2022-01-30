@@ -5,6 +5,7 @@ import java.sql._
 import zio._
 import zio.blocking.Blocking
 import zio.stream._
+import zio.schema.Schema
 
 trait TransactionModule { self: Jdbc =>
   private[sql] sealed case class Txn(connection: Connection, sqlDriverCore: SqlDriverCore)
@@ -80,6 +81,11 @@ trait TransactionModule { self: Jdbc =>
     def apply(update: self.Update[_]): ZTransaction[Any, Exception, Int] =
       txn.flatMap { case Txn(connection, coreDriver) =>
         ZTransaction.fromEffect(coreDriver.updateOn(update, connection))
+      }
+    
+    def apply[Z: Schema](insert: self.Insert[_, Z]): ZTransaction[Any, Exception, Int] =
+      txn.flatMap { case Txn(connection, coreDriver) =>
+        ZTransaction.fromEffect(coreDriver.insertOn(insert, connection))
       }
 
     def apply(delete: self.Delete[_]): ZTransaction[Any, Exception, Int] =

@@ -38,7 +38,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
     val testResult = execute(
       query
-        .to[UUID, String, String, Boolean, LocalDate, Customer] { case row =>
+        .to[Customer] { case row =>
           Customer(row._1, row._2, row._3, row._4, row._5)
         }
     )
@@ -92,7 +92,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
       val testResult = execute(
         query
-          .to[UUID, String, String, LocalDate, Customer] { case row =>
+          .to[Customer] { case row =>
             Customer(row._1, row._2, row._3, row._4)
           }
       )
@@ -175,10 +175,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
         )
 
       val testResult = execute(
-        query
-          .to[UUID, String, String, LocalDate, Customer] { case row =>
-            Customer(row._1, row._2, row._3, row._4)
-          }
+        query.to(Customer tupled _)
       )
 
       val assertion = for {
@@ -192,7 +189,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = 5L
 
-      val result = execute(query.to[Long, Long](identity))
+      val result = execute(query.to(identity))
 
       for {
         r <- result.runCollect
@@ -203,40 +200,35 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
       case class Row(firstName: String, lastName: String, orderDate: LocalDate)
 
-      val expected = Seq(
-        Row("Ronald", "Russell", LocalDate.parse("2019-03-25")),
-        Row("Ronald", "Russell", LocalDate.parse("2018-06-04")),
-        Row("Alana", "Murray", LocalDate.parse("2019-08-19")),
-        Row("Jose", "Wiggins", LocalDate.parse("2019-08-30")),
-        Row("Jose", "Wiggins", LocalDate.parse("2019-03-07")),
-        Row("Ronald", "Russell", LocalDate.parse("2020-03-19")),
-        Row("Alana", "Murray", LocalDate.parse("2020-05-11")),
-        Row("Alana", "Murray", LocalDate.parse("2019-02-21")),
-        Row("Ronald", "Russell", LocalDate.parse("2018-05-06")),
-        Row("Mila", "Paterso", LocalDate.parse("2019-02-11")),
-        Row("Terrence", "Noel", LocalDate.parse("2019-10-12")),
-        Row("Ronald", "Russell", LocalDate.parse("2019-01-29")),
-        Row("Terrence", "Noel", LocalDate.parse("2019-02-10")),
-        Row("Ronald", "Russell", LocalDate.parse("2019-09-27")),
-        Row("Alana", "Murray", LocalDate.parse("2018-11-13")),
-        Row("Jose", "Wiggins", LocalDate.parse("2020-01-15")),
-        Row("Terrence", "Noel", LocalDate.parse("2018-07-10")),
-        Row("Mila", "Paterso", LocalDate.parse("2019-08-01")),
-        Row("Alana", "Murray", LocalDate.parse("2019-12-08")),
-        Row("Mila", "Paterso", LocalDate.parse("2019-11-04")),
-        Row("Mila", "Paterso", LocalDate.parse("2018-10-14")),
-        Row("Terrence", "Noel", LocalDate.parse("2020-04-05")),
-        Row("Jose", "Wiggins", LocalDate.parse("2019-01-23")),
-        Row("Terrence", "Noel", LocalDate.parse("2019-05-14")),
-        Row("Mila", "Paterso", LocalDate.parse("2020-04-30"))
+      val expected = List(
+        ("Ronald", "Russell", LocalDate.parse("2019-03-25")),
+        ("Ronald", "Russell", LocalDate.parse("2018-06-04")),
+        ("Alana", "Murray", LocalDate.parse("2019-08-19")),
+        ("Jose", "Wiggins", LocalDate.parse("2019-08-30")),
+        ("Jose", "Wiggins", LocalDate.parse("2019-03-07")),
+        ("Ronald", "Russell", LocalDate.parse("2020-03-19")),
+        ("Alana", "Murray", LocalDate.parse("2020-05-11")),
+        ("Alana", "Murray", LocalDate.parse("2019-02-21")),
+        ("Ronald", "Russell", LocalDate.parse("2018-05-06")),
+        ("Mila", "Paterso", LocalDate.parse("2019-02-11")),
+        ("Terrence", "Noel", LocalDate.parse("2019-10-12")),
+        ("Ronald", "Russell", LocalDate.parse("2019-01-29")),
+        ("Terrence", "Noel", LocalDate.parse("2019-02-10")),
+        ("Ronald", "Russell", LocalDate.parse("2019-09-27")),
+        ("Alana", "Murray", LocalDate.parse("2018-11-13")),
+        ("Jose", "Wiggins", LocalDate.parse("2020-01-15")),
+        ("Terrence", "Noel", LocalDate.parse("2018-07-10")),
+        ("Mila", "Paterso", LocalDate.parse("2019-08-01")),
+        ("Alana", "Murray", LocalDate.parse("2019-12-08")),
+        ("Mila", "Paterso", LocalDate.parse("2019-11-04")),
+        ("Mila", "Paterso", LocalDate.parse("2018-10-14")),
+        ("Terrence", "Noel", LocalDate.parse("2020-04-05")),
+        ("Jose", "Wiggins", LocalDate.parse("2019-01-23")),
+        ("Terrence", "Noel", LocalDate.parse("2019-05-14")),
+        ("Mila", "Paterso", LocalDate.parse("2020-04-30"))
       )
 
-      val result = execute(
-        query
-          .to[String, String, LocalDate, Row] { case row =>
-            Row(row._1, row._2, row._3)
-          }
-      )
+      val result = execute(query)
 
       val assertion = for {
         r <- result.runCollect
@@ -281,9 +273,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
       val result = execute(
         query
-          .to[UUID, String, String, LocalDate, Row] { case row =>
-            Row(row._1, row._2, row._3, row._4)
-          }
+          .to(Row tupled _)
       )
 
       val assertion = for {
@@ -319,7 +309,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
       val result = execute(
         query
-          .to[String, String, Long, Row] { case row =>
+          .to{ case row =>
             Row(row._1, row._2, row._3)
           }
       )
@@ -346,9 +336,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
       val testResult = execute(
         query
-          .to[UUID, String, String, LocalDate, Customer] { case row =>
-            Customer(row._1, row._2, row._3, row._4)
-          }
+          .to { case (uuid, firstName, lastName, dob) => Customer(uuid, firstName, lastName, dob) }
       )
 
       val assertion = for {
@@ -401,7 +389,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
         .from(orders)
         .groupBy(fkCustomerId)
 
-      val actual = execute(query.to[UUID, String](_.toString())).runCollect.map(_.toList)
+      val actual = execute(query.to(_.toString())).runCollect.map(_.toList)
 
       assertM(actual)(equalTo(expected))
     },
@@ -423,7 +411,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
         .groupBy(fkCustomerId)
         .orderBy(Ordering.Desc(Count(orderId)))
 
-      val actual = execute(query.to[UUID, Long, Int]((_: UUID, count: Long) => count.toInt)).runCollect.map(_.toList)
+      val actual = execute(query.to(arg => arg._2.toInt)).runCollect.map(_.toList)
 
       assertM(actual)(equalTo(expected))
     },
