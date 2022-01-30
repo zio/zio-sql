@@ -1,7 +1,8 @@
 {
   "overview-sidebar": {
     "Overview": [
-      "overview/overview_index"
+      "overview/overview_index",
+      "overview/deep_dive"
     ]
   },
   "usecases-sidebar": {
