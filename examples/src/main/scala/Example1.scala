@@ -114,6 +114,6 @@ object Example1 extends Sql {
     value3: Value[F3]
   )                                                                                    = ???
 
-  def test3[Out](read: Read[Out])(implicit in: TrailingUnitNormalizer[Out]) : in.Out = ???
+  def test3[Out](read: Read[Out])(implicit in: TrailingUnitNormalizer[Out]): in.Out = ???
 
 }

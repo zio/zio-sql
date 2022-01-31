@@ -82,7 +82,7 @@ trait TransactionModule { self: Jdbc =>
       txn.flatMap { case Txn(connection, coreDriver) =>
         ZTransaction.fromEffect(coreDriver.updateOn(update, connection))
       }
-    
+
     def apply[Z: Schema](insert: self.Insert[_, Z]): ZTransaction[Any, Exception, Int] =
       txn.flatMap { case Txn(connection, coreDriver) =>
         ZTransaction.fromEffect(coreDriver.insertOn(insert, connection))

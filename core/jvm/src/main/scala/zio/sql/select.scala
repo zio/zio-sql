@@ -25,7 +25,7 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
       AggSelectBuilder[F, Source, B, Unaggregated](selector.selection)
 
     implicit def noTable[F, Source >: Any, B <: SelectionSet[Source]](
-      selectBuilder: Selector[F, Source, B, Any],
+      selectBuilder: Selector[F, Source, B, Any]
     )(implicit
       ev: B <:< SelectionSet.Cons[
         Source,
@@ -284,7 +284,7 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
      */
     def map[Out2](f: Out => Out2): Read.Aux[ResultType, Out2] =
       Read.Mapped(self, f)
-  
+
     def to[Target](f: Out => Target): Read[Target] =
       self.map { resultType =>
         f(resultType)
@@ -403,7 +403,9 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
           (key :: keys.toList).foldLeft[ExprSet[Source]](ExprSet.NoExpr)((tail, head) => ExprSet.ExprCons(head, tail))
         )
 
-      def normalize(implicit instance: TrailingUnitNormalizer[ResultType]): Subselect[F, instance.Out, Source, Subsource, Head, Tail] =
+      def normalize(implicit
+        instance: TrailingUnitNormalizer[ResultType]
+      ): Subselect[F, instance.Out, Source, Subsource, Head, Tail] =
         self.asInstanceOf[Subselect[F, instance.Out, Source, Subsource, Head, Tail]]
 
       override def asTable(
@@ -476,14 +478,14 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
   /**
    * A columnar selection of `B` from a source `A`, modeled as `A => B`.
    */
-  sealed case class Selection[F, -Source, +B <: SelectionSet[Source]](value: B) { self =>
+  sealed case class Selection[F, -A, +B <: SelectionSet[A]](value: B) { self =>
 
     type ColsRepr = value.ResultTypeRepr
 
-    def ++[F2, Source1 <: Source, C <: SelectionSet[Source1]](
-      that: Selection[F2, Source1, C]
-    ): Selection[F :||: F2, Source1, self.value.Append[Source1, C]] =
-      Selection[F :||: F2, Source1, self.value.Append[Source1, C]](self.value ++ that.value)
+    def ++[F2, A1 <: A, C <: SelectionSet[A1]](
+      that: Selection[F2, A1, C]
+    ): Selection[F :||: F2, A1, self.value.Append[A1, C]] =
+      Selection(self.value ++ that.value)
   }
 
   object Selection {
@@ -650,18 +652,14 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
   }
 
   object DecodingError {
-    sealed case class UnexpectedNull(column: Either[Int, String])       extends DecodingError {
-      private def label = column.fold(index => index.toString, name => name)
-
-      def message = s"Expected column ${label} to be non-null"
+    sealed case class UnexpectedNull(column: Int)                       extends DecodingError {
+      def message = s"Expected column with index ${column} to be non-null"
     }
     sealed case class UnexpectedType(expected: TypeTag[_], actual: Int) extends DecodingError {
       def message = s"Expected type ${expected} but found ${actual}"
     }
-    sealed case class MissingColumn(column: Either[Int, String])        extends DecodingError {
-      private def label = column.fold(index => index.toString, name => name)
-
-      def message = s"The column ${label} does not exist"
+    sealed case class MissingColumn(column: Int)                        extends DecodingError {
+      def message = s"The column with index ${column} does not exist"
     }
     case object Closed                                                  extends DecodingError {
       def message = s"The ResultSet has been closed, so decoding is impossible"

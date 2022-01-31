@@ -84,9 +84,9 @@ trait PostgresModule extends Jdbc { self =>
     trait PostgresTypeTag[+A] extends Tag[A] with Decodable[A]
     object PostgresTypeTag {
       implicit case object TVoid       extends PostgresTypeTag[Unit]       {
-        override def decode(column: Either[Int, String], resultSet: ResultSet): Either[DecodingError, Unit] =
+        override def decode(column: Int, resultSet: ResultSet): Either[DecodingError, Unit] =
           scala.util
-            .Try(column.fold(resultSet.getObject(_), resultSet.getObject(_)))
+            .Try(resultSet.getObject(column))
             .fold(
               _ => Left(DecodingError.UnexpectedNull(column)),
               _ => Right(())
@@ -94,11 +94,11 @@ trait PostgresModule extends Jdbc { self =>
       }
       implicit case object TInterval   extends PostgresTypeTag[Interval]   {
         override def decode(
-          column: Either[Int, String],
+          column: Int,
           resultSet: ResultSet
         ): Either[DecodingError, Interval] =
           scala.util
-            .Try(Interval.fromPgInterval(new PGInterval(column.fold(resultSet.getString(_), resultSet.getString(_)))))
+            .Try(Interval.fromPgInterval(new PGInterval(resultSet.getString(column))))
             .fold(
               _ => Left(DecodingError.UnexpectedNull(column)),
               r => Right(r)
@@ -106,7 +106,7 @@ trait PostgresModule extends Jdbc { self =>
       }
       implicit case object TTimestampz extends PostgresTypeTag[Timestampz] {
         override def decode(
-          column: Either[Int, String],
+          column: Int,
           resultSet: ResultSet
         ): Either[DecodingError, Timestampz] =
           scala.util
@@ -114,7 +114,7 @@ trait PostgresModule extends Jdbc { self =>
               Timestampz.fromZonedDateTime(
                 ZonedDateTime
                   .ofInstant(
-                    column.fold(resultSet.getTimestamp(_), resultSet.getTimestamp(_)).toInstant,
+                    resultSet.getTimestamp(column).toInstant,
                     ZoneId.of(ZoneOffset.UTC.getId)
                   )
               )
@@ -445,12 +445,14 @@ trait PostgresModule extends Jdbc { self =>
               }
             case None    => ()
           }
-        //TODO what about other cases?
         case DynamicValue.Transform(that)           => renderDynamicValue(that)
         case DynamicValue.Tuple(left, right)        =>
           renderDynamicValue(left)
           render(", ")
           renderDynamicValue(right)
+        case DynamicValue.SomeValue(value)          => renderDynamicValue(value)
+        case DynamicValue.NoneValue                 => render(s"null")
+        //TODO what about other cases?
         case _                                      => ()
       }
 

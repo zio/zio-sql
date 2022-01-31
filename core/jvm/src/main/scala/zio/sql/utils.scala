@@ -2,7 +2,7 @@ package zio.sql
 
 trait UtilsModule { self =>
   sealed trait TrailingUnitNormalizer[In] {
-      type Out
+    type Out
   }
 
   object TrailingUnitNormalizer {
