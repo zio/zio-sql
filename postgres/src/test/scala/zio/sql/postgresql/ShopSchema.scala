@@ -5,6 +5,17 @@ import zio.sql.Jdbc
 trait ShopSchema extends Jdbc { self =>
   import self.ColumnSet._
 
+  object Persons {
+
+    import ColumnSetAspect._
+
+    val persons =
+      (uuid("id") ++ string("first_name") ++ string("last_name") ++ (localDate("dob") @@ nullable))
+        .table("persons")
+
+    val personId :*: fName :*: lName :*: dob :*: _ = persons.columns
+  }
+
   object Customers     {
     //https://github.com/zio/zio-sql/issues/320 Once Insert is supported, we can remove created_timestamp_string
     val customers =

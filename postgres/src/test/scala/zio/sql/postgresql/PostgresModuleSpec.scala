@@ -308,10 +308,9 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
       val query = select(fName ++ lName ++ (subquery as "Count")).from(customers)
 
       val result = execute(
-        query
-          .to{ case row =>
-            Row(row._1, row._2, row._3)
-          }
+        query.to { case row =>
+          Row(row._1, row._2, row._3)
+        }
       )
 
       val assertion = for {
@@ -335,8 +334,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
       )
 
       val testResult = execute(
-        query
-          .to { case (uuid, firstName, lastName, dob) => Customer(uuid, firstName, lastName, dob) }
+        query.to { case (uuid, firstName, lastName, dob) => Customer(uuid, firstName, lastName, dob) }
       )
 
       val assertion = for {
@@ -617,6 +615,37 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
       val query = insertInto(products)(productId ++ productName ++ description ++ imageURL).values(tupleData)
 
       assertM(execute(query))(equalTo(4))
+    },
+    testM("insert and query nullable field") {
+      import Persons._
+
+      val query = select(fName ++ lName ++ dob)
+        .from(persons)
+
+      val insertSome = insertInto(persons)(personId ++ fName ++ lName ++ dob)
+        .values((UUID.randomUUID(), "Charles", "Dent", Option(java.time.LocalDate.now())))
+      // TODO improve on inserting nulls
+      // we don't allow inserting null on non nullable columns -> There is no schema or dynamic value for nulls
+      val insertNone = insertInto(persons)(personId ++ fName ++ lName ++ dob)
+        .values((UUID.randomUUID(), "Martin", "Harvey", Option(null.asInstanceOf[java.time.LocalDate])))
+
+      val result = for {
+        _       <- execute(insertSome)
+        _       <- execute(insertNone)
+        persons <- execute(query).runCollect
+      } yield (persons.toList)
+
+      val expected = List(
+        ("Ronald", "Russell", Some(LocalDate.of(1983, 1, 5))),
+        ("Terrence", "Noel", None),
+        ("Mila", "Paterso", Some(LocalDate.of(1990, 11, 16))),
+        ("Alana", "Murray", Some(LocalDate.of(1995, 11, 12))),
+        ("Jose", null, None),
+        ("Charles", "Dent", Some(LocalDate.of(2022, 1, 31))),
+        ("Martin", "Harvey", None)
+      )
+
+      assertM(result)(equalTo(expected))
     }
   ) @@ sequential
 }

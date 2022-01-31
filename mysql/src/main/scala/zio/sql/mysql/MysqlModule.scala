@@ -16,9 +16,9 @@ trait MysqlModule extends Jdbc { self =>
 
     object MysqlTypeTag {
       implicit case object TYear extends MysqlTypeTag[Year] {
-        override def decode(column: Either[Int, String], resultSet: ResultSet): Either[DecodingError, Year] =
+        override def decode(column: Int, resultSet: ResultSet): Either[DecodingError, Year] =
           scala.util
-            .Try(Year.of(column.fold(resultSet.getByte(_), resultSet.getByte(_)).toInt))
+            .Try(Year.of(resultSet.getByte(column).toInt))
             .fold(
               _ => Left(DecodingError.UnexpectedNull(column)),
               r => Right(r)

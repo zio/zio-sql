@@ -954,10 +954,9 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
         )
 
       val testResult = execute(
-        query
-          .to{
-            case (id, fname, lname, verified, dob) => Customer(id, fname, lname, verified, dob)
-          }
+        query.to { case (id, fname, lname, verified, dob) =>
+          Customer(id, fname, lname, verified, dob)
+        }
       )
 
       val assertion = for {
@@ -1150,7 +1149,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       val query = select(SetSeed(0.12) ++ Random() ++ Random()) from customers
 
       val randomTupleForSeed = (0.019967750719779076, 0.8378369929936333)
-      val testResult         = execute(query.to{ case (_, b, c) => (b, c) })
+      val testResult         = execute(query.to { case (_, b, c) => (b, c) })
 
       val assertion = for {
         r <- testResult.runCollect
@@ -1194,9 +1193,8 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       val expectedRoundTripTimestamp = ZonedDateTime.of(2020, 11, 21, 19, 10, 25, 0, ZoneId.of(ZoneOffset.UTC.getId))
       val roundTripQuery             =
         select(createdString ++ createdTimestamp) from customers
-      val roundTripResults           = execute(roundTripQuery.to {
-        case row =>
-          (row._1, ZonedDateTime.parse(row._1), row._2)
+      val roundTripResults           = execute(roundTripQuery.to { case row =>
+        (row._1, ZonedDateTime.parse(row._1), row._2)
       })
       val roundTripExpected          = List(
         ("2020-11-21T19:10:25+00:00", ZonedDateTime.parse("2020-11-21T19:10:25+00:00"), expectedRoundTripTimestamp),

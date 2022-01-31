@@ -39,6 +39,14 @@ create table order_details
     unit_price money not null
 );
 
+create table persons
+(
+    id uuid not null primary key,
+    first_name varchar not null,
+    last_name varchar,
+    dob date
+);
+
 insert into customers
     (id, first_name, last_name, verified, dob, created_timestamp_string, created_timestamp)
 values
@@ -47,6 +55,15 @@ values
     ('784426a5-b90a-4759-afbb-571b7a0ba35e', 'Mila', 'Paterso', true, '1990-11-16', '2020-11-22T02:10:25+07:00', '2020-11-22 02:10:25+07'),
     ('df8215a2-d5fd-4c6c-9984-801a1b3a2a0b', 'Alana', 'Murray', true, '1995-11-12', '2020-11-21T12:10:25-07:00', '2020-11-21 12:10:25-07'),
     ('636ae137-5b1a-4c8c-b11f-c47c624d9cdc', 'Jose', 'Wiggins', false, '1987-03-23', '2020-11-21T19:10:25+00:00', '2020-11-21 19:10:25+00');
+
+insert into persons
+    (id, first_name, last_name, dob)
+values
+    ('60b01fc9-c902-4468-8d49-3c0f989def37', 'Ronald', 'Russell', '1983-01-05'),
+    ('f76c9ace-be07-4bf3-bd4c-4a9c62882e64', 'Terrence', 'Noel', null),
+    ('784426a5-b90a-4759-afbb-571b7a0ba35e', 'Mila', 'Paterso', '1990-11-16'),
+    ('df8215a2-d5fd-4c6c-9984-801a1b3a2a0b', 'Alana', 'Murray', '1995-11-12'),
+    ('636ae137-5b1a-4c8c-b11f-c47c624d9cdc', 'Jose', null,  null);
 
 insert into products
     (id, name, description, image_url)

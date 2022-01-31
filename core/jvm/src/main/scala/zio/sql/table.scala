@@ -68,6 +68,17 @@ trait TableModule { self: ExprModule with SelectModule =>
 
       override def columnsUntyped: List[Column.Untyped] = head :: tail.columnsUntyped
 
+      def @@[HeadType[_]](
+        columnSetAspect: ColumnSetAspect.Aux[HeadType]
+      )(implicit
+        ev: B <:< ColumnSet.Empty,
+        typeTagA: TypeTag.NotNull[A]
+      ): ColumnSet.Cons[HeadType[A], B, HeadIdentity] {
+        type ColumnsRepr[T]            = (Expr[Features.Source[HeadIdentity], T, HeadType[A]], self.tail.ColumnsRepr[T])
+        type Append[That <: ColumnSet] = Cons[HeadType[A], self.tail.Append[That], HeadIdentity]
+        type AllColumnIdentities       = HeadIdentity with self.tail.AllColumnIdentities
+      } = columnSetAspect.applyCons(self)
+
       def table(name0: TableName): Table.Aux_[ColumnsRepr, A, B, AllColumnIdentities, HeadIdentity] =
         new Table.Source {
           override type ColumnHead = A
@@ -125,6 +136,8 @@ trait TableModule { self: ExprModule with SelectModule =>
     def typeTag: TypeTag[A]
 
     def name: Option[String]
+
+    def nullable[A1 >: A](implicit ev: TypeTag.NotNull[A1]): Column.Aux[Option[A1], Identity]
   }
 
   object Column {
@@ -139,6 +152,9 @@ trait TableModule { self: ExprModule with SelectModule =>
       override def typeTag: TypeTag[A] = implicitly[TypeTag[A]]
 
       override def name = Some(columnName)
+
+      override def nullable[A1 >: A](implicit ev: TypeTag.NotNull[A1]): Column.Aux[Option[A1], Identity] =
+        Column.Named[Option[A1], ColumnIdentity](columnName)
     }
 
     sealed case class Indexed[A: TypeTag, ColumnIdentity]() extends Column[A] {
@@ -148,6 +164,9 @@ trait TableModule { self: ExprModule with SelectModule =>
       override def typeTag: TypeTag[A] = implicitly[TypeTag[A]]
 
       override def name = None
+
+      override def nullable[A1 >: A](implicit ev: TypeTag.NotNull[A1]): Column.Aux[Option[A1], Identity] =
+        Column.Indexed[Option[A1], ColumnIdentity]()
     }
 
     type Untyped = Column[_]
@@ -215,12 +234,6 @@ trait TableModule { self: ExprModule with SelectModule =>
       val columnSet: ColumnSet.ConsAux[A, B, ColumnsRepr, HeadIdentity]
     }
 
-    // Absence of "Insanity" trait causes following known problems:
-    // * in db modules
-    //     - The outer reference in this type test cannot be checked at run time?!
-    //       case sourceTable: self.Table.Source    =>
-    // * compiletime error in updating of table like
-    //     - update(table).set(age, age + 2)...
     trait Insanity {
       def ahhhhhhhhhhhhh[A]: A
     }
@@ -314,4 +327,49 @@ trait TableModule { self: ExprModule with SelectModule =>
   }
 
   type TableExtension[A] <: Table.TableEx[A]
+
+  trait ColumnSetAspect { self =>
+
+    type HeadType[_]
+
+    def applyCons[A: TypeTag.NotNull, B <: ColumnSet, HeadIdentity](
+      columnSet: ColumnSet.Cons[A, B, HeadIdentity]
+    ): ColumnSet.Cons[HeadType[A], B, HeadIdentity] {
+      type ColumnsRepr[T]            = (Expr[Features.Source[HeadIdentity], T, HeadType[A]], columnSet.tail.ColumnsRepr[T])
+      type Append[That <: ColumnSet] = ColumnSet.Cons[HeadType[A], columnSet.tail.Append[That], HeadIdentity]
+      type AllColumnIdentities       = HeadIdentity with columnSet.tail.AllColumnIdentities
+    }
+  }
+
+  object ColumnSetAspect {
+
+    type Aux[HeadType0[_]] = ColumnSetAspect {
+      type HeadType[A] = HeadType0[A]
+    }
+
+    val nullable: ColumnSetAspect.Aux[Option] = new ColumnSetAspect {
+
+      override type HeadType[A] = Option[A]
+
+      def applyCons[A: TypeTag.NotNull, B <: ColumnSet, HeadIdentity](
+        columnSet: ColumnSet.Cons[A, B, HeadIdentity]
+      ): ColumnSet.Cons[Option[A], B, HeadIdentity] {
+        type ColumnsRepr[T]            = (Expr[Features.Source[HeadIdentity], T, Option[A]], columnSet.tail.ColumnsRepr[T])
+        type Append[That <: ColumnSet] = ColumnSet.Cons[Option[A], columnSet.tail.Append[That], HeadIdentity]
+        type AllColumnIdentities       = HeadIdentity with columnSet.tail.AllColumnIdentities
+      } = {
+        val head = columnSet.head.nullable
+
+        ColumnSet
+          .Cons(head, columnSet.tail)
+          .asInstanceOf[
+            ColumnSet.Cons[Option[A], B, HeadIdentity] {
+              type ColumnsRepr[T]            = (Expr[Features.Source[HeadIdentity], T, Option[A]], columnSet.tail.ColumnsRepr[T])
+              type Append[That <: ColumnSet] = ColumnSet.Cons[Option[A], columnSet.tail.Append[That], HeadIdentity]
+              type AllColumnIdentities       = HeadIdentity with columnSet.tail.AllColumnIdentities
+            }
+          ]
+      }
+    }
+  }
 }
