@@ -85,7 +85,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     def isNotTrue[A1 <: A](implicit ev: B <:< Boolean): Expr[F, A1, Boolean] =
       Expr.Property(self, PropertyOp.IsNotTrue)
 
-    //TODO
+    //TODO https://github.com/zio/zio-sql/issues/564
     def as[B1 >: B](name: String): Expr[F, A, B1] = {
       val _ = name
       self
