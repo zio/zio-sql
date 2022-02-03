@@ -5,7 +5,7 @@ import zio.Chunk
 import java.time._
 import java.util.UUID
 
-trait TableModule { self: ExprModule with SelectModule =>
+trait TableModule { self: ExprModule with SelectModule with UtilsModule =>
 
   sealed trait Singleton0[A] {
     type SingletonIdentity
@@ -127,10 +127,6 @@ trait TableModule { self: ExprModule with SelectModule =>
       Cons(Column.Named[A, ColumnIdentity](name), Empty)
   }
 
-  object :*: {
-    def unapply[A, B](tuple: (A, B)): Some[(A, B)] = Some(tuple)
-  }
-
   sealed trait Column[+A] {
     type Identity
     def typeTag: TypeTag[A]
@@ -208,8 +204,8 @@ trait TableModule { self: ExprModule with SelectModule =>
       new Table.JoinBuilder[self.TableType, That](JoinType.RightOuter, self, that)
 
     final val subselect: SubselectPartiallyApplied[TableType] = new SubselectPartiallyApplied[TableType]
-
-    final def columns = columnSet.makeColumns[TableType](columnToExpr)
+    
+    def columns(implicit i: TrailingUnitNormalizer[columnSet.ColumnsRepr[TableType]]): i.Out = i.apply(columnSet.makeColumns[TableType](columnToExpr))
 
     val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail, HeadIdentity0]
 

@@ -36,12 +36,9 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
         )
       )
 
-    val testResult = execute(
-      query
-        .to[Customer] { case row =>
+    val testResult = execute(query).map { case row =>
           Customer(row._1, row._2, row._3, row._4, row._5)
         }
-    )
 
     val assertion = for {
       r <- testResult.runCollect
@@ -90,12 +87,9 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
           )
         )
 
-      val testResult = execute(
-        query
-          .to[Customer] { case row =>
+      val testResult = execute(query).map { case row =>
             Customer(row._1, row._2, row._3, row._4)
           }
-      )
 
       val assertion = for {
         r <- testResult.runCollect
@@ -174,9 +168,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
           )
         )
 
-      val testResult = execute(
-        query.to(Customer tupled _)
-      )
+      val testResult = execute(query).map(Customer tupled _)
 
       val assertion = for {
         r <- testResult.runCollect
@@ -189,7 +181,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
       val expected = 5L
 
-      val result = execute(query.to(identity))
+      val result = execute(query)
 
       for {
         r <- result.runCollect
@@ -271,10 +263,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
           .from(customers.lateral(orderDateDerivedTable))
           .orderBy(Ordering.Desc(orderDateDerived))
 
-      val result = execute(
-        query
-          .to(Row tupled _)
-      )
+      val result = execute(query).map(Row tupled _)
 
       val assertion = for {
         r <- result.runCollect
@@ -307,11 +296,9 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
       val query = select(fName ++ lName ++ (subquery as "Count")).from(customers)
 
-      val result = execute(
-        query.to { case row =>
+      val result = execute(query).map { case row =>
           Row(row._1, row._2, row._3)
         }
-      )
 
       val assertion = for {
         r <- result.runCollect
@@ -333,9 +320,8 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
         )
       )
 
-      val testResult = execute(
-        query.to { case (uuid, firstName, lastName, dob) => Customer(uuid, firstName, lastName, dob) }
-      )
+      val testResult = execute(query).map { case (uuid, firstName, lastName, dob) => Customer(uuid, firstName, lastName, dob) }
+      
 
       val assertion = for {
         r <- testResult.runCollect
@@ -387,7 +373,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
         .from(orders)
         .groupBy(fkCustomerId)
 
-      val actual = execute(query.to(_.toString())).runCollect.map(_.toList)
+      val actual = execute(query).map(_.toString()).runCollect.map(_.toList)
 
       assertM(actual)(equalTo(expected))
     },
@@ -409,7 +395,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
         .groupBy(fkCustomerId)
         .orderBy(Ordering.Desc(Count(orderId)))
 
-      val actual = execute(query.to(arg => arg._2.toInt)).runCollect.map(_.toList)
+      val actual = execute(query).map(arg => arg._2.toInt).runCollect.map(_.toList)
 
       assertM(actual)(equalTo(expected))
     },
@@ -623,7 +609,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
         .from(persons)
 
       val insertSome = insertInto(persons)(personId ++ fName ++ lName ++ dob)
-        .values((UUID.randomUUID(), "Charles", "Dent", Option(java.time.LocalDate.now())))
+        .values((UUID.randomUUID(), "Charles", "Dent", Option(LocalDate.of(2022, 1, 31))))
       // TODO improve on inserting nulls
       // we don't allow inserting null on non nullable columns -> There is no schema or dynamic value for nulls
       val insertNone = insertInto(persons)(personId ++ fName ++ lName ++ dob)

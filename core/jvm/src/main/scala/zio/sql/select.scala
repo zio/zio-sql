@@ -2,7 +2,7 @@ package zio.sql
 
 import scala.language.implicitConversions
 
-trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
+trait SelectModule { self: ExprModule with TableModule =>
 
   sealed case class Selector[F, Source, B <: SelectionSet[Source], Unaggregated](selection: Selection[F, Source, B])
 
@@ -31,11 +31,10 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
         Source,
         selectBuilder.selection.value.ColumnHead,
         selectBuilder.selection.value.SelectionTail
-      ],
-      normalizer: TrailingUnitNormalizer[selectBuilder.selection.value.ResultTypeRepr]
+      ]
     ): Read.Select[
       F,
-      normalizer.Out,
+      selectBuilder.selection.value.ResultTypeRepr,
       Source,
       selectBuilder.selection.value.ColumnHead,
       selectBuilder.selection.value.SelectionTail
@@ -48,7 +47,7 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
       ]
       val b: B0 = selectBuilder.selection.value.asInstanceOf[B0]
 
-      Read.Subselect(Selection[F, Source, B0](b), None, true).normalize
+      Read.Subselect(Selection[F, Source, B0](b), None, true)//.normalize
     }
   }
 
@@ -57,11 +56,10 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
   ) {
 
     def from[Source0 <: Source](table: Table.Aux[Source0])(implicit
-      ev: B <:< SelectionSet.Cons[Source0, selection.value.ColumnHead, selection.value.SelectionTail],
-      normalizer: TrailingUnitNormalizer[selection.value.ResultTypeRepr]
+      ev: B <:< SelectionSet.Cons[Source0, selection.value.ColumnHead, selection.value.SelectionTail]
     ): AggSelectBuilderGroupBy[
       F0,
-      normalizer.Out,
+      selection.value.ResultTypeRepr,
       Source0,
       selection.value.ColumnHead,
       selection.value.SelectionTail,
@@ -77,12 +75,12 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
 
       AggSelectBuilderGroupBy[
         F0,
-        normalizer.Out,
+        selection.value.ResultTypeRepr,
         Source0,
         selection.value.ColumnHead,
         selection.value.SelectionTail,
         Unaggregated
-      ](Read.Subselect(Selection[F0, Source0, B0](b), Some(table), true).normalize)
+      ](Read.Subselect(Selection[F0, Source0, B0](b), Some(table), true))
     }
   }
 
@@ -208,11 +206,10 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
   sealed case class SelectBuilder[F0, Source, B <: SelectionSet[Source]](selection: Selection[F0, Source, B]) {
 
     def from[Source0 <: Source](table: Table.Aux[Source0])(implicit
-      ev: B <:< SelectionSet.Cons[Source0, selection.value.ColumnHead, selection.value.SelectionTail],
-      normalizer: TrailingUnitNormalizer[selection.value.ResultTypeRepr]
+      ev: B <:< SelectionSet.Cons[Source0, selection.value.ColumnHead, selection.value.SelectionTail]
     ): Read.Select[
       F0,
-      normalizer.Out,
+      selection.value.ResultTypeRepr,
       Source0,
       selection.value.ColumnHead,
       selection.value.SelectionTail
@@ -225,7 +222,7 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
       ]
       val b: B0 = selection.value.asInstanceOf[B0]
 
-      Read.Subselect(Selection[F0, Source0, B0](b), Some(table), true).normalize
+      Read.Subselect(Selection[F0, Source0, B0](b), Some(table), true)
     }
   }
 
@@ -278,18 +275,7 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
 
     def asTable(name: TableName): Table.DerivedTable[Out, Read[Out]]
 
-    /**
-     * Maps the [[Read]] query's output to another type by providing a function
-     * that can transform from the current type to the new type.
-     */
-    def map[Out2](f: Out => Out2): Read.Aux[ResultType, Out2] =
-      Read.Mapped(self, f)
-
-    def to[Target](f: Out => Target): Read[Target] =
-      self.map { resultType =>
-        f(resultType)
-      }
-
+    //TODO use this
     def union[Out1 >: Out](that: Read.Aux[ResultType, Out1]): Read.Aux[ResultType, Out1] =
       Read.Union[ResultType, Out1](self, that, true)
 
@@ -322,23 +308,6 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
 
     type Aux[ResultType0, Out] = Read[Out] {
       type ResultType = ResultType0
-    }
-
-    sealed case class Mapped[Repr, Out, Out2](read: Read.Aux[Repr, Out], f: Out => Out2) extends Read[Out2] { self =>
-      override type ResultType = Repr
-
-      override val mapper = read.mapper.andThen(f)
-
-      override type ColumnHead = read.ColumnHead
-      override type ColumnTail = read.ColumnTail
-      override type CS         = read.CS
-
-      override type HeadIdentity = read.HeadIdentity
-
-      override val columnSet: CS = read.columnSet
-
-      override def asTable(name: TableName): Table.DerivedTable[Out2, Mapped[Repr, Out, Out2]] =
-        Table.DerivedTable[Out2, Mapped[Repr, Out, Out2]](self, name)
     }
 
     type Select[F, Repr, Source, Head, Tail <: SelectionSet[Source]] = Subselect[F, Repr, Source, Source, Head, Tail]
@@ -402,11 +371,6 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
         copy(groupByExprs =
           (key :: keys.toList).foldLeft[ExprSet[Source]](ExprSet.NoExpr)((tail, head) => ExprSet.ExprCons(head, tail))
         )
-
-      def normalize(implicit
-        instance: TrailingUnitNormalizer[ResultType]
-      ): Subselect[F, instance.Out, Source, Subsource, Head, Tail] =
-        self.asInstanceOf[Subselect[F, instance.Out, Source, Subsource, Head, Tail]]
 
       override def asTable(
         name: TableName

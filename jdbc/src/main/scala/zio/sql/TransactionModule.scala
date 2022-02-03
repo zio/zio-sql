@@ -69,7 +69,7 @@ trait TransactionModule { self: Jdbc =>
   object ZTransaction {
     def apply[A](
       read: self.Read[A]
-    ): ZTransaction[Any, Exception, zio.stream.Stream[Exception, A]] =
+    )(implicit in: TrailingUnitNormalizer[A]): ZTransaction[Any, Exception, zio.stream.Stream[Exception, in.Out]] =
       txn.flatMap { case Txn(connection, coreDriver) =>
         // FIXME: Find a way to NOT load the whole result set into memory at once!!!
         val stream =

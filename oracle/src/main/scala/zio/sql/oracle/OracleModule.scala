@@ -131,8 +131,6 @@ trait OracleModule extends Jdbc { self =>
 
   def buildReadString(read: self.Read[_], builder: StringBuilder): Unit =
     read match {
-      case Read.Mapped(read, _) => buildReadString(read, builder)
-
       case read0 @ Read.Subselect(_, _, _, _, _, _, _, _) =>
         object Dummy {
           type F
