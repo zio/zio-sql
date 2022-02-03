@@ -34,7 +34,7 @@ object AggregatedProductSchema {
       double("price")
   ).table("product")
 
-  val id :*: name :*: amount :*: price :*: _ = productTable.columns
+  val (id, name, amount, price) = productTable.columns
 
   val orderValue =
     select(name ++ Sum(price))

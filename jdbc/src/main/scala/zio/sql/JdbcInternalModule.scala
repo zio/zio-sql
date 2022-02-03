@@ -110,8 +110,6 @@ trait JdbcInternalModule { self: Jdbc =>
 
   private[sql] def getColumns(read: Read[_]): Vector[TypeTag[_]] =
     read match {
-      case Read.Mapped(read, _) => getColumns(read)
-
       case Read.Subselect(selection, _, _, _, _, _, _, _) =>
         selection.value.selectionsUntyped.toVector.map(_.asInstanceOf[ColumnSelection[_, _]]).map {
           case t @ ColumnSelection.Constant(_, _) => t.typeTag
@@ -121,12 +119,11 @@ trait JdbcInternalModule { self: Jdbc =>
       case v @ Read.Literal(_)                            => scala.collection.immutable.Vector(v.typeTag)
     }
 
-  private[sql] def unsafeExtractRow[A](
+   private[sql] def unsafeExtractRow[A](
     resultSet: ResultSet,
     schema: Vector[(TypeTag[_], Int)]
   ): Either[DecodingError, A] = {
-
-    val result: Either[DecodingError, List[Any]] = Right(List())
+    val result: Either[DecodingError, Any] = Right(())
 
     schema
       .foldRight(result) {
@@ -134,39 +131,8 @@ trait JdbcInternalModule { self: Jdbc =>
         case ((typeTag, index), Right(vs)) =>
           extractColumn(index, resultSet, typeTag) match {
             case Left(err) => Left(err)
-            case Right(v)  => Right(v :: vs)
+            case Right(v)  => Right((v, vs))
           }
-      }
-      .map {
-        case List(a)                                                                => (a)
-        case List(a, b)                                                             => (a, b)
-        case List(a, b, c)                                                          => (a, b, c)
-        case List(a, b, c, d)                                                       => (a, b, c, d)
-        case List(a, b, c, d, e)                                                    => (a, b, c, d, e)
-        case List(a, b, c, d, e, f)                                                 => (a, b, c, d, e, f)
-        case List(a, b, c, d, e, f, g)                                              => (a, b, c, d, e, f, g)
-        case List(a, b, c, d, e, f, g, h)                                           => (a, b, c, d, e, f, g, h)
-        case List(a, b, c, d, e, f, g, h, i)                                        => (a, b, c, d, e, f, g, h, i)
-        case List(a, b, c, d, e, f, g, h, i, j)                                     => (a, b, c, d, e, f, g, h, i, j)
-        case List(a, b, c, d, e, f, g, h, i, j, k)                                  => (a, b, c, d, e, f, g, h, i, j, k)
-        case List(a, b, c, d, e, f, g, h, i, j, k, l)                               => (a, b, c, d, e, f, g, h, i, j, k, l)
-        case List(a, b, c, d, e, f, g, h, i, j, k, l, m)                            => (a, b, c, d, e, f, g, h, i, j, k, l, m)
-        case List(a, b, c, d, e, f, g, h, i, j, k, l, m, n)                         => (a, b, c, d, e, f, g, h, i, j, k, l, m, n)
-        case List(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o)                      => (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o)
-        case List(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p)                   => (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p)
-        case List(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q)                =>
-          (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q)
-        case List(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r)             =>
-          (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r)
-        case List(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s)          =>
-          (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s)
-        case List(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t)       =>
-          (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t)
-        case List(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u)    =>
-          (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u)
-        case List(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v) =>
-          (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v)
-        case _                                                                      => ()
       }
       .map(_.asInstanceOf[A])
   }

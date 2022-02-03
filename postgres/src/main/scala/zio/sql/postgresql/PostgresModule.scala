@@ -671,7 +671,6 @@ trait PostgresModule extends Jdbc { self =>
 
     private[zio] def renderReadImpl(read: self.Read[_])(implicit render: Renderer): Unit =
       read match {
-        case Read.Mapped(read, _)                           => renderReadImpl(read)
         case read0 @ Read.Subselect(_, _, _, _, _, _, _, _) =>
           object Dummy {
             type F

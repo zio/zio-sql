@@ -18,9 +18,9 @@ object Example1 extends Sql {
 
   val table2 = columnSet.table("person2")
 
-  val age :*: name :*: _ = table.columns
+  val (age, name) = table.columns
 
-  val age2 :*: name2 :*: _ = table2.columns
+  val (age2, name2) = table2.columns
 
   import FunctionDef._
   import AggregationDef._
@@ -53,7 +53,8 @@ object Example1 extends Sql {
 
   val orders = (uuid("id") ++ uuid("customer_id") ++ localDate("order_date")).table("orders")
 
-  val orderId :*: fkCustomerId :*: orderDate :*: _ = orders.columns
+  // val orderId :*: fkCustomerId :*: orderDate :*: _ = orders.columns
+  val (orderId, fkCustomerId, orderDate) = orders.columns
 
   val query = select(fkCustomerId ++ Count(orderId))
     .from(orders)

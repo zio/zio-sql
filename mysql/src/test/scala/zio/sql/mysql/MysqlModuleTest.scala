@@ -56,10 +56,9 @@ object MysqlModuleTest extends MysqlRunnableSpec with ShopSchema {
         )
 
       val testResult = execute(
-        query.to { case row =>
+        query).map { case row =>
           Customer(row._1, row._2, row._3, row._4)
         }
-      )
 
       val assertion = for {
         r <- testResult.runCollect
@@ -86,10 +85,9 @@ object MysqlModuleTest extends MysqlRunnableSpec with ShopSchema {
         )
 
       val testResult = execute(
-        query.to { case row =>
+        query).map { case row =>
           Customer(row._1, row._2, row._3, row._4, row._5)
         }
-      )
 
       val assertion = for {
         r <- testResult.runCollect
@@ -114,11 +112,9 @@ object MysqlModuleTest extends MysqlRunnableSpec with ShopSchema {
           )
         )
 
-      val testResult = execute(
-        query.to { case row =>
+      val testResult = execute(query).map { case row =>
           Customer(row._1, row._2, row._3, row._4)
         }
-      )
 
       val assertion = for {
         r <- testResult.runCollect
@@ -157,11 +153,9 @@ object MysqlModuleTest extends MysqlRunnableSpec with ShopSchema {
         Row("Jose", "Wiggins", LocalDate.parse("2020-01-15"))
       )
 
-      val result = execute(
-        query.to { case row =>
+      val result = execute(query).map { case row =>
           Row(row._1, row._2, row._3)
         }
-      )
 
       val assertion = for {
         r <- result.runCollect

@@ -33,11 +33,9 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
         )
       )
 
-    val testResult = execute(
-      query.to { case row =>
+    val testResult = execute(query).map { row =>
         Customer(row._1, row._2, row._3, row._4, row._5)
       }
-    )
 
     val assertion = for {
       r <- testResult.runCollect
@@ -86,11 +84,9 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
           )
         )
 
-      val testResult = execute(
-        query.to { case row =>
+      val testResult = execute(query).map { case row =>
           Customer(row._1, row._2, row._3, row._4)
         }
-      )
 
       val assertion = for {
         r <- testResult.runCollect
@@ -137,11 +133,9 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
           )
         )
 
-      val testResult = execute(
-        query.to { case row =>
+      val testResult = execute(query).map { case row =>
           Customer(row._1, row._2, row._3, row._4)
         }
-      )
 
       val assertion = for {
         r <- testResult.runCollect
@@ -154,7 +148,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       val expected = 5L
 
-      val result = execute(query.to(identity))
+      val result = execute(query)
 
       for {
         r <- result.runCollect
@@ -185,11 +179,9 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       val query = select(fName ++ lName ++ (subquery as "Count")).from(customers)
 
-      val result = execute(
-        query.to { case row =>
+      val result = execute(query).map { case row =>
           Row(row._1, row._2, row._3)
         }
-      )
 
       val assertion = for {
         r <- result.runCollect
@@ -247,11 +239,9 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
         Row.create("5883CB62-D792-4EE3-ACBC-FE85B6BAA998", "D5137D3A-894A-4109-9986-E982541B434F", 55.0000)
       )
 
-      //TODO try to support apply
-      //val result = execute(query.to[Row](Row.apply))
-      val result = execute(query.to { case (id, productId, price) =>
+      val result = execute(query).map { case (id, productId, price) =>
         Row(id, productId, price)
-      })
+      }
 
       val assertion = for {
         r <- result.runCollect
@@ -332,11 +322,9 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
         Row("0a48ffb0-ec61-4147-af56-fc4dbca8de0a", "f35b0053-855b-4145-abe1-dc62bc1fdb96", 6.0)
       )
 
-      val result = execute(
-        query.to { case row =>
+      val result = execute(query).map { case row =>
           Row(row._1, row._2, row._3)
         }
-      )
 
       val assertion = for {
         r <- result.runCollect
@@ -379,11 +367,9 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
           .from(customers.crossApply(orderDateDerivedTable))
           .orderBy(Ordering.Desc(orderDateDerived))
 
-      val result = execute(
-        query.to { case row =>
+      val result = execute(query).map { case row =>
           Row(row._1, row._2, row._3, row._4)
         }
-      )
 
       val assertion = for {
         r <- result.runCollect
@@ -406,15 +392,13 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
       val subquery =
         subselect[customers.TableType](orderDate).from(orders).where(customerId === fkCustomerId).asTable("ooo")
 
-      val orderDateDerived :*: _ = subquery.columns
+      val orderDateDerived = subquery.columns
 
       val query = select(fName ++ lName ++ orderDateDerived).from(customers.crossApply(subquery))
 
-      val result = execute(
-        query.to { case row =>
+      val result = execute(query).map { case row =>
           CustomerAndDateRow(row._1, row._2, row._3)
-        }
-      )
+      }
 
       val assertion = for {
         r <- result.runCollect
@@ -427,15 +411,13 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
       val subquery =
         customers.subselect(orderDate).from(orders).where(customerId === fkCustomerId).asTable("ooo")
 
-      val orderDateDerived :*: _ = subquery.columns
+      val orderDateDerived = subquery.columns
 
       val query = select(fName ++ lName ++ orderDateDerived).from(customers.crossApply(subquery))
 
-      val result = execute(
-        query.to { case row =>
+      val result = execute(query).map { case row =>
           CustomerAndDateRow(row._1, row._2, row._3)
-        }
-      )
+      }
 
       val assertion = for {
         r <- result.runCollect
@@ -448,15 +430,13 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
       val subquery =
         subselectFrom(customers)(orderDate).from(orders).where(customerId === fkCustomerId).asTable("ooo")
 
-      val orderDateDerived :*: _ = subquery.columns
+      val orderDateDerived = subquery.columns
 
       val query = select(fName ++ lName ++ orderDateDerived).from(customers.crossApply(subquery))
 
-      val result = execute(
-        query.to { case row =>
+      val result = execute(query).map { case row =>
           CustomerAndDateRow(row._1, row._2, row._3)
-        }
-      )
+      }
 
       val assertion = for {
         r <- result.runCollect
@@ -469,15 +449,13 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
       val subquery =
         subselect[customers.TableType](orderDate).from(orders).where(customerId === fkCustomerId).asTable("ooo")
 
-      val orderDateDerived :*: _ = subquery.columns
+      val orderDateDerived = subquery.columns
 
       val query = select(fName ++ lName ++ orderDateDerived).from(customers.outerApply(subquery))
 
-      val result = execute(
-        query.to { case row =>
+      val result = execute(query).map { case row =>
           CustomerAndDateRow(row._1, row._2, row._3)
-        }
-      )
+      }
 
       val assertion = for {
         r <- result.runCollect
@@ -518,11 +496,9 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
         Row("Mila", "Paterso", LocalDate.parse("2020-04-30"))
       )
 
-      val result = execute(
-        query.to { case row =>
+      val result = execute(query).map { case row =>
           Row(row._1, row._2, row._3)
-        }
-      )
+      }
 
       val assertion = for {
         r <- result.runCollect
