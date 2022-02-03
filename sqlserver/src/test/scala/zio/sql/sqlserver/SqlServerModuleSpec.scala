@@ -46,7 +46,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
   }
 
   override def specLayered = suite("MSSQL Server module")(
-    testM("Can select from single table") {
+    test("Can select from single table") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
       val query = select(customerId ++ fName ++ lName ++ dob).from(customers)
@@ -98,31 +98,31 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("Can select with property unary operator") {
+    test("Can select with property unary operator") {
       customerSelectJoseAssertion(verified isNotTrue)
     },
-    testM("Can select with property binary operator with UUID") {
+    test("Can select with property binary operator with UUID") {
       customerSelectJoseAssertion(customerId === UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc"))
     },
-    testM("Can select with property binary operator with String") {
+    test("Can select with property binary operator with String") {
       customerSelectJoseAssertion(fName === "Jose")
     },
-    testM("Can select with property binary operator with LocalDate") {
+    test("Can select with property binary operator with LocalDate") {
       customerSelectJoseAssertion(dob === LocalDate.parse("1987-03-23"))
     },
-    testM("Can select with property binary operator with LocalDateTime") {
+    test("Can select with property binary operator with LocalDateTime") {
       customerSelectJoseAssertion(dob === LocalDateTime.parse("1987-03-23T00:00:00"))
     },
-    testM("Can select with property binary operator with OffsetDateTime") {
+    test("Can select with property binary operator with OffsetDateTime") {
       customerSelectJoseAssertion(dob === OffsetDateTime.parse("1987-03-23T00:00:00Z"))
     },
-    testM("Can select with property binary operator with ZonedLocalDate") {
+    test("Can select with property binary operator with ZonedLocalDate") {
       customerSelectJoseAssertion(dob === ZonedDateTime.parse("1987-03-23T00:00:00Z"))
     },
-    testM("Can select with property binary operator with Instant") {
+    test("Can select with property binary operator with Instant") {
       customerSelectJoseAssertion(dob === Instant.parse("1987-03-23T00:00:00Z"))
     },
-    testM("Can select from single table with limit, offset and order by") {
+    test("Can select from single table with limit, offset and order by") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
       val query = select(customerId ++ fName ++ lName ++ dob).from(customers).limit(1).offset(1).orderBy(fName)
@@ -150,7 +150,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("Can count rows") {
+    test("Can count rows") {
       val query = select(Count(customerId)).from(customers)
 
       val expected = 5L
@@ -161,7 +161,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
         r <- result.runCollect
       } yield assert(r.head)(equalTo(expected))
     },
-    testM("correlated subqueries in selections - counts orders for each customer") {
+    test("correlated subqueries in selections - counts orders for each customer") {
 
       /**
        * select first_name, last_name, (
@@ -199,7 +199,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("subquery in where clause") {
+    test("subquery in where clause") {
       import SqlServerSpecific.SqlServerFunctionDef._
 
       /**
@@ -257,7 +257,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("correlated subquery in where clause - return orders where price was above average for particular product") {
+    test("correlated subquery in where clause - return orders where price was above average for particular product") {
       import SqlServerSpecific.SqlServerFunctionDef._
 
       /**
@@ -343,7 +343,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("cross apply - top 1 order_date") {
+    test("cross apply - top 1 order_date") {
 
       /**
        *  select customers.id, customers.first_name, customers.last_name, derived.order_date
@@ -391,7 +391,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("cross apply with subselect") {
+    test("cross apply with subselect") {
 
       /**
        * select customers.first_name, customers.last_name, ooo.order_date
@@ -423,7 +423,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("cross apply with subquery") {
+    test("cross apply with subquery") {
       import SqlServerSpecific.SqlServerTable._
       val subquery =
         customers.subselect(orderDate).from(orders).where(customerId === fkCustomerId).asTable("ooo")
@@ -445,7 +445,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("cross apply with subselect from") {
+    test("cross apply with subselect from") {
       import SqlServerSpecific.SqlServerTable._
       val subquery =
         subselectFrom(customers)(orderDate).from(orders).where(customerId === fkCustomerId).asTable("ooo")
@@ -467,7 +467,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("outer apply") {
+    test("outer apply") {
       import SqlServerSpecific.SqlServerTable._
       val subquery =
         subselect[customers.TableType](orderDate).from(orders).where(customerId === fkCustomerId).asTable("ooo")
@@ -489,7 +489,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("Can select from joined tables (inner join)") {
+    test("Can select from joined tables (inner join)") {
       val query = select(fName ++ lName ++ orderDate).from(customers.join(orders).on(fkCustomerId === customerId))
 
       case class Row(firstName: String, lastName: String, orderDate: LocalDate)

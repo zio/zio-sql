@@ -36,8 +36,8 @@ trait Jdbc extends zio.sql.Sql with TransactionModule with JdbcInternalModule wi
       _.get.delete(delete)
     )
 
-  def execute[A: Schema](insert: Insert[_, A]): ZIO[Has[SqlDriver], Exception, Int] =
-    ZIO.accessM[Has[SqlDriver]](
+  def execute[A: Schema](insert: Insert[_, A]): ZIO[SqlDriver, Exception, Int] =
+    ZIO.environmentWithZIO[SqlDriver](
       _.get.insert(insert)
     )
 }

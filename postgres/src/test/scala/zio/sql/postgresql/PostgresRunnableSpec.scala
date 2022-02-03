@@ -1,7 +1,6 @@
 package zio.sql.postgresql
 
 import zio.test._
-import zio.test.TestEnvironment
 import java.util.Properties
 import zio.sql.{ ConnectionPoolConfig, JdbcRunnableSpec, TestContainer }
 import zio.ZEnvironment

@@ -84,7 +84,7 @@ trait SqlDriverLiveModule { self: Jdbc =>
       }
 
     override def insertOn[A: Schema](insert: Insert[_, A], conn: Connection): IO[Exception, Int] =
-      blocking.effectBlocking {
+      ZIO.attemptBlocking {
 
         val query = renderInsert(insert)
 
