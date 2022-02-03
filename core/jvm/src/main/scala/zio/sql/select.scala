@@ -323,8 +323,7 @@ trait SelectModule { self: ExprModule with TableModule =>
       limit: Option[Long] = None
     ) extends Read[Repr] { self =>
 
-      //def where[F2: Features.IsNotAggregated](
-      def where[F2](
+      def where[F2: Features.IsNotAggregated](
         whereExpr2: Expr[F2, Source, Boolean]
       ): Subselect[F, Repr, Source, Subsource, Head, Tail] =
         copy(whereExpr = self.whereExpr && whereExpr2)
@@ -339,24 +338,18 @@ trait SelectModule { self: ExprModule with TableModule =>
       ): Subselect[F, Repr, Source, Subsource, Head, Tail] =
         copy(orderByExprs = self.orderByExprs ++ (o :: os.toList))
 
-      /**
-       * TODO
-       *
-       * need to restrict varargs _ : IsAggregated
-       */
-      def having(havingExpr2: Expr[_, Source, Boolean])
-      //(implicit ev: Features.IsFullyAggregated[F])
+      def having[F2: Features.IsFullyAggregated](havingExpr2: Expr[F2, Source, Boolean])
         : Subselect[F, Repr, Source, Subsource, Head, Tail] =
-        // val _ = ev
         copy(havingExpr = self.havingExpr && havingExpr2)
 
       /**
-       *         TODO support
+       *         TODO 
+       *  allow
        *         select(fkCustomerId)
        *          .from(orders)
        *          .groupBy(fkCustomerId)
        *
-       *          DONT allow
+       *   don't  allow
        *          select(Count(orderId) ++ Count(orderId))
        *          .from(orders)
        *          .groupBy(Count(orderId))
