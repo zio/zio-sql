@@ -56,6 +56,11 @@ object Example1 extends Sql {
   // val orderId :*: fkCustomerId :*: orderDate :*: _ = orders.columns
   val (orderId, fkCustomerId, orderDate) = orders.columns
 
+  // Selection[Features.Union[Features.Union[Features.Source[String("id")],Features.Source[String("customer_id")]],Features.Source[String("order_date")]],
+  // orders.TableType,
+  // SelectionSet.Cons[orders.TableType,UUID,SelectionSet.Cons[orders.TableType,UUID,SelectionSet.Cons[orders.TableType,LocalDate,SelectionSet.Empty]]]]
+  val xxxx = orderId ++ fkCustomerId ++ orderDate
+
   val query = select(fkCustomerId ++ Count(orderId))
     .from(orders)
     .groupBy(fkCustomerId, orderDate)
