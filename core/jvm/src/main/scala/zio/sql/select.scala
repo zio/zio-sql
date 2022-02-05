@@ -338,6 +338,7 @@ trait SelectModule { self: ExprModule with TableModule =>
       ): Subselect[F, Repr, Source, Subsource, Head, Tail] =
         copy(orderByExprs = self.orderByExprs ++ (o :: os.toList))
 
+      // how about two havings ?
       def having[F2: Features.IsFullyAggregated](havingExpr2: Expr[F2, Source, Boolean])
         : Subselect[F, Repr, Source, Subsource, Head, Tail] =
         copy(havingExpr = self.havingExpr && havingExpr2)
