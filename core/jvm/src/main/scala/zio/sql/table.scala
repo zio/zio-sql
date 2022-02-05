@@ -68,14 +68,14 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule =>
 
       override def columnsUntyped: List[Column.Untyped] = head :: tail.columnsUntyped
 
-      def @@[HeadType[_]](
-        columnSetAspect: ColumnSetAspect.Aux[HeadType]
+      def @@[HeadType](
+        columnSetAspect: ColumnSetAspect.Aux[A, HeadType]
       )(implicit
         ev: B <:< ColumnSet.Empty,
         typeTagA: TypeTag.NotNull[A]
-      ): ColumnSet.Cons[HeadType[A], B, HeadIdentity] {
-        type ColumnsRepr[T]            = (Expr[Features.Source[HeadIdentity], T, HeadType[A]], self.tail.ColumnsRepr[T])
-        type Append[That <: ColumnSet] = Cons[HeadType[A], self.tail.Append[That], HeadIdentity]
+      ): ColumnSet.Cons[HeadType, B, HeadIdentity] {
+        type ColumnsRepr[T]            = (Expr[Features.Source[HeadIdentity], T, HeadType], self.tail.ColumnsRepr[T])
+        type Append[That <: ColumnSet] = Cons[HeadType, self.tail.Append[That], HeadIdentity]
         type AllColumnIdentities       = HeadIdentity with self.tail.AllColumnIdentities
       } = columnSetAspect.applyCons(self)
 
@@ -324,30 +324,30 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule =>
 
   type TableExtension[A] <: Table.TableEx[A]
 
-  trait ColumnSetAspect { self =>
+  trait ColumnSetAspect[A] { self =>
 
-    type HeadType[_]
+    type HeadType
 
-    def applyCons[A: TypeTag.NotNull, B <: ColumnSet, HeadIdentity](
+    def applyCons[B <: ColumnSet, HeadIdentity](
       columnSet: ColumnSet.Cons[A, B, HeadIdentity]
-    ): ColumnSet.Cons[HeadType[A], B, HeadIdentity] {
-      type ColumnsRepr[T]            = (Expr[Features.Source[HeadIdentity], T, HeadType[A]], columnSet.tail.ColumnsRepr[T])
-      type Append[That <: ColumnSet] = ColumnSet.Cons[HeadType[A], columnSet.tail.Append[That], HeadIdentity]
+    ): ColumnSet.Cons[HeadType, B, HeadIdentity] {
+      type ColumnsRepr[T]            = (Expr[Features.Source[HeadIdentity], T, HeadType], columnSet.tail.ColumnsRepr[T])
+      type Append[That <: ColumnSet] = ColumnSet.Cons[HeadType, columnSet.tail.Append[That], HeadIdentity]
       type AllColumnIdentities       = HeadIdentity with columnSet.tail.AllColumnIdentities
     }
   }
 
   object ColumnSetAspect {
 
-    type Aux[HeadType0[_]] = ColumnSetAspect {
-      type HeadType[A] = HeadType0[A]
+    type Aux[A, HeadType0] = ColumnSetAspect[A] {
+      type HeadType = HeadType0
     }
 
-    val nullable: ColumnSetAspect.Aux[Option] = new ColumnSetAspect {
+    def nullable[A: TypeTag.NotNull]: ColumnSetAspect.Aux[A, Option[A]] = new ColumnSetAspect[A] {
 
-      override type HeadType[A] = Option[A]
+      override type HeadType = Option[A]
 
-      def applyCons[A: TypeTag.NotNull, B <: ColumnSet, HeadIdentity](
+      def applyCons[B <: ColumnSet, HeadIdentity](
         columnSet: ColumnSet.Cons[A, B, HeadIdentity]
       ): ColumnSet.Cons[Option[A], B, HeadIdentity] {
         type ColumnsRepr[T]            = (Expr[Features.Source[HeadIdentity], T, Option[A]], columnSet.tail.ColumnsRepr[T])
