@@ -37,8 +37,8 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
       )
 
     val testResult = execute(query).map { case row =>
-          Customer(row._1, row._2, row._3, row._4, row._5)
-        }
+      Customer(row._1, row._2, row._3, row._4, row._5)
+    }
 
     val assertion = for {
       r <- testResult.runCollect
@@ -88,8 +88,8 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
         )
 
       val testResult = execute(query).map { case row =>
-            Customer(row._1, row._2, row._3, row._4)
-          }
+        Customer(row._1, row._2, row._3, row._4)
+      }
 
       val assertion = for {
         r <- testResult.runCollect
@@ -297,8 +297,8 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
       val query = select(fName ++ lName ++ (subquery as "Count")).from(customers)
 
       val result = execute(query).map { case row =>
-          Row(row._1, row._2, row._3)
-        }
+        Row(row._1, row._2, row._3)
+      }
 
       val assertion = for {
         r <- result.runCollect
@@ -320,8 +320,9 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
         )
       )
 
-      val testResult = execute(query).map { case (uuid, firstName, lastName, dob) => Customer(uuid, firstName, lastName, dob) }
-      
+      val testResult = execute(query).map { case (uuid, firstName, lastName, dob) =>
+        Customer(uuid, firstName, lastName, dob)
+      }
 
       val assertion = for {
         r <- testResult.runCollect

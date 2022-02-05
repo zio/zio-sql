@@ -110,7 +110,7 @@ trait JdbcInternalModule { self: Jdbc =>
 
   private[sql] def getColumns(read: Read[_]): Vector[TypeTag[_]] =
     read match {
-      case Read.Mapped(read, _) => getColumns(read)
+      case Read.Mapped(read, _)                           => getColumns(read)
       case Read.Subselect(selection, _, _, _, _, _, _, _) =>
         selection.value.selectionsUntyped.toVector.map(_.asInstanceOf[ColumnSelection[_, _]]).map {
           case t @ ColumnSelection.Constant(_, _) => t.typeTag
@@ -120,7 +120,7 @@ trait JdbcInternalModule { self: Jdbc =>
       case v @ Read.Literal(_)                            => scala.collection.immutable.Vector(v.typeTag)
     }
 
-   private[sql] def unsafeExtractRow[A](
+  private[sql] def unsafeExtractRow[A](
     resultSet: ResultSet,
     schema: Vector[(TypeTag[_], Int)]
   ): Either[DecodingError, A] = {
@@ -135,7 +135,7 @@ trait JdbcInternalModule { self: Jdbc =>
             case Right(v)  => Right(v :: vs)
           }
       }
-       .map {
+      .map {
         case List(a)                                                                => (a)
         case List(a, b)                                                             => (a, b)
         case List(a, b, c)                                                          => (a, b, c)

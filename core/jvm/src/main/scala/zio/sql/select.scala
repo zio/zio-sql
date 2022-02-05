@@ -86,7 +86,6 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
     }
   }
 
-  //TODO add having !!!!
   sealed case class AggSelectBuilderGroupBy[F, Repr, Source, Head, Tail <: SelectionSet[Source], Unaggregated](
     select: Read.Select[F, Repr, Source, Head, Tail]
   ) {
@@ -209,7 +208,7 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
 
     def from[Source0 <: Source](table: Table.Aux[Source0])(implicit
       ev: B <:< SelectionSet.Cons[Source0, selection.value.ColumnHead, selection.value.SelectionTail],
-      normalizer : TrailingUnitNormalizer[selection.value.ResultTypeRepr]
+      normalizer: TrailingUnitNormalizer[selection.value.ResultTypeRepr]
     ): Read.Select[
       F0,
       normalizer.Out,
@@ -277,7 +276,7 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
 
     val columnSet: CS
 
-     /**
+    /**
      * Maps the [[Read]] query's output to another type by providing a function
      * that can transform from the current type to the new type.
      */
@@ -286,13 +285,11 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
 
     def asTable(name: TableName): Table.DerivedTable[Out, Read[Out]]
 
-  
     def to[Target](f: Out => Target): Read[Target] =
       self.map { resultType =>
         f(resultType)
       }
 
-    //TODO use this
     def union[Out1 >: Out](that: Read.Aux[ResultType, Out1]): Read.Aux[ResultType, Out1] =
       Read.Union[ResultType, Out1](self, that, true)
 
@@ -357,7 +354,17 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
       limit: Option[Long] = None
     ) extends Read[Repr] { self =>
 
-      def where[F2: Features.IsNotAggregated](
+      /**
+       * The follwing expr would not compile in where clause with F2: Features.IsNotAggregated
+       *
+       *        List(minStationsQuery, maxStationsQuery)
+       *            .flatten
+       *            .reduceLeftOption[Expr[_, metroLine.TableType, Boolean]](_ && _)
+       *            .get
+       *
+       * TODO try to make phantom type F2 composable
+       */
+      def where[F2](
         whereExpr2: Expr[F2, Source, Boolean]
       ): Subselect[F, Repr, Source, Subsource, Head, Tail] =
         copy(whereExpr = self.whereExpr && whereExpr2)
@@ -372,25 +379,20 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
       ): Subselect[F, Repr, Source, Subsource, Head, Tail] =
         copy(orderByExprs = self.orderByExprs ++ (o :: os.toList))
 
-      // how about two havings ?
-      def having[F2: Features.IsFullyAggregated](havingExpr2: Expr[F2, Source, Boolean])
-        : Subselect[F, Repr, Source, Subsource, Head, Tail] =
+      /**
+       * TODO find a way to make following not compile -> fkCustomerId need to be `groupped by`
+       *           select(fkCustomerId)
+       *             .from(orders)
+       *             .having(Count(orderId) > 4)
+       */
+      def having[F2: Features.IsFullyAggregated](
+        havingExpr2: Expr[F2, Source, Boolean]
+      ): Subselect[F, Repr, Source, Subsource, Head, Tail] =
         copy(havingExpr = self.havingExpr && havingExpr2)
 
       /**
-       *         TODO 
-       *  allow
-       *         select(fkCustomerId)
-       *          .from(orders)
-       *          .groupBy(fkCustomerId)
-       *
-       *   don't  allow
-       *          select(Count(orderId) ++ Count(orderId))
-       *          .from(orders)
-       *          .groupBy(Count(orderId))
-       *
-       *          is there a way to restrict _ : IsNotAggregated
-       *          (cannot move it up to AggBuilder because select(fkCustomerId).from(orders) is valid sql)
+       * TODO restrict _ : IsNotAggregated (hopefully without 22 boilerplate overrides)
+       * cannot move it toAggBuilder because select(fkCustomerId).from(orders) is valid sql)
        */
       def groupBy(
         key: Expr[_, Source, Any],
@@ -400,7 +402,10 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
           (key :: keys.toList).foldLeft[ExprSet[Source]](ExprSet.NoExpr)((tail, head) => ExprSet.ExprCons(head, tail))
         )
 
-      def normalize(implicit instance: TrailingUnitNormalizer[ResultType]): Subselect[F, instance.Out, Source, Subsource, Head, Tail] = self.asInstanceOf[Subselect[F, instance.Out, Source, Subsource, Head, Tail]]
+      def normalize(implicit
+        instance: TrailingUnitNormalizer[ResultType]
+      ): Subselect[F, instance.Out, Source, Subsource, Head, Tail] =
+        self.asInstanceOf[Subselect[F, instance.Out, Source, Subsource, Head, Tail]]
 
       override def asTable(
         name: TableName

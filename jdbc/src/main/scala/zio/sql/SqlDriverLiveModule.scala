@@ -51,7 +51,7 @@ trait SqlDriverLiveModule { self: Jdbc =>
         .managed(pool.connection)
         .flatMap(readOn(read, _))
 
-    override def readOn[A](read: Read[A], conn: Connection): Stream[Exception, A] = 
+    override def readOn[A](read: Read[A], conn: Connection): Stream[Exception, A] =
       Stream.unwrap {
         blocking.effectBlocking {
           val schema = getColumns(read).zipWithIndex.map { case (value, index) =>

@@ -34,8 +34,8 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
       )
 
     val testResult = execute(query).map { row =>
-        Customer(row._1, row._2, row._3, row._4, row._5)
-      }
+      Customer(row._1, row._2, row._3, row._4, row._5)
+    }
 
     val assertion = for {
       r <- testResult.runCollect
@@ -85,8 +85,8 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
         )
 
       val testResult = execute(query).map { case row =>
-          Customer(row._1, row._2, row._3, row._4)
-        }
+        Customer(row._1, row._2, row._3, row._4)
+      }
 
       val assertion = for {
         r <- testResult.runCollect
@@ -134,8 +134,8 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
         )
 
       val testResult = execute(query).map { case row =>
-          Customer(row._1, row._2, row._3, row._4)
-        }
+        Customer(row._1, row._2, row._3, row._4)
+      }
 
       val assertion = for {
         r <- testResult.runCollect
@@ -180,8 +180,8 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
       val query = select(fName ++ lName ++ (subquery as "Count")).from(customers)
 
       val result = execute(query).map { case row =>
-          Row(row._1, row._2, row._3)
-        }
+        Row(row._1, row._2, row._3)
+      }
 
       val assertion = for {
         r <- result.runCollect
@@ -323,8 +323,8 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
       )
 
       val result = execute(query).map { case row =>
-          Row(row._1, row._2, row._3)
-        }
+        Row(row._1, row._2, row._3)
+      }
 
       val assertion = for {
         r <- result.runCollect
@@ -368,8 +368,8 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
           .orderBy(Ordering.Desc(orderDateDerived))
 
       val result = execute(query).map { case row =>
-          Row(row._1, row._2, row._3, row._4)
-        }
+        Row(row._1, row._2, row._3, row._4)
+      }
 
       val assertion = for {
         r <- result.runCollect
@@ -397,7 +397,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
       val query = select(fName ++ lName ++ orderDateDerived).from(customers.crossApply(subquery))
 
       val result = execute(query).map { case row =>
-          CustomerAndDateRow(row._1, row._2, row._3)
+        CustomerAndDateRow(row._1, row._2, row._3)
       }
 
       val assertion = for {
@@ -416,7 +416,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
       val query = select(fName ++ lName ++ orderDateDerived).from(customers.crossApply(subquery))
 
       val result = execute(query).map { case row =>
-          CustomerAndDateRow(row._1, row._2, row._3)
+        CustomerAndDateRow(row._1, row._2, row._3)
       }
 
       val assertion = for {
@@ -435,7 +435,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
       val query = select(fName ++ lName ++ orderDateDerived).from(customers.crossApply(subquery))
 
       val result = execute(query).map { case row =>
-          CustomerAndDateRow(row._1, row._2, row._3)
+        CustomerAndDateRow(row._1, row._2, row._3)
       }
 
       val assertion = for {
@@ -454,7 +454,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
       val query = select(fName ++ lName ++ orderDateDerived).from(customers.outerApply(subquery))
 
       val result = execute(query).map { case row =>
-          CustomerAndDateRow(row._1, row._2, row._3)
+        CustomerAndDateRow(row._1, row._2, row._3)
       }
 
       val assertion = for {
@@ -497,7 +497,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
       )
 
       val result = execute(query).map { case row =>
-          Row(row._1, row._2, row._3)
+        Row(row._1, row._2, row._3)
       }
 
       val assertion = for {

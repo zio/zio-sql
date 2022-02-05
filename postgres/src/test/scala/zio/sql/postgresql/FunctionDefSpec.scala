@@ -954,8 +954,8 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
         )
 
       val testResult = execute(query).map { case (id, fname, lname, verified, dob) =>
-          Customer(id, fname, lname, verified, dob)
-        }
+        Customer(id, fname, lname, verified, dob)
+      }
 
       val assertion = for {
         r <- testResult.runCollect
