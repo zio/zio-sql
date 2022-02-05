@@ -64,7 +64,7 @@ trait ShopSchema extends Jdbc { self =>
       select(orderDetailsOrderId ++ orderDetailsProductId ++ unitPrice).from(orderDetails).asTable("derived")
 
     val (derivedOrderId, derivedProductId, derivedUnitPrice) = orderDetailsDerived.columns
-    val orderDateDerivedTable                                          = customers
+    val orderDateDerivedTable                                = customers
       .subselect(orderDate)
       .from(orders)
       .limit(1)

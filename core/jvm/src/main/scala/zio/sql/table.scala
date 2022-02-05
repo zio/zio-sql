@@ -204,8 +204,9 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule =>
       new Table.JoinBuilder[self.TableType, That](JoinType.RightOuter, self, that)
 
     final val subselect: SubselectPartiallyApplied[TableType] = new SubselectPartiallyApplied[TableType]
-    
-    def columns(implicit i: TrailingUnitNormalizer[columnSet.ColumnsRepr[TableType]]): i.Out = i.apply(columnSet.makeColumns[TableType](columnToExpr))
+
+    def columns(implicit i: TrailingUnitNormalizer[columnSet.ColumnsRepr[TableType]]): i.Out =
+      i.apply(columnSet.makeColumns[TableType](columnToExpr))
 
     val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail, HeadIdentity0]
 
