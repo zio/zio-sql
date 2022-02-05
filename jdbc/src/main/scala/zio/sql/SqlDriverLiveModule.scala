@@ -14,7 +14,7 @@ trait SqlDriverLiveModule { self: Jdbc =>
 
     def updateOn(update: Update[_], conn: Connection): IO[Exception, Int]
 
-    def readOn[A](read: Read[A], conn: Connection)(implicit in: TrailingUnitNormalizer[A]): Stream[Exception, in.Out]
+    def readOn[A](read: Read[A], conn: Connection): Stream[Exception, A]
 
     def insertOn[A: Schema](insert: Insert[_, A], conn: Connection): IO[Exception, Int]
   }
@@ -46,12 +46,12 @@ trait SqlDriverLiveModule { self: Jdbc =>
 
       }.refineToOrDie[Exception]
 
-    def read[A](read: Read[A])(implicit in: TrailingUnitNormalizer[A]): Stream[Exception, in.Out] =
+    def read[A](read: Read[A]): Stream[Exception, A] =
       ZStream
         .managed(pool.connection)
         .flatMap(readOn(read, _))
 
-    override def readOn[A](read: Read[A], conn: Connection)(implicit in: TrailingUnitNormalizer[A]): Stream[Exception, in.Out] = 
+    override def readOn[A](read: Read[A], conn: Connection): Stream[Exception, A] = 
       Stream.unwrap {
         blocking.effectBlocking {
           val schema = getColumns(read).zipWithIndex.map { case (value, index) =>
@@ -79,7 +79,6 @@ trait SqlDriverLiveModule { self: Jdbc =>
                 } else ZIO.succeed(None)
               }
               .map(read.mapper)
-              .map(a => in.apply(a))
           } else ZStream.empty
 
         }.refineToOrDie[Exception]

@@ -11,7 +11,7 @@ trait Jdbc extends zio.sql.Sql with TransactionModule with JdbcInternalModule wi
 
     def update(update: Update[_]): IO[Exception, Int]
 
-    def read[A](read: Read[A])(implicit in: TrailingUnitNormalizer[A]): Stream[Exception, in.Out]
+    def read[A](read: Read[A]): Stream[Exception, A]
 
     def transact[R, A](tx: ZTransaction[R, Exception, A]): ZManaged[R, Exception, A]
 
@@ -28,7 +28,7 @@ trait Jdbc extends zio.sql.Sql with TransactionModule with JdbcInternalModule wi
   def execute[R <: Has[SqlDriver], A](tx: ZTransaction[R, Exception, A]): ZManaged[R, Exception, A] =
     ZManaged.accessManaged[R](_.get.transact(tx))
 
-  def execute[A](read: Read[A])(implicit in: TrailingUnitNormalizer[A]): ZStream[Has[SqlDriver], Exception, in.Out] =
+  def execute[A](read: Read[A]): ZStream[Has[SqlDriver], Exception, A] =
     ZStream.unwrap(ZIO.access[Has[SqlDriver]](_.get.read(read)))
 
   def execute(delete: Delete[_]): ZIO[Has[SqlDriver], Exception, Int] =
