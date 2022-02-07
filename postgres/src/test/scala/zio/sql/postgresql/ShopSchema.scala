@@ -25,7 +25,7 @@ trait ShopSchema extends Jdbc { self =>
     val products =
       (uuid("id") ++ string("name") ++ string("description") ++ string("image_url")).table("products")
 
-    val productId :*: description :*: imageURL :*: _ = products.columns
+    val productId :*: productName :*: description :*: imageURL :*: _ = products.columns
   }
   object ProductPrices {
     val productPrices =
@@ -41,6 +41,26 @@ trait ShopSchema extends Jdbc { self =>
           "order_details"
         )
 
-    val fkOrderId :*: fkProductId :*: quantity :*: unitPrice :*: _ = orderDetails.columns
+    val orderDetailsOrderId :*: orderDetailsProductId :*: quantity :*: unitPrice :*: _ = orderDetails.columns
+  }
+
+  object DerivedTables {
+    import OrderDetails._
+    import Customers._
+    import Orders._
+
+    val orderDetailsDerived =
+      select(orderDetailsOrderId ++ orderDetailsProductId ++ unitPrice).from(orderDetails).asTable("derived")
+
+    val derivedOrderId :*: derivedProductId :*: derivedUnitPrice :*: _ = orderDetailsDerived.columns
+    val orderDateDerivedTable                                          = customers
+      .subselect(orderDate)
+      .from(orders)
+      .limit(1)
+      .where(customerId === fkCustomerId)
+      .orderBy(Ordering.Desc(orderDate))
+      .asTable("derived")
+
+    val orderDateDerived :*: _ = orderDateDerivedTable.columns
   }
 }

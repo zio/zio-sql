@@ -1,9 +1,11 @@
 package zio.sql.mysql
 
-import zio.sql.{ Jdbc, Renderer }
 import zio.Chunk
-import java.time.Year
+import zio.sql.{ Jdbc, Renderer }
+
 import java.sql.ResultSet
+import java.time.Year
+import zio.schema.Schema
 
 trait MysqlModule extends Jdbc { self =>
 
@@ -27,11 +29,12 @@ trait MysqlModule extends Jdbc { self =>
   }
 
   object MysqlFunctionDef {
-    val Crc32   = FunctionDef[String, Long](FunctionName("crc32"))
-    val Degrees = FunctionDef[Double, Double](FunctionName("degrees"))
-    val Log2    = FunctionDef[Double, Double](FunctionName("log2"))
-    val Log10   = FunctionDef[Double, Double](FunctionName("log10"))
-    val Pi      = Expr.FunctionCall0[Double](FunctionDef[Any, Double](FunctionName("pi")))
+    val Crc32     = FunctionDef[String, Long](FunctionName("crc32"))
+    val Degrees   = FunctionDef[Double, Double](FunctionName("degrees"))
+    val Log2      = FunctionDef[Double, Double](FunctionName("log2"))
+    val Log10     = FunctionDef[Double, Double](FunctionName("log10"))
+    val Pi        = Expr.FunctionCall0[Double](FunctionDef[Any, Double](FunctionName("pi")))
+    val BitLength = FunctionDef[String, Int](FunctionName("bit_length"))
   }
 
   override def renderRead(read: self.Read[_]): String = {
@@ -39,6 +42,8 @@ trait MysqlModule extends Jdbc { self =>
     MysqlRenderModule.renderReadImpl(read)
     render.toString
   }
+
+  override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = ???
 
   override def renderDelete(delete: self.Delete[_]): String = {
     implicit val render: Renderer = Renderer()
@@ -77,11 +82,18 @@ trait MysqlModule extends Jdbc { self =>
 
     def renderReadImpl(read: self.Read[_])(implicit render: Renderer): Unit =
       read match {
-        case Read.Mapped(read, _)                        =>
+        case Read.Mapped(read, _) =>
           renderReadImpl(read)
-        case read0 @ Read.Select(_, _, _, _, _, _, _, _) =>
-          object Dummy { type F; type A; type B <: SelectionSet[A] }
-          val read = read0.asInstanceOf[Read.Select[Dummy.F, Dummy.A, Dummy.B]]
+
+        case read0 @ Read.Subselect(_, _, _, _, _, _, _, _) =>
+          object Dummy {
+            type F
+            type Repr
+            type Source
+            type Head
+            type Tail <: SelectionSet[Source]
+          }
+          val read = read0.asInstanceOf[Read.Select[Dummy.F, Dummy.Repr, Dummy.Source, Dummy.Head, Dummy.Tail]]
           import read._
 
           render("SELECT ")
@@ -151,9 +163,15 @@ trait MysqlModule extends Jdbc { self =>
 
     private def renderTable(table: Table)(implicit render: Renderer): Unit =
       table match {
+        case Table.DialectSpecificTable(_)           => ???
         //The outer reference in this type test cannot be checked at run time?!
         case sourceTable: self.Table.Source          =>
           render(sourceTable.name)
+        case Table.DerivedTable(read, name)          =>
+          render(" ( ")
+          renderRead(read.asInstanceOf[Read[_]])
+          render(" ) ")
+          render(name)
         case Table.Joined(joinType, left, right, on) =>
           renderTable(left)
           render(joinType match {
@@ -169,7 +187,15 @@ trait MysqlModule extends Jdbc { self =>
       }
 
     private def renderExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
-      case Expr.Source(tableName, column)                                               => render(tableName, ".", column.name)
+      case Expr.Subselect(subselect)                                                    =>
+        render(" (")
+        renderRead(subselect)
+        render(") ")
+      case Expr.Source(table, column)                                                   =>
+        (table, column.name) match {
+          case (tableName: TableName, Some(columnName)) => render(tableName, ".", columnName)
+          case _                                        => ()
+        }
       case Expr.Unary(base, op)                                                         =>
         render(" ", op.symbol)
         renderExpr(base)

@@ -3,23 +3,86 @@ package zio.sql
 import scala.language.implicitConversions
 
 trait SelectModule { self: ExprModule with TableModule =>
-  sealed case class SelectBuilder[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]) {
 
-    // [F, Repr, A, B <: SelectionSet.Aux[Repr, A]]
-    def from[A1 <: A](table: Table.Aux[A1]): Read.Select[F, selection.value.ResultTypeRepr, A1] = {
-      type B0 = SelectionSet.Aux[selection.value.ResultTypeRepr, A]
-      val b: B0 = selection.value
+  sealed case class SelectBuilder[F0, Source, B <: SelectionSet[Source]](selection: Selection[F0, Source, B]) {
 
-      Read.Select(Selection[F, A1, B0](b), Some(table), true, Nil)
+    def from[Source0 <: Source](table: Table.Aux[Source0])(implicit
+      ev: B <:< SelectionSet.Cons[Source0, selection.value.ColumnHead, selection.value.SelectionTail]
+    ): Read.Select[
+      F0,
+      selection.value.ResultTypeRepr,
+      Source0,
+      selection.value.ColumnHead,
+      selection.value.SelectionTail
+    ] = {
+      type B0 = SelectionSet.ConsAux[
+        selection.value.ResultTypeRepr,
+        Source0,
+        selection.value.ColumnHead,
+        selection.value.SelectionTail
+      ]
+      val b: B0 = selection.value.asInstanceOf[B0]
+
+      Read.Subselect(Selection[F0, Source0, B0](b), Some(table), true, Nil)
     }
   }
+
   object SelectBuilder {
-    implicit def noTable[F, A >: Any, B <: SelectionSet[A]](
-      selectBuilder: SelectBuilder[F, A, B]
-    ): Read.Select[F, selectBuilder.selection.value.ResultTypeRepr, A] = {
-      type B0 = SelectionSet.Aux[selectBuilder.selection.value.ResultTypeRepr, A]
-      val b: B0 = selectBuilder.selection.value
-      Read.Select(Selection[F, A, B0](b), None, true, Nil)
+    implicit def noTable[F, Source >: Any, B <: SelectionSet[Source]](
+      selectBuilder: SelectBuilder[F, Source, B]
+    )(implicit
+      ev: B <:< SelectionSet.Cons[
+        Source,
+        selectBuilder.selection.value.ColumnHead,
+        selectBuilder.selection.value.SelectionTail
+      ]
+    ): Read.Select[
+      F,
+      selectBuilder.selection.value.ResultTypeRepr,
+      Source,
+      selectBuilder.selection.value.ColumnHead,
+      selectBuilder.selection.value.SelectionTail
+    ] = {
+      type B0 = SelectionSet.ConsAux[
+        selectBuilder.selection.value.ResultTypeRepr,
+        Source,
+        selectBuilder.selection.value.ColumnHead,
+        selectBuilder.selection.value.SelectionTail
+      ]
+      val b: B0 = selectBuilder.selection.value.asInstanceOf[B0]
+
+      Read.Subselect(Selection[F, Source, B0](b), None, true)
+    }
+  }
+
+  final class SubselectPartiallyApplied[ParentTable] {
+    def apply[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]): SubselectBuilder[F, A, B, ParentTable] =
+      SubselectBuilder(selection)
+  }
+
+  sealed case class SubselectBuilder[F, Source, B <: SelectionSet[Source], ParentTable](
+    selection: Selection[F, Source, B]
+  ) {
+    def from[Source0](table: Table.Aux[Source0])(implicit
+      ev1: Source0 with ParentTable <:< Source,
+      ev2: B <:< SelectionSet.Cons[Source, selection.value.ColumnHead, selection.value.SelectionTail]
+    ): Read.Subselect[
+      F,
+      selection.value.ResultTypeRepr,
+      Source with ParentTable,
+      Source0,
+      selection.value.ColumnHead,
+      selection.value.SelectionTail
+    ] = {
+      type B0 = SelectionSet.ConsAux[
+        selection.value.ResultTypeRepr,
+        Source with ParentTable,
+        selection.value.ColumnHead,
+        selection.value.SelectionTail
+      ]
+      val b: B0 = selection.value.asInstanceOf[B0]
+
+      Read.Subselect(Selection[F, Source with ParentTable, B0](b), Some(table), true)
     }
   }
 
@@ -30,6 +93,16 @@ trait SelectModule { self: ExprModule with TableModule =>
     type ResultType
 
     val mapper: ResultType => Out
+
+    type ColumnHead
+    type HeadIdentity
+    type ColumnTail <: ColumnSet
+
+    type CS <: ColumnSet.Cons[ColumnHead, ColumnTail, HeadIdentity]
+
+    val columnSet: CS
+
+    def asTable(name: TableName): Table.DerivedTable[Out, Read[Out]]
 
     /**
      * Maps the [[Read]] query's output to another type by providing a function
@@ -226,64 +299,125 @@ trait SelectModule { self: ExprModule with TableModule =>
       type ResultType = ResultType0
     }
 
-    sealed case class Mapped[Repr, Out, Out2](read: Read.Aux[Repr, Out], f: Out => Out2) extends Read[Out2] {
-      type ResultType = Repr
+    sealed case class Mapped[Repr, Out, Out2](read: Read.Aux[Repr, Out], f: Out => Out2) extends Read[Out2] { self =>
+      override type ResultType = Repr
 
-      val mapper = read.mapper.andThen(f)
+      override val mapper = read.mapper.andThen(f)
+
+      override type ColumnHead = read.ColumnHead
+      override type ColumnTail = read.ColumnTail
+      override type CS         = read.CS
+
+      override type HeadIdentity = read.HeadIdentity
+
+      override val columnSet: CS = read.columnSet
+
+      override def asTable(name: TableName): Table.DerivedTable[Out2, Mapped[Repr, Out, Out2]] =
+        Table.DerivedTable[Out2, Mapped[Repr, Out, Out2]](self, name)
     }
 
-    sealed case class Select[F, Repr, A](
-      selection: Selection[F, A, SelectionSet.Aux[Repr, A]],
-      table: Option[Table.Aux[A]],
-      whereExpr: Expr[_, A, Boolean],
-      groupBy: List[Expr[_, A, Any]],
-      havingExpr: Expr[_, A, Boolean] = true,
-      orderBy: List[Ordering[Expr[_, A, Any]]] = Nil,
+    type Select[F, Repr, Source, Head, Tail <: SelectionSet[Source]] = Subselect[F, Repr, Source, Source, Head, Tail]
+
+    sealed case class Subselect[F, Repr, Source, Subsource, Head, Tail <: SelectionSet[Source]](
+      selection: Selection[F, Source, SelectionSet.ConsAux[Repr, Source, Head, Tail]],
+      table: Option[Table.Aux[Subsource]],
+      whereExpr: Expr[_, Source, Boolean],
+      groupBy: List[Expr[_, Source, Any]] = Nil,
+      havingExpr: Expr[_, Source, Boolean] = true,
+      orderBy: List[Ordering[Expr[_, Source, Any]]] = Nil,
       offset: Option[Long] = None, //todo don't know how to do this outside of postgres/mysql
       limit: Option[Long] = None
     ) extends Read[Repr] { self =>
-      type ResultType = Repr
 
-      val mapper: Repr => Repr = identity(_)
-
-      def where(whereExpr2: Expr[_, A, Boolean]): Select[F, Repr, A] =
+      def where(whereExpr2: Expr[_, Source, Boolean]): Subselect[F, Repr, Source, Subsource, Head, Tail] =
         copy(whereExpr = self.whereExpr && whereExpr2)
 
-      def limit(n: Long): Select[F, Repr, A] = copy(limit = Some(n))
+      def limit(n: Long): Subselect[F, Repr, Source, Subsource, Head, Tail] = copy(limit = Some(n))
 
-      def offset(n: Long): Select[F, Repr, A] = copy(offset = Some(n))
+      def offset(n: Long): Subselect[F, Repr, Source, Subsource, Head, Tail] = copy(offset = Some(n))
 
-      def orderBy(o: Ordering[Expr[_, A, Any]], os: Ordering[Expr[_, A, Any]]*): Select[F, Repr, A] =
+      def orderBy(
+        o: Ordering[Expr[_, Source, Any]],
+        os: Ordering[Expr[_, Source, Any]]*
+      ): Subselect[F, Repr, Source, Subsource, Head, Tail] =
         copy(orderBy = self.orderBy ++ (o :: os.toList))
 
-      def groupBy(key: Expr[_, A, Any], keys: Expr[_, A, Any]*)(implicit
+      def groupBy(key: Expr[_, Source, Any], keys: Expr[_, Source, Any]*)(implicit
         ev: Features.IsAggregated[F]
-      ): Select[F, Repr, A] = {
+      ): Subselect[F, Repr, Source, Subsource, Head, Tail] = {
         val _ = ev
         copy(groupBy = groupBy ++ (key :: keys.toList))
       }
 
-      def having(havingExpr2: Expr[_, A, Boolean])(implicit
+      def having(havingExpr2: Expr[_, Source, Boolean])(implicit
         ev: Features.IsAggregated[F]
-      ): Select[F, Repr, A] = {
+      ): Subselect[F, Repr, Source, Subsource, Head, Tail] = {
         val _ = ev
         copy(havingExpr = self.havingExpr && havingExpr2)
       }
+
+      override def asTable(
+        name: TableName
+      ): Table.DerivedTable[Repr, Subselect[F, Repr, Source, Subsource, Head, Tail]] =
+        Table.DerivedTable[Repr, Subselect[F, Repr, Source, Subsource, Head, Tail]](self, name)
+
+      override type ResultType = Repr
+
+      override val mapper: Repr => Repr = identity(_)
+
+      override type ColumnHead = selection.value.ColumnHead
+      override type ColumnTail = selection.value.ColumnTail
+
+      override type HeadIdentity = selection.value.HeadIdentity
+
+      override val columnSet: CS = selection.value.columnSet
+
+      override type CS = selection.value.CS
+    }
+
+    object Subselect {
+      implicit def subselectToExpr[F <: Features.Aggregated[_], Repr, Source, Subsource, Head](
+        subselect: Read.Subselect[F, Repr, _ <: Source, Subsource, Head, SelectionSet.Empty]
+      ): Expr[F, Any, Head] =
+        Expr.Subselect(subselect)
     }
 
     sealed case class Union[Repr, Out](left: Read.Aux[Repr, Out], right: Read.Aux[Repr, Out], distinct: Boolean)
-        extends Read[Out] {
-      type ResultType = Repr
+        extends Read[Out] { self =>
+      override type ResultType = Repr
 
-      val mapper: ResultType => Out = left.mapper
+      override val mapper: ResultType => Out = left.mapper
+
+      override type ColumnHead = left.ColumnHead
+      override type ColumnTail = left.ColumnTail
+
+      override type HeadIdentity = left.HeadIdentity
+
+      override type CS = left.CS
+
+      override val columnSet: CS = left.columnSet
+
+      override def asTable(name: TableName): Table.DerivedTable[Out, Union[Repr, Out]] =
+        Table.DerivedTable[Out, Union[Repr, Out]](self, name)
     }
 
-    sealed case class Literal[B: TypeTag](values: Iterable[B]) extends Read[(B, Unit)] {
-      type ResultType = (B, Unit)
+    // TODO add name to literal selection - e.g. select '1' as one
+    sealed case class Literal[B: TypeTag](values: Iterable[B]) extends Read[(B, Unit)] { self =>
+      override type ResultType = (B, Unit)
 
-      val mapper: ResultType => (B, Unit) = identity(_)
+      override val mapper: ResultType => (B, Unit) = identity(_)
 
       def typeTag: TypeTag[B] = implicitly[TypeTag[B]]
+
+      override type ColumnHead = B
+      override type ColumnTail = ColumnSet.Empty
+
+      override type CS = ColumnSet.Cons[ColumnHead, ColumnTail, HeadIdentity]
+
+      override val columnSet: CS = ColumnSet.Cons(Column.Indexed[ColumnHead, HeadIdentity](), ColumnSet.Empty)
+
+      override def asTable(name: TableName): Table.DerivedTable[(B, Unit), Literal[B]] =
+        Table.DerivedTable[(B, Unit), Literal[B]](self, name)
     }
 
     def lit[B: TypeTag](values: B*): Read[(B, Unit)] = Literal(values.toSeq)
@@ -294,21 +428,22 @@ trait SelectModule { self: ExprModule with TableModule =>
    */
   sealed case class Selection[F, -A, +B <: SelectionSet[A]](value: B) { self =>
 
-    type SelectionType
+    type ColsRepr = value.ResultTypeRepr
 
     def ++[F2, A1 <: A, C <: SelectionSet[A1]](
       that: Selection[F2, A1, C]
     ): Selection[F :||: F2, A1, self.value.Append[A1, C]] =
       Selection(self.value ++ that.value)
 
-    def columns[A1 <: A]: value.SelectionsRepr[A1, SelectionType] = value.selections[A1, SelectionType]
   }
 
   object Selection {
-    import SelectionSet.{ Cons, Empty }
     import ColumnSelection._
+    import SelectionSet.{ Cons, Empty }
 
-    val empty: Selection[Any, Any, Empty] = Selection(Empty)
+    type Aux[F, -A, +B <: SelectionSet[A], ColsRepr0] = Selection[F, A, B] {
+      type ColsRepr = ColsRepr0
+    }
 
     def constantOption[A: TypeTag](value: A, option: Option[ColumnName]): Selection[Any, Any, Cons[Any, A, Empty]] =
       Selection(Cons(Constant(value, option), Empty))
@@ -328,18 +463,33 @@ trait SelectModule { self: ExprModule with TableModule =>
       computedOption(expr, Some(name))
   }
 
-  sealed trait ColumnSelection[-A, +B] {
+  sealed trait ColumnSelection[-Source, +ColumnType] {
+    type ColumnType0 <: ColumnType
+
     def name: Option[ColumnName]
+
+    val toColumn: Column[ColumnType]
   }
 
   object ColumnSelection {
+    sealed case class Constant[ColumnType: TypeTag](value: ColumnType, name: Option[ColumnName])
+        extends ColumnSelection[Any, ColumnType] {
+      def typeTag: TypeTag[ColumnType] = implicitly[TypeTag[ColumnType]]
 
-    sealed case class Constant[A: TypeTag](value: A, name: Option[ColumnName]) extends ColumnSelection[Any, A] {
-      def typeTag: TypeTag[A] = implicitly[TypeTag[A]]
+      val toColumn: Column[ColumnType] = name match {
+        case Some(value) => Column.Named(value)
+        case None        => Column.Indexed()
+      }
     }
 
-    sealed case class Computed[F, A, B](expr: Expr[F, A, B], name: Option[ColumnName]) extends ColumnSelection[A, B] {
-      def typeTag: TypeTag[B] = Expr.typeTagOf(expr)
+    sealed case class Computed[F, Source, ColumnType](expr: Expr[F, Source, ColumnType], name: Option[ColumnName])
+        extends ColumnSelection[Source, ColumnType] {
+      implicit def typeTag: TypeTag[ColumnType] = Expr.typeTagOf(expr)
+
+      val toColumn: Column[ColumnType] = name match {
+        case Some(value) => Column.Named(value)
+        case None        => Column.Indexed()
+      }
     }
   }
 
@@ -350,6 +500,14 @@ trait SelectModule { self: ExprModule with TableModule =>
 
     type Append[Source1, That <: SelectionSet[Source1]] <: SelectionSet[Source1]
 
+    type ColumnHead
+    type ColumnTail <: ColumnSet
+    type SelectionTail <: SelectionSet[Source]
+    type HeadIdentity
+
+    type CS <: ColumnSet
+    def columnSet: CS
+
     def ++[Source1 <: Source, That <: SelectionSet[Source1]](that: That): Append[Source1, That]
 
     def selectionsUntyped: List[ColumnSelection[Source, _]]
@@ -358,16 +516,29 @@ trait SelectModule { self: ExprModule with TableModule =>
   }
 
   object SelectionSet {
-    type Aux[ResultTypeRepr0, -Source] =
+
+    type Aux[-Source, ResultTypeRepr0] =
       SelectionSet[Source] {
         type ResultTypeRepr = ResultTypeRepr0
       }
 
-    type Singleton[-Source, A] = Cons[Source, A, Empty]
+    type ConsAux[ResultTypeRepr0, -Source, A, B <: SelectionSet[Source]] =
+      SelectionSet.Cons[Source, A, B] {
+        type ResultTypeRepr = ResultTypeRepr0
+      }
 
     type Empty = Empty.type
 
     case object Empty extends SelectionSet[Any] {
+
+      override type ColumnHead    = Unit
+      override type ColumnTail    = ColumnSet.Empty
+      override type SelectionTail = SelectionSet.Empty
+
+      override type HeadIdentity = Any
+
+      override type CS = ColumnSet.Empty
+      override def columnSet: CS = ColumnSet.Empty
 
       override type SelectionsRepr[Source1, T] = Unit
 
@@ -380,11 +551,22 @@ trait SelectModule { self: ExprModule with TableModule =>
 
       override def selectionsUntyped: List[ColumnSelection[Any, _]] = Nil
 
-      def selections[Source1 <: Any, T]: SelectionsRepr[Source1, T] = ()
+      override def selections[Source1 <: Any, T]: SelectionsRepr[Source1, T] = ()
     }
 
     sealed case class Cons[-Source, A, B <: SelectionSet[Source]](head: ColumnSelection[Source, A], tail: B)
         extends SelectionSet[Source] { self =>
+
+      override type ColumnHead    = A
+      override type ColumnTail    = tail.CS
+      override type SelectionTail = B
+
+      override type HeadIdentity = head.toColumn.Identity
+
+      override type CS = ColumnSet.Cons[ColumnHead, ColumnTail, HeadIdentity]
+
+      override def columnSet: CS =
+        ColumnSet.Cons[ColumnHead, ColumnTail, HeadIdentity](head.toColumn, tail.columnSet)
 
       override type SelectionsRepr[Source1, T] = (ColumnSelection[Source1, A], tail.SelectionsRepr[Source1, T])
 
@@ -398,7 +580,7 @@ trait SelectModule { self: ExprModule with TableModule =>
 
       override def selectionsUntyped: List[ColumnSelection[Source, _]] = head :: tail.selectionsUntyped
 
-      def selections[Source1 <: Source, T]: SelectionsRepr[Source1, T] = (head, tail.selections[Source1, T])
+      override def selections[Source1 <: Source, T]: SelectionsRepr[Source1, T] = (head, tail.selections[Source1, T])
     }
   }
 
