@@ -11,7 +11,9 @@ trait FeaturesModule {
   object Features {
     type Aggregated[_]
     type Union[_, _]
-    type Source
+    type Source[_]
+    //TODO make Derived and Join tables return Expr of type "Derived" when .columns is called
+    type Derived
     type Literal
     type Function0
 
@@ -31,7 +33,7 @@ trait FeaturesModule {
     sealed trait IsSource[A]
 
     object IsSource {
-      implicit case object SourceIsSource extends IsSource[Source]
+      implicit def isSource[ColumnIdentity]: IsSource[Source[ColumnIdentity]] = new IsSource[Source[ColumnIdentity]] {}
     }
   }
 

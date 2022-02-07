@@ -2,9 +2,8 @@ package zio.sql.mysql
 
 import java.util.Properties
 
-import zio._
+import zio.ZEnvironment
 import zio.sql._
-import zio.test.TestEnvironment
 import zio.test._
 
 trait MysqlRunnableSpec extends JdbcRunnableSpec with MysqlModule {

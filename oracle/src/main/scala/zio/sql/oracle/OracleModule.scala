@@ -1,6 +1,7 @@
 package zio.sql.oracle
 
 import zio.sql.Jdbc
+import zio.schema.Schema
 
 trait OracleModule extends Jdbc { self =>
 
@@ -9,8 +10,16 @@ trait OracleModule extends Jdbc { self =>
   }
 
   def buildExpr[A, B](expr: self.Expr[_, A, B], builder: StringBuilder): Unit = expr match {
-    case Expr.Source(tableName, column)                                                       =>
-      val _ = builder.append(tableName).append(".").append(column.name)
+    case Expr.Subselect(subselect)                                                            =>
+      builder.append(" (")
+      builder.append(renderRead(subselect))
+      val _ = builder.append(") ")
+    case Expr.Source(table, column)                                                           =>
+      (table, column.name) match {
+        case (tableName: TableName, Some(columnName)) =>
+          val _ = builder.append(tableName).append(".").append(columnName)
+        case _                                        => ()
+      }
     case Expr.Unary(base, op)                                                                 =>
       val _ = builder.append(" ").append(op.symbol)
       buildExpr(base, builder)
@@ -124,13 +133,15 @@ trait OracleModule extends Jdbc { self =>
     read match {
       case Read.Mapped(read, _) => buildReadString(read, builder)
 
-      case read0 @ Read.Select(_, _, _, _, _, _, _, _) =>
+      case read0 @ Read.Subselect(_, _, _, _, _, _, _, _) =>
         object Dummy {
           type F
-          type A
-          type B <: SelectionSet[A]
+          type Repr
+          type Source
+          type Head
+          type Tail <: SelectionSet[Source]
         }
-        val read = read0.asInstanceOf[Read.Select[Dummy.F, Dummy.A, Dummy.B]]
+        val read = read0.asInstanceOf[Read.Select[Dummy.F, Dummy.Repr, Dummy.Source, Dummy.Head, Dummy.Tail]]
         import read._
 
         builder.append("SELECT ")
@@ -259,9 +270,15 @@ trait OracleModule extends Jdbc { self =>
     }
   def buildTable(table: Table, builder: StringBuilder): Unit                                           =
     table match {
+      case Table.DialectSpecificTable(_)           => ???
       //The outer reference in this type test cannot be checked at run time?!
       case sourceTable: self.Table.Source          =>
         val _ = builder.append(sourceTable.name)
+      case Table.DerivedTable(read, name)          =>
+        builder.append(" ( ")
+        builder.append(renderRead(read.asInstanceOf[Read[_]]))
+        builder.append(" ) ")
+        val _ = builder.append(name)
       case Table.Joined(joinType, left, right, on) =>
         buildTable(left, builder)
         builder.append(joinType match {
@@ -283,6 +300,8 @@ trait OracleModule extends Jdbc { self =>
   }
 
   override def renderDelete(delete: self.Delete[_]): String = ???
+
+  override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = ???
 
   override def renderUpdate(update: self.Update[_]): String = ???
 }

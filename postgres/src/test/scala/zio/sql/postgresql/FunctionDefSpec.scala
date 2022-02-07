@@ -152,6 +152,32 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
         assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
       },
+      test("bit_length") {
+        val query = select(BitLength("hello"))
+
+        val expected = 40
+
+        val testResult = execute(query.to[Int, Int](identity))
+
+        val assertion = for {
+          r <- testResult.runCollect
+        } yield assert(r.head)(equalTo(expected))
+
+        assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      },
+      test("pi") {
+        val query = select(Pi)
+
+        val expected = 3.141592653589793
+
+        val testResult = execute(query.to[Double, Double](identity))
+
+        val assertion = for {
+          r <- testResult.runCollect
+        } yield assert(r.head)(equalTo(expected))
+
+        assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      },
       suite("format function")(
         test("format0") {
           import Expr._

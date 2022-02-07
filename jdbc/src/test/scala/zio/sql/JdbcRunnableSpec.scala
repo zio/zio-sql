@@ -18,5 +18,5 @@ trait JdbcRunnableSpec extends DefaultRunnableSpec with Jdbc {
     (connectionPoolLayer >+> SqlDriver.live).orDie
   }
 
-  final lazy val jdbcLayer = TestEnvironment.live >+> executorLayer
+  final lazy val jdbcLayer = TestEnvironment.live >>> executorLayer
 }
