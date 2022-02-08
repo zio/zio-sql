@@ -18,26 +18,20 @@ trait Jdbc extends zio.sql.Sql with TransactionModule with JdbcInternalModule wi
   }
   object SqlDriver {
     val live: ZLayer[ConnectionPool, Nothing, SqlDriver] =
-      (for {
-        pool <- ZIO.service[ConnectionPool]
-      } yield SqlDriverLive(pool)).toLayer
+      (SqlDriverLive(_)).toLayer
   }
 
   def execute[R <: SqlDriver: ZTag: IsNotIntersection, A](
     tx: ZTransaction[R, Exception, A]
   ): ZManaged[R, Exception, A] =
-    ZManaged.environmentWithManaged[R](_.get.transact(tx))
+    ZManaged.serviceWithManaged(_.transact(tx))
 
   def execute[A](read: Read[A]): ZStream[SqlDriver, Exception, A] =
-    ZStream.unwrap(ZIO.environmentWith[SqlDriver](_.get.read(read)))
+    ZStream.serviceWithStream(_.read(read))
 
   def execute(delete: Delete[_]): ZIO[SqlDriver, Exception, Int] =
-    ZIO.environmentWithZIO[SqlDriver](
-      _.get.delete(delete)
-    )
+    ZIO.serviceWithZIO(_.delete(delete))
 
   def execute[A: Schema](insert: Insert[_, A]): ZIO[SqlDriver, Exception, Int] =
-    ZIO.environmentWithZIO[SqlDriver](
-      _.get.insert(insert)
-    )
+    ZIO.serviceWithZIO[SqlDriver](_.insert(insert))
 }
