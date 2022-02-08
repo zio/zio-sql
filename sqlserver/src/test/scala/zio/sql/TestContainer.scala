@@ -17,7 +17,7 @@ object TestContainer {
 
   def postgres(
     imageName: String = "mcr.microsoft.com/mssql/server:2017-latest"
-  ): ZLayer[Any, Throwable, MSSQLServerContainer] =
+  ): ZManaged[Any, Throwable, MSSQLServerContainer] =
     ZManaged.acquireReleaseWith {
       ZIO.attemptBlocking {
         val c = new MSSQLServerContainer(
@@ -31,6 +31,6 @@ object TestContainer {
       }
     } { container =>
       ZIO.attemptBlocking(container.stop()).orDie
-    }.toLayer
+    }
 
 }
