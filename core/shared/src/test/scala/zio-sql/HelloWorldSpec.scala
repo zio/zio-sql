@@ -5,6 +5,7 @@ import zio.test._
 import zio.test.Assertion._
 
 import HelloWorld._
+import zio.test.ZIOSpecDefault
 
 object HelloWorld {
 
@@ -12,7 +13,7 @@ object HelloWorld {
     Console.printLine("Hello, World!")
 }
 
-object HelloWorldSpec extends DefaultRunnableSpec {
+object HelloWorldSpec extends ZIOSpecDefault {
 
   def spec = suite("HelloWorldSpec")(
     test("sayHello correctly displays output") {

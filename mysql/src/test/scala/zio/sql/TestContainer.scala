@@ -15,7 +15,7 @@ object TestContainer {
       }
     }(container => ZIO.attemptBlocking(container.stop()).orDie).toLayer
 
-  def mysql(imageName: String = "mysql"): ZLayer[Any, Throwable, MySQLContainer] =
+  def mysql(imageName: String = "mysql"): ZManaged[Any, Throwable, MySQLContainer] =
     ZManaged.acquireReleaseWith {
       ZIO.attemptBlocking {
         val c = new MySQLContainer(
@@ -27,6 +27,6 @@ object TestContainer {
         c.start()
         c
       }
-    }(container => ZIO.attemptBlocking(container.stop()).orDie).toLayer
+    }(container => ZIO.attemptBlocking(container.stop()).orDie)
 
 }

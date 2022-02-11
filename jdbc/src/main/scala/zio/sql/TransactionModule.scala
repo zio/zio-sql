@@ -24,7 +24,7 @@ trait TransactionModule { self: Jdbc =>
         r <- ZManaged.environment[R]
         a <- self.unwrap
                .mapError(ev)
-               .provideEnvironment(ZEnvironment((r.get, txn)))
+               .provideService((r.get, txn))
                .tapBoth(
                  _ =>
                    ZIO
@@ -100,11 +100,11 @@ trait TransactionModule { self: Jdbc =>
 
     def fromEffect[R: ZTag: IsNotIntersection, E, A](zio: ZIO[R, E, A]): ZTransaction[R, E, A] =
       ZTransaction(for {
-        tuple <- ZManaged.environment[(R, Txn)]
-        a     <- zio.provideEnvironment(ZEnvironment(tuple.get._1)).toManaged
+        tuple <- ZManaged.service[(R, Txn)]
+        a     <- zio.provideService((tuple._1)).toManaged
       } yield a)
 
     private val txn: ZTransaction[Any, Nothing, Txn] =
-      ZTransaction(ZManaged.environment[(Any, Txn)].map(_.get._2))
+      ZTransaction(ZManaged.service[(Any, Txn)].map(_._2))
   }
 }
