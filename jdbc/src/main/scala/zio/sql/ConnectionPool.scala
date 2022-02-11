@@ -11,7 +11,7 @@ import zio.clock._
 trait ConnectionPool {
 
   /**
-   * Retrieves a JDBC [[java.sql.Connection]] as a [[zio.Managed]] resource.
+   * Retrieves a JDBC java.sql.Connection as a [[zio.Managed]] resource.
    * The managed resource will safely acquire and release the connection, and
    * may be interrupted or timed out if necessary.
    */

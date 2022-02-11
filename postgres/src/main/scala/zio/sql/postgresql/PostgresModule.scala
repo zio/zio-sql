@@ -84,9 +84,9 @@ trait PostgresModule extends Jdbc { self =>
     trait PostgresTypeTag[+A] extends Tag[A] with Decodable[A]
     object PostgresTypeTag {
       implicit case object TVoid       extends PostgresTypeTag[Unit]       {
-        override def decode(column: Either[Int, String], resultSet: ResultSet): Either[DecodingError, Unit] =
+        override def decode(column: Int, resultSet: ResultSet): Either[DecodingError, Unit] =
           scala.util
-            .Try(column.fold(resultSet.getObject(_), resultSet.getObject(_)))
+            .Try(resultSet.getObject(column))
             .fold(
               _ => Left(DecodingError.UnexpectedNull(column)),
               _ => Right(())
@@ -94,11 +94,11 @@ trait PostgresModule extends Jdbc { self =>
       }
       implicit case object TInterval   extends PostgresTypeTag[Interval]   {
         override def decode(
-          column: Either[Int, String],
+          column: Int,
           resultSet: ResultSet
         ): Either[DecodingError, Interval] =
           scala.util
-            .Try(Interval.fromPgInterval(new PGInterval(column.fold(resultSet.getString(_), resultSet.getString(_)))))
+            .Try(Interval.fromPgInterval(new PGInterval(resultSet.getString(column))))
             .fold(
               _ => Left(DecodingError.UnexpectedNull(column)),
               r => Right(r)
@@ -106,7 +106,7 @@ trait PostgresModule extends Jdbc { self =>
       }
       implicit case object TTimestampz extends PostgresTypeTag[Timestampz] {
         override def decode(
-          column: Either[Int, String],
+          column: Int,
           resultSet: ResultSet
         ): Either[DecodingError, Timestampz] =
           scala.util
@@ -114,7 +114,7 @@ trait PostgresModule extends Jdbc { self =>
               Timestampz.fromZonedDateTime(
                 ZonedDateTime
                   .ofInstant(
-                    column.fold(resultSet.getTimestamp(_), resultSet.getTimestamp(_)).toInstant,
+                    resultSet.getTimestamp(column).toInstant,
                     ZoneId.of(ZoneOffset.UTC.getId)
                   )
               )
@@ -406,7 +406,6 @@ trait PostgresModule extends Jdbc { self =>
             case Some(v) =>
               v match {
                 case BigDecimalType                             =>
-                  println("foo")
                   render(value)
                 case StandardType.InstantType(formatter)        =>
                   render(s"'${formatter.format(value.asInstanceOf[Instant])}'")
@@ -446,12 +445,14 @@ trait PostgresModule extends Jdbc { self =>
               }
             case None    => ()
           }
-        //TODO what about other cases?
         case DynamicValue.Transform(that)           => renderDynamicValue(that)
         case DynamicValue.Tuple(left, right)        =>
           renderDynamicValue(left)
           render(", ")
           renderDynamicValue(right)
+        case DynamicValue.SomeValue(value)          => renderDynamicValue(value)
+        case DynamicValue.NoneValue                 => render(s"null")
+        //TODO what about other cases?
         case _                                      => ()
       }
 
@@ -670,7 +671,8 @@ trait PostgresModule extends Jdbc { self =>
 
     private[zio] def renderReadImpl(read: self.Read[_])(implicit render: Renderer): Unit =
       read match {
-        case Read.Mapped(read, _)                           => renderReadImpl(read)
+        case Read.Mapped(read, _) => renderReadImpl(read)
+
         case read0 @ Read.Subselect(_, _, _, _, _, _, _, _) =>
           object Dummy {
             type F
@@ -695,10 +697,10 @@ trait PostgresModule extends Jdbc { self =>
               render(" WHERE ")
               renderExpr(whereExpr)
           }
-          groupBy match {
-            case _ :: _ =>
+          groupByExprs match {
+            case Read.ExprSet.ExprCons(_, _) =>
               render(" GROUP BY ")
-              renderExprList(groupBy)
+              renderExprList(groupByExprs)
 
               havingExpr match {
                 case Expr.Literal(true) => ()
@@ -706,12 +708,12 @@ trait PostgresModule extends Jdbc { self =>
                   render(" HAVING ")
                   renderExpr(havingExpr)
               }
-            case Nil    => ()
+            case Read.ExprSet.NoExpr         => ()
           }
-          orderBy match {
+          orderByExprs match {
             case _ :: _ =>
               render(" ORDER BY ")
-              renderOrderingList(orderBy)
+              renderOrderingList(orderByExprs)
             case Nil    => ()
           }
           limit match {
@@ -733,17 +735,17 @@ trait PostgresModule extends Jdbc { self =>
           render(" (", values.mkString(","), ") ") //todo fix needs escaping
       }
 
-    def renderExprList(expr: List[Expr[_, _, _]])(implicit render: Renderer): Unit =
+    def renderExprList(expr: Read.ExprSet[_])(implicit render: Renderer): Unit =
       expr match {
-        case head :: tail =>
+        case Read.ExprSet.ExprCons(head, tail) =>
           renderExpr(head)
-          tail match {
-            case _ :: _ =>
+          tail.asInstanceOf[Read.ExprSet[_]] match {
+            case Read.ExprSet.ExprCons(_, _) =>
               render(", ")
-              renderExprList(tail)
-            case Nil    => ()
+              renderExprList(tail.asInstanceOf[Read.ExprSet[_]])
+            case Read.ExprSet.NoExpr         => ()
           }
-        case Nil          => ()
+        case Read.ExprSet.NoExpr               => ()
       }
 
     def renderOrderingList(expr: List[Ordering[Expr[_, _, _]]])(implicit render: Renderer): Unit =

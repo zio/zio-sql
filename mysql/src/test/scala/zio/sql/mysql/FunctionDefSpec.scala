@@ -16,7 +16,7 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       val expected = "ronald"
 
-      val testResult = execute(query.to[String, String](identity))
+      val testResult = execute(query)
 
       val assertion = for {
         r <- testResult.runCollect
@@ -45,7 +45,7 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       val expected = 0.8414709848078965
 
-      val testResult = execute(query.to[Double, Double](identity))
+      val testResult = execute(query)
 
       val assertion = for {
         r <- testResult.runCollect
@@ -58,7 +58,7 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       val expected = 32.0
 
-      val testResult = execute(query.to[Double, Double](identity))
+      val testResult = execute(query)
 
       val assertion = for {
         r <- testResult.runCollect
@@ -71,7 +71,7 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       val expected = 3259397556L
 
-      val testResult = execute(query.to[Long, Long](identity))
+      val testResult = execute(query)
 
       val assertion = for {
         r <- testResult.runCollect
@@ -84,7 +84,7 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       val expected = 180d
 
-      val testResult = execute(query.to[Double, Double](identity))
+      val testResult = execute(query)
 
       val assertion = for {
         r <- testResult.runCollect
@@ -97,7 +97,7 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       val expected = 3d
 
-      val testResult = execute(query.to[Double, Double](identity))
+      val testResult = execute(query)
 
       val assertion = for {
         r <- testResult.runCollect
@@ -110,7 +110,7 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       val expected = 6d
 
-      val testResult = execute(query.to[Double, Double](identity))
+      val testResult = execute(query)
 
       val assertion = for {
         r <- testResult.runCollect
@@ -123,7 +123,7 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       val expected = 40
 
-      val testResult = execute(query.to[Int, Int](identity))
+      val testResult = execute(query)
 
       val assertion = for {
         r <- testResult.runCollect
@@ -136,7 +136,7 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       val expected = 3.141593d
 
-      val testResult = execute(query.to[Double, Double](identity))
+      val testResult = execute(query)
 
       val assertion = for {
         r <- testResult.runCollect
