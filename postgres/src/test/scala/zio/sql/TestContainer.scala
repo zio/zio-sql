@@ -15,7 +15,7 @@ object TestContainer {
       }
     }(container => ZIO.attemptBlocking(container.stop()).orDie).toLayer
 
-  def postgres(imageName: String = "postgres:alpine"): ZLayer[Any, Throwable, PostgreSQLContainer] =
+  def postgres(imageName: String = "postgres:alpine"): ZManaged[Any, Throwable, PostgreSQLContainer] =
     ZManaged.acquireReleaseWith {
       ZIO.attemptBlocking {
         val c = new PostgreSQLContainer(
@@ -29,6 +29,6 @@ object TestContainer {
       }
     } { container =>
       ZIO.attemptBlocking(container.stop()).orDie
-    }.toLayer
+    }
 
 }

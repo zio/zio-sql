@@ -2,9 +2,9 @@ package zio.sql.mysql
 
 import java.util.Properties
 
-import zio.ZEnvironment
 import zio.sql._
 import zio.test._
+import zio.ZLayer
 
 trait MysqlRunnableSpec extends JdbcRunnableSpec with MysqlModule {
 
@@ -15,19 +15,13 @@ trait MysqlRunnableSpec extends JdbcRunnableSpec with MysqlModule {
     props
   }
 
-  val poolConfigLayer = TestContainer
+  val poolConfigLayer: ZLayer[Any, Throwable, ConnectionPoolConfig] = TestContainer
     .mysql()
-    .map(a =>
-      ZEnvironment(
-        ConnectionPoolConfig(
-          a.get.jdbcUrl,
-          connProperties(a.get.username, a.get.password)
-        )
-      )
-    )
+    .map(a => ConnectionPoolConfig(a.jdbcUrl, connProperties(a.username, a.password)))
+    .toLayer
 
   override def spec: Spec[TestEnvironment, TestFailure[Any], TestSuccess] =
-    specLayered.provideCustomShared(jdbcLayer)
+    specLayered.provideCustomLayerShared(jdbcLayer)
 
   def specLayered: Spec[JdbcEnvironment, TestFailure[Object], TestSuccess]
 
