@@ -279,10 +279,10 @@ trait SqlServerModule extends Jdbc { self =>
               builder.append(" where ")
               buildExpr(whereExpr)
           }
-          groupBy match {
-            case _ :: _ =>
+          groupByExprs match {
+            case Read.ExprSet.ExprCons(_, _) =>
               builder.append(" group by ")
-              buildExprList(groupBy)
+              buildExprList(groupByExprs)
 
               havingExpr match {
                 case Expr.Literal(true) => ()
@@ -290,12 +290,12 @@ trait SqlServerModule extends Jdbc { self =>
                   builder.append(" having ")
                   buildExpr(havingExpr)
               }
-            case Nil    => ()
+            case Read.ExprSet.NoExpr         => ()
           }
-          orderBy match {
+          orderByExprs match {
             case _ :: _ =>
               builder.append(" order by ")
-              buildOrderingList(orderBy)
+              buildOrderingList(orderByExprs)
             case Nil    => ()
           }
 
@@ -309,17 +309,17 @@ trait SqlServerModule extends Jdbc { self =>
           val _ = builder.append(" (").append(values.mkString(",")).append(") ") //todo fix needs escaping
       }
 
-    def buildExprList(expr: List[Expr[_, _, _]]): Unit               =
+    def buildExprList(expr: Read.ExprSet[_]): Unit                   =
       expr match {
-        case head :: tail =>
+        case Read.ExprSet.ExprCons(head, tail) =>
           buildExpr(head)
-          tail match {
-            case _ :: _ =>
+          tail.asInstanceOf[Read.ExprSet[_]] match {
+            case Read.ExprSet.ExprCons(_, _) =>
               builder.append(", ")
-              buildExprList(tail)
-            case Nil    => ()
+              buildExprList(tail.asInstanceOf[Read.ExprSet[_]])
+            case Read.ExprSet.NoExpr         => ()
           }
-        case Nil          => ()
+        case Read.ExprSet.NoExpr               => ()
       }
     def buildOrderingList(expr: List[Ordering[Expr[_, _, _]]]): Unit =
       expr match {
