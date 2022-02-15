@@ -121,7 +121,7 @@ lazy val examples = project
       "dev.zio" %% "zio"                   % zioVersion,
       "dev.zio" %% "zio-streams"           % zioVersion,
       "dev.zio" %% "zio-schema"            % zioSchemaVersion,
-      "dev.zio" %% "zio-schema-derivation" % zioSchemaVersion % Provided
+      "dev.zio" %% "zio-schema-derivation" % zioSchemaVersion
     )
   )
   .dependsOn(sqlserver)

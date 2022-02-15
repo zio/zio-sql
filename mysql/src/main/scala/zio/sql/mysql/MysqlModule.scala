@@ -16,9 +16,9 @@ trait MysqlModule extends Jdbc { self =>
 
     object MysqlTypeTag {
       implicit case object TYear extends MysqlTypeTag[Year] {
-        override def decode(column: Either[Int, String], resultSet: ResultSet): Either[DecodingError, Year] =
+        override def decode(column: Int, resultSet: ResultSet): Either[DecodingError, Year] =
           scala.util
-            .Try(Year.of(column.fold(resultSet.getByte(_), resultSet.getByte(_)).toInt))
+            .Try(Year.of(resultSet.getByte(column).toInt))
             .fold(
               _ => Left(DecodingError.UnexpectedNull(column)),
               r => Right(r)
@@ -82,8 +82,7 @@ trait MysqlModule extends Jdbc { self =>
 
     def renderReadImpl(read: self.Read[_])(implicit render: Renderer): Unit =
       read match {
-        case Read.Mapped(read, _) =>
-          renderReadImpl(read)
+        case Read.Mapped(read, _) => renderReadImpl(read)
 
         case read0 @ Read.Subselect(_, _, _, _, _, _, _, _) =>
           object Dummy {
@@ -108,10 +107,10 @@ trait MysqlModule extends Jdbc { self =>
               render(" WHERE ")
               renderExpr(whereExpr)
           }
-          groupBy match {
-            case _ :: _ =>
+          groupByExprs match {
+            case Read.ExprSet.ExprCons(_, _) =>
               render(" GROUP BY ")
-              renderExprList(groupBy)
+              renderExprList(groupByExprs)
 
               havingExpr match {
                 case Expr.Literal(true) => ()
@@ -119,12 +118,12 @@ trait MysqlModule extends Jdbc { self =>
                   render(" HAVING ")
                   renderExpr(havingExpr)
               }
-            case Nil    => ()
+            case Read.ExprSet.NoExpr         => ()
           }
-          orderBy match {
+          orderByExprs match {
             case _ :: _ =>
               render(" ORDER BY ")
-              renderOrderingList(orderBy)
+              renderOrderingList(orderByExprs)
             case Nil    => ()
           }
           limit match {
@@ -401,17 +400,17 @@ trait MysqlModule extends Jdbc { self =>
           }
       }
 
-    private def renderExprList(expr: List[Expr[_, _, _]])(implicit render: Renderer): Unit =
+    private def renderExprList(expr: Read.ExprSet[_])(implicit render: Renderer): Unit =
       expr match {
-        case head :: tail =>
+        case Read.ExprSet.ExprCons(head, tail) =>
           renderExpr(head)
-          tail match {
-            case _ :: _ =>
+          tail.asInstanceOf[Read.ExprSet[_]] match {
+            case Read.ExprSet.ExprCons(_, _) =>
               render(", ")
-              renderExprList(tail)
-            case Nil    => ()
+              renderExprList(tail.asInstanceOf[Read.ExprSet[_]])
+            case Read.ExprSet.NoExpr         => ()
           }
-        case Nil          => ()
+        case Read.ExprSet.NoExpr               => ()
       }
 
     def renderOrderingList(expr: List[Ordering[Expr[_, _, _]]])(implicit render: Renderer): Unit =

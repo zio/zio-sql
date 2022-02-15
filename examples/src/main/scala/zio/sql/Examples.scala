@@ -55,9 +55,9 @@ object Examples extends App with ShopSchema with SqlServerModule {
 
   val orderValues =
     select(
-      (Arbitrary(userId)) ++
-        (Arbitrary(fName)) ++
-        (Arbitrary(lName)) ++
+      userId ++
+        fName ++
+        lName ++
         (Sum(quantity * unitPrice) as "total_spend") ++
         Sum(Abs(quantity))
     )
@@ -68,7 +68,7 @@ object Examples extends App with ShopSchema with SqlServerModule {
           .leftOuter(orderDetails)
           .on(orderId === fkOrderId)
       )
-      .groupBy(userId, fName /*, lName */ ) //shouldn't compile without lName todo fix #38
+      .groupBy(userId, fName, lName)
   println(renderRead(orderValues))
 
   import scala.language.postfixOps

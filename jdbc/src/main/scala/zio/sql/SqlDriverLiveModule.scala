@@ -43,9 +43,7 @@ trait SqlDriverLiveModule { self: Jdbc =>
 
       }.refineToOrDie[Exception]
 
-    def read[A](
-      read: Read[A]
-    ): Stream[Exception, A] =
+    def read[A](read: Read[A]): Stream[Exception, A] =
       ZStream
         .managed(pool.connection)
         .flatMap(readOn(read, _))
