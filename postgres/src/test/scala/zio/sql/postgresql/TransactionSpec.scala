@@ -1,7 +1,5 @@
 package zio.sql.postgresql
 
-import java.util.UUID
-
 import zio._
 import zio.test.Assertion._
 import zio.test._
@@ -39,11 +37,11 @@ object TransactionSpec extends PostgresRunnableSpec with ShopSchema {
       val deleteQuery = deleteFrom(customers).where(verified === false)
 
       val result = (for {
-        allCustomersCount       <- execute(query.to(identity[UUID](_))).runCount.toManaged
+        allCustomersCount       <- execute(query).runCount.toManaged
         _                       <- execute(
                                      ZTransaction(deleteQuery) *> ZTransaction.fail(new Exception("this is error")) *> ZTransaction(query)
                                    ).catchAllCause(_ => ZManaged.succeed("continue"))
-        remainingCustomersCount <- execute(query.to(identity[UUID](_))).runCount.toManaged
+        remainingCustomersCount <- execute(query).runCount.toManaged
       } yield (allCustomersCount, remainingCustomersCount)).use(ZIO.succeed(_))
 
       assertM(result)(equalTo((5L, 5L))).mapErrorCause(cause => Cause.stackless(cause.untraced))
@@ -55,9 +53,9 @@ object TransactionSpec extends PostgresRunnableSpec with ShopSchema {
       val tx = ZTransaction(deleteQuery)
 
       val result = (for {
-        allCustomersCount       <- execute(query.to(identity[UUID](_))).runCount.toManaged
+        allCustomersCount       <- execute(query).runCount.toManaged
         _                       <- execute(tx)
-        remainingCustomersCount <- execute(query.to(identity[UUID](_))).runCount.toManaged
+        remainingCustomersCount <- execute(query).runCount.toManaged
       } yield (allCustomersCount, remainingCustomersCount)).use(ZIO.succeed(_))
 
       assertM(result)(equalTo((5L, 4L))).mapErrorCause(cause => Cause.stackless(cause.untraced))
