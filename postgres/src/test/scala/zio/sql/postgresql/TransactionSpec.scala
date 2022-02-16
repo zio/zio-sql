@@ -5,7 +5,7 @@ import zio.test.Assertion._
 import zio.test._
 import zio.test.TestAspect.sequential
 
-object TransactionSpec extends PostgresRunnableSpec with ShopSchema {
+object TransactionSpec extends PostgresRunnableSpec with DbSchema {
 
   override val autoCommit = false
 

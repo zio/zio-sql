@@ -138,10 +138,10 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
       override def typeTag: TypeTag[Head] = subselect.selection.value.head.toColumn.typeTag
     }
 
-    sealed case class Source[-A, B, ColumnIdentity] private[sql] (
+    sealed case class Source[-A, B, ColumnIdentity, TableType] private[sql] (
       tableName: TableName,
       column: Column.Aux[B, ColumnIdentity]
-    ) extends InvariantExpr[Features.Source[ColumnIdentity], A, B] {
+    ) extends InvariantExpr[Features.Source[ColumnIdentity, TableType], A, B] {
       def typeTag: TypeTag[B] = column.typeTag
     }
 
