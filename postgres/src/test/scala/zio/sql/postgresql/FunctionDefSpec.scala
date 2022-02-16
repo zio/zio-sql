@@ -11,7 +11,7 @@ import zio.test._
 import zio.test.TestAspect.{ ignore, timeout }
 import zio.duration._
 
-object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
+object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
 
   import Customers._
   import FunctionDef.{ CharLength => _, _ }

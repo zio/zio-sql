@@ -58,7 +58,7 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule =>
     sealed case class Cons[A, B <: ColumnSet, HeadIdentity](head: Column.Aux[A, HeadIdentity], tail: B)
         extends ColumnSet { self =>
 
-      override type ColumnsRepr[T] = (Expr[Features.Source[HeadIdentity], T, A], tail.ColumnsRepr[T])
+      override type ColumnsRepr[T] = (Expr[Features.Source[HeadIdentity, T], T, A], tail.ColumnsRepr[T])
 
       override type Append[That <: ColumnSet] = Cons[A, tail.Append[That], HeadIdentity]
 
@@ -74,7 +74,7 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule =>
         ev: B <:< ColumnSet.Empty,
         typeTagA: TypeTag.NotNull[A]
       ): ColumnSet.Cons[HeadType, B, HeadIdentity] {
-        type ColumnsRepr[T]            = (Expr[Features.Source[HeadIdentity], T, HeadType], self.tail.ColumnsRepr[T])
+        type ColumnsRepr[T]            = (Expr[Features.Source[HeadIdentity, T], T, HeadType], self.tail.ColumnsRepr[T])
         type Append[That <: ColumnSet] = Cons[HeadType, self.tail.Append[That], HeadIdentity]
         type AllColumnIdentities       = HeadIdentity with self.tail.AllColumnIdentities
       } = columnSetAspect.applyCons(self)
@@ -93,7 +93,7 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule =>
           override val columnSet: ColumnSet.ConsAux[ColumnHead, ColumnTail, ColumnsRepr, HeadIdentity] = self
 
           override val columnToExpr: ColumnToExpr[TableType] = new ColumnToExpr[TableType] {
-            def toExpr[A](column: Column[A]): Expr.Source[TableType, A, column.Identity] = Expr.Source(name0, column)
+            def toExpr[A](column: Column[A]): Expr.Source[TableType, A, column.Identity, TableType] = Expr.Source(name0, column)
           }
         }
 
@@ -178,7 +178,7 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule =>
   }
 
   trait ColumnToExpr[TableType] {
-    def toExpr[A](column: Column[A]): Expr[Features.Source[column.Identity], TableType, A]
+    def toExpr[A](column: Column[A]): Expr[Features.Source[column.Identity, TableType], TableType, A]
   }
 
   sealed trait Table { self =>
@@ -216,6 +216,9 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule =>
   object Table {
 
     class JoinBuilder[A, B](joinType: JoinType, left: Table.Aux[A], right: Table.Aux[B]) {
+      // TODO on(expr1 == expr2) yields false, which may be surprising
+      // https://github.com/zio/zio-sql/issues/587
+      // idea -> restrict F so its union or anything just not literal
       def on[F](expr: Expr[F, A with B, Boolean]): Table.Aux[A with B] =
         Joined(joinType, left, right, expr)
     }
@@ -274,11 +277,11 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule =>
         left.columnSet ++ right.columnSet
 
       override val columnToExpr: ColumnToExpr[TableType] = new ColumnToExpr[TableType] {
-        def toExpr[C](column: Column[C]): Expr[Features.Source[column.Identity], A with B, C] =
+        def toExpr[C](column: Column[C]): Expr[Features.Source[column.Identity, A with B], A with B, C] =
           if (left.columnSet.contains(column))
-            left.columnToExpr.toExpr(column)
+            left.columnToExpr.toExpr(column).asInstanceOf[Expr[Features.Source[column.Identity, A with B], A with B, C]]
           else
-            right.columnToExpr.toExpr(column)
+            right.columnToExpr.toExpr(column).asInstanceOf[Expr[Features.Source[column.Identity, A with B], A with B, C]]
       }
     }
 
@@ -292,7 +295,7 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule =>
       override val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail, HeadIdentity0] = read.columnSet
 
       override val columnToExpr: ColumnToExpr[TableType] = new ColumnToExpr[TableType] {
-        def toExpr[A](column: Column[A]): Expr[Features.Source[column.Identity], TableType, A] =
+        def toExpr[A](column: Column[A]): Expr[Features.Source[column.Identity, TableType], TableType, A] =
           Expr.Source(name, column)
       }
     }
@@ -332,7 +335,7 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule =>
     def applyCons[B <: ColumnSet, HeadIdentity](
       columnSet: ColumnSet.Cons[A, B, HeadIdentity]
     ): ColumnSet.Cons[HeadType, B, HeadIdentity] {
-      type ColumnsRepr[T]            = (Expr[Features.Source[HeadIdentity], T, HeadType], columnSet.tail.ColumnsRepr[T])
+      type ColumnsRepr[T]            = (Expr[Features.Source[HeadIdentity, T], T, HeadType], columnSet.tail.ColumnsRepr[T])
       type Append[That <: ColumnSet] = ColumnSet.Cons[HeadType, columnSet.tail.Append[That], HeadIdentity]
       type AllColumnIdentities       = HeadIdentity with columnSet.tail.AllColumnIdentities
     }
@@ -351,7 +354,7 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule =>
       def applyCons[B <: ColumnSet, HeadIdentity](
         columnSet: ColumnSet.Cons[A, B, HeadIdentity]
       ): ColumnSet.Cons[Option[A], B, HeadIdentity] {
-        type ColumnsRepr[T]            = (Expr[Features.Source[HeadIdentity], T, Option[A]], columnSet.tail.ColumnsRepr[T])
+        type ColumnsRepr[T]            = (Expr[Features.Source[HeadIdentity, T], T, Option[A]], columnSet.tail.ColumnsRepr[T])
         type Append[That <: ColumnSet] = ColumnSet.Cons[Option[A], columnSet.tail.Append[That], HeadIdentity]
         type AllColumnIdentities       = HeadIdentity with columnSet.tail.AllColumnIdentities
       } = {
@@ -361,7 +364,7 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule =>
           .Cons(head, columnSet.tail)
           .asInstanceOf[
             ColumnSet.Cons[Option[A], B, HeadIdentity] {
-              type ColumnsRepr[T]            = (Expr[Features.Source[HeadIdentity], T, Option[A]], columnSet.tail.ColumnsRepr[T])
+              type ColumnsRepr[T]            = (Expr[Features.Source[HeadIdentity, T], T, Option[A]], columnSet.tail.ColumnsRepr[T])
               type Append[That <: ColumnSet] = ColumnSet.Cons[Option[A], columnSet.tail.Append[That], HeadIdentity]
               type AllColumnIdentities       = HeadIdentity with columnSet.tail.AllColumnIdentities
             }

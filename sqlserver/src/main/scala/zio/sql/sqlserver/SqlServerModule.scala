@@ -37,11 +37,11 @@ trait SqlServerModule extends Jdbc { self =>
           left.columnSet ++ right.columnSet
 
         override val columnToExpr: ColumnToExpr[A with B] = new ColumnToExpr[A with B] {
-          def toExpr[C](column: Column[C]): Expr[Features.Source[column.Identity], A with B, C] =
+          def toExpr[C](column: Column[C]): Expr[Features.Source[column.Identity, A with B], A with B, C] =
             if (left.columnSet.contains(column))
-              left.columnToExpr.toExpr(column)
+              left.columnToExpr.toExpr(column).asInstanceOf[Expr[Features.Source[column.Identity, A with B], A with B, C]]
             else
-              right.columnToExpr.toExpr(column)
+              right.columnToExpr.toExpr(column).asInstanceOf[Expr[Features.Source[column.Identity, A with B], A with B, C]]
         }
       }
 

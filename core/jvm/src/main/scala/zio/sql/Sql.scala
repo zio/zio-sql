@@ -44,18 +44,18 @@ trait Sql
 
   def update[A](table: Table.Aux[A]): UpdateBuilder[A] = UpdateBuilder(table)
 
-  def renderDelete(delete: self.Delete[_]): String
-
-  def renderRead(read: self.Read[_]): String
-
-  def renderUpdate(update: self.Update[_]): String
-
   def insertInto[F, Source, AllColumnIdentities, B <: SelectionSet[Source]](
     table: Table.Source.Aux_[Source, AllColumnIdentities]
   )(
     sources: Selection[F, Source, B]
   ) =
     InsertBuilder[F, Source, AllColumnIdentities, B, sources.ColsRepr](table, sources)
+
+  def renderDelete(delete: self.Delete[_]): String
+
+  def renderRead(read: self.Read[_]): String
+
+  def renderUpdate(update: self.Update[_]): String
 
   def renderInsert[A: Schema](insert: self.Insert[_, A]): String
 }
