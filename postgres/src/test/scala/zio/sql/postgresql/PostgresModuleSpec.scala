@@ -121,7 +121,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
     test("Can select with property binary operator with Instant") {
       customerSelectJoseAssertion(dob === Instant.parse("1987-03-23T00:00:00Z"))
     },
-    //TODO try to translate money as "::numeric"
+    // TODO try to translate money as "::numeric"
 //    test("Can select with property binary operator with numbers") {
 //      case class OrderDetails(orderId: UUID, product_id: UUID, quantity: Int, unitPrice: BigDecimal)
 //
@@ -520,7 +520,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
 
       case class OrderDetailsRow(orderId: UUID, productId: UUID, quantity: Int, unitPrice: BigDecimal)
 
-      //TODO we need schema for scala.math.BigDecimal. Probably directly in zio-schema ?
+      // TODO we need schema for scala.math.BigDecimal. Probably directly in zio-schema ?
       implicit val bigDecimalSchema: Schema[BigDecimal] =
         Schema.Transform(
           Schema.primitive[java.math.BigDecimal](zio.schema.StandardType.BigDecimalType),

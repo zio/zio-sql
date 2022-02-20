@@ -35,7 +35,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
     schemaN: Schema[Z]
   )
 
-  //TODO find a way for more meaningful error messages
+  // TODO find a way for more meaningful error messages
   sealed trait SchemaValidity[F, Z, ColsRepr, AllColumnIdentities]
 
   // format: off

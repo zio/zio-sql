@@ -16,9 +16,9 @@ object BuildHelper {
 
   def buildInfoSettings(packageName: String) =
     Seq(
-      buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion, isSnapshot),
+      buildInfoKeys    := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion, isSnapshot),
       buildInfoPackage := packageName,
-      buildInfoObject := "BuildInfo"
+      buildInfoObject  := "BuildInfo"
     )
 
   private val stdOptions = Seq(
@@ -110,7 +110,7 @@ object BuildHelper {
       else
         Seq()
     },
-    Compile / doc / sources := {
+    Compile / doc / sources  := {
       val old = (Compile / doc / sources).value
       if (scalaVersion.value == ScalaDotty) {
         Nil
@@ -146,11 +146,11 @@ object BuildHelper {
   )
 
   def stdSettings(prjName: String) = Seq(
-    name := s"$prjName",
-    scalacOptions := stdOptions,
-    crossScalaVersions := Seq(Scala213, Scala212),
-    ThisBuild / scalaVersion := Scala213, //ScalaDotty,
-    scalacOptions := stdOptions ++ extraOptions(scalaVersion.value, optimize = !isSnapshot.value),
+    name                     := s"$prjName",
+    scalacOptions            := stdOptions,
+    crossScalaVersions       := Seq(Scala213, Scala212),
+    ThisBuild / scalaVersion := Scala213, // ScalaDotty,
+    scalacOptions            := stdOptions ++ extraOptions(scalaVersion.value, optimize = !isSnapshot.value),
     libraryDependencies ++= {
       if (scalaVersion.value == ScalaDotty)
         Seq(
@@ -164,7 +164,7 @@ object BuildHelper {
     },
     Test / parallelExecution := true,
     incOptions ~= (_.withLogRecompileOnMacro(false)),
-    autoAPIMappings := true,
+    autoAPIMappings          := true,
     unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
   )
 

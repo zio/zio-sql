@@ -350,7 +350,7 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
       groupByExprs: ExprSet[Source] = ExprSet.NoExpr,
       havingExpr: Expr[_, Source, Boolean] = true,
       orderByExprs: List[Ordering[Expr[_, Source, Any]]] = Nil,
-      offset: Option[Long] = None, //todo don't know how to do this outside of postgres/mysql
+      offset: Option[Long] = None, // todo don't know how to do this outside of postgres/mysql
       limit: Option[Long] = None
     ) extends Read[Repr] { self =>
 

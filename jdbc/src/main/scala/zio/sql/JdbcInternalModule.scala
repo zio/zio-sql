@@ -30,7 +30,7 @@ trait JdbcInternalModule { self: Jdbc =>
             value match {
               case Some(value) => Right(value)
               case None        =>
-                //TODO following would not be sound - e.g. by outer join any column can be null
+                // TODO following would not be sound - e.g. by outer join any column can be null
                 // if (nonNull)
                 //   Left(DecodingError.UnexpectedNull(column))
                 // else
@@ -89,7 +89,7 @@ trait JdbcInternalModule { self: Jdbc =>
           Option(resultSet.getString(columnIndex)).map(java.util.UUID.fromString(_))
         )
       case TZonedDateTime      =>
-        //2013-07-15 08:15:23.5+00
+        // 2013-07-15 08:15:23.5+00
         tryDecode[java.time.ZonedDateTime](
           Option(resultSet.getTimestamp(columnIndex))
             .map(_.toInstant())
