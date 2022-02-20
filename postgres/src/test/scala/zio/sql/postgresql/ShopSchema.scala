@@ -5,6 +5,17 @@ import zio.sql.Jdbc
 trait ShopSchema extends Jdbc { self =>
   import self.ColumnSet._
 
+  object Persons {
+
+    import ColumnSetAspect._
+
+    val persons =
+      (uuid("id") ++ string("first_name") ++ string("last_name") ++ (localDate("dob") @@ nullable))
+        .table("persons")
+
+    val (personId, fName, lName, dob) = persons.columns
+  }
+
   object Customers     {
     //https://github.com/zio/zio-sql/issues/320 Once Insert is supported, we can remove created_timestamp_string
     val customers =
@@ -13,25 +24,25 @@ trait ShopSchema extends Jdbc { self =>
       ) ++ string("created_timestamp_string") ++ zonedDateTime("created_timestamp"))
         .table("customers")
 
-    val customerId :*: dob :*: fName :*: lName :*: verified :*: createdString :*: createdTimestamp :*: _ =
+    val (customerId, dob, fName, lName, verified, createdString, createdTimestamp) =
       customers.columns
   }
   object Orders        {
     val orders = (uuid("id") ++ uuid("customer_id") ++ localDate("order_date")).table("orders")
 
-    val orderId :*: fkCustomerId :*: orderDate :*: _ = orders.columns
+    val (orderId, fkCustomerId, orderDate) = orders.columns
   }
   object Products      {
     val products =
       (uuid("id") ++ string("name") ++ string("description") ++ string("image_url")).table("products")
 
-    val productId :*: productName :*: description :*: imageURL :*: _ = products.columns
+    val (productId, productName, description, imageURL) = products.columns
   }
   object ProductPrices {
     val productPrices =
       (uuid("product_id") ++ offsetDateTime("effective") ++ bigDecimal("price")).table("product_prices")
 
-    val fkProductId :*: effective :*: price :*: _ = productPrices.columns
+    val (fkProductId, effective, price) = productPrices.columns
   }
 
   object OrderDetails {
@@ -41,7 +52,7 @@ trait ShopSchema extends Jdbc { self =>
           "order_details"
         )
 
-    val orderDetailsOrderId :*: orderDetailsProductId :*: quantity :*: unitPrice :*: _ = orderDetails.columns
+    val (orderDetailsOrderId, orderDetailsProductId, quantity, unitPrice) = orderDetails.columns
   }
 
   object DerivedTables {
@@ -52,8 +63,8 @@ trait ShopSchema extends Jdbc { self =>
     val orderDetailsDerived =
       select(orderDetailsOrderId ++ orderDetailsProductId ++ unitPrice).from(orderDetails).asTable("derived")
 
-    val derivedOrderId :*: derivedProductId :*: derivedUnitPrice :*: _ = orderDetailsDerived.columns
-    val orderDateDerivedTable                                          = customers
+    val (derivedOrderId, derivedProductId, derivedUnitPrice) = orderDetailsDerived.columns
+    val orderDateDerivedTable                                = customers
       .subselect(orderDate)
       .from(orders)
       .limit(1)
@@ -61,6 +72,6 @@ trait ShopSchema extends Jdbc { self =>
       .orderBy(Ordering.Desc(orderDate))
       .asTable("derived")
 
-    val orderDateDerived :*: _ = orderDateDerivedTable.columns
+    val orderDateDerived = orderDateDerivedTable.columns
   }
 }

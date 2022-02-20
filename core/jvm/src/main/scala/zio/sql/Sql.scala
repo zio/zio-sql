@@ -2,7 +2,14 @@ package zio.sql
 
 import zio.schema.Schema
 
-trait Sql extends SelectModule with DeleteModule with UpdateModule with ExprModule with TableModule with InsertModule {
+trait Sql
+    extends SelectModule
+    with DeleteModule
+    with UpdateModule
+    with ExprModule
+    with TableModule
+    with InsertModule
+    with UtilsModule {
   self =>
 
   /*
@@ -17,8 +24,10 @@ trait Sql extends SelectModule with DeleteModule with UpdateModule with ExprModu
    *
    * SELECT ARBITRARY(age), COUNT(*) FROM person GROUP BY age
    */
-  def select[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]): SelectBuilder[F, A, B] =
-    SelectBuilder(selection)
+  def select[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B])(implicit
+    i: Features.IsPartiallyAggregated[F]
+  ): Selector[F, A, B, i.Unaggregated] =
+    Selector[F, A, B, i.Unaggregated](selection)
 
   def subselect[ParentTable]: SubselectPartiallyApplied[ParentTable] = new SubselectPartiallyApplied[ParentTable]
 
@@ -41,12 +50,12 @@ trait Sql extends SelectModule with DeleteModule with UpdateModule with ExprModu
 
   def renderUpdate(update: self.Update[_]): String
 
-  def insertInto[F, Source, AllColumnIdentities, B <: SelectionSet.Aux[Source, ColsRepr], ColsRepr](
+  def insertInto[F, Source, AllColumnIdentities, B <: SelectionSet[Source]](
     table: Table.Source.Aux_[Source, AllColumnIdentities]
   )(
-    sources: Selection.Aux[F, Source, B, ColsRepr]
+    sources: Selection[F, Source, B]
   ) =
-    InsertBuilder(table, sources)
+    InsertBuilder[F, Source, AllColumnIdentities, B, sources.ColsRepr](table, sources)
 
   def renderInsert[A: Schema](insert: self.Insert[_, A]): String
 }
