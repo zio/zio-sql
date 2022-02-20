@@ -1,7 +1,6 @@
 package zio.sql
 
-import zio.Schedule
-import zio.duration._
+import zio.{ durationInt, Schedule }
 
 /**
  * Configuration information for the connection pool.
