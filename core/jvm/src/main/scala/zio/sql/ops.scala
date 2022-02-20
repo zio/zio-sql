@@ -80,7 +80,6 @@ trait OpsModule extends TypeTagModule { self: SelectModule =>
     case object IsNotNull extends PropertyOp {
       override val symbol: String = "is not null"
     }
-    //todo how is this different to "= true"?
     case object IsTrue    extends PropertyOp {
       override val symbol: String = "= true"
     }
