@@ -35,7 +35,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
     test("concat_ws #1 - combine flat values") {
       import Expr._
 
-      //note: a plain number (3) would and should not compile
+      // note: a plain number (3) would and should not compile
       val query = select(ConcatWs4("+", "1", "2", "3")) from customers
 
       val expected = Seq( // note: one for each row
@@ -634,7 +634,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       test("parseIdent removes quoting of individual identifiers") {
         val someString: Gen[ZioRandom with Sized, String]    = Gen.string
           .filter(x => x.length < 50 && x.length > 1)
-        //NOTE: I don't know if property based testing is worth doing here, I just wanted to try it
+        // NOTE: I don't know if property based testing is worth doing here, I just wanted to try it
         val genTestString: Gen[ZioRandom with Sized, String] =
           for {
             string1 <- someString
@@ -1269,7 +1269,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
-      @@ ignore, //todo fix - select(PgClientEncoding())?
+      @@ ignore, // todo fix - select(PgClientEncoding())?
     test("make_date") {
       val query = select(MakeDate(2013, 7, 15))
 
@@ -1348,7 +1348,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
       } yield t1 && t2 && t3 && t4 && t5).mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("cannot compile a select without from clause if a table source is required") {
-      //the following execute only compiles with 'from customers' clause
+      // the following execute only compiles with 'from customers' clause
       execute((select(CharLength(Customers.fName)) from customers))
 
       // imports for Left and Right are necessary to make the typeCheck macro expansion compile

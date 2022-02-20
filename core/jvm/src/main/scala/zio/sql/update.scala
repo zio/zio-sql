@@ -10,7 +10,7 @@ trait UpdateModule { self: ExprModule with TableModule with SelectModule =>
   // UPDATE table
   // SET foo = bar
   // WHERE baz > buzz
-  //todo `set` must be non-empty
+  // todo `set` must be non-empty
   sealed case class Update[A](table: Table.Aux[A], set: List[Set[_, A]], whereExpr: Expr[_, A, Boolean]) {
 
     def set[F: Features.IsSource, Value: TypeTag](lhs: Expr[F, A, Value], rhs: Expr[_, A, Value]): Update[A] =
