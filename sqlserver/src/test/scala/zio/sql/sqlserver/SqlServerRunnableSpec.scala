@@ -1,10 +1,8 @@
 package zio.sql.sqlserver
 
 import zio.test._
-import zio.test.environment.TestEnvironment
 import java.util.Properties
 import zio.sql.{ ConnectionPoolConfig, JdbcRunnableSpec, TestContainer }
-import zio.Has
 
 trait SqlServerRunnableSpec extends JdbcRunnableSpec with SqlServerModule {
 
@@ -20,18 +18,16 @@ trait SqlServerRunnableSpec extends JdbcRunnableSpec with SqlServerModule {
   val poolConfigLayer = TestContainer
     .postgres()
     .map(a =>
-      Has(
-        ConnectionPoolConfig(
-          url = a.get.jdbcUrl,
-          properties = connProperties(a.get.username, a.get.password),
-          autoCommit = autoCommit
-        )
+      ConnectionPoolConfig(
+        url = a.jdbcUrl,
+        properties = connProperties(a.username, a.password),
+        autoCommit = autoCommit
       )
     )
+    .toLayer
 
   override def spec: Spec[TestEnvironment, TestFailure[Any], TestSuccess] =
     specLayered.provideCustomLayerShared(jdbcLayer)
 
   def specLayered: Spec[JdbcEnvironment, TestFailure[Object], TestSuccess]
-
 }
