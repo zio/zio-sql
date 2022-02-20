@@ -47,6 +47,7 @@ create table persons
     dob date
 );
 
+-- city, metro_system, metro_line and inserted values are copied from https://github.com/softwaremill/scala-sql-compare
 CREATE TABLE city(
     id SERIAL,
     name VARCHAR NOT NULL,

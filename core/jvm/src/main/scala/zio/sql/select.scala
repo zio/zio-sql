@@ -181,22 +181,13 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
 
   object Read {
     sealed trait ExprSet[-Source] {
-
-      type Features
-
       type Append[F2, Source1 <: Source, B2] <: ExprSet[Source1]
       def ++[F2, Source1 <: Source, B2](that: Expr[F2, Source1, B2]): Append[F2, Source1, B2]
     }
 
     object ExprSet {
-
-      type WithF[-Source, F] = ExprSet[Source] {
-        type Features = F
-      }
-
       type NoExpr = NoExpr.type
       case object NoExpr extends ExprSet[Any] {
-        override type Features                       = Any
         override type Append[F2, Source1 <: Any, B2] = ExprCons[F2, Source1, B2, NoExpr]
 
         override def ++[F2, Source1 <: Any, B2](that: Expr[F2, Source1, B2]): Append[F2, Source1, B2] =
@@ -205,8 +196,6 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
 
       sealed case class ExprCons[F, Source, B, T <: ExprSet[Source]](head: Expr[F, Source, B], tail: T)
           extends ExprSet[Source] {
-
-        override type Features                          = F with tail.Features
         override type Append[F2, Source1 <: Source, B2] =
           ExprCons[F, Source1, B, tail.Append[F2, Source1, B2]]
         override def ++[F2, Source1 <: Source, B2](that: Expr[F2, Source1, B2]): Append[F2, Source1, B2] =
