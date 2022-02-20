@@ -1,10 +1,11 @@
 package zio.sql
 
 import zio.test.Assertion.anything
-import zio.test.{ assert, DefaultRunnableSpec }
+import zio.test.assert
 import zio.schema.Schema
+import zio.test.ZIOSpecDefault
 
-object GroupByHavingSpec extends DefaultRunnableSpec {
+object GroupByHavingSpec extends ZIOSpecDefault {
 
   import AggregatedProductSchema._
 
@@ -34,10 +35,10 @@ object AggregatedProductSchema {
       double("price")
   ).table("product")
 
-  val id :*: name :*: amount :*: price :*: _ = productTable.columns
+  val (id, name, amount, price) = productTable.columns
 
   val orderValue =
-    select(Arbitrary(name) ++ Sum(price))
+    select(name ++ Sum(price))
       .from(productTable)
       .groupBy(name)
       .having(Sum(price) > 10)

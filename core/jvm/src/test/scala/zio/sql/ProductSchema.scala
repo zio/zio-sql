@@ -22,7 +22,7 @@ object ProductSchema {
       boolean("deleted")
   ).table("product")
 
-  val id :*: lastUpdated :*: name :*: baseAmount :*: finalAmount :*: deleted :*: _ = productTable.columns
+  val (id, lastUpdated, name, baseAmount, finalAmount, deleted) = productTable.columns
 
   val selectAll = select(id ++ lastUpdated ++ baseAmount ++ deleted) from productTable
 }
