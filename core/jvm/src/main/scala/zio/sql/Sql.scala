@@ -4,6 +4,7 @@ import zio.schema.Schema
 
 trait Sql
     extends SelectModule
+    with GroupByUtilsModule
     with DeleteModule
     with UpdateModule
     with ExprModule

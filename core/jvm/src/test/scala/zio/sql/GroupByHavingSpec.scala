@@ -36,9 +36,28 @@ object AggregatedProductSchema {
 
   val (id, name, amount, price) = productTable.columns
 
+   val e = select(name ++ amount)
+
+   select(Count(price))
+    .from(productTable)
+    .groupBy(price)
+
   val orderValue =
     select(name ++ Sum(price))
       .from(productTable)
+      .groupBy(name, price)
+      .having(Sum(price) > 10)
+
+  val orderValue2 =
+    select(Sum(price))
+      .from(productTable)
       .groupBy(name)
       .having(Sum(price) > 10)
+
+  val orderValue3 =
+    select(name ++ amount ++ price)
+      .from(productTable)
+      .groupBy(name, amount, price)
+      .having(Sum(price) > 10)
+      
 }
