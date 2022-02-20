@@ -196,7 +196,7 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
 
       type NoExpr = NoExpr.type
       case object NoExpr extends ExprSet[Any] {
-        override type Features = Any
+        override type Features                       = Any
         override type Append[F2, Source1 <: Any, B2] = ExprCons[F2, Source1, B2, NoExpr]
 
         override def ++[F2, Source1 <: Any, B2](that: Expr[F2, Source1, B2]): Append[F2, Source1, B2] =
@@ -206,7 +206,7 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
       sealed case class ExprCons[F, Source, B, T <: ExprSet[Source]](head: Expr[F, Source, B], tail: T)
           extends ExprSet[Source] {
 
-        override type Features = F with tail.Features
+        override type Features                          = F with tail.Features
         override type Append[F2, Source1 <: Source, B2] =
           ExprCons[F, Source1, B, tail.Append[F2, Source1, B2]]
         override def ++[F2, Source1 <: Source, B2](that: Expr[F2, Source1, B2]): Append[F2, Source1, B2] =
@@ -267,18 +267,18 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
         copy(orderByExprs = self.orderByExprs ++ (o :: os.toList))
 
       /**
-        * `HAVING` can only be called:
-        *    1. with aggregate functions - `having Count(id) > 5`
-        *    2. within `fully aggregated` selection - meaning either only aggregate functions are in `select` or columns which are selected are also groupped by.
-        *      `Remainder` references not aggregated columns. GroupByF is a type containing `F` by which `groupBy` was called.
-        */  
+       * `HAVING` can only be called:
+       *    1. with aggregate functions - `having Count(id) > 5`
+       *    2. within `fully aggregated` selection - meaning either only aggregate functions are in `select` or columns which are selected are also groupped by.
+       *      `Remainder` references not aggregated columns. GroupByF is a type containing `F` by which `groupBy` was called.
+       */
       def having[F2: Features.IsFullyAggregated, Remainder](
         havingExpr2: Expr[F2, Source, Boolean]
-      )(implicit 
-          i : Features.IsPartiallyAggregated.WithRemainder[F, Remainder],
-          ev:  GroupByF <:< Remainder)
-        : Subselect[F, Repr, Source, Subsource, Head, Tail] =
-          copy(havingExpr = self.havingExpr && havingExpr2)
+      )(implicit
+        i: Features.IsPartiallyAggregated.WithRemainder[F, Remainder],
+        ev: GroupByF <:< Remainder
+      ): Subselect[F, Repr, Source, Subsource, Head, Tail] =
+        copy(havingExpr = self.havingExpr && havingExpr2)
 
       // format: off          
       def groupBy[F1: Features.IsNotAggregated](expr1: Expr[F1, Source, Any]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1] =
@@ -345,11 +345,10 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
 
     object Subselect {
 
-      type WithGroupByF[F, Repr, Source, Subsource, Head, Tail <: SelectionSet[Source], GroupByF0] = 
-         Subselect[F, Repr, Source, Subsource, Head, Tail] {
-            type GroupByF = GroupByF0
-         }
-
+      type WithGroupByF[F, Repr, Source, Subsource, Head, Tail <: SelectionSet[Source], GroupByF0] =
+        Subselect[F, Repr, Source, Subsource, Head, Tail] {
+          type GroupByF = GroupByF0
+        }
 
       implicit def subselectToExpr[F <: Features.Aggregated[_], Repr, Source, Subsource, Head](
         subselect: Read.Subselect[F, Repr, _ <: Source, Subsource, Head, SelectionSet.Empty]

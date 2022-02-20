@@ -16,19 +16,19 @@ trait FeaturesModule {
 
     sealed trait IsNotAggregated[A]
     object IsNotAggregated {
-      implicit def UnionIsNotAgregated[A: IsNotAggregated, B: IsNotAggregated]: IsNotAggregated[Union[A, B]] =
+      implicit def UnionIsNotAgregated[A: IsNotAggregated, B: IsNotAggregated]: IsNotAggregated[Union[A, B]]    =
         new IsNotAggregated[Union[A, B]] {}
 
-      implicit def SourceIsNotAggregated[ColumnName, TableType]: IsNotAggregated[Source[ColumnName, TableType]]                                      =
+      implicit def SourceIsNotAggregated[ColumnName, TableType]: IsNotAggregated[Source[ColumnName, TableType]] =
         new IsNotAggregated[Source[ColumnName, TableType]] {}
 
-      implicit val LiteralIsNotAggregated: IsNotAggregated[Literal]                                          =
+      implicit val LiteralIsNotAggregated: IsNotAggregated[Literal]                                             =
         new IsNotAggregated[Literal] {}
 
-      implicit val DerivedIsNotAggregated: IsNotAggregated[Derived]                                          =
+      implicit val DerivedIsNotAggregated: IsNotAggregated[Derived]                                             =
         new IsNotAggregated[Derived] {}
 
-      implicit val Function0IsNotAggregated: IsNotAggregated[Function0]                                      =
+      implicit val Function0IsNotAggregated: IsNotAggregated[Function0]                                         =
         new IsNotAggregated[Function0] {}
     }
 
@@ -49,7 +49,8 @@ trait FeaturesModule {
     sealed trait IsSource[A]
 
     object IsSource {
-      implicit def isSource[ColumnName, TableType]: IsSource[Source[ColumnName, TableType]] = new IsSource[Source[ColumnName, TableType]] {}
+      implicit def isSource[ColumnName, TableType]: IsSource[Source[ColumnName, TableType]] =
+        new IsSource[Source[ColumnName, TableType]] {}
     }
 
     sealed trait IsPartiallyAggregated[A] {
@@ -94,8 +95,13 @@ trait FeaturesModule {
     }
 
     trait IsPartiallyAggregatedLowPriorityImplicits {
-      implicit def SourceIsAggregated[ColumnName, TableType]: IsPartiallyAggregated.WithRemainder[Features.Source[ColumnName, TableType], Features.Source[ColumnName, TableType]] =
-        new IsPartiallyAggregated[Features.Source[ColumnName, TableType]] { override type Unaggregated = Features.Source[ColumnName, TableType] }
+      implicit def SourceIsAggregated[ColumnName, TableType]: IsPartiallyAggregated.WithRemainder[
+        Features.Source[ColumnName, TableType],
+        Features.Source[ColumnName, TableType]
+      ] =
+        new IsPartiallyAggregated[Features.Source[ColumnName, TableType]] {
+          override type Unaggregated = Features.Source[ColumnName, TableType]
+        }
     }
   }
 }

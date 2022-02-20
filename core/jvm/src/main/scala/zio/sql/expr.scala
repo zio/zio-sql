@@ -108,32 +108,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     }
   }
 
-  object Where {
-
-    def fold[F: Features.IsNotAggregated](
-      in: Iterable[Expr[F, _, Boolean]]
-    )(zero: Expr[Features.Literal, _, Boolean])(combine: (Expr[_, _, Boolean], Expr[_, _, Boolean]) => Expr[F, _, Boolean]): Expr[Features.Derived, _, Boolean] = ???
-      //in.fold(Expr.literal(true))(_ && _)
-  }
-
   object Expr {
-
-    final class FoldSourcePartiallyApplied[Source] {
-
-      def apply[F](
-        in: Iterable[Expr[F, Source, Boolean]]
-      )(combine: (Expr[F, Source, Boolean], Expr[F, Source, Boolean]) => Expr[F, Source, Boolean]) : Expr[F, Source, Boolean] = ???
-    }
-
-    def foldFrom[Source] = new FoldSourcePartiallyApplied[Source]
-
-    def fold[F](
-      in: Iterable[Expr[F, _, Boolean]]
-    )(zero: Expr[Features.Literal, _, Boolean])(combine: (Expr[_, _, Boolean], Expr[_, _, Boolean]) => Expr[F, _, Boolean]): Expr[F, _, Boolean] = ???
-      //in.fold(Expr.literal(true))(_ && _)
-      //in.foldLeft(zero.asInstanceOf[Expr[F, _, Boolean]])((a, b) => combine(a.asInstanceOf[Expr[_, _, Boolean]], b.asInstanceOf[Expr[_, _, Boolean]]))
-
-
     implicit val subqueryToExpr = self.Read.Subselect.subselectToExpr _
 
     sealed trait InvariantExpr[F, -A, B] extends Expr[F, A, B] {
