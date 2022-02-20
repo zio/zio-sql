@@ -15,7 +15,7 @@ import zio.schema.Schema
  */
 trait InsertModule { self: ExprModule with TableModule with SelectModule =>
 
-  sealed case class InsertBuilder[F, Source, AllColumnIdentities, B <: SelectionSet.Aux[Source, ColsRepr], ColsRepr](
+  sealed case class InsertBuilder[F, Source, AllColumnIdentities, B <: SelectionSet[Source], ColsRepr](
     table: Table.Source.Aux_[Source, AllColumnIdentities],
     sources: Selection.Aux[F, Source, B, ColsRepr]
   ) {
@@ -36,7 +36,6 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
   )
 
   //TODO find a way for more meaningful error messages
-  //@implicitNotFound("This insert would blow up at runtime!!!")
   sealed trait SchemaValidity[F, Z, ColsRepr, AllColumnIdentities]
 
   // format: off
@@ -45,7 +44,8 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
       ev1: Schema[A1],
       ev2: ColsRepr <:< (A1, Unit),
       ev3: F <:< Features.Source[Identity1],
-      ev4: AllColumnIdentities <:< Identity1
+      //TODO find other way to check if selection set contains some set of columns from table
+      ev4: AllColumnIdentities =:= Identity1
     ): SchemaValidity[F, A1, ColsRepr, AllColumnIdentities] =
       new SchemaValidity[F, A1, ColsRepr, AllColumnIdentities] {}
 
@@ -53,7 +53,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
       ev1: Schema[(A1, A2)],
       ev2: ColsRepr <:< (A1, (A2, Unit)),
       ev3: F <:< Features.Union[Features.Source[Identity1], Features.Source[Identity2]],
-      ev4: AllColumnIdentities <:< Identity1 with Identity2
+      ev4: AllColumnIdentities =:= Identity1 with Identity2
     ): SchemaValidity[F, (A1, A2), ColsRepr, AllColumnIdentities] =
       new SchemaValidity[F, (A1, A2), ColsRepr, AllColumnIdentities] {}
 
@@ -61,7 +61,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
       ev1: Schema[(A1, A2, A3)],
       ev2: ColsRepr <:< (A1, (A2, (A3, Unit))),
       ev3: F <:< Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]],
-      ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3
+      ev4: AllColumnIdentities =:= Identity1 with Identity2 with Identity3
     ): SchemaValidity[F, (A1, A2, A3), ColsRepr, AllColumnIdentities] =
       new SchemaValidity[F, (A1, A2, A3), ColsRepr, AllColumnIdentities] {}
 
@@ -69,7 +69,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
       ev1: Schema[(A1, A2, A3, A4)],
       ev2: ColsRepr <:< (A1, (A2, (A3, (A4, Unit)))),
       ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],
-      ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4
+      ev4: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4
     ): SchemaValidity[F, (A1, A2, A3, A4), ColsRepr, AllColumnIdentities] =
       new SchemaValidity[F, (A1, A2, A3, A4), ColsRepr, AllColumnIdentities] {}
 
@@ -78,7 +78,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         ev1: Schema[(A1, A2, A3, A4, A5)],
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, Unit))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5
+        ev4: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4 with Identity5
       ): SchemaValidity[F, (A1, A2, A3, A4, A5), ColsRepr, AllColumnIdentities] =
         new SchemaValidity[F, (A1, A2, A3, A4, A5), ColsRepr, AllColumnIdentities] {}
 
@@ -87,7 +87,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         ev1: Schema[(A1, A2, A3, A4, A5, A6)],
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, Unit)))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6
+        ev4: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6
       ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6), ColsRepr, AllColumnIdentities] =
         new SchemaValidity[F, (A1, A2, A3, A4, A5, A6), ColsRepr, AllColumnIdentities] {}
 
@@ -96,7 +96,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         ev1: Schema[(A1, A2, A3, A4, A5, A6, A7)],
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, Unit))))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7
+        ev4: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7
       ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7), ColsRepr, AllColumnIdentities] =
         new SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7), ColsRepr, AllColumnIdentities] {}
 
@@ -105,7 +105,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         ev1: Schema[(A1, A2, A3, A4, A5, A6, A7, A8)],
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, Unit)))))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8
+        ev4: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8
       ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8), ColsRepr, AllColumnIdentities] =
         new SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8), ColsRepr, AllColumnIdentities] {}
   
@@ -114,7 +114,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         ev1: Schema[(A1, A2, A3, A4, A5, A6, A7, A8, A9)],
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, Unit))))))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9
+        ev4: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9
       ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9), ColsRepr, AllColumnIdentities] =
         new SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9), ColsRepr, AllColumnIdentities] {}
 
@@ -123,7 +123,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         ev1: Schema[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10)],
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, Unit)))))))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10
+        ev4: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10
       ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10), ColsRepr, AllColumnIdentities] =
         new SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10), ColsRepr, AllColumnIdentities] {}
 
@@ -132,7 +132,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         ev1: Schema[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11)],
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, Unit))))))))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11
+        ev4: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11
       ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11), ColsRepr, AllColumnIdentities] =
         new SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11), ColsRepr, AllColumnIdentities] {}
 
@@ -141,7 +141,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         ev1: Schema[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12)],
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, Unit)))))))))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12
+        ev4: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12
       ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12), ColsRepr, AllColumnIdentities] =
         new SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12), ColsRepr, AllColumnIdentities] {}
 
@@ -150,7 +150,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         ev1: Schema[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13)],
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, Unit))))))))))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13
+        ev4: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13
       ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13), ColsRepr, AllColumnIdentities] =
         new SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13), ColsRepr, AllColumnIdentities] {}
 
@@ -159,7 +159,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         ev1: Schema[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14)],
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, Unit)))))))))))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]], Features.Source[Identity14]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14
+        ev4: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14
       ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14), ColsRepr, AllColumnIdentities] =
         new SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14), ColsRepr, AllColumnIdentities] {}
 
@@ -168,7 +168,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         ev1: Schema[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15)],
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, Unit))))))))))))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]], Features.Source[Identity14]], Features.Source[Identity15]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15
+        ev4: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15
       ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15), ColsRepr, AllColumnIdentities] =
         new SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15), ColsRepr, AllColumnIdentities] {}
 
@@ -177,7 +177,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         ev1: Schema[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16)],
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, (A16, Unit)))))))))))))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]], Features.Source[Identity14]], Features.Source[Identity15]], Features.Source[Identity16]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16
+        ev4: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16
       ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16), ColsRepr, AllColumnIdentities] =
         new SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16), ColsRepr, AllColumnIdentities] {}
 
@@ -186,7 +186,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         ev1: Schema[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17)],
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, (A16, (A17, Unit))))))))))))))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]], Features.Source[Identity14]], Features.Source[Identity15]], Features.Source[Identity16]], Features.Source[Identity17]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16 with Identity17 
+        ev4: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16 with Identity17 
       ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17), ColsRepr, AllColumnIdentities] =
         new SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17), ColsRepr, AllColumnIdentities] {}
 
@@ -195,7 +195,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         ev1: Schema[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18)],
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, (A16, (A17, (A18, Unit)))))))))))))))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]], Features.Source[Identity14]], Features.Source[Identity15]], Features.Source[Identity16]], Features.Source[Identity17]], Features.Source[Identity18]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16 with Identity17 with Identity18
+        ev4: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16 with Identity17 with Identity18
       ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18), ColsRepr, AllColumnIdentities] =
         new SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18), ColsRepr, AllColumnIdentities] {}
 
@@ -204,7 +204,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         ev1: Schema[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19)],
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, (A16, (A17, (A18, (A19, Unit))))))))))))))))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]], Features.Source[Identity14]], Features.Source[Identity15]], Features.Source[Identity16]], Features.Source[Identity17]], Features.Source[Identity18]], Features.Source[Identity19]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16 with Identity17 with Identity18 with Identity19
+        ev4: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16 with Identity17 with Identity18 with Identity19
       ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19), ColsRepr, AllColumnIdentities] =
         new SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19), ColsRepr, AllColumnIdentities] {}
     
@@ -213,7 +213,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         ev1: Schema[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20)],
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, (A16, (A17, (A18, (A19, (A20, Unit)))))))))))))))))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]], Features.Source[Identity14]], Features.Source[Identity15]], Features.Source[Identity16]], Features.Source[Identity17]], Features.Source[Identity18]], Features.Source[Identity19]], Features.Source[Identity20]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16 with Identity17 with Identity18 with Identity19 with Identity20
+        ev4: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16 with Identity17 with Identity18 with Identity19 with Identity20
       ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20), ColsRepr, AllColumnIdentities] =
         new SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20), ColsRepr, AllColumnIdentities] {}
 
@@ -222,7 +222,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         ev1: Schema[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21)],
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, (A16, (A17, (A18, (A19, (A20, (A21, Unit))))))))))))))))))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]], Features.Source[Identity14]], Features.Source[Identity15]], Features.Source[Identity16]], Features.Source[Identity17]], Features.Source[Identity18]], Features.Source[Identity19]], Features.Source[Identity20]], Features.Source[Identity21]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16 with Identity17 with Identity18 with Identity19 with Identity20 with Identity21
+        ev4: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16 with Identity17 with Identity18 with Identity19 with Identity20 with Identity21
       ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21), ColsRepr, AllColumnIdentities] =
         new SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21), ColsRepr, AllColumnIdentities] {}
 
@@ -231,7 +231,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         ev1: Schema[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, A22)],
         ev2: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, (A16, (A17, (A18, (A19, (A20, (A21, (A22, Unit)))))))))))))))))))))),
         ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]], Features.Source[Identity14]], Features.Source[Identity15]], Features.Source[Identity16]], Features.Source[Identity17]], Features.Source[Identity18]], Features.Source[Identity19]], Features.Source[Identity20]], Features.Source[Identity21]], Features.Source[Identity22]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16 with Identity17 with Identity18 with Identity19 with Identity20 with Identity21 with Identity22
+        ev4: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16 with Identity17 with Identity18 with Identity19 with Identity20 with Identity21 with Identity22
       ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, A22), ColsRepr, AllColumnIdentities] =
         new SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, A22), ColsRepr, AllColumnIdentities] {}
   }
@@ -243,7 +243,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
       ccSchema: Schema.CaseClass1[A, Z],
       ev: ColsRepr <:< (A, Unit),
       ev2: F <:< Features.Source[Identity1],
-      ev3: AllColumnIdentities <:< Identity1
+      ev3: AllColumnIdentities =:= Identity1
     ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] =
       new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
@@ -251,7 +251,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
       ccSchema: Schema.CaseClass2[A1, A2, Z],
       ev: ColsRepr <:< (A1, (A2, Unit)),
       ev2: F <:<  :||:[Features.Source[Identity1], Features.Source[Identity2]],
-      ev3: AllColumnIdentities <:< Identity1 with Identity2
+      ev3: AllColumnIdentities =:= Identity1 with Identity2
     ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] =
       new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
@@ -259,7 +259,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
       ccSchema: Schema.CaseClass3[A1, A2, A3, Z],
       ev: ColsRepr <:< (A1, (A2, (A3, Unit))),
       ev2: F <:< Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]],
-      ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3
+      ev3: AllColumnIdentities =:= Identity1 with Identity2 with Identity3
     ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] =
       new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
@@ -267,7 +267,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
       ccSchema: Schema.CaseClass4[A1, A2, A3, A4, Z],
       ev: ColsRepr <:< (A1, (A2, (A3, (A4, Unit)))),
       ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],
-      ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4
+      ev3: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4
     ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] =
       new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
@@ -275,7 +275,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
       ccSchema: Schema.CaseClass5[A1, A2, A3, A4, A5, Z],
       ev: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, Unit))))),
       ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]],  Features.Source[Identity4]],  Features.Source[Identity5]],
-      ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5
+      ev3: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4 with Identity5
     ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] =
       new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
@@ -283,7 +283,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
       ccSchema: Schema.CaseClass6[A1, A2, A3, A4, A5, A6, Z],
       ev: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, Unit)))))),
       ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]],
-      ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6
+      ev3: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6
     ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] =
       new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
@@ -291,7 +291,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
       ccSchema: Schema.CaseClass7[A1, A2, A3, A4, A5, A6, A7, Z],
       ev: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, Unit))))))),
       ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]],
-      ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7
+      ev3: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7
     ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] =
       new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
@@ -299,7 +299,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
       ccSchema: Schema.CaseClass8[A1, A2, A3, A4, A5, A6, A7, A8, Z],
       ev: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, Unit)))))))),
       ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]],
-      ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8
+      ev3: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8
     ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] =
       new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
@@ -307,7 +307,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
       ccSchema: Schema.CaseClass9[A1, A2, A3, A4, A5, A6, A7, A8, A9, Z],
       ev: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, Unit))))))))),
       ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]],
-      ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9
+      ev3: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9
     ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] =
       new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
@@ -315,7 +315,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
       ccSchema: Schema.CaseClass10[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, Z],
       ev: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, Unit)))))))))),
       ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]],
-      ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10
+      ev3: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10
     ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] =
       new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
@@ -324,7 +324,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
       ccSchema: Schema.CaseClass11[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, Z],
       ev: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, Unit))))))))))),
       ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]],
-      ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 
+      ev3: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 
     ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] =
       new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
@@ -332,7 +332,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
       ccSchema: Schema.CaseClass12[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, Z],
       ev: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, Unit)))))))))))),
       ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]],
-      ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 
+      ev3: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 
     ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] =
       new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
@@ -340,7 +340,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
       ccSchema: Schema.CaseClass13[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, Z],
       ev: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, Unit))))))))))))),
       ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]], 
-      ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13
+      ev3: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13
     ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] =
       new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
@@ -348,7 +348,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
       ccSchema: Schema.CaseClass14[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, Z],
       ev: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, Unit)))))))))))))),
       ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]], Features.Source[Identity14]],
-      ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14
+      ev3: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14
     ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] =
       new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
@@ -359,7 +359,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, Unit))))))))))))))
       ),
       ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]], Features.Source[Identity14]], Features.Source[Identity15]],
-      ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15
+      ev3: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15
     ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] =
       new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
@@ -371,7 +371,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, (A16, Unit)))))))))))))))
       ),
       ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]], Features.Source[Identity14]], Features.Source[Identity15]], Features.Source[Identity16]],
-      ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16
+      ev3: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16
     ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] =
       new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
@@ -383,7 +383,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, (A16, (A17, Unit))))))))))))))))
       ),
       ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]], Features.Source[Identity14]], Features.Source[Identity15]], Features.Source[Identity16]], Features.Source[Identity17]],
-      ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16 with Identity17
+      ev3: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16 with Identity17
     ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] =
       new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
@@ -399,7 +399,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
         )
       ),
       ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]], Features.Source[Identity14]], Features.Source[Identity15]], Features.Source[Identity16]], Features.Source[Identity17]], Features.Source[Identity18]],
-      ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16 with Identity17 with Identity18
+      ev3: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16 with Identity17 with Identity18
     ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] =
       new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
 
@@ -420,7 +420,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
           )
         )
       ),
-      ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]], Features.Source[Identity14]], Features.Source[Identity15]], Features.Source[Identity16]], Features.Source[Identity17]], Features.Source[Identity18]], Features.Source[Identity19]],
+      ev2: F =:= Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]], Features.Source[Identity14]], Features.Source[Identity15]], Features.Source[Identity16]], Features.Source[Identity17]], Features.Source[Identity18]], Features.Source[Identity19]],
       ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16 with Identity17 with Identity18 with Identity19
     ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] =
       new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
@@ -448,7 +448,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
           )
         )
       ),
-      ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]], Features.Source[Identity14]], Features.Source[Identity15]], Features.Source[Identity16]], Features.Source[Identity17]], Features.Source[Identity18]], Features.Source[Identity19]], Features.Source[Identity20]],
+      ev2: F =:= Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]], Features.Source[Identity14]], Features.Source[Identity15]], Features.Source[Identity16]], Features.Source[Identity17]], Features.Source[Identity18]], Features.Source[Identity19]], Features.Source[Identity20]],
       ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16 with Identity17 with Identity18 with Identity19 with Identity20
     ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] =
       new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
@@ -478,7 +478,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
           )
         )
       ),
-      ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]], Features.Source[Identity14]], Features.Source[Identity15]], Features.Source[Identity16]], Features.Source[Identity17]], Features.Source[Identity18]], Features.Source[Identity19]], Features.Source[Identity20]], Features.Source[Identity21]], 
+      ev2: F =:= Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]], Features.Source[Identity14]], Features.Source[Identity15]], Features.Source[Identity16]], Features.Source[Identity17]], Features.Source[Identity18]], Features.Source[Identity19]], Features.Source[Identity20]], Features.Source[Identity21]], 
       ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16 with Identity17 with Identity18 with Identity19 with Identity20 with Identity21
     ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] =
       new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
@@ -514,7 +514,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
           )
         )
       ),
-      ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]], Features.Source[Identity14]], Features.Source[Identity15]], Features.Source[Identity16]], Features.Source[Identity17]], Features.Source[Identity18]], Features.Source[Identity19]], Features.Source[Identity20]], Features.Source[Identity21]], Features.Source[Identity22]],
+      ev2: F =:= Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1], Features.Source[Identity2]], Features.Source[Identity3]], Features.Source[Identity4]],  Features.Source[Identity5]], Features.Source[Identity6]], Features.Source[Identity7]], Features.Source[Identity8]], Features.Source[Identity9]], Features.Source[Identity10]], Features.Source[Identity11]], Features.Source[Identity12]], Features.Source[Identity13]], Features.Source[Identity14]], Features.Source[Identity15]], Features.Source[Identity16]], Features.Source[Identity17]], Features.Source[Identity18]], Features.Source[Identity19]], Features.Source[Identity20]], Features.Source[Identity21]], Features.Source[Identity22]],
       ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16 with Identity17 with Identity18 with Identity19 with Identity20 with Identity21 with Identity22
     ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] =
       new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities] {}
