@@ -660,7 +660,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
 
       assertM(result)(equalTo(expected))
     },
-    testM("in joined tables, columns of the same name from different table are treated as different columns") {
+    test("in joined tables, columns of the same name from different table are treated as different columns") {
       import Cities._
       import Ordering._
 
