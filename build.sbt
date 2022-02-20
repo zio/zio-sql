@@ -194,7 +194,7 @@ lazy val oracle = project
       "org.testcontainers"       % "database-commons"                    % testcontainersVersion      % Test,
       "org.testcontainers"       % "oracle-xe"                           % testcontainersVersion      % Test,
       "org.testcontainers"       % "jdbc"                                % testcontainersVersion      % Test,
-      "com.oracle.database.jdbc" % "ojdbc8"                              % "21.3.0.0"                 % Test,
+      "com.oracle.database.jdbc" % "ojdbc8"                              % "21.5.0.0"                 % Test,
       "com.dimafeng"             % "testcontainers-scala-oracle-xe_2.13" % testcontainersScalaVersion % Test
     )
   )
@@ -215,7 +215,7 @@ lazy val postgres = project
       "org.testcontainers" % "database-commons"                % testcontainersVersion      % Test,
       "org.testcontainers" % "postgresql"                      % testcontainersVersion      % Test,
       "org.testcontainers" % "jdbc"                            % testcontainersVersion      % Test,
-      "org.postgresql"     % "postgresql"                      % "42.2.24"                  % Compile,
+      "org.postgresql"     % "postgresql"                      % "42.3.3"                   % Compile,
       "com.dimafeng"      %% "testcontainers-scala-postgresql" % testcontainersScalaVersion % Test
     )
   )
