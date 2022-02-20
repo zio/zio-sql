@@ -3,20 +3,20 @@ package zio.sql
 import zio._
 import zio.test._
 import zio.test.Assertion._
-import zio.test.environment._
 
 import HelloWorld._
+import zio.test.ZIOSpecDefault
 
 object HelloWorld {
 
-  def sayHello =
-    console.putStrLn("Hello, World!")
+  def sayHello: ZIO[Console, Throwable, Unit] =
+    Console.printLine("Hello, World!")
 }
 
-object HelloWorldSpec extends DefaultRunnableSpec {
+object HelloWorldSpec extends ZIOSpecDefault {
 
   def spec = suite("HelloWorldSpec")(
-    testM("sayHello correctly displays output") {
+    test("sayHello correctly displays output") {
       for {
         _      <- sayHello
         output <- TestConsole.output
