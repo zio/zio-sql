@@ -93,7 +93,8 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule =>
           override val columnSet: ColumnSet.ConsAux[ColumnHead, ColumnTail, ColumnsRepr, HeadIdentity] = self
 
           override val columnToExpr: ColumnToExpr[TableType] = new ColumnToExpr[TableType] {
-            def toExpr[A](column: Column[A]): Expr.Source[TableType, A, column.Identity, TableType] = Expr.Source(name0, column)
+            def toExpr[A](column: Column[A]): Expr.Source[TableType, A, column.Identity, TableType] =
+              Expr.Source(name0, column)
           }
         }
 
@@ -281,7 +282,9 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule =>
           if (left.columnSet.contains(column))
             left.columnToExpr.toExpr(column).asInstanceOf[Expr[Features.Source[column.Identity, A with B], A with B, C]]
           else
-            right.columnToExpr.toExpr(column).asInstanceOf[Expr[Features.Source[column.Identity, A with B], A with B, C]]
+            right.columnToExpr
+              .toExpr(column)
+              .asInstanceOf[Expr[Features.Source[column.Identity, A with B], A with B, C]]
       }
     }
 
@@ -364,7 +367,8 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule =>
           .Cons(head, columnSet.tail)
           .asInstanceOf[
             ColumnSet.Cons[Option[A], B, HeadIdentity] {
-              type ColumnsRepr[T]            = (Expr[Features.Source[HeadIdentity, T], T, Option[A]], columnSet.tail.ColumnsRepr[T])
+              type ColumnsRepr[T]            =
+                (Expr[Features.Source[HeadIdentity, T], T, Option[A]], columnSet.tail.ColumnsRepr[T])
               type Append[That <: ColumnSet] = ColumnSet.Cons[Option[A], columnSet.tail.Append[That], HeadIdentity]
               type AllColumnIdentities       = HeadIdentity with columnSet.tail.AllColumnIdentities
             }

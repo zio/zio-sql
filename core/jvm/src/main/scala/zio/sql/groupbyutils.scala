@@ -1,37 +1,36 @@
 package zio.sql
 
-
 /**
-  * User lands in this builder in case there is a "partial aggregation" in a query like:
-  *
-  * select Count(id), customer_id
-  *	  from orders
-  *   group by customer_id
-  *
-  * In such a case its not possible to execute query before we group by customer_id. 
-  * As we need to check F of every `Expr`groupBy is overloaded by 22 arities - even though partically, mostly only few are necessary.
-  *
-  * Without group by clause, `AggSelectBuilderGroupBy` is not executable so calling group b is the only choice.
-  * The query won't compile unless user groups atleast by required columns.
-  *
-  * In case we are not dealing with partial aggregation, this builder is skipped and user can groupBy in Read.Subselect as usual.
-  * Following are all valid queries not using this `AggSelectBuilderGroupBy`
-  *
-  *  select Count(id)
-  *	    from orders
-  *     group by customer_id
-  *
-  *  select Count(id)
-  *	    from orders
-  * 	  
-  *  select customer_id
-  *	    from orders
-  * 	  group by customer_id
-  *
-  *  select customer_id
-  *	    from orders
-  *     group by customer_id
-  */
+ * User lands in this builder in case there is a "partial aggregation" in a query like:
+ *
+ * select Count(id), customer_id
+ *   from orders
+ *   group by customer_id
+ *
+ * In such a case its not possible to execute query before we group by customer_id.
+ * As we need to check F of every `Expr`groupBy is overloaded by 22 arities - even though partically, mostly only few are necessary.
+ *
+ * Without group by clause, `AggSelectBuilderGroupBy` is not executable so calling group b is the only choice.
+ * The query won't compile unless user groups atleast by required columns.
+ *
+ * In case we are not dealing with partial aggregation, this builder is skipped and user can groupBy in Read.Subselect as usual.
+ * Following are all valid queries not using this `AggSelectBuilderGroupBy` trait.
+ *
+ *  select Count(id)
+ *     from orders
+ *     group by customer_id
+ *
+ *  select Count(id)
+ *     from orders
+ *
+ *  select customer_id
+ *     from orders
+ *    group by customer_id
+ *
+ *  select customer_id
+ *     from orders
+ *     group by customer_id
+ */
 trait GroupByUtilsModule { self: SelectModule with ExprModule =>
 
   sealed case class AggSelectBuilderGroupBy[F, Repr, Source, Head, Tail <: SelectionSet[Source], Unaggregated](

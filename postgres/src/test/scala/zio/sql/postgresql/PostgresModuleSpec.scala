@@ -625,14 +625,14 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
         _.firstName,
         _.lastName,
         _.dateOfBirth
-      )      
+      )
 
       val personValue = Person(UUID.randomUUID(), "Charles", "Harvey", None)
-      
-      val insertSome = insertInto(persons)(personId ++ fName ++ lName ++ dob)
-         .values((UUID.randomUUID(), "Charles", "Dent", Option(LocalDate.of(2022, 1, 31))))
 
-      // TODO improve 
+      val insertSome = insertInto(persons)(personId ++ fName ++ lName ++ dob)
+        .values((UUID.randomUUID(), "Charles", "Dent", Option(LocalDate.of(2022, 1, 31))))
+
+      // TODO improve
       // https://github.com/zio/zio-sql/issues/585
       val insertNone = insertInto(persons)(personId ++ fName ++ lName ++ dob)
         .values((UUID.randomUUID(), "Martin", "Harvey", None.asInstanceOf[Option[LocalDate]]))
