@@ -3,6 +3,7 @@ package zio.sql
 import zio.test._
 import zio.test.Assertion._
 import zio.schema.Schema
+import zio.test.ZIOSpecDefault
 
 object TestBasicSelect {
   val userSql = new Sql { self =>
@@ -28,7 +29,7 @@ object TestBasicSelect {
   }
 }
 
-object TestBasicSelectSpec extends DefaultRunnableSpec {
+object TestBasicSelectSpec extends ZIOSpecDefault {
   import TestBasicSelect.userSql._
 
   def spec = suite("TestBasicSelectSpec")(
