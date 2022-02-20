@@ -37,8 +37,6 @@ object AggregatedProductSchema {
 
   val (id, name, amount, price) = productTable.columns
 
-  val e = select(name ++ amount)
-
   select(Count(price))
     .from(productTable)
     .groupBy(price)

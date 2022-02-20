@@ -8,13 +8,13 @@ package zio.sql
  *   group by customer_id
  *
  * In such a case its not possible to execute query before we group by customer_id.
- * As we need to check F of every `Expr`groupBy is overloaded by 22 arities - even though partically, mostly only few are necessary.
+ * As we need to check F of every `Expr`, `groupBy` method is overloaded by 22 arities - even though partically, mostly only few are necessary.
  *
- * Without group by clause, `AggSelectBuilderGroupBy` is not executable so calling group b is the only choice.
- * The query won't compile unless user groups atleast by required columns.
+ * Without group by clause, `AggSelectBuilderGroupBy` is not executable so calling `groupBy` is the only choice.
+ * The query won't compile unless user groups at least by required columns.
  *
  * In case we are not dealing with partial aggregation, this builder is skipped and user can groupBy in Read.Subselect as usual.
- * Following are all valid queries not using this `AggSelectBuilderGroupBy` trait.
+ * Following are all valid examples of queries not using this `AggSelectBuilderGroupBy` trait.
  *
  *  select Count(id)
  *     from orders
