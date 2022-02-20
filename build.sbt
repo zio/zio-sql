@@ -24,9 +24,9 @@ addCommandAlias("fmtOnce", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("fmt", "fmtOnce;fmtOnce")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
-val zioVersion                 = "1.0.13"
+val zioVersion                 = "2.0.0-RC2"
 val zioSchemaVersion           = "0.1.7"
-val testcontainersVersion      = "1.16.0"
+val testcontainersVersion      = "1.16.3"
 val testcontainersScalaVersion = "0.39.12"
 
 lazy val startPostgres = taskKey[Unit]("Start up Postgres")
@@ -194,7 +194,7 @@ lazy val oracle = project
       "org.testcontainers"       % "database-commons"                    % testcontainersVersion      % Test,
       "org.testcontainers"       % "oracle-xe"                           % testcontainersVersion      % Test,
       "org.testcontainers"       % "jdbc"                                % testcontainersVersion      % Test,
-      "com.oracle.database.jdbc" % "ojdbc8"                              % "21.3.0.0"                 % Test,
+      "com.oracle.database.jdbc" % "ojdbc8"                              % "21.5.0.0"                 % Test,
       "com.dimafeng"             % "testcontainers-scala-oracle-xe_2.13" % testcontainersScalaVersion % Test
     )
   )
@@ -215,7 +215,7 @@ lazy val postgres = project
       "org.testcontainers" % "database-commons"                % testcontainersVersion      % Test,
       "org.testcontainers" % "postgresql"                      % testcontainersVersion      % Test,
       "org.testcontainers" % "jdbc"                            % testcontainersVersion      % Test,
-      "org.postgresql"     % "postgresql"                      % "42.2.24"                  % Compile,
+      "org.postgresql"     % "postgresql"                      % "42.2.25"                  % Compile,
       "com.dimafeng"      %% "testcontainers-scala-postgresql" % testcontainersScalaVersion % Test
     )
   )
