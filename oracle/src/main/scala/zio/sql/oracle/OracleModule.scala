@@ -38,7 +38,7 @@ trait OracleModule extends Jdbc { self =>
       buildExpr(value, builder)
       buildReadString(set, builder)
     case Expr.Literal(value)                                                                  =>
-      val _ = builder.append(value.toString) //todo fix escaping
+      val _ = builder.append(value.toString) // todo fix escaping
     case Expr.AggregationCall(param, aggregation)                                             =>
       builder.append(aggregation.name.name)
       builder.append("(")
@@ -196,7 +196,7 @@ trait OracleModule extends Jdbc { self =>
         buildReadString(right, builder)
 
       case Read.Literal(values) =>
-        val _ = builder.append(" (").append(values.mkString(",")).append(") ") //todo fix needs escaping
+        val _ = builder.append(" (").append(values.mkString(",")).append(") ") // todo fix needs escaping
     }
 
   def buildExprList(expr: Read.ExprSet[_], builder: StringBuilder): Unit                   =
@@ -250,7 +250,7 @@ trait OracleModule extends Jdbc { self =>
   def buildColumnSelection[A, B](columnSelection: ColumnSelection[A, B], builder: StringBuilder): Unit =
     columnSelection match {
       case ColumnSelection.Constant(value, name) =>
-        builder.append(value.toString()) //todo fix escaping
+        builder.append(value.toString()) // todo fix escaping
         name match {
           case Some(name) =>
             val _ = builder.append(" AS ").append(name)
@@ -265,13 +265,13 @@ trait OracleModule extends Jdbc { self =>
                 val _ = builder.append(" AS ").append(name)
               case _                                      => ()
             }
-          case _          => () //todo what do we do if we don't have a name?
+          case _          => () // todo what do we do if we don't have a name?
         }
     }
   def buildTable(table: Table, builder: StringBuilder): Unit                                           =
     table match {
       case Table.DialectSpecificTable(_)           => ???
-      //The outer reference in this type test cannot be checked at run time?!
+      // The outer reference in this type test cannot be checked at run time?!
       case sourceTable: self.Table.Source          =>
         val _ = builder.append(sourceTable.name)
       case Table.DerivedTable(read, name)          =>

@@ -241,7 +241,7 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule =>
 
       val name: TableName
 
-      override def ahhhhhhhhhhhhh[A]: A = ??? //don't remove or it'll break
+      override def ahhhhhhhhhhhhh[A]: A = ??? // don't remove or it'll break
     }
 
     object Source {

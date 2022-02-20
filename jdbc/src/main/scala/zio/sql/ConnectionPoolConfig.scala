@@ -5,11 +5,17 @@ import zio.{ durationInt, Schedule }
 /**
  * Configuration information for the connection pool.
  *
- * @param url            The JDBC connection string.
- * @param properties     JDBC connection properties (username / password could go here).
- * @param poolSize       The size of the pool.
- * @param queueCapacity  The capacity of the queue for connections. When this size is reached, back pressure will block attempts to add more.
- * @param retryPolicy    The retry policy to use when acquiring connections.
+ * @param url
+ *   The JDBC connection string.
+ * @param properties
+ *   JDBC connection properties (username / password could go here).
+ * @param poolSize
+ *   The size of the pool.
+ * @param queueCapacity
+ *   The capacity of the queue for connections. When this size is reached, back
+ *   pressure will block attempts to add more.
+ * @param retryPolicy
+ *   The retry policy to use when acquiring connections.
  */
 final case class ConnectionPoolConfig(
   url: String,

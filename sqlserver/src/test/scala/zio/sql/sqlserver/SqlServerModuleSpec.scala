@@ -157,11 +157,8 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
     test("correlated subqueries in selections - counts orders for each customer") {
 
       /**
-       * select first_name, last_name, (
-       *    select count(orders.id) from orders
-       *    where customers.id = orders.customer_id
-       * ) as "count"
-       * from customers
+       * select first_name, last_name, ( select count(orders.id) from orders
+       * where customers.id = orders.customer_id ) as "count" from customers
        */
 
       case class Row(firstName: String, lastName: String, count: Long)
@@ -193,9 +190,8 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
       import SqlServerSpecific.SqlServerFunctionDef._
 
       /**
-       * select order_id, product_id, unit_price from order_details
-       * where unit_price > (select AVG(price)
-       *                                       from product_prices )
+       * select order_id, product_id, unit_price from order_details where
+       * unit_price > (select AVG(price) from product_prices )
        */
 
       val query = select(orderDetailsId ++ productId ++ unitPrice)
@@ -253,8 +249,10 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
       import SqlServerSpecific.SqlServerFunctionDef._
 
       /**
-       *  select derived.order_id, derived.product_id, derived.unit_price from order_details derived
-       *  where derived.unit_price  > (select avg(order_details.unit_price) from order_details where derived.product_id = order_details.product_id)
+       * select derived.order_id, derived.product_id, derived.unit_price from
+       * order_details derived where derived.unit_price > (select
+       * avg(order_details.unit_price) from order_details where
+       * derived.product_id = order_details.product_id)
        */
 
       val query = select(derivedOrderId ++ derivedProductId ++ derivedUnitPrice)
@@ -335,15 +333,10 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
     test("cross apply - top 1 order_date") {
 
       /**
-       *  select customers.id, customers.first_name, customers.last_name, derived.order_date
-       *  from customers
-       *  cross apply (
-       *      select top 1 order_date
-       *      from orders
-       *      where orders.customer_id = customers.id
-       *      order by orders.order_date DESC
-       *  ) derived
-       *  order by derived.order_date desc
+       * select customers.id, customers.first_name, customers.last_name,
+       * derived.order_date from customers cross apply ( select top 1 order_date
+       * from orders where orders.customer_id = customers.id order by
+       * orders.order_date DESC ) derived order by derived.order_date desc
        */
 
       case class Row(id: UUID, firstName: String, lastName: String, orderDate: LocalDate)
@@ -380,13 +373,9 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
     test("cross apply with subselect") {
 
       /**
-       * select customers.first_name, customers.last_name, ooo.order_date
-       * from customers
-       * cross apply (
-       *     select order_date
-       *     from orders
-       *     where orders.customer_id = customers.id
-       * ) ooo
+       * select customers.first_name, customers.last_name, ooo.order_date from
+       * customers cross apply ( select order_date from orders where
+       * orders.customer_id = customers.id ) ooo
        */
       import SqlServerSpecific.SqlServerTable._
       val subquery =

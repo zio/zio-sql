@@ -350,17 +350,16 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
       groupByExprs: ExprSet[Source] = ExprSet.NoExpr,
       havingExpr: Expr[_, Source, Boolean] = true,
       orderByExprs: List[Ordering[Expr[_, Source, Any]]] = Nil,
-      offset: Option[Long] = None, //todo don't know how to do this outside of postgres/mysql
+      offset: Option[Long] = None, // todo don't know how to do this outside of postgres/mysql
       limit: Option[Long] = None
     ) extends Read[Repr] { self =>
 
       /**
-       * The follwing expr would not compile in where clause with F2: Features.IsNotAggregated
+       * The follwing expr would not compile in where clause with F2:
+       * Features.IsNotAggregated
        *
-       *        List(minStationsQuery, maxStationsQuery)
-       *            .flatten
-       *            .reduceLeftOption[Expr[_, metroLine.TableType, Boolean]](_ && _)
-       *            .get
+       * List(minStationsQuery, maxStationsQuery) .flatten
+       * .reduceLeftOption[Expr[_, metroLine.TableType, Boolean]](_ && _) .get
        *
        * TODO try to make phantom type F2 composable
        */
@@ -380,10 +379,9 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
         copy(orderByExprs = self.orderByExprs ++ (o :: os.toList))
 
       /**
-       * TODO find a way to make following not compile -> fkCustomerId need to be `groupped by`
-       *           select(fkCustomerId)
-       *             .from(orders)
-       *             .having(Count(orderId) > 4)
+       * TODO find a way to make following not compile -> fkCustomerId need to
+       * be `groupped by` select(fkCustomerId) .from(orders)
+       * .having(Count(orderId) > 4)
        */
       def having[F2: Features.IsFullyAggregated](
         havingExpr2: Expr[F2, Source, Boolean]
@@ -391,8 +389,9 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
         copy(havingExpr = self.havingExpr && havingExpr2)
 
       /**
-       * TODO restrict _ : IsNotAggregated (hopefully without 22 boilerplate overrides)
-       * cannot move it toAggBuilder because select(fkCustomerId).from(orders) is valid sql)
+       * TODO restrict _ : IsNotAggregated (hopefully without 22 boilerplate
+       * overrides) cannot move it toAggBuilder because
+       * select(fkCustomerId).from(orders) is valid sql)
        */
       def groupBy(
         key: Expr[_, Source, Any],

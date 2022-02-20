@@ -121,7 +121,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
     test("Can select with property binary operator with Instant") {
       customerSelectJoseAssertion(dob === Instant.parse("1987-03-23T00:00:00Z"))
     },
-    //TODO try to translate money as "::numeric"
+    // TODO try to translate money as "::numeric"
 //    test("Can select with property binary operator with numbers") {
 //      case class OrderDetails(orderId: UUID, product_id: UUID, quantity: Int, unitPrice: BigDecimal)
 //
@@ -232,13 +232,11 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
       import PostgresSpecific.PostgresSpecificTable._
 
       /**
-       *  select customers.id, customers.first_name, customers.last_name, derived.order_date
-       *          from customers,
-       *          lateral  (
-       *              select orders.order_date
-       *              from orders
-       *              where customers.id = orders.customer_id
-       *              order by orders.order_date desc limit 1 ) derived order by derived.order_date desc
+       * select customers.id, customers.first_name, customers.last_name,
+       * derived.order_date from customers, lateral ( select orders.order_date
+       * from orders where customers.id = orders.customer_id order by
+       * orders.order_date desc limit 1 ) derived order by derived.order_date
+       * desc
        */
 
       case class Row(id: UUID, firstName: String, lastName: String, orderDate: LocalDate)
@@ -274,11 +272,8 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
     test("can do correlated subqueries in selections - counts orders for each customer") {
 
       /**
-       * select first_name, last_name, (
-       *    select count(orders.id) from orders
-       *    where customers.id = orders.customer_id
-       * ) as "count"
-       * from customers
+       * select first_name, last_name, ( select count(orders.id) from orders
+       * where customers.id = orders.customer_id ) as "count" from customers
        */
 
       case class Row(firstName: String, lastName: String, count: Long)
@@ -357,9 +352,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
     test("group by can be called on non aggregated collumn") {
 
       /**
-       *        select customer_id
-       *          from orders
-       *          group by customer_id
+       * select customer_id from orders group by customer_id
        */
 
       val expected = List(
@@ -381,10 +374,8 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
     test("group by have to be called on column from selection") {
 
       /**
-       *        select customer_id, count(id)
-       *          from orders
-       *          group by customer_id
-       *          order by count(id) desc
+       * select customer_id, count(id) from orders group by customer_id order by
+       * count(id) desc
        */
 
       import AggregationDef._
@@ -403,10 +394,10 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
     test("insert - 1 rows into customers") {
 
       /**
-       * insert into customers
-       *              (id, first_name, last_name, verified, dob, created_timestamp_string, created_timestamp)
-       *          values
-       *              ('60b01fc9-c902-4468-8d49-3c0f989def37', 'Ronald', 'Russell', true, '1983-01-05', '2020-11-21T19:10:25+00:00', '2020-11-21 19:10:25+00'))
+       * insert into customers (id, first_name, last_name, verified, dob,
+       * created_timestamp_string, created_timestamp) values
+       * ('60b01fc9-c902-4468-8d49-3c0f989def37', 'Ronald', 'Russell', true,
+       * '1983-01-05', '2020-11-21T19:10:25+00:00', '2020-11-21 19:10:25+00'))
        */
 
       final case class CustomerRow(
@@ -461,14 +452,11 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
     test("insert - insert 10 rows into orders") {
 
       /**
-       *       insert into product_prices
-       *            (product_id, effective, price)
-       *       values
-       *            ('7368ABF4-AED2-421F-B426-1725DE756895', '2018-01-01', 10.00),
-       *            ('7368ABF4-AED2-421F-B426-1725DE756895', '2019-01-01', 11.00),
-       *            ('D5137D3A-894A-4109-9986-E982541B434F', '2020-01-01', 55.00),
-       *            .....
-       *            ('D5137D3A-894A-4109-9986-E982541B43BB', '2020-01-01', 66.00);
+       * insert into product_prices (product_id, effective, price) values
+       * ('7368ABF4-AED2-421F-B426-1725DE756895', '2018-01-01', 10.00),
+       * ('7368ABF4-AED2-421F-B426-1725DE756895', '2019-01-01', 11.00),
+       * ('D5137D3A-894A-4109-9986-E982541B434F', '2020-01-01', 55.00), .....
+       * ('D5137D3A-894A-4109-9986-E982541B43BB', '2020-01-01', 66.00);
        */
 
       final case class InputOrders(uuid: UUID, customerId: UUID, localDate: LocalDate)
@@ -507,20 +495,22 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
     test("insert - 4 rows into orderDetails") {
 
       /**
-       * insert into order_details
-       *            (order_id, product_id, quantity, unit_price)
-       *        values
-       *            ('9022DD0D-06D6-4A43-9121-2993FC7712A1', '7368ABF4-AED2-421F-B426-1725DE756895', 4, 11.00),
-       *            ('38D66D44-3CFA-488A-AC77-30277751418F', '7368ABF4-AED2-421F-B426-1725DE756895', 1, 11.00),
-       *            ('7B2627D5-0150-44DF-9171-3462E20797EE', '7368ABF4-AED2-421F-B426-1725DE756895', 1, 11.50),
-       *            ('62CD4109-3E5D-40CC-8188-3899FC1F8BDF', '7368ABF4-AED2-421F-B426-1725DE756895', 2, 10.90),
+       * insert into order_details (order_id, product_id, quantity, unit_price)
+       * values ('9022DD0D-06D6-4A43-9121-2993FC7712A1',
+       * '7368ABF4-AED2-421F-B426-1725DE756895', 4, 11.00),
+       * ('38D66D44-3CFA-488A-AC77-30277751418F',
+       * '7368ABF4-AED2-421F-B426-1725DE756895', 1, 11.00),
+       * ('7B2627D5-0150-44DF-9171-3462E20797EE',
+       * '7368ABF4-AED2-421F-B426-1725DE756895', 1, 11.50),
+       * ('62CD4109-3E5D-40CC-8188-3899FC1F8BDF',
+       * '7368ABF4-AED2-421F-B426-1725DE756895', 2, 10.90),
        */
 
       import OrderDetails._
 
       case class OrderDetailsRow(orderId: UUID, productId: UUID, quantity: Int, unitPrice: BigDecimal)
 
-      //TODO we need schema for scala.math.BigDecimal. Probably directly in zio-schema ?
+      // TODO we need schema for scala.math.BigDecimal. Probably directly in zio-schema ?
       implicit val bigDecimalSchema: Schema[BigDecimal] =
         Schema.Transform(
           Schema.primitive[java.math.BigDecimal](zio.schema.StandardType.BigDecimalType),
@@ -556,10 +546,9 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
     test("insert into orderDetails with tuples") {
 
       /**
-       * insert into order_details
-       *            (order_id, product_id, quantity, unit_price)
-       *        values
-       *            ('9022DD0D-06D6-4A43-9121-2993FC7712A1', '7368ABF4-AED2-421F-B426-1725DE756895', 4, 11.00))
+       * insert into order_details (order_id, product_id, quantity, unit_price)
+       * values ('9022DD0D-06D6-4A43-9121-2993FC7712A1',
+       * '7368ABF4-AED2-421F-B426-1725DE756895', 4, 11.00))
        */
 
       import OrderDetails._
@@ -572,10 +561,10 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
     test("insert into customers with tuples") {
 
       /**
-       * insert into customers
-       *              (id, first_name, last_name, verified, dob, created_timestamp_string, created_timestamp)
-       *          values
-       *              ('60b01fc9-c902-4468-8d49-3c0f989def37', 'Ronald', 'Russell', true, '1983-01-05', '2020-11-21T19:10:25+00:00', '2020-11-21 19:10:25+00'),
+       * insert into customers (id, first_name, last_name, verified, dob,
+       * created_timestamp_string, created_timestamp) values
+       * ('60b01fc9-c902-4468-8d49-3c0f989def37', 'Ronald', 'Russell', true,
+       * '1983-01-05', '2020-11-21T19:10:25+00:00', '2020-11-21 19:10:25+00'),
        */
 
       val created = ZonedDateTime.now()

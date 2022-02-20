@@ -9,8 +9,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
   self: SelectModule with TableModule =>
 
   /**
-   * Models a function `A => B`.
-   * SELECT product.price + 10
+   * Models a function `A => B`. SELECT product.price + 10
    */
   sealed trait Expr[F, -A, +B] { self =>
 
@@ -23,7 +22,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     def *[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =
       Expr.Binary(self, that, BinaryOp.Mul[B1]())
 
-    //todo do something special for divide by 0? also Mod/log/whatever else is really a partial function.. PartialExpr?
+    // todo do something special for divide by 0? also Mod/log/whatever else is really a partial function.. PartialExpr?
     def /[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =
       Expr.Binary(self, that, BinaryOp.Div[B1]())
 
@@ -85,7 +84,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     def isNotTrue[A1 <: A](implicit ev: B <:< Boolean): Expr[F, A1, Boolean] =
       Expr.Property(self, PropertyOp.IsNotTrue)
 
-    //TODO https://github.com/zio/zio-sql/issues/564
+    // TODO https://github.com/zio/zio-sql/issues/564
     def as[B1 >: B](name: String): Expr[F, A, B1] = {
       val _ = name
       self
@@ -389,7 +388,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
 
   object FunctionDef {
 
-    //math functions
+    // math functions
     val Abs         = FunctionDef[Double, Double](FunctionName("abs"))
     val Acos        = FunctionDef[Double, Double](FunctionName("acos"))
     val Asin        = FunctionDef[Double, Double](FunctionName("asin"))
@@ -409,10 +408,10 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     val Tan         = FunctionDef[Double, Double](FunctionName("tan"))
     val WidthBucket = FunctionDef[(Double, Double, Double, Int), Int](FunctionName("width_bucket"))
 
-    //string functions
+    // string functions
     val Ascii       = FunctionDef[String, Int](FunctionName("ascii"))
     val CharLength  = FunctionDef[String, Int](FunctionName("character_length"))
-    val Concat      = FunctionDef[(String, String), String](FunctionName("concat")) //todo varargs
+    val Concat      = FunctionDef[(String, String), String](FunctionName("concat")) // todo varargs
     val ConcatWs2   = FunctionDef[(String, String), String](FunctionName("concat_ws"))
     val ConcatWs3   = FunctionDef[(String, String, String), String](FunctionName("concat_ws"))
     val ConcatWs4   = FunctionDef[(String, String, String, String), String](FunctionName("concat_ws"))
@@ -424,7 +423,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     val Replace     = FunctionDef[(String, String, String), String](FunctionName("replace"))
     val Rtrim       = FunctionDef[String, String](FunctionName("rtrim"))
     val Substring   = FunctionDef[(String, Int, Option[Int]), String](FunctionName("substring"))
-    //TODO substring regex
+    // TODO substring regex
     val Trim        = FunctionDef[String, String](FunctionName("trim"))
     val Upper       = FunctionDef[String, String](FunctionName("upper"))
 

@@ -9,17 +9,17 @@ import zio._
 trait ConnectionPool {
 
   /**
-   * Retrieves a JDBC java.sql.Connection as a [[zio.Managed]] resource.
-   * The managed resource will safely acquire and release the connection, and
-   * may be interrupted or timed out if necessary.
+   * Retrieves a JDBC java.sql.Connection as a [[zio.Managed]] resource. The
+   * managed resource will safely acquire and release the connection, and may be
+   * interrupted or timed out if necessary.
    */
   def connection: Managed[Exception, Connection]
 }
 object ConnectionPool {
 
   /**
-   * A live layer for `ConnectionPool` that creates a JDBC connection pool
-   * from the specified connection pool settings.
+   * A live layer for `ConnectionPool` that creates a JDBC connection pool from
+   * the specified connection pool settings.
    */
   val live: ZLayer[ConnectionPoolConfig with Clock, IOException, ConnectionPool] =
     (for {
@@ -38,9 +38,9 @@ object ConnectionPool {
  *
  * Improvements to make:
  *
- *  - A connection may die. If so, it should be reacquired.
- *  - Someone may try to use a connection forever. If so, we should
- *    take it away from them.
+ *   - A connection may die. If so, it should be reacquired.
+ *   - Someone may try to use a connection forever. If so, we should take it
+ *     away from them.
  */
 final case class ConnectionPoolLive(
   queue: TQueue[TPromise[Nothing, ResettableConnection]],

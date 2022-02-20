@@ -5,13 +5,11 @@ import zio.schema.Schema
 //import scala.annotation.implicitNotFound
 
 /**
- * val data = List(
- *  ('0511474d-8eed-4307-bdb0-e39a561205b6', 'Richard', 'Dent, true' 1999-11-02),
- *   ....
- * )
+ * val data = List( ('0511474d-8eed-4307-bdb0-e39a561205b6', 'Richard', 'Dent,
+ * true' 1999-11-02), .... )
  *
  * insertInto(customers)(customerId +++ fName +++ lName +++ verified +++ dob)
- *    .values(data)
+ * .values(data)
  */
 trait InsertModule { self: ExprModule with TableModule with SelectModule =>
 
@@ -35,7 +33,7 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
     schemaN: Schema[Z]
   )
 
-  //TODO find a way for more meaningful error messages
+  // TODO find a way for more meaningful error messages
   sealed trait SchemaValidity[F, Z, ColsRepr, AllColumnIdentities]
 
   // format: off
