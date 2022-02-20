@@ -1,9 +1,10 @@
 package zio.sql
 
-import zio.test.{ assert, DefaultRunnableSpec }
+import zio.test.assert
 import zio.test.Assertion.anything
+import zio.test.ZIOSpecDefault
 
-object PredicateOpSpec extends DefaultRunnableSpec {
+object PredicateOpSpec extends ZIOSpecDefault {
   import ProductSchema._
 
   def spec = suite("Unary operators")(
