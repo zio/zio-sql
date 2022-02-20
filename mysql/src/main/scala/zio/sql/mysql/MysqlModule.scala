@@ -142,7 +142,7 @@ trait MysqlModule extends Jdbc { self =>
           renderReadImpl(right)
 
         case Read.Literal(values) =>
-          render(" (", values.mkString(","), ") ") //todo fix needs escaping
+          render(" (", values.mkString(","), ") ") // todo fix needs escaping
       }
 
     private def renderSet(set: List[Set[_, _]])(implicit render: Renderer): Unit =
@@ -157,13 +157,13 @@ trait MysqlModule extends Jdbc { self =>
             render(" = ")
             renderExpr(setEq.rhs)
           }
-        case Nil          => //TODO restrict Update to not allow empty set
+        case Nil          => // TODO restrict Update to not allow empty set
       }
 
     private def renderTable(table: Table)(implicit render: Renderer): Unit =
       table match {
         case Table.DialectSpecificTable(_)           => ???
-        //The outer reference in this type test cannot be checked at run time?!
+        // The outer reference in this type test cannot be checked at run time?!
         case sourceTable: self.Table.Source          =>
           render(sourceTable.name)
         case Table.DerivedTable(read, name)          =>
@@ -322,7 +322,7 @@ trait MysqlModule extends Jdbc { self =>
             lit.value.asInstanceOf[Chunk[Byte]].map("""\%02X""" format _).mkString("x'", "", "'")
           ) // todo fix `cast` infers correctly but map doesn't work for some reason
         case tt @ TChar           =>
-          render("'", tt.cast(lit.value), "'") //todo is this the same as a string? fix escaping
+          render("'", tt.cast(lit.value), "'") // todo is this the same as a string? fix escaping
         case tt @ TInstant        =>
           render("TIMESTAMP '", tt.cast(lit.value), "'")
         case tt @ TLocalDate      =>
@@ -356,9 +356,9 @@ trait MysqlModule extends Jdbc { self =>
         case TShort               =>
           render(lit.value)
         case TString              =>
-          render("'", lit.value, "'") //todo fix escaping
+          render("'", lit.value, "'") // todo fix escaping
         case _                    =>
-          render(lit.value) //todo fix add TypeTag.Nullable[_] =>
+          render(lit.value) // todo fix add TypeTag.Nullable[_] =>
       }
     }
 
@@ -383,7 +383,7 @@ trait MysqlModule extends Jdbc { self =>
     private def renderColumnSelection[A, B](columnSelection: ColumnSelection[A, B])(implicit render: Renderer): Unit =
       columnSelection match {
         case ColumnSelection.Constant(value, name) =>
-          render(value) //todo fix escaping
+          render(value) // todo fix escaping
           name match {
             case Some(name) => render(" AS ", name)
             case None       => ()
@@ -396,7 +396,7 @@ trait MysqlModule extends Jdbc { self =>
                 case Some(sourceName) if name != sourceName => render(" AS ", name)
                 case _                                      => ()
               }
-            case _          => () //todo what do we do if we don't have a name?
+            case _          => () // todo what do we do if we don't have a name?
           }
       }
 
