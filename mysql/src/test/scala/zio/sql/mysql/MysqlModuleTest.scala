@@ -14,7 +14,7 @@ object MysqlModuleTest extends MysqlRunnableSpec with ShopSchema {
   import this.Orders._
 
   override def specLayered = suite("Mysql module")(
-    testM("Can select from single table") {
+    test("Can select from single table") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
       val query = select(customerId ++ fName ++ lName ++ dob) from customers
@@ -55,12 +55,9 @@ object MysqlModuleTest extends MysqlRunnableSpec with ShopSchema {
           )
         )
 
-      val testResult = execute(
-        query
-          .to[UUID, String, String, LocalDate, Customer] { case row =>
-            Customer(row._1, row._2, row._3, row._4)
-          }
-      )
+      val testResult = execute(query).map { case row =>
+        Customer(row._1, row._2, row._3, row._4)
+      }
 
       val assertion = for {
         r <- testResult.runCollect
@@ -68,7 +65,7 @@ object MysqlModuleTest extends MysqlRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("Can select with property operator") {
+    test("Can select with property operator") {
       case class Customer(id: UUID, fname: String, lname: String, verified: Boolean, dateOfBirth: LocalDate)
 
       val query = select(customerId ++ fName ++ lName ++ verified ++ dob) from customers where (verified isNotTrue)
@@ -86,12 +83,9 @@ object MysqlModuleTest extends MysqlRunnableSpec with ShopSchema {
           )
         )
 
-      val testResult = execute(
-        query
-          .to[UUID, String, String, Boolean, LocalDate, Customer] { case row =>
-            Customer(row._1, row._2, row._3, row._4, row._5)
-          }
-      )
+      val testResult = execute(query).map { case row =>
+        Customer(row._1, row._2, row._3, row._4, row._5)
+      }
 
       val assertion = for {
         r <- testResult.runCollect
@@ -99,7 +93,7 @@ object MysqlModuleTest extends MysqlRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("Can select from single table with limit, offset and order by") {
+    test("Can select from single table with limit, offset and order by") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
       val query = (select(customerId ++ fName ++ lName ++ dob) from customers).limit(1).offset(1).orderBy(fName)
@@ -116,12 +110,9 @@ object MysqlModuleTest extends MysqlRunnableSpec with ShopSchema {
           )
         )
 
-      val testResult = execute(
-        query
-          .to[UUID, String, String, LocalDate, Customer] { case row =>
-            Customer(row._1, row._2, row._3, row._4)
-          }
-      )
+      val testResult = execute(query).map { case row =>
+        Customer(row._1, row._2, row._3, row._4)
+      }
 
       val assertion = for {
         r <- testResult.runCollect
@@ -133,7 +124,7 @@ object MysqlModuleTest extends MysqlRunnableSpec with ShopSchema {
      * This is a failing test for aggregation function.
      * Uncomment it when aggregation function handling is fixed.
      */
-    // testM("Can count rows") {
+    // test("Can count rows") {
     //   val query = select { Count(userId) } from users
 
     //   val expected = 5L
@@ -144,7 +135,7 @@ object MysqlModuleTest extends MysqlRunnableSpec with ShopSchema {
     //     r <- result.runCollect
     //   } yield assert(r.head)(equalTo(expected))
     // },
-    testM("Can select from joined tables (inner join)") {
+    test("Can select from joined tables (inner join)") {
       val query = select(fName ++ lName ++ orderDate) from (customers join orders).on(
         fkCustomerId === customerId
       ) where (verified isNotTrue)
@@ -160,12 +151,9 @@ object MysqlModuleTest extends MysqlRunnableSpec with ShopSchema {
         Row("Jose", "Wiggins", LocalDate.parse("2020-01-15"))
       )
 
-      val result = execute(
-        query
-          .to[String, String, LocalDate, Row] { case row =>
-            Row(row._1, row._2, row._3)
-          }
-      )
+      val result = execute(query).map { case row =>
+        Row(row._1, row._2, row._3)
+      }
 
       val assertion = for {
         r <- result.runCollect

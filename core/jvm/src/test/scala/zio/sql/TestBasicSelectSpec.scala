@@ -3,6 +3,7 @@ package zio.sql
 import zio.test._
 import zio.test.Assertion._
 import zio.schema.Schema
+import zio.test.ZIOSpecDefault
 
 object TestBasicSelect {
   val userSql = new Sql { self =>
@@ -16,7 +17,7 @@ object TestBasicSelect {
     val userTable =
       (string("user_id") ++ localDate("dob") ++ string("first_name") ++ string("last_name")).table("users")
 
-    val userId :*: dob :*: fName :*: lName :*: _ = userTable.columns
+    val (userId, dob, fName, lName) = userTable.columns
 
     //todo this should compile using column names defined in the table
     val basicSelect = select(fName ++ lName) from userTable
@@ -28,7 +29,7 @@ object TestBasicSelect {
   }
 }
 
-object TestBasicSelectSpec extends DefaultRunnableSpec {
+object TestBasicSelectSpec extends ZIOSpecDefault {
   import TestBasicSelect.userSql._
 
   def spec = suite("TestBasicSelectSpec")(
