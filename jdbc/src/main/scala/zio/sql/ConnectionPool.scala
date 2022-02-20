@@ -5,8 +5,6 @@ import java.sql._
 
 import zio.stm._
 import zio._
-import zio.blocking._
-import zio.clock._
 
 trait ConnectionPool {
 
@@ -23,15 +21,14 @@ object ConnectionPool {
    * A live layer for `ConnectionPool` that creates a JDBC connection pool
    * from the specified connection pool settings.
    */
-  val live: ZLayer[Has[ConnectionPoolConfig] with Blocking with Clock, IOException, Has[ConnectionPool]] =
+  val live: ZLayer[ConnectionPoolConfig with Clock, IOException, ConnectionPool] =
     (for {
       config    <- ZManaged.service[ConnectionPoolConfig]
-      blocking  <- ZManaged.service[Blocking.Service]
-      clock     <- ZManaged.service[Clock.Service]
-      queue     <- TQueue.bounded[TPromise[Nothing, ResettableConnection]](config.queueCapacity).commit.toManaged_
-      available <- TRef.make(List.empty[ResettableConnection]).commit.toManaged_
-      pool       = ConnectionPoolLive(queue, available, config, clock, blocking)
-      _         <- pool.initialize.toManaged_
+      clock     <- ZManaged.service[Clock]
+      queue     <- TQueue.bounded[TPromise[Nothing, ResettableConnection]](config.queueCapacity).commit.toManaged
+      available <- TRef.make(List.empty[ResettableConnection]).commit.toManaged
+      pool       = ConnectionPoolLive(queue, available, config, clock)
+      _         <- pool.initialize.toManaged
       _         <- ZManaged.finalizer(pool.close.orDie)
     } yield pool).toLayer
 }
@@ -49,15 +46,14 @@ final case class ConnectionPoolLive(
   queue: TQueue[TPromise[Nothing, ResettableConnection]],
   available: TRef[List[ResettableConnection]],
   config: ConnectionPoolConfig,
-  clock: Clock.Service,
-  blocking: Blocking.Service
+  clock: Clock
 ) extends ConnectionPool {
 
   /**
    * Adds a fresh connection to the connection pool.
    */
   val addFreshConnection: IO[IOException, ResettableConnection] = {
-    val makeConnection = blocking.effectBlocking {
+    val makeConnection = ZIO.attemptBlocking {
       val connection = DriverManager.getConnection(config.url, config.properties)
 
       val autoCommit  = config.autoCommit
@@ -80,7 +76,7 @@ final case class ConnectionPoolLive(
     }.refineToOrDie[IOException]
 
     for {
-      connection <- makeConnection.retry(config.retryPolicy).provide(Has(clock))
+      connection <- makeConnection.retry(config.retryPolicy).provideEnvironment(ZEnvironment(clock))
       _          <- available.update(connection :: _).commit
     } yield connection
   }
@@ -91,17 +87,15 @@ final case class ConnectionPoolLive(
   val close: IO[IOException, Any] =
     ZIO.uninterruptible {
       available.get.commit.flatMap { all =>
-        blocking.blocking {
-          ZIO.foreachPar(all) { connection =>
-            ZIO(connection.connection.close()).refineToOrDie[IOException]
-          }
+        ZIO.foreachPar(all) { connection =>
+          ZIO.attemptBlocking(connection.connection.close()).refineToOrDie[IOException]
         }
       }
     }
 
   def connection: Managed[Exception, Connection] =
     ZManaged
-      .make(tryTake.commit.flatMap {
+      .acquireReleaseWith(tryTake.commit.flatMap {
         case Left(promise) =>
           ZIO.interruptible(promise.await.commit).onInterrupt {
             promise.poll.flatMap {
@@ -115,7 +109,7 @@ final case class ConnectionPoolLive(
         case Right(connection) =>
           ZIO.succeed(connection)
       })(release(_))
-      .flatMap(rc => rc.reset.toManaged_.as(rc.connection))
+      .flatMap(rc => rc.reset.toManaged.as(rc.connection))
 
   /**
    * Initializes the connection pool.
@@ -123,7 +117,7 @@ final case class ConnectionPoolLive(
   val initialize: IO[IOException, Unit] =
     ZIO.uninterruptible {
       ZIO
-        .foreachPar_(1 to config.poolSize) { _ =>
+        .foreachParDiscard(1 to config.poolSize) { _ =>
           addFreshConnection
         }
         .unit
