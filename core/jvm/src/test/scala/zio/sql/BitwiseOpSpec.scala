@@ -1,9 +1,10 @@
 package zio.sql
 
 import zio.test.Assertion.anything
-import zio.test.{ assert, DefaultRunnableSpec }
+import zio.test.assert
+import zio.test.ZIOSpecDefault
 
-object BitwiseOpSpec extends DefaultRunnableSpec {
+object BitwiseOpSpec extends ZIOSpecDefault {
   import ProductSchema._
 
   def spec = suite("Bitwise operators")(
