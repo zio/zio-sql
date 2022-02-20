@@ -14,7 +14,9 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
   import AggregationDef._
   import DbSchema._
 
-  private def customerSelectJoseAssertion(condition: Expr[_, customers.TableType, Boolean]) = {
+  private def customerSelectJoseAssertion[F: Features.IsNotAggregated](
+    condition: Expr[F, customers.TableType, Boolean]
+  ) = {
     case class Customer(id: UUID, fname: String, lname: String, verified: Boolean, dateOfBirth: LocalDate)
 
     val query =
@@ -31,12 +33,9 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
         )
       )
 
-    val testResult = execute(
-      query
-        .to[UUID, String, String, Boolean, LocalDate, Customer] { case row =>
-          Customer(row._1, row._2, row._3, row._4, row._5)
-        }
-    )
+    val testResult = execute(query).map { row =>
+      Customer(row._1, row._2, row._3, row._4, row._5)
+    }
 
     val assertion = for {
       r <- testResult.runCollect
@@ -46,7 +45,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
   }
 
   override def specLayered = suite("MSSQL Server module")(
-    testM("Can select from single table") {
+    test("Can select from single table") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
       val query = select(customerId ++ fName ++ lName ++ dob).from(customers)
@@ -85,12 +84,9 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
           )
         )
 
-      val testResult = execute(
-        query
-          .to[UUID, String, String, LocalDate, Customer] { case row =>
-            Customer(row._1, row._2, row._3, row._4)
-          }
-      )
+      val testResult = execute(query).map { case row =>
+        Customer(row._1, row._2, row._3, row._4)
+      }
 
       val assertion = for {
         r <- testResult.runCollect
@@ -98,31 +94,31 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("Can select with property unary operator") {
+    test("Can select with property unary operator") {
       customerSelectJoseAssertion(verified isNotTrue)
     },
-    testM("Can select with property binary operator with UUID") {
+    test("Can select with property binary operator with UUID") {
       customerSelectJoseAssertion(customerId === UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc"))
     },
-    testM("Can select with property binary operator with String") {
+    test("Can select with property binary operator with String") {
       customerSelectJoseAssertion(fName === "Jose")
     },
-    testM("Can select with property binary operator with LocalDate") {
+    test("Can select with property binary operator with LocalDate") {
       customerSelectJoseAssertion(dob === LocalDate.parse("1987-03-23"))
     },
-    testM("Can select with property binary operator with LocalDateTime") {
+    test("Can select with property binary operator with LocalDateTime") {
       customerSelectJoseAssertion(dob === LocalDateTime.parse("1987-03-23T00:00:00"))
     },
-    testM("Can select with property binary operator with OffsetDateTime") {
+    test("Can select with property binary operator with OffsetDateTime") {
       customerSelectJoseAssertion(dob === OffsetDateTime.parse("1987-03-23T00:00:00Z"))
     },
-    testM("Can select with property binary operator with ZonedLocalDate") {
+    test("Can select with property binary operator with ZonedLocalDate") {
       customerSelectJoseAssertion(dob === ZonedDateTime.parse("1987-03-23T00:00:00Z"))
     },
-    testM("Can select with property binary operator with Instant") {
+    test("Can select with property binary operator with Instant") {
       customerSelectJoseAssertion(dob === Instant.parse("1987-03-23T00:00:00Z"))
     },
-    testM("Can select from single table with limit, offset and order by") {
+    test("Can select from single table with limit, offset and order by") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
       val query = select(customerId ++ fName ++ lName ++ dob).from(customers).limit(1).offset(1).orderBy(fName)
@@ -137,12 +133,9 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
           )
         )
 
-      val testResult = execute(
-        query
-          .to[UUID, String, String, LocalDate, Customer] { case row =>
-            Customer(row._1, row._2, row._3, row._4)
-          }
-      )
+      val testResult = execute(query).map { case row =>
+        Customer(row._1, row._2, row._3, row._4)
+      }
 
       val assertion = for {
         r <- testResult.runCollect
@@ -150,18 +143,18 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("Can count rows") {
+    test("Can count rows") {
       val query = select(Count(customerId)).from(customers)
 
       val expected = 5L
 
-      val result = execute(query.to[Long, Long](identity))
+      val result = execute(query)
 
       for {
         r <- result.runCollect
       } yield assert(r.head)(equalTo(expected))
     },
-    testM("correlated subqueries in selections - counts orders for each customer") {
+    test("correlated subqueries in selections - counts orders for each customer") {
 
       /**
        * select first_name, last_name, (
@@ -186,12 +179,9 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       val query = select(fName ++ lName ++ (subquery as "Count")).from(customers)
 
-      val result = execute(
-        query
-          .to[String, String, Long, Row] { case row =>
-            Row(row._1, row._2, row._3)
-          }
-      )
+      val result = execute(query).map { case row =>
+        Row(row._1, row._2, row._3)
+      }
 
       val assertion = for {
         r <- result.runCollect
@@ -199,7 +189,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("subquery in where clause") {
+    test("subquery in where clause") {
       import SqlServerSpecific.SqlServerFunctionDef._
 
       /**
@@ -214,42 +204,44 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
           unitPrice > select(Avg(price)).from(productPrices)
         )
 
-      case class Row(orderId: UUID, productId: UUID, unitPrice: BigDecimal)
+      case class Row(orderId: UUID, productId: UUID, unitPrice: scala.math.BigDecimal)
 
       object Row {
-        def apply(orderId: String, productId: String, unitPrice: BigDecimal): Row =
+        def create(orderId: String, productId: String, unitPrice: BigDecimal): Row =
           new Row(UUID.fromString(orderId), UUID.fromString(productId), unitPrice)
       }
 
       val expected = Seq(
-        Row("04912093-CC2E-46AC-B64C-1BD7BB7758C3", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
-        Row("9022DD0D-06D6-4A43-9121-2993FC7712A1", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
-        Row("38D66D44-3CFA-488A-AC77-30277751418F", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
-        Row("7B2627D5-0150-44DF-9171-3462E20797EE", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
-        Row("62CD4109-3E5D-40CC-8188-3899FC1F8BDF", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 72.7200),
-        Row("9473A0BC-396A-4936-96B0-3EEA922AF36B", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 80.0000),
-        Row("B8BAC18D-769F-48ED-809D-4B6C0E4D1795", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 67.2700),
-        Row("BEBBFE4D-4EC3-4389-BDC2-50E9EAC2B15B", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 67.2700),
-        Row("742D45A0-E81A-41CE-95AD-55B4CABBA258", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 67.2700),
-        Row("618AA21F-700B-4CA7-933C-67066CF4CD97", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
-        Row("606DA090-DD33-4A77-8746-6ED0E8443AB2", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 67.2700),
-        Row("FD0FA8D4-E1A0-4369-BE07-945450DB5D36", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 80.0000),
-        Row("876B6034-B33C-4497-81EE-B4E8742164C2", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
-        Row("91CAA28A-A5FE-40D7-979C-BD6A128D0418", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
-        Row("2C3FC180-D0DF-4D7B-A271-E6CCD2440393", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 70.0000),
-        Row("763A7C39-833F-4EE8-9939-E80DFDBFC0FC", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 80.0000),
-        Row("5011D206-8EFF-42C4-868E-F1A625E1F186", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
-        Row("0A48FFB0-EC61-4147-AF56-FC4DBCA8DE0A", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
-        Row("A243FA42-817A-44EC-8B67-22193D212D82", "D5137D3A-894A-4109-9986-E982541B434F", 45.4500),
-        Row("62CD4109-3E5D-40CC-8188-3899FC1F8BDF", "D5137D3A-894A-4109-9986-E982541B434F", 50.0000),
-        Row("9473A0BC-396A-4936-96B0-3EEA922AF36B", "D5137D3A-894A-4109-9986-E982541B434F", 55.0000),
-        Row("852E2DC9-4EC3-4225-A6F7-4F42F8FF728E", "D5137D3A-894A-4109-9986-E982541B434F", 45.4500),
-        Row("D6D8DDDC-4B0B-4D74-8EDC-A54E9B7F35F7", "D5137D3A-894A-4109-9986-E982541B434F", 50.0000),
-        Row("2C3FC180-D0DF-4D7B-A271-E6CCD2440393", "D5137D3A-894A-4109-9986-E982541B434F", 50.0000),
-        Row("5883CB62-D792-4EE3-ACBC-FE85B6BAA998", "D5137D3A-894A-4109-9986-E982541B434F", 55.0000)
+        Row.create("04912093-CC2E-46AC-B64C-1BD7BB7758C3", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
+        Row.create("9022DD0D-06D6-4A43-9121-2993FC7712A1", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
+        Row.create("38D66D44-3CFA-488A-AC77-30277751418F", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
+        Row.create("7B2627D5-0150-44DF-9171-3462E20797EE", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
+        Row.create("62CD4109-3E5D-40CC-8188-3899FC1F8BDF", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 72.7200),
+        Row.create("9473A0BC-396A-4936-96B0-3EEA922AF36B", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 80.0000),
+        Row.create("B8BAC18D-769F-48ED-809D-4B6C0E4D1795", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 67.2700),
+        Row.create("BEBBFE4D-4EC3-4389-BDC2-50E9EAC2B15B", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 67.2700),
+        Row.create("742D45A0-E81A-41CE-95AD-55B4CABBA258", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 67.2700),
+        Row.create("618AA21F-700B-4CA7-933C-67066CF4CD97", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
+        Row.create("606DA090-DD33-4A77-8746-6ED0E8443AB2", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 67.2700),
+        Row.create("FD0FA8D4-E1A0-4369-BE07-945450DB5D36", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 80.0000),
+        Row.create("876B6034-B33C-4497-81EE-B4E8742164C2", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
+        Row.create("91CAA28A-A5FE-40D7-979C-BD6A128D0418", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
+        Row.create("2C3FC180-D0DF-4D7B-A271-E6CCD2440393", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 70.0000),
+        Row.create("763A7C39-833F-4EE8-9939-E80DFDBFC0FC", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 80.0000),
+        Row.create("5011D206-8EFF-42C4-868E-F1A625E1F186", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
+        Row.create("0A48FFB0-EC61-4147-AF56-FC4DBCA8DE0A", "105A2701-EF93-4E25-81AB-8952CC7D9DAA", 74.0000),
+        Row.create("A243FA42-817A-44EC-8B67-22193D212D82", "D5137D3A-894A-4109-9986-E982541B434F", 45.4500),
+        Row.create("62CD4109-3E5D-40CC-8188-3899FC1F8BDF", "D5137D3A-894A-4109-9986-E982541B434F", 50.0000),
+        Row.create("9473A0BC-396A-4936-96B0-3EEA922AF36B", "D5137D3A-894A-4109-9986-E982541B434F", 55.0000),
+        Row.create("852E2DC9-4EC3-4225-A6F7-4F42F8FF728E", "D5137D3A-894A-4109-9986-E982541B434F", 45.4500),
+        Row.create("D6D8DDDC-4B0B-4D74-8EDC-A54E9B7F35F7", "D5137D3A-894A-4109-9986-E982541B434F", 50.0000),
+        Row.create("2C3FC180-D0DF-4D7B-A271-E6CCD2440393", "D5137D3A-894A-4109-9986-E982541B434F", 50.0000),
+        Row.create("5883CB62-D792-4EE3-ACBC-FE85B6BAA998", "D5137D3A-894A-4109-9986-E982541B434F", 55.0000)
       )
 
-      val result = execute(query.to[UUID, UUID, BigDecimal, Row](Row.apply))
+      val result = execute(query).map { case (id, productId, price) =>
+        Row(id, productId, price)
+      }
 
       val assertion = for {
         r <- result.runCollect
@@ -257,7 +249,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("correlated subquery in where clause - return orders where price was above average for particular product") {
+    test("correlated subquery in where clause - return orders where price was above average for particular product") {
       import SqlServerSpecific.SqlServerFunctionDef._
 
       /**
@@ -330,12 +322,9 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
         Row("0a48ffb0-ec61-4147-af56-fc4dbca8de0a", "f35b0053-855b-4145-abe1-dc62bc1fdb96", 6.0)
       )
 
-      val result = execute(
-        query
-          .to[UUID, UUID, BigDecimal, Row] { case row =>
-            Row(row._1, row._2, row._3)
-          }
-      )
+      val result = execute(query).map { case row =>
+        Row(row._1, row._2, row._3)
+      }
 
       val assertion = for {
         r <- result.runCollect
@@ -343,7 +332,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("cross apply - top 1 order_date") {
+    test("cross apply - top 1 order_date") {
 
       /**
        *  select customers.id, customers.first_name, customers.last_name, derived.order_date
@@ -378,12 +367,9 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
           .from(customers.crossApply(orderDateDerivedTable))
           .orderBy(Ordering.Desc(orderDateDerived))
 
-      val result = execute(
-        query
-          .to[UUID, String, String, LocalDate, Row] { case row =>
-            Row(row._1, row._2, row._3, row._4)
-          }
-      )
+      val result = execute(query).map { case row =>
+        Row(row._1, row._2, row._3, row._4)
+      }
 
       val assertion = for {
         r <- result.runCollect
@@ -391,7 +377,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("cross apply with subselect") {
+    test("cross apply with subselect") {
 
       /**
        * select customers.first_name, customers.last_name, ooo.order_date
@@ -406,16 +392,13 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
       val subquery =
         subselect[customers.TableType](orderDate).from(orders).where(customerId === fkCustomerId).asTable("ooo")
 
-      val orderDateDerived :*: _ = subquery.columns
+      val orderDateDerived = subquery.columns
 
       val query = select(fName ++ lName ++ orderDateDerived).from(customers.crossApply(subquery))
 
-      val result = execute(
-        query
-          .to[String, String, LocalDate, CustomerAndDateRow] { case row =>
-            CustomerAndDateRow(row._1, row._2, row._3)
-          }
-      )
+      val result = execute(query).map { case row =>
+        CustomerAndDateRow(row._1, row._2, row._3)
+      }
 
       val assertion = for {
         r <- result.runCollect
@@ -423,21 +406,18 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("cross apply with subquery") {
+    test("cross apply with subquery") {
       import SqlServerSpecific.SqlServerTable._
       val subquery =
         customers.subselect(orderDate).from(orders).where(customerId === fkCustomerId).asTable("ooo")
 
-      val orderDateDerived :*: _ = subquery.columns
+      val orderDateDerived = subquery.columns
 
       val query = select(fName ++ lName ++ orderDateDerived).from(customers.crossApply(subquery))
 
-      val result = execute(
-        query
-          .to[String, String, LocalDate, CustomerAndDateRow] { case row =>
-            CustomerAndDateRow(row._1, row._2, row._3)
-          }
-      )
+      val result = execute(query).map { case row =>
+        CustomerAndDateRow(row._1, row._2, row._3)
+      }
 
       val assertion = for {
         r <- result.runCollect
@@ -445,21 +425,18 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("cross apply with subselect from") {
+    test("cross apply with subselect from") {
       import SqlServerSpecific.SqlServerTable._
       val subquery =
         subselectFrom(customers)(orderDate).from(orders).where(customerId === fkCustomerId).asTable("ooo")
 
-      val orderDateDerived :*: _ = subquery.columns
+      val orderDateDerived = subquery.columns
 
       val query = select(fName ++ lName ++ orderDateDerived).from(customers.crossApply(subquery))
 
-      val result = execute(
-        query
-          .to[String, String, LocalDate, CustomerAndDateRow] { case row =>
-            CustomerAndDateRow(row._1, row._2, row._3)
-          }
-      )
+      val result = execute(query).map { case row =>
+        CustomerAndDateRow(row._1, row._2, row._3)
+      }
 
       val assertion = for {
         r <- result.runCollect
@@ -467,21 +444,18 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("outer apply") {
+    test("outer apply") {
       import SqlServerSpecific.SqlServerTable._
       val subquery =
         subselect[customers.TableType](orderDate).from(orders).where(customerId === fkCustomerId).asTable("ooo")
 
-      val orderDateDerived :*: _ = subquery.columns
+      val orderDateDerived = subquery.columns
 
       val query = select(fName ++ lName ++ orderDateDerived).from(customers.outerApply(subquery))
 
-      val result = execute(
-        query
-          .to[String, String, LocalDate, CustomerAndDateRow] { case row =>
-            CustomerAndDateRow(row._1, row._2, row._3)
-          }
-      )
+      val result = execute(query).map { case row =>
+        CustomerAndDateRow(row._1, row._2, row._3)
+      }
 
       val assertion = for {
         r <- result.runCollect
@@ -489,7 +463,7 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    testM("Can select from joined tables (inner join)") {
+    test("Can select from joined tables (inner join)") {
       val query = select(fName ++ lName ++ orderDate).from(customers.join(orders).on(fkCustomerId === customerId))
 
       case class Row(firstName: String, lastName: String, orderDate: LocalDate)
@@ -522,12 +496,9 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
         Row("Mila", "Paterso", LocalDate.parse("2020-04-30"))
       )
 
-      val result = execute(
-        query
-          .to[String, String, LocalDate, Row] { case row =>
-            Row(row._1, row._2, row._3)
-          }
-      )
+      val result = execute(query).map { case row =>
+        Row(row._1, row._2, row._3)
+      }
 
       val assertion = for {
         r <- result.runCollect
