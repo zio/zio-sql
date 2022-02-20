@@ -57,7 +57,7 @@ val orders =
   (uuid("id") ++ uuid("product_id") ++ int("quantity") ++ localDate("order_date")).table("orders")
 ```
 
-You can compose column set out of smaller column sets. This could be useful when your tables share some common set of columns.
+Column sets are composable - this could be useful when your tables share some common columns.
 
 ```scala
 import ColumnSet._
@@ -78,7 +78,50 @@ val orders = orderColumns.table("orders")
 
 ## Selects
 
-TODO: details
+Simple select.
+
+```scala
+val allProducts = select(productId ++ name ++ price).from(products)
+```
+
+Using `where` clause.
+
+```scala
+def productById(id: UUID) = 
+  select(productId ++ name ++ price).from(products).where(productId === id)
+```
+
+Inner join.
+
+```scala
+val ordersWithProductNames = 
+  select(orderId ++ name).from(products.join(orders).on(productId === fkProductId))
+```
+
+Left outer join.
+
+```scala
+val leftOuter = 
+  select(orderId ++ name).from(products.leftOuter(orders).on(productId === fkProductId))
+```
+
+Right outer join.
+
+```scala
+val rightOuter = 
+  select(orderId ++ name).from(products.rightOuter(orders).on(productId === fkProductId))
+```
+
+Using `limit` and `offset`
+
+```scala
+val limitedResults = 
+  select(orderId ++ name)
+    .from(products.join(orders)
+    .on(productId === fkProductId))
+    .limit(5)
+    .offset(10)
+```
 
 ## Inserts
 
