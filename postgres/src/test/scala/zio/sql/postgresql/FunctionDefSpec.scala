@@ -513,7 +513,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
 
       val assertion = for {
         r <- testResult.runCollect
-      } yield assert(r.head.toString)(Assertion.matchesRegex("([0-9]{2}):[0-9]{2}:[0-9]{2}\\.[0-9]{3}"))
+      } yield assert(r.head.toString)(Assertion.matchesRegex("([0-9]{2}):[0-9]{2}:[0-9]{2}\\.[0-9]{6}"))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
