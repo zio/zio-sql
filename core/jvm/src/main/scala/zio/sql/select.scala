@@ -224,6 +224,23 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
         Table.DerivedTable[Out2, Mapped[Repr, Out, Out2]](self, name)
     }
 
+    /**
+      * `HAVING` can only be called:
+      *
+      *  1. If its called with an aggregated function returning boolean like `Having Count(id) > 5`, 
+      *     while all the previously selected columns appeared in group by clause.
+      *  2. If its called with a normal expression returning boolean like `having customer_id = '636ae137-5b1a-4c8c-b11f-c47c624d9cdc``
+      *     and all the previously selected columns appeared in group by clause.
+      */
+    trait HavingIsSound[F, GroupByF]
+
+    object HavingIsSound {
+      implicit def havingWasGroupedBy[F, GroupByF, Remainder](implicit
+        i: Features.IsPartiallyAggregated.WithRemainder[F, Remainder],
+        ev: GroupByF <:< Remainder
+      ): HavingIsSound[F, GroupByF]                                                                        = new HavingIsSound[F, GroupByF] {}
+    }
+
     type Select[F, Repr, Source, Head, Tail <: SelectionSet[Source]] = Subselect[F, Repr, Source, Source, Head, Tail]
 
     sealed case class Subselect[F, Repr, Source, Subsource, Head, Tail <: SelectionSet[Source]](
@@ -255,17 +272,13 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
       ): Subselect[F, Repr, Source, Subsource, Head, Tail] =
         copy(orderByExprs = self.orderByExprs ++ (o :: os.toList))
 
-      /**
-       * `HAVING` can only be called:
-       *    1. with aggregate functions - `having Count(id) > 5`
-       *    2. within `fully aggregated` selection - meaning either only aggregate functions are in `select` or columns which are selected are also groupped by.
-       *      `Remainder` references not aggregated columns. GroupByF is a type containing `F` by which `groupBy` was called.
-       */
-      def having[F2: Features.IsFullyAggregated, Remainder](
+
+      def having[F2, Remainder](
         havingExpr2: Expr[F2, Source, Boolean]
       )(implicit
         i: Features.IsPartiallyAggregated.WithRemainder[F, Remainder],
-        ev: GroupByF <:< Remainder
+        ev: GroupByF <:< Remainder,
+        i2: HavingIsSound[F2, GroupByF]
       ): Subselect[F, Repr, Source, Subsource, Head, Tail] =
         copy(havingExpr = self.havingExpr && havingExpr2)
 
@@ -300,7 +313,7 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
          override type GroupByF =  self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6
       }
       /**
-        * TODO add arities up to 22 when needed
+        * TODO add arities up to 22 when needed / requested by users
         */
       def groupBy[F1: Features.IsNotAggregated, F2: Features.IsNotAggregated, F3: Features.IsNotAggregated, F4: Features.IsNotAggregated, F5: Features.IsNotAggregated, F6: Features.IsNotAggregated, F7: Features.IsNotAggregated](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any], expr6: Expr[F6, Source, Any], expr7: Expr[F7, Source, Any]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6 with F7] =
         new Subselect(selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7, havingExpr, orderByExprs, offset, limit) {
