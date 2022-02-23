@@ -67,10 +67,12 @@ trait SqlDriverLiveModule { self: Jdbc =>
             ZStream
               .unfoldZIO(resultSet) { rs =>
                 if (rs.next()) {
-                  try unsafeExtractRow[read.ResultType](resultSet, schema) match {
-                    case Left(error)  => ZIO.fail(error)
-                    case Right(value) => ZIO.succeed(Some((value, rs)))
-                  } catch {
+                  try
+                    unsafeExtractRow[read.ResultType](resultSet, schema) match {
+                      case Left(error)  => ZIO.fail(error)
+                      case Right(value) => ZIO.succeed(Some((value, rs)))
+                    }
+                  catch {
                     case e: SQLException => ZIO.fail(e)
                   }
                 } else ZIO.succeed(None)

@@ -143,7 +143,7 @@ trait PostgresModule extends Jdbc { self =>
         s"""$year, $month, $day, $hour, $minute, $second, '$timeZone'"""
     }
 
-    //Based upon https://github.com/tminglei/slick-pg/blob/master/src/main/scala/com/github/tminglei/slickpg/PgDateSupport.scala
+    // Based upon https://github.com/tminglei/slick-pg/blob/master/src/main/scala/com/github/tminglei/slickpg/PgDateSupport.scala
     sealed case class Interval(
       years: Int = 0,
       months: Int = 0,
@@ -159,8 +159,8 @@ trait PostgresModule extends Jdbc { self =>
         format.setDecimalFormatSymbols(dfs)
         format
       }
-      def milliseconds: Int = (microseconds + (if (microseconds < 0) -500 else 500)) / 1000
-      def microseconds: Int = (seconds * 1000000.0).asInstanceOf[Int]
+      def milliseconds: Int     = (microseconds + (if (microseconds < 0) -500 else 500)) / 1000
+      def microseconds: Int     = (seconds * 1000000.0).asInstanceOf[Int]
 
       def +:(cal: Calendar): Calendar = {
         cal.add(Calendar.MILLISECOND, milliseconds)
@@ -349,7 +349,7 @@ trait PostgresModule extends Jdbc { self =>
   }
 
   object PostgresRenderModule {
-    //todo split out to separate module
+    // todo split out to separate module
 
     def renderInsertImpl[A](insert: Insert[_, A])(implicit render: Renderer, schema: Schema[A]) = {
       render("INSERT INTO ")
@@ -363,7 +363,7 @@ trait PostgresModule extends Jdbc { self =>
     }
 
     def renderInsertValues[A](col: Seq[A])(implicit render: Renderer, schema: Schema[A]): Unit =
-      //TODO any performance penalty because of toList ?
+      // TODO any performance penalty because of toList ?
       col.toList match {
         case head :: Nil  =>
           render("(")
@@ -456,7 +456,7 @@ trait PostgresModule extends Jdbc { self =>
           renderDynamicValue(right)
         case DynamicValue.SomeValue(value)          => renderDynamicValue(value)
         case DynamicValue.NoneValue                 => render(s"null")
-        //TODO what about other cases?
+        // TODO what about other cases?
         case _                                      => ()
       }
 
@@ -509,7 +509,7 @@ trait PostgresModule extends Jdbc { self =>
             render(" = ")
             renderExpr(setEq.rhs)
           }
-        case Nil          => //TODO restrict Update to not allow empty set
+        case Nil          => // TODO restrict Update to not allow empty set
       }
 
     private[zio] def renderLit[A, B](lit: self.Expr.Literal[_])(implicit render: Renderer): Unit = {
@@ -527,7 +527,7 @@ trait PostgresModule extends Jdbc { self =>
             lit.value.asInstanceOf[Chunk[Byte]].map("""\%03o""" format _).mkString("E\'", "", "\'")
           ) // todo fix `cast` infers correctly but map doesn't work for some reason
         case tt @ TChar           =>
-          render("'", tt.cast(lit.value), "'") //todo is this the same as a string? fix escaping
+          render("'", tt.cast(lit.value), "'") // todo is this the same as a string? fix escaping
         case tt @ TInstant        => render("TIMESTAMP '", tt.cast(lit.value), "'")
         case tt @ TLocalDate      => render("DATE '", tt.cast(lit.value), "'")
         case tt @ TLocalDateTime  => render("DATE '", tt.cast(lit.value), "'")
@@ -537,16 +537,16 @@ trait PostgresModule extends Jdbc { self =>
         case tt @ TUUID           => render("'", tt.cast(lit.value), "'")
         case tt @ TZonedDateTime  => render("DATE '", tt.cast(lit.value), "'")
 
-        case TByte       => render(lit.value)           //default toString is probably ok
-        case TBigDecimal => render(lit.value)           //default toString is probably ok
-        case TBoolean    => render(lit.value)           //default toString is probably ok
-        case TDouble     => render(lit.value)           //default toString is probably ok
-        case TFloat      => render(lit.value)           //default toString is probably ok
-        case TInt        => render(lit.value)           //default toString is probably ok
-        case TLong       => render(lit.value)           //default toString is probably ok
-        case TShort      => render(lit.value)           //default toString is probably ok
-        case TString     => render("'", lit.value, "'") //todo fix escaping
-        case _           => render(lit.value)           //todo fix add TypeTag.Nullable[_] =>
+        case TByte       => render(lit.value)           // default toString is probably ok
+        case TBigDecimal => render(lit.value)           // default toString is probably ok
+        case TBoolean    => render(lit.value)           // default toString is probably ok
+        case TDouble     => render(lit.value)           // default toString is probably ok
+        case TFloat      => render(lit.value)           // default toString is probably ok
+        case TInt        => render(lit.value)           // default toString is probably ok
+        case TLong       => render(lit.value)           // default toString is probably ok
+        case TShort      => render(lit.value)           // default toString is probably ok
+        case TString     => render("'", lit.value, "'") // todo fix escaping
+        case _           => render(lit.value)           // todo fix add TypeTag.Nullable[_] =>
       }
     }
 
@@ -736,7 +736,7 @@ trait PostgresModule extends Jdbc { self =>
           renderReadImpl(right)
 
         case Read.Literal(values) =>
-          render(" (", values.mkString(","), ") ") //todo fix needs escaping
+          render(" (", values.mkString(","), ") ") // todo fix needs escaping
       }
 
     def renderExprList(expr: Read.ExprSet[_])(implicit render: Renderer): Unit =
@@ -791,7 +791,7 @@ trait PostgresModule extends Jdbc { self =>
     def renderColumnSelection[A, B](columnSelection: ColumnSelection[A, B])(implicit render: Renderer): Unit =
       columnSelection match {
         case ColumnSelection.Constant(value, name) =>
-          render(value) //todo fix escaping
+          render(value) // todo fix escaping
           name match {
             case Some(name) => render(" AS ", name)
             case None       => ()
@@ -804,7 +804,7 @@ trait PostgresModule extends Jdbc { self =>
                 case Some(sourceName) if name != sourceName => render(" AS ", name)
                 case _                                      => ()
               }
-            case _          => () //todo what do we do if we don't have a name?
+            case _          => () // todo what do we do if we don't have a name?
           }
       }
 
@@ -819,7 +819,7 @@ trait PostgresModule extends Jdbc { self =>
 
               renderTable(derivedTable)
           }
-        //The outer reference in this type test cannot be checked at run time?!
+        // The outer reference in this type test cannot be checked at run time?!
         case sourceTable: self.Table.Source             => render(sourceTable.name)
         case Table.DerivedTable(read, name)             =>
           render(" ( ")

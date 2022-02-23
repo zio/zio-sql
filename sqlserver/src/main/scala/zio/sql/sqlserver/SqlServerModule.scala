@@ -136,7 +136,7 @@ trait SqlServerModule extends Jdbc { self =>
       case literal @ Expr.Literal(value)                                                        =>
         val lit = literal.typeTag match {
           case TypeTag.TBoolean        =>
-            //MSSQL server variant of true/false
+            // MSSQL server variant of true/false
             if (value.asInstanceOf[Boolean]) {
               "0 = 0"
             } else {
@@ -254,7 +254,7 @@ trait SqlServerModule extends Jdbc { self =>
       read match {
         case Read.Mapped(read, _) => buildReadString(read.asInstanceOf[Read[Out]])
 
-        //todo offset (needs orderBy, must use fetch _instead_ of top)
+        // todo offset (needs orderBy, must use fetch _instead_ of top)
         case read0 @ Read.Subselect(_, _, _, _, _, _, _, _) =>
           object Dummy {
             type F
@@ -310,7 +310,7 @@ trait SqlServerModule extends Jdbc { self =>
           buildReadString(right)
 
         case Read.Literal(values) =>
-          val _ = builder.append(" (").append(values.mkString(",")).append(") ") //todo fix needs escaping
+          val _ = builder.append(" (").append(values.mkString(",")).append(") ") // todo fix needs escaping
       }
 
     def buildExprList(expr: Read.ExprSet[_]): Unit                   =
@@ -364,7 +364,7 @@ trait SqlServerModule extends Jdbc { self =>
     def buildColumnSelection[A, B](columnSelection: ColumnSelection[A, B]): Unit =
       columnSelection match {
         case ColumnSelection.Constant(value, name) =>
-          builder.append(value.toString()) //todo fix escaping
+          builder.append(value.toString()) // todo fix escaping
           name match {
             case Some(name) =>
               val _ = builder.append(" as ").append(name)
@@ -379,20 +379,20 @@ trait SqlServerModule extends Jdbc { self =>
                   val _ = builder.append(" as ").append(name)
                 case _                                      => ()
               }
-            case _          => () //todo what do we do if we don't have a name?
+            case _          => () // todo what do we do if we don't have a name?
           }
       }
 
     def buildTable(table: Table): Unit =
       table match {
 
-        case Table.DerivedTable(read, name)             =>
+        case Table.DerivedTable(read, name) =>
           builder.append(" ( ")
           builder.append(renderRead(read.asInstanceOf[Read[_]]))
           builder.append(" ) ")
           val _ = builder.append(name)
 
-        case sourceTable: self.Table.Source             =>
+        case sourceTable: self.Table.Source =>
           val _ = builder.append(sourceTable.name)
 
         case Table.DialectSpecificTable(tableExtension) =>

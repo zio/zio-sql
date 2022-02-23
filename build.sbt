@@ -5,16 +5,16 @@ import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
 inThisBuild(
   List(
-    organization := "dev.zio",
-    homepage := Some(url("https://zio.github.io/zio-sql/")),
-    licenses := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
-    developers := List(
+    organization  := "dev.zio",
+    homepage      := Some(url("https://zio.github.io/zio-sql/")),
+    licenses      := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
+    developers    := List(
       Developer("jdegoes", "John De Goes", "john@degoes.net", url("http://degoes.net"))
     ),
     pgpPassphrase := sys.env.get("PGP_PASSWORD").map(_.toArray),
     pgpPublicRing := file("/tmp/public.asc"),
     pgpSecretRing := file("/tmp/secret.asc"),
-    scmInfo := Some(
+    scmInfo       := Some(
       ScmInfo(url("https://github.com/zio/zio-sql/"), "scm:git:git@github.com:zio/zio-sql.git")
     )
   )
@@ -27,7 +27,7 @@ addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck"
 val zioVersion                 = "2.0.0-RC2"
 val zioSchemaVersion           = "0.1.7"
 val testcontainersVersion      = "1.16.3"
-val testcontainersScalaVersion = "0.39.12"
+val testcontainersScalaVersion = "0.40.2"
 
 lazy val startPostgres = taskKey[Unit]("Start up Postgres")
 startPostgres := startService(Database.Postgres, streams.value)
@@ -98,7 +98,7 @@ lazy val docs = project
   .in(file("zio-sql-docs"))
   .settings(
     publish / skip := true,
-    moduleName := "zio-sql-docs",
+    moduleName     := "zio-sql-docs",
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
     libraryDependencies ++= Seq(
@@ -116,7 +116,7 @@ lazy val examples = project
   .settings(stdSettings("examples"))
   .settings(
     publish / skip := true,
-    moduleName := "examples",
+    moduleName     := "examples",
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio"                   % zioVersion,
       "dev.zio" %% "zio-streams"           % zioVersion,
@@ -215,7 +215,7 @@ lazy val postgres = project
       "org.testcontainers" % "database-commons"                % testcontainersVersion      % Test,
       "org.testcontainers" % "postgresql"                      % testcontainersVersion      % Test,
       "org.testcontainers" % "jdbc"                            % testcontainersVersion      % Test,
-      "org.postgresql"     % "postgresql"                      % "42.2.25"                  % Compile,
+      "org.postgresql"     % "postgresql"                      % "42.3.3"                   % Compile,
       "com.dimafeng"      %% "testcontainers-scala-postgresql" % testcontainersScalaVersion % Test
     )
   )
