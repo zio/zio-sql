@@ -6,6 +6,7 @@ trait DbSchema extends Jdbc { self =>
   import self.ColumnSet._
 
   object Persons {
+
     import ColumnSetAspect._
 
     val persons =
@@ -15,8 +16,8 @@ trait DbSchema extends Jdbc { self =>
     val (personId, fName, lName, dob) = persons.columns
   }
 
-  object Customers {
-    //https://github.com/zio/zio-sql/issues/320 Once Insert is supported, we can remove created_timestamp_string
+  object Customers     {
+    // https://github.com/zio/zio-sql/issues/320 Once Insert is supported, we can remove created_timestamp_string
     val customers =
       (uuid("id") ++ localDate("dob") ++ string("first_name") ++ string("last_name") ++ boolean(
         "verified"
@@ -26,7 +27,6 @@ trait DbSchema extends Jdbc { self =>
     val (customerId, dob, fName, lName, verified, createdString, createdTimestamp) =
       customers.columns
   }
-
   object Orders        {
     val orders = (uuid("id") ++ uuid("customer_id") ++ localDate("order_date")).table("orders")
 

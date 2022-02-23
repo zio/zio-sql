@@ -16,19 +16,19 @@ trait FeaturesModule {
 
     sealed trait IsNotAggregated[A]
     object IsNotAggregated {
-      implicit def UnionIsNotAgregated[A: IsNotAggregated, B: IsNotAggregated]: IsNotAggregated[Union[A, B]]    =
+      implicit def UnionIsNotAgregated[A: IsNotAggregated, B: IsNotAggregated]: IsNotAggregated[Union[A, B]] =
         new IsNotAggregated[Union[A, B]] {}
 
       implicit def SourceIsNotAggregated[ColumnName, TableType]: IsNotAggregated[Source[ColumnName, TableType]] =
         new IsNotAggregated[Source[ColumnName, TableType]] {}
 
-      implicit val LiteralIsNotAggregated: IsNotAggregated[Literal]                                             =
+      implicit val LiteralIsNotAggregated: IsNotAggregated[Literal] =
         new IsNotAggregated[Literal] {}
 
-      implicit val DerivedIsNotAggregated: IsNotAggregated[Derived]                                             =
+      implicit val DerivedIsNotAggregated: IsNotAggregated[Derived] =
         new IsNotAggregated[Derived] {}
 
-      implicit val Function0IsNotAggregated: IsNotAggregated[Function0]                                         =
+      implicit val Function0IsNotAggregated: IsNotAggregated[Function0] =
         new IsNotAggregated[Function0] {}
     }
 

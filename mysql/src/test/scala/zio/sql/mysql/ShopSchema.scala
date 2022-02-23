@@ -35,7 +35,7 @@ trait ShopSchema extends Jdbc { self =>
       (int("order_id") ++ int("product_id") ++ double("quantity") ++ double("unit_price"))
         .table(
           "order_details"
-        ) //todo fix #3 quantity should be int, unit price should be bigDecimal, numeric operators only support double ATM.
+        ) // todo fix #3 quantity should be int, unit price should be bigDecimal, numeric operators only support double ATM.
 
     val (fkOrderId, fkProductId, quantity, unitPrice) = orderDetails.columns
   }

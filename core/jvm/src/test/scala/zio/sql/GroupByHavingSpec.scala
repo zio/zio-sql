@@ -41,16 +41,13 @@ object AggregatedProductSchema {
     .from(productTable)
     .groupBy(price)
 
-  val hvng : Expr[Features.Source["price",productTable.TableType], productTable.TableType, Boolean] = (Sum(price) > 10).asInstanceOf
-  val hvng2 : Expr[Features.Source["amount",productTable.TableType], productTable.TableType, Boolean] = (amount > 10).asInstanceOf
-
   val e = Sum(price) > 10
 
-  def testF[F, A, B](value : Expr[F, A, B])(implicit in: Features.IsFullyAggregated[F]) = ???
+  def testF[F, A, B](value: Expr[F, A, B])(implicit in: Features.IsFullyAggregated[F]) = ???
 
-  def test2[F, A, B](value : Expr[F, A, B])(implicit i: Features.IsPartiallyAggregated[F]) : i.Unaggregated = ???
+  def test2[F, A, B](value: Expr[F, A, B])(implicit i: Features.IsPartiallyAggregated[F]): i.Unaggregated = ???
 
-  val q = test2(amount > 10)
+  val q  = test2(amount > 10)
   val q1 = test2(Count(amount) > 10)
 
   val qw = amount > 10
@@ -59,19 +56,19 @@ object AggregatedProductSchema {
   testF(Expr.literal(true))
 
   val orderValue = select(name ++ Sum(price))
-      .from(productTable)
-      .groupBy(name, price)
-      .having(Sum(price) > 10)
+    .from(productTable)
+    .groupBy(name, price)
+    .having(Sum(price) > 10)
 
   select(Sum(price))
-      .from(productTable)
-      .groupBy(name)
-      .having(Sum(price) > 10)
+    .from(productTable)
+    .groupBy(name)
+    .having(Sum(price) > 10)
 
   select(name ++ amount ++ price)
-      .from(productTable)
-      .groupBy(name, amount, price)
-      .having(Sum(price) > 10)
+    .from(productTable)
+    .groupBy(name, amount, price)
+    .having(Sum(price) > 10)
 
   select(amount)
     .from(productTable)
@@ -88,7 +85,7 @@ object AggregatedProductSchema {
     .groupBy(price)
     .having(Count(price) > 10)
 
-  // Following should not compile  
+  // Following should not compile
   // select(amount ++ price)
   //   .from(productTable)
   //   .groupBy(amount)
