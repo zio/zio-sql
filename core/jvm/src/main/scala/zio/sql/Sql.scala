@@ -10,7 +10,8 @@ trait Sql
     with ExprModule
     with TableModule
     with InsertModule
-    with UtilsModule {
+    with UtilsModule
+    with InsertUtilsModule {
   self =>
 
   /*

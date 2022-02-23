@@ -238,7 +238,7 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
       implicit def havingWasGroupedBy[F, GroupByF, Remainder](implicit
         i: Features.IsPartiallyAggregated.WithRemainder[F, Remainder],
         ev: GroupByF <:< Remainder
-      ): HavingIsSound[F, GroupByF]                                                                        = new HavingIsSound[F, GroupByF] {}
+      ): HavingIsSound[F, GroupByF] = new HavingIsSound[F, GroupByF] {}
     }
 
     type Select[F, Repr, Source, Head, Tail <: SelectionSet[Source]] = Subselect[F, Repr, Source, Source, Head, Tail]
@@ -256,7 +256,7 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
 
       type GroupByF <: Any
 
-      //TODO add F2: Features.IsNotAggregated constraint when https://github.com/zio/zio-sql/issues/583 is fixed
+      // TODO add F2: Features.IsNotAggregated constraint when https://github.com/zio/zio-sql/issues/583 is fixed
       def where[F2](
         whereExpr2: Expr[F2, Source, Boolean]
       ): Subselect[F, Repr, Source, Subsource, Head, Tail] =
@@ -271,7 +271,6 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
         os: Ordering[Expr[_, Source, Any]]*
       ): Subselect[F, Repr, Source, Subsource, Head, Tail] =
         copy(orderByExprs = self.orderByExprs ++ (o :: os.toList))
-
 
       def having[F2, Remainder](
         havingExpr2: Expr[F2, Source, Boolean]
