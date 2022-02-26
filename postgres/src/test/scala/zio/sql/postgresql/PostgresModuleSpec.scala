@@ -635,7 +635,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
       // TODO improve
       // https://github.com/zio/zio-sql/issues/585
       val insertNone = insertInto(persons)(personId ++ fName ++ lName ++ dob)
-        .values((UUID.randomUUID(), "Martin", "Harvey", None.asInstanceOf[Option[LocalDate]]))
+        .values((UUID.randomUUID(), "Martin", "Harvey", Option.empty[LocalDate]))
 
       val insertNone2 = insertInto(persons)(personId ++ fName ++ lName ++ dob)
         .values(personValue)
