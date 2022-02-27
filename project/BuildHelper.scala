@@ -9,16 +9,16 @@ import BuildInfoKeys._
 import scalafix.sbt.ScalafixPlugin.autoImport.scalafixSemanticdb
 
 object BuildHelper {
-  val SilencerVersion = "1.7.5"
-  val Scala212        = "2.12.14"
-  val Scala213        = "2.13.6"
+  val SilencerVersion = "1.7.8"
+  val Scala212        = "2.12.15"
+  val Scala213        = "2.13.8"
   val ScalaDotty      = "3.0.0-RC3"
 
   def buildInfoSettings(packageName: String) =
     Seq(
-      buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion, isSnapshot),
+      buildInfoKeys    := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion, isSnapshot),
       buildInfoPackage := packageName,
-      buildInfoObject := "BuildInfo"
+      buildInfoObject  := "BuildInfo"
     )
 
   private val stdOptions = Seq(
@@ -110,7 +110,7 @@ object BuildHelper {
       else
         Seq()
     },
-    Compile / doc / sources := {
+    Compile / doc / sources  := {
       val old = (Compile / doc / sources).value
       if (scalaVersion.value == ScalaDotty) {
         Nil
@@ -126,15 +126,6 @@ object BuildHelper {
         old
       }
     }
-  )
-
-  val scalaReflectSettings = Seq(
-    libraryDependencies ++=
-      (if (scalaVersion.value == ScalaDotty) Seq()
-       else
-         Seq(
-           "dev.zio" %%% "izumi-reflect" % "1.1.0"
-         ))
   )
 
   lazy val crossProjectSettings = Seq(
@@ -155,15 +146,15 @@ object BuildHelper {
   )
 
   def stdSettings(prjName: String) = Seq(
-    name := s"$prjName",
-    scalacOptions := stdOptions,
-    crossScalaVersions := Seq(Scala213, Scala212),
-    ThisBuild / scalaVersion := Scala213, //ScalaDotty,
-    scalacOptions := stdOptions ++ extraOptions(scalaVersion.value, optimize = !isSnapshot.value),
+    name                     := s"$prjName",
+    scalacOptions            := stdOptions,
+    crossScalaVersions       := Seq(Scala213, Scala212),
+    ThisBuild / scalaVersion := Scala213, // ScalaDotty,
+    scalacOptions            := stdOptions ++ extraOptions(scalaVersion.value, optimize = !isSnapshot.value),
     libraryDependencies ++= {
       if (scalaVersion.value == ScalaDotty)
         Seq(
-          "com.github.ghik"                 % s"silencer-lib_2.13.6" % "1.7.5"         % Provided
+          "com.github.ghik"                 % s"silencer-lib_2.13.6" % SilencerVersion % Provided
         )
       else
         Seq(
@@ -173,7 +164,7 @@ object BuildHelper {
     },
     Test / parallelExecution := true,
     incOptions ~= (_.withLogRecompileOnMacro(false)),
-    autoAPIMappings := true,
+    autoAPIMappings          := true,
     unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
   )
 
@@ -190,18 +181,6 @@ object BuildHelper {
           Seq(compilerPlugin(("org.scalamacros" % "paradise" % "2.1.1").cross(CrossVersion.full)))
         case _                       => Seq.empty
       }
-    }
-  )
-
-  def macroDefinitionSettings = Seq(
-    scalacOptions += "-language:experimental.macros",
-    libraryDependencies ++= {
-      if (scalaVersion.value == ScalaDotty) Seq()
-      else
-        Seq(
-          "org.scala-lang" % "scala-reflect"  % scalaVersion.value % "provided",
-          "org.scala-lang" % "scala-compiler" % scalaVersion.value % "provided"
-        )
     }
   )
 

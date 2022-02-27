@@ -1,9 +1,10 @@
 package zio.sql
 
 import zio.test.Assertion.anything
-import zio.test.{ assert, DefaultRunnableSpec }
+import zio.test.assert
+import zio.test.ZIOSpecDefault
 
-class LogicalOpsSpec extends DefaultRunnableSpec {
+class LogicalOpsSpec extends ZIOSpecDefault {
   import ProductSchema._
 
   def spec = suite("Relational operators")(

@@ -9,17 +9,17 @@ object Examples extends App with ShopSchema with SqlServerModule {
   import this.Orders._
   import this.Users._
 
-  //select first_name, last_name from users
+  // select first_name, last_name from users
   val basicSelect =
     select(fName ++ lName).from(users)
   println(renderRead(basicSelect))
 
-  //select first_name as first, last_name as last from users
+  // select first_name as first, last_name as last from users
   val basicSelectWithAliases =
     select((fName as "first") ++ (lName as "last")).from(users)
   println(renderRead(basicSelectWithAliases))
 
-  //select top 2 first_name, last_name from users order by last_name, first_name desc
+  // select top 2 first_name, last_name from users order by last_name, first_name desc
   val selectWithRefinements =
     select(fName ++ lName)
       .from(users)
@@ -32,7 +32,7 @@ object Examples extends App with ShopSchema with SqlServerModule {
   // execute(selectWithRefinements).to(Person)
   // execute(selectWithRefinements).to((_, _))
 
-  //delete from users where first_name = 'Terrence'
+  // delete from users where first_name = 'Terrence'
   val basicDelete =
     deleteFrom(users).where(fName === "Terrence")
   println(renderDelete(basicDelete))
@@ -42,7 +42,7 @@ object Examples extends App with ShopSchema with SqlServerModule {
       select(userId as "id") from users where (fName === "Fred") //todo fix issue #36
     }) */
 
-  //select first_name, last_name, order_date from users left join orders on users.usr_id = orders.usr_id
+  // select first_name, last_name, order_date from users left join orders on users.usr_id = orders.usr_id
   val basicJoin =
     select(fName ++ lName ++ orderDate).from(users.leftOuter(orders).on(fkUserId === userId))
   println(renderRead(basicJoin))
@@ -55,9 +55,9 @@ object Examples extends App with ShopSchema with SqlServerModule {
 
   val orderValues =
     select(
-      (Arbitrary(userId)) ++
-        (Arbitrary(fName)) ++
-        (Arbitrary(lName)) ++
+      userId ++
+        fName ++
+        lName ++
         (Sum(quantity * unitPrice) as "total_spend") ++
         Sum(Abs(quantity))
     )
@@ -68,7 +68,7 @@ object Examples extends App with ShopSchema with SqlServerModule {
           .leftOuter(orderDetails)
           .on(orderId === fkOrderId)
       )
-      .groupBy(userId, fName /*, lName */ ) //shouldn't compile without lName todo fix #38
+      .groupBy(userId, fName, lName)
   println(renderRead(orderValues))
 
   import scala.language.postfixOps

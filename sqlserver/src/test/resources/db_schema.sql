@@ -1,97 +1,51 @@
 create table customers
 (
-    id uuid not null primary key,
-    first_name varchar not null,
-    last_name varchar not null,
-    verified boolean not null,
-    dob date not null,
-    created_timestamp_string varchar not null,
-    created_timestamp timestamp with time zone default now()
+    id varchar(36) not null primary key,
+    first_name varchar(255) not null,
+    last_name varchar(255) not null,
+    verified bit not null,
+    dob date not null
 );
 
 create table orders
 (
-    id uuid not null primary key,
-    customer_id uuid not null,
+    id varchar(36) not null primary key,
+    customer_id varchar(36) not null,
     order_date date not null
 );
 
 create table products
 (
-    id uuid not null primary key,
-    name varchar,
-    description varchar not null,
-    image_url varchar
+    id varchar(36) not null primary key,
+    name varchar(255),
+    description varchar(255) not null,
+    image_url varchar(255)
 );
 
 create table product_prices
 (
-    product_id uuid not null,
+    product_id varchar(36) not null,
     effective date not null,
     price money not null
 );
 
 create table order_details
 (
-    order_id uuid not null,
-    product_id uuid not null,
-    quantity integer not null,
+    order_id varchar(36) not null,
+    product_id varchar(36) not null,
+    quantity int not null,
     unit_price money not null
 );
 
-create table persons
-(
-    id uuid not null primary key,
-    first_name varchar not null,
-    last_name varchar,
-    dob date
-);
 
 insert into customers
-    (id, first_name, last_name, verified, dob, created_timestamp_string, created_timestamp)
+    (id, first_name, last_name, verified, dob)
 values
-    ('60b01fc9-c902-4468-8d49-3c0f989def37', 'Ronald', 'Russell', true, '1983-01-05', '2020-11-21T19:10:25+00:00', '2020-11-21 19:10:25+00'),
-    ('f76c9ace-be07-4bf3-bd4c-4a9c62882e64', 'Terrence', 'Noel', true, '1999-11-02', '2020-11-21T15:10:25-04:00', '2020-11-21 15:10:25-04'),
-    ('784426a5-b90a-4759-afbb-571b7a0ba35e', 'Mila', 'Paterso', true, '1990-11-16', '2020-11-22T02:10:25+07:00', '2020-11-22 02:10:25+07'),
-    ('df8215a2-d5fd-4c6c-9984-801a1b3a2a0b', 'Alana', 'Murray', true, '1995-11-12', '2020-11-21T12:10:25-07:00', '2020-11-21 12:10:25-07'),
-    ('636ae137-5b1a-4c8c-b11f-c47c624d9cdc', 'Jose', 'Wiggins', false, '1987-03-23', '2020-11-21T19:10:25+00:00', '2020-11-21 19:10:25+00');
-
-insert into persons
-    (id, first_name, last_name, dob)
-values
-    ('60b01fc9-c902-4468-8d49-3c0f989def37', 'Ronald', 'Russell', '1983-01-05'),
-    ('f76c9ace-be07-4bf3-bd4c-4a9c62882e64', 'Terrence', 'Noel', null),
-    ('784426a5-b90a-4759-afbb-571b7a0ba35e', 'Mila', 'Paterso', '1990-11-16'),
-    ('df8215a2-d5fd-4c6c-9984-801a1b3a2a0b', 'Alana', 'Murray', '1995-11-12'),
-    ('636ae137-5b1a-4c8c-b11f-c47c624d9cdc', 'Jose', null,  null);
-
-insert into products
-    (id, name, description, image_url)
-values
-    ('7368ABF4-AED2-421F-B426-1725DE756895', 'Thermometer', 'Make sure you don''t have a fever (could be covid!)', 'https://images.pexels.com/photos/3987152/pexels-photo-3987152.jpeg?auto=compress&cs=tinysrgb&h=750&w=1260'),
-    ('4C770002-4C8F-455A-96FF-36A8186D5290', 'Slippers', 'Keep your feet warm this winter', 'https://images.pexels.com/photos/1989843/pexels-photo-1989843.jpeg?auto=compress&cs=tinysrgb&h=750&w=1260'),
-    ('05182725-F5C8-4FD6-9C43-6671E179BF55', 'Mouse Pad', 'Who uses these anyway?', 'https://images.pexels.com/photos/3944396/pexels-photo-3944396.jpeg?auto=compress&cs=tinysrgb&h=750&w=1260'),
-    ('105A2701-EF93-4E25-81AB-8952CC7D9DAA', 'Pants', 'Avoid a lawsuit, wear pants to work today!', 'https://images.pexels.com/photos/52518/jeans-pants-blue-shop-52518.jpeg?cs=srgb&dl=blue-jeans-clothes-shopping-52518.jpg&fm=jpg'),
-    ('F35B0053-855B-4145-ABE1-DC62BC1FDB96', 'Nail File', 'Keep those nails looking good', 'https://images.pexels.com/photos/3997373/pexels-photo-3997373.jpeg?auto=compress&cs=tinysrgb&h=750&w=1260'),
-    ('D5137D3A-894A-4109-9986-E982541B434F', 'Teddy Bear', 'Because sometimes you just need something to hug', 'https://images.pexels.com/photos/1019471/stuffed-bear-teddy-child-girl-1019471.jpeg?cs=srgb&dl=closeup-photography-of-brown-teddy-bear-1019471.jpg&fm=jpg');
-
-insert into product_prices
-    (product_id, effective, price)
-values
-    ('7368ABF4-AED2-421F-B426-1725DE756895', '2018-01-01', 10.00),
-    ('7368ABF4-AED2-421F-B426-1725DE756895', '2019-01-01', 11.00),
-    ('7368ABF4-AED2-421F-B426-1725DE756895', '2020-01-01', 12.00),
-    ('4C770002-4C8F-455A-96FF-36A8186D5290', '2018-01-01', 20.00),
-    ('4C770002-4C8F-455A-96FF-36A8186D5290', '2019-01-01', 22.00),
-    ('4C770002-4C8F-455A-96FF-36A8186D5290', '2020-01-01', 22.00),
-    ('05182725-F5C8-4FD6-9C43-6671E179BF55', '2018-01-01', 2.00),
-    ('105A2701-EF93-4E25-81AB-8952CC7D9DAA', '2018-01-01', 70.00),
-    ('105A2701-EF93-4E25-81AB-8952CC7D9DAA', '2019-01-01', 74.00),
-    ('105A2701-EF93-4E25-81AB-8952CC7D9DAA', '2020-01-01', 80.00),
-    ('F35B0053-855B-4145-ABE1-DC62BC1FDB96', '2018-01-01', 5.00),
-    ('F35B0053-855B-4145-ABE1-DC62BC1FDB96', '2019-01-01', 6.00),
-    ('D5137D3A-894A-4109-9986-E982541B434F', '2018-01-01', 50.00),
-    ('D5137D3A-894A-4109-9986-E982541B434F', '2020-01-01', 55.00);
+    ('60b01fc9-c902-4468-8d49-3c0f989def37', 'Ronald', 'Russell', 1, '1983-01-05'),
+    ('f76c9ace-be07-4bf3-bd4c-4a9c62882e64', 'Terrence', 'Noel', 1, '1999-11-02'),
+    ('784426a5-b90a-4759-afbb-571b7a0ba35e', 'Mila', 'Paterso', 1, '1990-11-16'),
+    ('df8215a2-d5fd-4c6c-9984-801a1b3a2a0b', 'Alana', 'Murray', 1, '1995-11-12'),
+    ('636ae137-5b1a-4c8c-b11f-c47c624d9cdc', 'Jose', 'Wiggins', 0, '1987-03-23');
 
 insert into orders
     (id, customer_id, order_date)
@@ -121,6 +75,34 @@ values
     ('5011d206-8eff-42c4-868e-f1a625e1f186', '636ae137-5b1a-4c8c-b11f-c47c624d9cdc', '2019-01-23'),
     ('0a48ffb0-ec61-4147-af56-fc4dbca8de0a', 'f76c9ace-be07-4bf3-bd4c-4a9c62882e64', '2019-05-14'),
     ('5883cb62-d792-4ee3-acbc-fe85b6baa998', '784426a5-b90a-4759-afbb-571b7a0ba35e', '2020-04-30');
+
+insert into products
+    (id, name, description, image_url)
+values
+    ('7368ABF4-AED2-421F-B426-1725DE756895', 'Thermometer', 'Make sure you don''t have a fever (could be covid!)', 'https://images.pexels.com/photos/3987152/pexels-photo-3987152.jpeg?auto=compress&cs=tinysrgb&h=750&w=1260'),
+    ('4C770002-4C8F-455A-96FF-36A8186D5290', 'Slippers', 'Keep your feet warm this winter', 'https://images.pexels.com/photos/1989843/pexels-photo-1989843.jpeg?auto=compress&cs=tinysrgb&h=750&w=1260'),
+    ('05182725-F5C8-4FD6-9C43-6671E179BF55', 'Mouse Pad', 'Who uses these anyway?', 'https://images.pexels.com/photos/3944396/pexels-photo-3944396.jpeg?auto=compress&cs=tinysrgb&h=750&w=1260'),
+    ('105A2701-EF93-4E25-81AB-8952CC7D9DAA', 'Pants', 'Avoid a lawsuit, wear pants to work today!', 'https://images.pexels.com/photos/52518/jeans-pants-blue-shop-52518.jpeg?cs=srgb&dl=blue-jeans-clothes-shopping-52518.jpg&fm=jpg'),
+    ('F35B0053-855B-4145-ABE1-DC62BC1FDB96', 'Nail File', 'Keep those nails looking good', 'https://images.pexels.com/photos/3997373/pexels-photo-3997373.jpeg?auto=compress&cs=tinysrgb&h=750&w=1260'),
+    ('D5137D3A-894A-4109-9986-E982541B434F', 'Teddy Bear', 'Because sometimes you just need something to hug', 'https://images.pexels.com/photos/1019471/stuffed-bear-teddy-child-girl-1019471.jpeg?cs=srgb&dl=closeup-photography-of-brown-teddy-bear-1019471.jpg&fm=jpg');
+
+insert into product_prices
+    (product_id, effective, price)
+values
+    ('7368ABF4-AED2-421F-B426-1725DE756895', '2018-01-01', 10.00),
+    ('7368ABF4-AED2-421F-B426-1725DE756895', '2019-01-01', 11.00),
+    ('7368ABF4-AED2-421F-B426-1725DE756895', '2020-01-01', 12.00),
+    ('4C770002-4C8F-455A-96FF-36A8186D5290', '2018-01-01', 20.00),
+    ('4C770002-4C8F-455A-96FF-36A8186D5290', '2019-01-01', 22.00),
+    ('4C770002-4C8F-455A-96FF-36A8186D5290', '2020-01-01', 22.00),
+    ('05182725-F5C8-4FD6-9C43-6671E179BF55', '2018-01-01', 2.00),
+    ('105A2701-EF93-4E25-81AB-8952CC7D9DAA', '2018-01-01', 70.00),
+    ('105A2701-EF93-4E25-81AB-8952CC7D9DAA', '2019-01-01', 74.00),
+    ('105A2701-EF93-4E25-81AB-8952CC7D9DAA', '2020-01-01', 80.00),
+    ('F35B0053-855B-4145-ABE1-DC62BC1FDB96', '2018-01-01', 5.00),
+    ('F35B0053-855B-4145-ABE1-DC62BC1FDB96', '2019-01-01', 6.00),
+    ('D5137D3A-894A-4109-9986-E982541B434F', '2018-01-01', 50.00),
+    ('D5137D3A-894A-4109-9986-E982541B434F', '2020-01-01', 55.00);
 
 insert into order_details
     (order_id, product_id, quantity, unit_price)

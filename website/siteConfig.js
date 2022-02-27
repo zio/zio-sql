@@ -21,8 +21,8 @@ const users = [
 ];
 
 const siteConfig = {
-  title: 'zio-sql',
-  tagline: 'TODO: Tagline',
+  title: 'ZIO SQL',
+  tagline: 'Type-safe, composable SQL for ZIO applications',
   url: 'https://zio.github.io',
   baseUrl: '/zio-sql/',
 
@@ -33,6 +33,7 @@ const siteConfig = {
   headerLinks: [
     {doc: 'overview/overview_index', label: 'Overview'},
     {doc: 'usecases/usecases_index', label: 'Use Cases'},
+    {doc: 'resources/resources_index', label: 'Resources'},
     {href: 'api/index.html', label: 'API'},
     {doc: 'about/about_index', label: 'About'}
   ],
