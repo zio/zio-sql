@@ -6,9 +6,9 @@ import java.time.{ OffsetDateTime, OffsetTime, ZoneId, ZoneOffset }
 import zio.Chunk
 
 trait JdbcInternalModule { self: Jdbc =>
-  // TODO: Only support indexes!
+
   private[sql] def extractColumn[A](
-    column: Either[Int, String],
+    columnIndex: Int,
     resultSet: ResultSet,
     typeTag: TypeTag[A],
     nonNull: Boolean = true
@@ -17,121 +17,154 @@ trait JdbcInternalModule { self: Jdbc =>
 
     val metaData = resultSet.getMetaData()
 
-    def tryDecode[A](decoder: => A)(implicit expectedType: TypeTag[A]): Either[DecodingError, A] =
+    def tryDecode[A](decoder: => Option[A])(implicit expectedType: TypeTag[A]): Either[DecodingError, A] =
       if (resultSet.isClosed()) Left(DecodingError.Closed)
       else {
-        val columnExists =
-          column.fold(
-            index => index >= 1 || index <= metaData.getColumnCount(),
-            name =>
-              try {
-                val _ = resultSet.findColumn(name)
-                true
-              } catch { case _: SQLException => false }
-          )
+        val columnExists = columnIndex >= 1 || columnIndex <= metaData.getColumnCount()
 
-        if (!columnExists) Left(DecodingError.MissingColumn(column))
+        if (!columnExists) Left(DecodingError.MissingColumn(columnIndex))
         else
           try {
             val value = decoder
 
-            if (value == null && nonNull) Left(DecodingError.UnexpectedNull(column))
-            else Right(value)
+            value match {
+              case Some(value) => Right(value)
+              case None        =>
+                // TODO following would not be sound - e.g. by outer join any column can be null
+                // if (nonNull)
+                //   Left(DecodingError.UnexpectedNull(column))
+                // else
+                Right(null.asInstanceOf[A])
+            }
           } catch {
             case _: SQLException =>
-              lazy val columnNames = (1 to metaData.getColumnCount()).toVector.map(metaData.getColumnName(_))
-              val columnIndex      = column.fold(index => index, name => columnNames.indexOf(name) + 1)
-
               Left(DecodingError.UnexpectedType(expectedType, metaData.getColumnType(columnIndex)))
           }
       }
 
     typeTag match {
-      case TBigDecimal         => tryDecode[BigDecimal](column.fold(resultSet.getBigDecimal(_), resultSet.getBigDecimal(_)))
-      case TBoolean            => tryDecode[Boolean](column.fold(resultSet.getBoolean(_), resultSet.getBoolean(_)))
-      case TByte               => tryDecode[Byte](column.fold(resultSet.getByte(_), resultSet.getByte(_)))
+
+      case TBigDecimal         =>
+        // could not do tryDecode[BigDecimal](Option(resultSet.getBigDecimal(columnIndex))) because of
+        // suspicious application of an implicit view (math.this.BigDecimal.javaBigDecimal2bigDecimal) in the argument to Option.apply
+        val result = resultSet.getBigDecimal(columnIndex)
+        if (result == null)
+          Right(null.asInstanceOf[A])
+        else {
+          Right(BigDecimal.javaBigDecimal2bigDecimal(result).asInstanceOf[A])
+        }
+      case TBoolean            => tryDecode[Boolean](Option(resultSet.getBoolean(columnIndex)))
+      case TByte               => tryDecode[Byte](Option(resultSet.getByte(columnIndex)))
       case TByteArray          =>
-        tryDecode[Chunk[Byte]](Chunk.fromArray(column.fold(resultSet.getBytes(_), resultSet.getBytes(_))))
-      case TChar               => tryDecode[Char](column.fold(resultSet.getString(_), resultSet.getString(_)).charAt(0))
-      case TDouble             => tryDecode[Double](column.fold(resultSet.getDouble(_), resultSet.getDouble(_)))
-      case TFloat              => tryDecode[Float](column.fold(resultSet.getFloat(_), resultSet.getFloat(_)))
+        tryDecode[Chunk[Byte]](Option(resultSet.getBytes(columnIndex)).map(Chunk.fromArray(_)))
+      case TChar               => tryDecode[Char](Option(resultSet.getString(columnIndex)).map(_.charAt(0)))
+      case TDouble             => tryDecode[Double](Option(resultSet.getDouble(columnIndex)))
+      case TFloat              => tryDecode[Float](Option(resultSet.getFloat(columnIndex)))
       case TInstant            =>
-        tryDecode[java.time.Instant](column.fold(resultSet.getTimestamp(_), resultSet.getTimestamp(_)).toInstant())
-      case TInt                => tryDecode[Int](column.fold(resultSet.getInt(_), resultSet.getInt(_)))
+        tryDecode[java.time.Instant](Option(resultSet.getTimestamp(columnIndex)).map(_.toInstant()))
+      case TInt                => tryDecode[Int](Option(resultSet.getInt(columnIndex)))
       case TLocalDate          =>
         tryDecode[java.time.LocalDate](
-          column.fold(resultSet.getTimestamp(_), resultSet.getTimestamp(_)).toLocalDateTime().toLocalDate()
+          Option(resultSet.getTimestamp(columnIndex)).map(_.toLocalDateTime().toLocalDate())
         )
       case TLocalDateTime      =>
-        tryDecode[java.time.LocalDateTime](
-          column.fold(resultSet.getTimestamp(_), resultSet.getTimestamp(_)).toLocalDateTime()
-        )
+        tryDecode[java.time.LocalDateTime](Option(resultSet.getTimestamp(columnIndex)).map(_.toLocalDateTime()))
       case TLocalTime          =>
         tryDecode[java.time.LocalTime](
-          column.fold(resultSet.getTimestamp(_), resultSet.getTimestamp(_)).toLocalDateTime().toLocalTime()
+          Option(resultSet.getTimestamp(columnIndex)).map(_.toLocalDateTime().toLocalTime())
         )
-      case TLong               => tryDecode[Long](column.fold(resultSet.getLong(_), resultSet.getLong(_)))
+      case TLong               => tryDecode[Long](Option(resultSet.getLong(columnIndex)))
       case TOffsetDateTime     =>
         tryDecode[OffsetDateTime](
-          column
-            .fold(resultSet.getTimestamp(_), resultSet.getTimestamp(_))
-            .toLocalDateTime()
-            .atOffset(ZoneOffset.UTC)
+          Option(resultSet.getTimestamp(columnIndex)).map(_.toLocalDateTime().atOffset(ZoneOffset.UTC))
         )
       case TOffsetTime         =>
         tryDecode[OffsetTime](
-          column
-            .fold(resultSet.getTime(_), resultSet.getTime(_))
-            .toLocalTime
-            .atOffset(ZoneOffset.UTC)
+          Option(resultSet.getTime(columnIndex)).map(_.toLocalTime.atOffset(ZoneOffset.UTC))
         )
-      case TShort              => tryDecode[Short](column.fold(resultSet.getShort(_), resultSet.getShort(_)))
-      case TString             => tryDecode[String](column.fold(resultSet.getString(_), resultSet.getString(_)))
+      case TShort              => tryDecode[Short](Option(resultSet.getShort(columnIndex)))
+      case TString             => tryDecode[String](Option(resultSet.getString(columnIndex)))
       case TUUID               =>
         tryDecode[java.util.UUID](
-          java.util.UUID.fromString(column.fold(resultSet.getString(_), resultSet.getString(_)))
+          Option(resultSet.getString(columnIndex)).map(java.util.UUID.fromString(_))
         )
       case TZonedDateTime      =>
-        //2013-07-15 08:15:23.5+00
+        // 2013-07-15 08:15:23.5+00
         tryDecode[java.time.ZonedDateTime](
-          java.time.ZonedDateTime
-            .ofInstant(
-              column.fold(resultSet.getTimestamp(_), resultSet.getTimestamp(_)).toInstant,
-              ZoneId.of(ZoneOffset.UTC.getId)
+          Option(resultSet.getTimestamp(columnIndex))
+            .map(_.toInstant())
+            .map(instant =>
+              java.time.ZonedDateTime
+                .ofInstant(
+                  instant,
+                  ZoneId.of(ZoneOffset.UTC.getId)
+                )
             )
         )
-      case TDialectSpecific(t) => t.decode(column, resultSet)
-      case t @ Nullable()      => extractColumn(column, resultSet, t.typeTag, false).map(Option(_))
+      case TDialectSpecific(t) => t.decode(columnIndex, resultSet)
+      case t @ Nullable()      =>
+        val _ = nonNull
+        extractColumn(columnIndex, resultSet, t.typeTag, false).map(Option(_))
     }
   }
 
   private[sql] def getColumns(read: Read[_]): Vector[TypeTag[_]] =
     read match {
-      case Read.Mapped(read, _) => getColumns(read)
-
-      case Read.Select(selection, _, _, _, _, _, _, _) =>
+      case Read.Mapped(read, _)                           => getColumns(read)
+      case Read.Subselect(selection, _, _, _, _, _, _, _) =>
         selection.value.selectionsUntyped.toVector.map(_.asInstanceOf[ColumnSelection[_, _]]).map {
           case t @ ColumnSelection.Constant(_, _) => t.typeTag
           case t @ ColumnSelection.Computed(_, _) => t.typeTag
         }
-      case Read.Union(left, _, _)                      => getColumns(left)
-      case v @ Read.Literal(_)                         => Vector(v.typeTag)
+      case Read.Union(left, _, _)                         => getColumns(left)
+      case v @ Read.Literal(_)                            => scala.collection.immutable.Vector(v.typeTag)
     }
 
   private[sql] def unsafeExtractRow[A](
     resultSet: ResultSet,
     schema: Vector[(TypeTag[_], Int)]
   ): Either[DecodingError, A] = {
-    val result: Either[DecodingError, Any] = Right(())
+    val result: Either[DecodingError, List[Any]] = Right(List())
 
     schema
       .foldRight(result) {
         case (_, err @ Left(_))            => err // TODO: Accumulate errors
         case ((typeTag, index), Right(vs)) =>
-          extractColumn(Left(index), resultSet, typeTag) match {
+          extractColumn(index, resultSet, typeTag) match {
             case Left(err) => Left(err)
-            case Right(v)  => Right((v, vs))
+            case Right(v)  => Right(v :: vs)
           }
+      }
+      .map {
+        case List(a)                                                                => (a)
+        case List(a, b)                                                             => (a, b)
+        case List(a, b, c)                                                          => (a, b, c)
+        case List(a, b, c, d)                                                       => (a, b, c, d)
+        case List(a, b, c, d, e)                                                    => (a, b, c, d, e)
+        case List(a, b, c, d, e, f)                                                 => (a, b, c, d, e, f)
+        case List(a, b, c, d, e, f, g)                                              => (a, b, c, d, e, f, g)
+        case List(a, b, c, d, e, f, g, h)                                           => (a, b, c, d, e, f, g, h)
+        case List(a, b, c, d, e, f, g, h, i)                                        => (a, b, c, d, e, f, g, h, i)
+        case List(a, b, c, d, e, f, g, h, i, j)                                     => (a, b, c, d, e, f, g, h, i, j)
+        case List(a, b, c, d, e, f, g, h, i, j, k)                                  => (a, b, c, d, e, f, g, h, i, j, k)
+        case List(a, b, c, d, e, f, g, h, i, j, k, l)                               => (a, b, c, d, e, f, g, h, i, j, k, l)
+        case List(a, b, c, d, e, f, g, h, i, j, k, l, m)                            => (a, b, c, d, e, f, g, h, i, j, k, l, m)
+        case List(a, b, c, d, e, f, g, h, i, j, k, l, m, n)                         => (a, b, c, d, e, f, g, h, i, j, k, l, m, n)
+        case List(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o)                      => (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o)
+        case List(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p)                   => (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p)
+        case List(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q)                =>
+          (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q)
+        case List(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r)             =>
+          (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r)
+        case List(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s)          =>
+          (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s)
+        case List(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t)       =>
+          (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t)
+        case List(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u)    =>
+          (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u)
+        case List(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v) =>
+          (a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v)
+        case _                                                                      => ()
       }
       .map(_.asInstanceOf[A])
   }

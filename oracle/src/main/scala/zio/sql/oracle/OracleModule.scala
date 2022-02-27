@@ -1,6 +1,7 @@
 package zio.sql.oracle
 
 import zio.sql.Jdbc
+import zio.schema.Schema
 
 trait OracleModule extends Jdbc { self =>
 
@@ -9,8 +10,16 @@ trait OracleModule extends Jdbc { self =>
   }
 
   def buildExpr[A, B](expr: self.Expr[_, A, B], builder: StringBuilder): Unit = expr match {
-    case Expr.Source(tableName, column)                                                       =>
-      val _ = builder.append(tableName).append(".").append(column.name)
+    case Expr.Subselect(subselect)                                                            =>
+      builder.append(" (")
+      builder.append(renderRead(subselect))
+      val _ = builder.append(") ")
+    case Expr.Source(table, column)                                                           =>
+      (table, column.name) match {
+        case (tableName: TableName, Some(columnName)) =>
+          val _ = builder.append(tableName).append(".").append(columnName)
+        case _                                        => ()
+      }
     case Expr.Unary(base, op)                                                                 =>
       val _ = builder.append(" ").append(op.symbol)
       buildExpr(base, builder)
@@ -29,7 +38,7 @@ trait OracleModule extends Jdbc { self =>
       buildExpr(value, builder)
       buildReadString(set, builder)
     case Expr.Literal(value)                                                                  =>
-      val _ = builder.append(value.toString) //todo fix escaping
+      val _ = builder.append(value.toString) // todo fix escaping
     case Expr.AggregationCall(param, aggregation)                                             =>
       builder.append(aggregation.name.name)
       builder.append("(")
@@ -124,13 +133,15 @@ trait OracleModule extends Jdbc { self =>
     read match {
       case Read.Mapped(read, _) => buildReadString(read, builder)
 
-      case read0 @ Read.Select(_, _, _, _, _, _, _, _) =>
+      case read0 @ Read.Subselect(_, _, _, _, _, _, _, _) =>
         object Dummy {
           type F
-          type A
-          type B <: SelectionSet[A]
+          type Repr
+          type Source
+          type Head
+          type Tail <: SelectionSet[Source]
         }
-        val read = read0.asInstanceOf[Read.Select[Dummy.F, Dummy.A, Dummy.B]]
+        val read = read0.asInstanceOf[Read.Select[Dummy.F, Dummy.Repr, Dummy.Source, Dummy.Head, Dummy.Tail]]
         import read._
 
         builder.append("SELECT ")
@@ -145,10 +156,10 @@ trait OracleModule extends Jdbc { self =>
             builder.append(" WHERE ")
             buildExpr(whereExpr, builder)
         }
-        groupBy match {
-          case _ :: _ =>
+        groupByExprs match {
+          case Read.ExprSet.ExprCons(_, _) =>
             builder.append(" GROUP BY ")
-            buildExprList(groupBy, builder)
+            buildExprList(groupByExprs, builder)
 
             havingExpr match {
               case Expr.Literal(true) => ()
@@ -156,12 +167,12 @@ trait OracleModule extends Jdbc { self =>
                 builder.append(" HAVING ")
                 buildExpr(havingExpr, builder)
             }
-          case Nil    => ()
+          case Read.ExprSet.NoExpr         => ()
         }
-        orderBy match {
+        orderByExprs match {
           case _ :: _ =>
             builder.append(" ORDER BY ")
-            buildOrderingList(orderBy, builder)
+            buildOrderingList(orderByExprs, builder)
           case Nil    => ()
         }
         // NOTE: Limit doesn't exist in oracle 11g (>=12), for now replacing it with rownum keyword of oracle
@@ -185,20 +196,20 @@ trait OracleModule extends Jdbc { self =>
         buildReadString(right, builder)
 
       case Read.Literal(values) =>
-        val _ = builder.append(" (").append(values.mkString(",")).append(") ") //todo fix needs escaping
+        val _ = builder.append(" (").append(values.mkString(",")).append(") ") // todo fix needs escaping
     }
 
-  def buildExprList(expr: List[Expr[_, _, _]], builder: StringBuilder): Unit               =
+  def buildExprList(expr: Read.ExprSet[_], builder: StringBuilder): Unit                   =
     expr match {
-      case head :: tail =>
+      case Read.ExprSet.ExprCons(head, tail) =>
         buildExpr(head, builder)
-        tail match {
-          case _ :: _ =>
+        tail.asInstanceOf[Read.ExprSet[_]] match {
+          case Read.ExprSet.ExprCons(_, _) =>
             builder.append(", ")
-            buildExprList(tail, builder)
-          case Nil    => ()
+            buildExprList(tail.asInstanceOf[Read.ExprSet[_]], builder)
+          case Read.ExprSet.NoExpr         => ()
         }
-      case Nil          => ()
+      case Read.ExprSet.NoExpr               => ()
     }
   def buildOrderingList(expr: List[Ordering[Expr[_, _, _]]], builder: StringBuilder): Unit =
     expr match {
@@ -239,7 +250,7 @@ trait OracleModule extends Jdbc { self =>
   def buildColumnSelection[A, B](columnSelection: ColumnSelection[A, B], builder: StringBuilder): Unit =
     columnSelection match {
       case ColumnSelection.Constant(value, name) =>
-        builder.append(value.toString()) //todo fix escaping
+        builder.append(value.toString()) // todo fix escaping
         name match {
           case Some(name) =>
             val _ = builder.append(" AS ").append(name)
@@ -254,14 +265,20 @@ trait OracleModule extends Jdbc { self =>
                 val _ = builder.append(" AS ").append(name)
               case _                                      => ()
             }
-          case _          => () //todo what do we do if we don't have a name?
+          case _          => () // todo what do we do if we don't have a name?
         }
     }
   def buildTable(table: Table, builder: StringBuilder): Unit                                           =
     table match {
-      //The outer reference in this type test cannot be checked at run time?!
+      case Table.DialectSpecificTable(_)           => ???
+      // The outer reference in this type test cannot be checked at run time?!
       case sourceTable: self.Table.Source          =>
         val _ = builder.append(sourceTable.name)
+      case Table.DerivedTable(read, name)          =>
+        builder.append(" ( ")
+        builder.append(renderRead(read.asInstanceOf[Read[_]]))
+        builder.append(" ) ")
+        val _ = builder.append(name)
       case Table.Joined(joinType, left, right, on) =>
         buildTable(left, builder)
         builder.append(joinType match {
@@ -283,6 +300,8 @@ trait OracleModule extends Jdbc { self =>
   }
 
   override def renderDelete(delete: self.Delete[_]): String = ???
+
+  override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = ???
 
   override def renderUpdate(update: self.Update[_]): String = ???
 }

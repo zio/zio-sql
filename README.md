@@ -20,7 +20,7 @@ Type-safe DSL | :white_check_mark:
 Running Reads | :heavy_check_mark:
 Running Deletes | :heavy_check_mark:
 Running Updates | :heavy_check_mark:
-Running Inserts | 
+Running Inserts | :heavy_check_mark:
 Transactions | :white_check_mark:
 Connection pool | :white_check_mark:
 
