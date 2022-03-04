@@ -21,7 +21,7 @@ object TestContainer {
         val c = new PostgreSQLContainer(
           dockerImageNameOverride = Option(imageName).map(DockerImageName.parse)
         ).configure { a =>
-          a.withInitScript("shop_schema.sql")
+          a.withInitScript("db_schema.sql")
           ()
         }
         c.start()
