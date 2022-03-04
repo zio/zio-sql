@@ -463,6 +463,31 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
+    test("handle isTrue to 1 bit type") {
+
+      import AggregationDef._
+
+      val query =
+        select(Count(customerId))
+          .from(customers)
+          .where(verified.isTrue)
+
+      val result = execute(query).runHead.some
+
+      assertM(result)(equalTo(4L))
+    },
+    test("handle isNotTrue to 0 bit type") {
+      import AggregationDef._
+
+      val query =
+        select(Count(customerId))
+          .from(customers)
+          .where(verified.isNotTrue)
+
+      val result = execute(query).runHead.some
+
+      assertM(result)(equalTo(1L))
+    },
     test("Can select from joined tables (inner join)") {
       val query = select(fName ++ lName ++ orderDate).from(customers.join(orders).on(fkCustomerId === customerId))
 
@@ -505,6 +530,13 @@ object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
       } yield assert(r)(hasSameElementsDistinct(expected))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    test("Can delete from single table with a condition") {
+      val query = deleteFrom(customers).where(verified.isNotTrue)
+
+      val result = execute(query)
+
+      assertM(result)(equalTo(1))
     }
   ) @@ sequential
 
