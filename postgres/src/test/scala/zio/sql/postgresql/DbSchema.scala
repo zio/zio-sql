@@ -2,7 +2,7 @@ package zio.sql.postgresql
 
 import zio.sql.Jdbc
 
-trait ShopSchema extends Jdbc { self =>
+trait DbSchema extends Jdbc { self =>
   import self.ColumnSet._
 
   object Persons {
@@ -73,5 +73,26 @@ trait ShopSchema extends Jdbc { self =>
       .asTable("derived")
 
     val orderDateDerived = orderDateDerivedTable.columns
+  }
+
+  object Cities {
+    case class CityId(id: Int)
+    case class City(cityId: CityId, name: String, population: Int, area: Float, link: Option[String])
+
+    import ColumnSet._
+
+    val city = (int("id") ++ string("name") ++
+      int("population") ++ float("area") ++ string("link")).table("city")
+
+    val (cityId, cityName, population, area, link) = city.columns
+
+    val metroSystem = (int("id") ++ int("city_id") ++ string("name") ++ int("daily_ridership")).table("metro_system")
+
+    val (metroSystemId, cityIdFk, metroSystemName, dailyRidership) = metroSystem.columns
+
+    val metroLine =
+      (int("id") ++ int("system_id") ++ string("name") ++ int("station_count") ++ int("track_type")).table("metro_line")
+
+    val (metroLineId, systemId, metroLineName, stationCount, trackType) = metroLine.columns
   }
 }

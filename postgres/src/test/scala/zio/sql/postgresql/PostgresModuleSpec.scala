@@ -2,7 +2,7 @@ package zio.sql.postgresql
 
 import zio._
 import zio.test.Assertion._
-import zio.test.TestAspect.sequential
+import zio.test.TestAspect._
 import zio.test._
 
 import java.time._
@@ -11,7 +11,7 @@ import scala.language.postfixOps
 import zio.schema.Schema
 import java.time.format.DateTimeFormatter
 
-object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
+object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
 
   import AggregationDef._
   import Customers._
@@ -609,16 +609,41 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
       val query = select(fName ++ lName ++ dob)
         .from(persons)
 
+      final case class Person(id: UUID, firstName: String, lastName: String, dateOfBirth: Option[LocalDate])
+
+      implicit val localDateSchema = Schema.option[LocalDate](
+        Schema.primitive[LocalDate](zio.schema.StandardType.LocalDateType(DateTimeFormatter.ISO_DATE))
+      )
+
+      implicit val personSchema = Schema.CaseClass4[UUID, String, String, Option[LocalDate], Person](
+        Schema.Field("id", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
+        Schema.Field("firstName", Schema.primitive[String](zio.schema.StandardType.StringType)),
+        Schema.Field("lastName", Schema.primitive[String](zio.schema.StandardType.StringType)),
+        Schema.Field("dateOfBirth", localDateSchema),
+        Person.apply,
+        _.id,
+        _.firstName,
+        _.lastName,
+        _.dateOfBirth
+      )
+
+      val personValue = Person(UUID.randomUUID(), "Charles", "Harvey", None)
+
       val insertSome = insertInto(persons)(personId ++ fName ++ lName ++ dob)
         .values((UUID.randomUUID(), "Charles", "Dent", Option(LocalDate.of(2022, 1, 31))))
-      // TODO improve on inserting nulls
-      // we don't allow inserting null on non nullable columns -> There is no schema or dynamic value for nulls
+
+      // TODO improve
+      // https://github.com/zio/zio-sql/issues/585
       val insertNone = insertInto(persons)(personId ++ fName ++ lName ++ dob)
-        .values((UUID.randomUUID(), "Martin", "Harvey", Option(null.asInstanceOf[java.time.LocalDate])))
+        .values((UUID.randomUUID(), "Martin", "Harvey", Option.empty[LocalDate]))
+
+      val insertNone2 = insertInto(persons)(personId ++ fName ++ lName ++ dob)
+        .values(personValue)
 
       val result = for {
         _       <- execute(insertSome)
         _       <- execute(insertNone)
+        _       <- execute(insertNone2)
         persons <- execute(query).runCollect
       } yield (persons.toList)
 
@@ -629,8 +654,45 @@ object PostgresModuleSpec extends PostgresRunnableSpec with ShopSchema {
         ("Alana", "Murray", Some(LocalDate.of(1995, 11, 12))),
         ("Jose", null, None),
         ("Charles", "Dent", Some(LocalDate.of(2022, 1, 31))),
-        ("Martin", "Harvey", None)
+        ("Martin", "Harvey", None),
+        ("Charles", "Harvey", None)
       )
+
+      assertM(result)(equalTo(expected))
+    },
+    test("in joined tables, columns of the same name from different table are treated as different columns") {
+      import Cities._
+      import Ordering._
+
+      /**
+       *          SELECT ms.name, c.name, COUNT(ml.id) as line_count
+       *            FROM metro_line as ml
+       *            JOIN metro_system as ms on ml.system_id = ms.id
+       *            JOIN city AS c ON ms.city_id = c.id
+       *          GROUP BY ms.name, c.name
+       *          ORDER BY line_count DESC
+       */
+      val lineCount = (Count(metroLineId) as "line_count")
+
+      val complexQuery = select(metroSystemName ++ cityName ++ lineCount)
+        .from(
+          metroLine
+            .join(metroSystem)
+            .on(metroSystemId === systemId)
+            .join(city)
+            .on(cityIdFk === cityId)
+        )
+        .groupBy(metroSystemName, cityName)
+        .orderBy(Desc(lineCount))
+
+      val result = execute(complexQuery).runCollect
+
+      val expected =
+        Chunk(
+          ("Métro de Paris", "Paris", 16L),
+          ("Chongqing Metro", "Chongqing", 4L),
+          ("Metro Warszawskie", "Warszawa", 2L)
+        )
 
       assertM(result)(equalTo(expected))
     }
