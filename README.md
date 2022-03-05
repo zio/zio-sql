@@ -1,8 +1,8 @@
 # ZIO SQL
 
-| Project Stage | CI | Snapshot | Discord |
-| --- | --- | --- | --- |
-| [![Project stage][Stage]][Stage-Page] | ![CI][badge-ci] | [![Snapshot Artifacts][Badge-SonatypeSnapshots]][Link-SonatypeSnapshots] | [![badge-discord]][link-discord] |
+| Project Stage | CI | Release | Snapshot | Discord |
+| --- | --- | --- | --- | --- |
+| [![Project stage][Stage]][Stage-Page] | ![CI][badge-ci] | [![Release Artifacts][Badge-SonatypeReleases]][Link-SonatypeReleases] | [![Snapshot Artifacts][Badge-SonatypeSnapshots]][Link-SonatypeSnapshots] | [![badge-discord]][link-discord] |
 
 ## Current status: pre-0.1 (no release yet)
 
@@ -54,8 +54,10 @@ For the JDBC module:
 ZIO SQL does not offer Language Integrated Queries (LINQ) or similar functionality. It is intended only as a data model for representing SQL queries and an accompanying lightweight JDBC-based executor.
 
 [badge-ci]: https://github.com/zio/zio-sql/workflows/CI/badge.svg
+[Badge-SonatypeReleases]: https://img.shields.io/nexus/r/https/oss.sonatype.org/dev.zio/zio-sql_2.13.svg "Sonatype Releases"
 [Badge-SonatypeSnapshots]: https://img.shields.io/nexus/s/https/oss.sonatype.org/dev.zio/zio-sql_2.13.svg "Sonatype Snapshots"
 [badge-discord]: https://img.shields.io/discord/629491597070827530?logo=discord "chat on discord"
+[Link-SonatypeReleases]: https://oss.sonatype.org/content/repositories/releases/dev/zio/zio-sql_2.13/ "Sonatype Releases"
 [Link-SonatypeSnapshots]: https://oss.sonatype.org/content/repositories/snapshots/dev/zio/zio-sql_2.13/ "Sonatype Snapshots"
 [link-discord]: https://discord.gg/2ccFBr4 "Discord"
 [Stage]: https://img.shields.io/badge/Project%20Stage-Experimental-yellow.svg
