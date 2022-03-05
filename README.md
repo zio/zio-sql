@@ -1,7 +1,7 @@
 # ZIO SQL
 
-| Project Stage | CI | Discord |
-| --- | --- | --- |
+| Project Stage | CI | Snapshot | Discord |
+| --- | --- | --- | --- |
 | [![Project stage][Stage]][Stage-Page] | ![CI][badge-ci] | [![Snapshot Artifacts][Badge-SonatypeSnapshots]][Link-SonatypeSnapshots] | [![badge-discord]][link-discord] |
 
 ## Current status: pre-0.1 (no release yet)
