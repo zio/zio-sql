@@ -4,7 +4,7 @@
 | --- | --- | --- | --- | --- |
 | [![Project stage][Stage]][Stage-Page] | ![CI][badge-ci] | [![Release Artifacts][Badge-SonatypeReleases]][Link-SonatypeReleases] | [![Snapshot Artifacts][Badge-SonatypeSnapshots]][Link-SonatypeSnapshots] | [![badge-discord]][link-discord] |
 
-## Current status: pre-0.1 (no release yet)
+## Current status: Non-production release
 
 ### Progress report towards 0.1
 
@@ -31,7 +31,7 @@ Feature | PostgreSQL | SQL Server | Oracle | MySQL
 Render Read | :white_check_mark: | :white_check_mark: | | :white_check_mark: |
 Render Delete | :white_check_mark: | :white_check_mark: | | :white_check_mark: | 
 Render Update | :white_check_mark: | | | :white_check_mark: |
-Render Insert | | | |
+Render Insert | :white_check_mark: | | |
 Functions     | :white_check_mark: | | | :white_check_mark: |
 Types         | | | |
 Operators     | | | |
@@ -60,7 +60,7 @@ ZIO SQL does not offer Language Integrated Queries (LINQ) or similar functionali
 [Link-SonatypeReleases]: https://oss.sonatype.org/content/repositories/releases/dev/zio/zio-sql_2.13/ "Sonatype Releases"
 [Link-SonatypeSnapshots]: https://oss.sonatype.org/content/repositories/snapshots/dev/zio/zio-sql_2.13/ "Sonatype Snapshots"
 [link-discord]: https://discord.gg/2ccFBr4 "Discord"
-[Stage]: https://img.shields.io/badge/Project%20Stage-Experimental-yellow.svg
+[Stage]: https://img.shields.io/badge/Project%20Stage-Development-yellowgreen.svg
 [Stage-Page]: https://github.com/zio/zio/wiki/Project-Stages
 
 ## Setup
