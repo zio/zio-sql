@@ -16,7 +16,7 @@
 Feature | Progress
 :------------ | :-------------
 Type-safe schema | :heavy_check_mark:
-Type-safe DSL | :white_check_mark:
+Type-safe DSL | :heavy_check_mark:
 Running Reads | :heavy_check_mark:
 Running Deletes | :heavy_check_mark:
 Running Updates | :heavy_check_mark:
