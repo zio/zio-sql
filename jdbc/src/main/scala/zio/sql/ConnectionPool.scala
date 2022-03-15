@@ -6,6 +6,8 @@ import java.sql._
 import zio.stm._
 import zio._
 
+import zio.sql.ConnectionPool.QueueItem
+
 trait ConnectionPool {
 
   /**
@@ -17,6 +19,9 @@ trait ConnectionPool {
 }
 object ConnectionPool {
 
+  case class QueueItem(promise: TPromise[Nothing, ResettableConnection],
+                       interrupted: TRef[Boolean])
+
   /**
    * A live layer for `ConnectionPool` that creates a JDBC connection pool
    * from the specified connection pool settings.
@@ -25,7 +30,7 @@ object ConnectionPool {
     (for {
       config    <- ZManaged.service[ConnectionPoolConfig]
       clock     <- ZManaged.service[Clock]
-      queue     <- TQueue.bounded[TPromise[Nothing, ResettableConnection]](config.queueCapacity).commit.toManaged
+      queue     <- TQueue.bounded[QueueItem](config.queueCapacity).commit.toManaged
       available <- TRef.make(List.empty[ResettableConnection]).commit.toManaged
       pool       = ConnectionPoolLive(queue, available, config, clock)
       _         <- pool.initialize.toManaged
@@ -43,7 +48,7 @@ object ConnectionPool {
  *    take it away from them.
  */
 final case class ConnectionPoolLive(
-  queue: TQueue[TPromise[Nothing, ResettableConnection]],
+  queue: TQueue[QueueItem],
   available: TRef[List[ResettableConnection]],
   config: ConnectionPoolConfig,
   clock: Clock
@@ -96,14 +101,17 @@ final case class ConnectionPoolLive(
   def connection: Managed[Exception, Connection] =
     ZManaged
       .acquireReleaseWith(tryTake.commit.flatMap {
-        case Left(promise) =>
-          ZIO.interruptible(promise.await.commit).onInterrupt {
-            promise.poll.flatMap {
-              case Some(Right(connection)) =>
-                ZSTM.succeed(release(connection))
-
-              case _ => ZSTM.succeed(ZIO.unit)
-            }.commit.flatten
+        case Left(handle) =>
+          ZIO.interruptible(handle.promise.await.commit).onInterrupt {
+            (for {
+              res <- handle.promise.poll
+              _   <- res match {
+                case Some(Right(connection)) =>
+                  ZSTM.succeed(release(connection))
+                case _ =>
+                  handle.interrupted.set(true)
+              }
+            } yield ()).commit
           }
 
         case Right(connection) =>
@@ -126,29 +134,38 @@ final case class ConnectionPoolLive(
   private def release(connection: ResettableConnection): UIO[Any] =
     ZIO.uninterruptible {
       tryRelease(connection).commit.flatMap {
-        case Some(promise) => promise.succeed(connection).commit
-        case None          => UIO.unit
+        case Some(handle) =>
+          handle.interrupted.get.commit.flatMap { interrupted =>
+            if (interrupted) {
+              release(connection)
+            } else {
+              handle.promise.succeed(connection).commit
+            }
+          }
+        case None => UIO.unit
       }
     }
 
   private def tryRelease(
     connection: ResettableConnection
-  ): STM[Nothing, Option[TPromise[Nothing, ResettableConnection]]] =
+  ): STM[Nothing, Option[QueueItem]] =
     for {
       empty  <- queue.isEmpty
       result <- if (empty) available.update(connection :: _) *> STM.none
                 else queue.take.map(Some(_))
     } yield result
 
-  private val tryTake: STM[Nothing, Either[TPromise[Nothing, ResettableConnection], ResettableConnection]] =
+  private val tryTake: STM[Nothing, Either[QueueItem, ResettableConnection]] =
     for {
       headOption <- available.get.map(_.headOption)
       either     <- headOption match {
                       case None =>
                         for {
                           promise <- TPromise.make[Nothing, ResettableConnection]
-                          _       <- queue.offer(promise)
-                        } yield Left(promise)
+                          ref     <- TRef.make[Boolean](false)
+                          item    = QueueItem(promise, ref)
+                          _       <- queue.offer(item)
+                        } yield Left(item)
 
                       case Some(connection) =>
                         available.update(_.tail) *> ZSTM.succeed(Right(connection))
