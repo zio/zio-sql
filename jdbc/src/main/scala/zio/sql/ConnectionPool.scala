@@ -135,12 +135,10 @@ final case class ConnectionPoolLive(
     ZIO.uninterruptible {
       tryRelease(connection).commit.flatMap {
         case Some(handle) =>
-          handle.interrupted.get.commit.flatMap { interrupted =>
-            if (interrupted) {
-              release(connection)
-            } else {
-              handle.promise.succeed(connection).commit
-            }
+          handle.interrupted.get.tap { interrupted =>
+            ZSTM.when(!interrupted)(handle.promise.succeed(connection))
+          }.commit.flatMap { interrupted =>
+            ZIO.when(interrupted)(release(connection))
           }
         case None => UIO.unit
       }
