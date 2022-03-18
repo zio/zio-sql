@@ -19,8 +19,7 @@ trait ConnectionPool {
 }
 object ConnectionPool {
 
-  case class QueueItem(promise: TPromise[Nothing, ResettableConnection],
-                       interrupted: TRef[Boolean])
+  case class QueueItem(promise: TPromise[Nothing, ResettableConnection], interrupted: TRef[Boolean])
 
   /**
    * A live layer for `ConnectionPool` that creates a JDBC connection pool
@@ -106,11 +105,11 @@ final case class ConnectionPoolLive(
             (for {
               res <- handle.promise.poll
               _   <- res match {
-                case Some(Right(connection)) =>
-                  ZSTM.succeed(release(connection))
-                case _ =>
-                  handle.interrupted.set(true)
-              }
+                       case Some(Right(connection)) =>
+                         ZSTM.succeed(release(connection))
+                       case _                       =>
+                         handle.interrupted.set(true)
+                     }
             } yield ()).commit
           }
 
@@ -140,7 +139,7 @@ final case class ConnectionPoolLive(
           }.commit.flatMap { interrupted =>
             ZIO.when(interrupted)(release(connection))
           }
-        case None => UIO.unit
+        case None         => UIO.unit
       }
     }
 
@@ -161,7 +160,7 @@ final case class ConnectionPoolLive(
                         for {
                           promise <- TPromise.make[Nothing, ResettableConnection]
                           ref     <- TRef.make[Boolean](false)
-                          item    = QueueItem(promise, ref)
+                          item     = QueueItem(promise, ref)
                           _       <- queue.offer(item)
                         } yield Left(item)
 
