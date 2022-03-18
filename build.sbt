@@ -147,12 +147,14 @@ lazy val jdbc = project
   .settings(buildInfoSettings("zio.sql.jdbc"))
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio" %% "zio"                   % zioVersion,
-      "dev.zio" %% "zio-streams"           % zioVersion,
-      "dev.zio" %% "zio-schema"            % zioSchemaVersion,
-      "dev.zio" %% "zio-schema-derivation" % zioSchemaVersion,
-      "dev.zio" %% "zio-test"              % zioVersion % Test,
-      "dev.zio" %% "zio-test-sbt"          % zioVersion % Test
+      "dev.zio"           %% "zio"                             % zioVersion,
+      "dev.zio"           %% "zio-streams"                     % zioVersion,
+      "dev.zio"           %% "zio-schema"                      % zioSchemaVersion,
+      "dev.zio"           %% "zio-schema-derivation"           % zioSchemaVersion,
+      "dev.zio"           %% "zio-test"                        % zioVersion                 % Test,
+      "dev.zio"           %% "zio-test-sbt"                    % zioVersion                 % Test,
+      "org.postgresql"     % "postgresql"                      % "42.3.3"                   % Test,
+      "com.dimafeng"      %% "testcontainers-scala-postgresql" % testcontainersScalaVersion % Test
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
