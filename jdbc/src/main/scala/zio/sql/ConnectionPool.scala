@@ -100,15 +100,15 @@ final case class ConnectionPoolLive(
   def connection: Managed[Exception, Connection] =
     ZManaged
       .acquireReleaseWith(tryTake.commit.flatMap {
-        case Left(handle) =>
-          ZIO.interruptible(handle.promise.await.commit).onInterrupt {
+        case Left(queueItem) =>
+          ZIO.interruptible(queueItem.promise.await.commit).onInterrupt {
             (for {
-              res <- handle.promise.poll
+              res <- queueItem.promise.poll
               _   <- res match {
                        case Some(Right(connection)) =>
                          ZSTM.succeed(release(connection))
                        case _                       =>
-                         handle.interrupted.set(true)
+                         queueItem.interrupted.set(true)
                      }
             } yield ()).commit
           }
