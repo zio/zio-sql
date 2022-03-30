@@ -11,4 +11,4 @@ addSbtPlugin("com.github.sbt"                    % "sbt-ci-release"            %
 addSbtPlugin("com.github.cb372"                  % "sbt-explicit-dependencies" % "0.2.16")
 addSbtPlugin("com.thoughtworks.sbt-api-mappings" % "sbt-api-mappings"          % "3.0.0")
 addSbtPlugin("ch.epfl.scala"                     % "sbt-scalafix"              % "0.9.34")
-addSbtPlugin("io.github.davidgregory084"         % "sbt-tpolecat"              % "0.1.22")
+addSbtPlugin("io.github.davidgregory084"         % "sbt-tpolecat"              % "0.2.0")
