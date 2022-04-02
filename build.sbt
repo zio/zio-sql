@@ -27,7 +27,7 @@ addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck"
 val zioVersion                 = "2.0.0-RC2"
 val zioSchemaVersion           = "0.1.9"
 val testcontainersVersion      = "1.16.3"
-val testcontainersScalaVersion = "0.40.3"
+val testcontainersScalaVersion = "0.40.4"
 
 lazy val startPostgres = taskKey[Unit]("Start up Postgres")
 startPostgres := startService(Database.Postgres, streams.value)
@@ -136,7 +136,9 @@ lazy val jdbc = project
   .settings(
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio-test"              % zioVersion % Test,
-      "dev.zio" %% "zio-test-sbt"          % zioVersion % Test
+      "dev.zio" %% "zio-test-sbt"          % zioVersion % Test,
+      "org.postgresql" % "postgresql"                      % "42.3.3"                   % Test,
+      "com.dimafeng"  %% "testcontainers-scala-postgresql" % testcontainersScalaVersion % Test
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
