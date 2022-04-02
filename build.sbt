@@ -135,8 +135,8 @@ lazy val jdbc = project
   .settings(buildInfoSettings("zio.sql.jdbc"))
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio" %% "zio-test"              % zioVersion % Test,
-      "dev.zio" %% "zio-test-sbt"          % zioVersion % Test,
+      "dev.zio"       %% "zio-test"                        % zioVersion                 % Test,
+      "dev.zio"       %% "zio-test-sbt"                    % zioVersion                 % Test,
       "org.postgresql" % "postgresql"                      % "42.3.3"                   % Test,
       "com.dimafeng"  %% "testcontainers-scala-postgresql" % testcontainersScalaVersion % Test
     )
@@ -168,12 +168,12 @@ lazy val oracle = project
   .settings(buildInfoSettings("zio.sql.oracle"))
   .settings(
     libraryDependencies ++= Seq(
-      "org.testcontainers"       % "testcontainers"                      % testcontainersVersion      % Test,
-      "org.testcontainers"       % "database-commons"                    % testcontainersVersion      % Test,
-      "org.testcontainers"       % "oracle-xe"                           % testcontainersVersion      % Test,
-      "org.testcontainers"       % "jdbc"                                % testcontainersVersion      % Test,
-      "com.oracle.database.jdbc" % "ojdbc8"                              % "21.5.0.0"                 % Test,
-      "com.dimafeng"             % "testcontainers-scala-oracle-xe_2.13" % testcontainersScalaVersion % Test
+      "org.testcontainers"       % "testcontainers"                 % testcontainersVersion      % Test,
+      "org.testcontainers"       % "database-commons"               % testcontainersVersion      % Test,
+      "org.testcontainers"       % "oracle-xe"                      % testcontainersVersion      % Test,
+      "org.testcontainers"       % "jdbc"                           % testcontainersVersion      % Test,
+      "com.oracle.database.jdbc" % "ojdbc8"                         % "21.5.0.0"                 % Test,
+      "com.dimafeng"            %% "testcontainers-scala-oracle-xe" % testcontainersScalaVersion % Test
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))

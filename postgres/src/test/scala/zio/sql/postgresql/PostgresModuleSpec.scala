@@ -523,7 +523,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
       // TODO we need schema for scala.math.BigDecimal. Probably directly in zio-schema ?
       implicit val bigDecimalSchema: Schema[BigDecimal] =
         Schema[java.math.BigDecimal]
-            .transform(bigDec => new BigDecimal(bigDec, java.math.MathContext.DECIMAL128), _.bigDecimal)
+          .transform(bigDec => new BigDecimal(bigDec, java.math.MathContext.DECIMAL128), _.bigDecimal)
 
       implicit val orderDetailsRowSchema = Schema.CaseClass4[UUID, UUID, Int, BigDecimal, OrderDetailsRow](
         Schema.Field("orderId", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
@@ -628,8 +628,8 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
       val insertSome = insertInto(persons)(personId ++ fName ++ lName ++ dob)
         .values((UUID.randomUUID(), "Charles", "Dent", Some(LocalDate.of(2022, 1, 31))))
 
-       val insertNone = insertInto(persons)(personId ++ fName ++ lName ++ dob)
-         .values((UUID.randomUUID(), "Martin", "Harvey", None))
+      val insertNone = insertInto(persons)(personId ++ fName ++ lName ++ dob)
+        .values((UUID.randomUUID(), "Martin", "Harvey", None))
 
       val insertNone2 = insertInto(persons)(personId ++ fName ++ lName ++ dob)
         .values(personValue)

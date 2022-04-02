@@ -25,10 +25,11 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule with In
   )
 
   implicit def convertOptionToSome[A](implicit op: Schema[Option[A]]): Schema[Some[A]] =
-    op.transformOrFail[Some[A]]({
-      case Some(a) => Right(Some(a))
-      case None    => Left("cannot encode Right")
-    },
+    op.transformOrFail[Some[A]](
+      {
+        case Some(a) => Right(Some(a))
+        case None    => Left("cannot encode Right")
+      },
       someA => Right(someA)
     )
 }
