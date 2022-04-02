@@ -522,12 +522,8 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
 
       // TODO we need schema for scala.math.BigDecimal. Probably directly in zio-schema ?
       implicit val bigDecimalSchema: Schema[BigDecimal] =
-        Schema.Transform(
-          Schema.primitive[java.math.BigDecimal](zio.schema.StandardType.BigDecimalType),
-          (bigDec: java.math.BigDecimal) => Right(new BigDecimal(bigDec, java.math.MathContext.DECIMAL128)),
-          bigDec => Right(bigDec.bigDecimal),
-          Chunk.empty
-        )
+        Schema[java.math.BigDecimal]
+            .transform(bigDec => new BigDecimal(bigDec, java.math.MathContext.DECIMAL128), _.bigDecimal)
 
       implicit val orderDetailsRowSchema = Schema.CaseClass4[UUID, UUID, Int, BigDecimal, OrderDetailsRow](
         Schema.Field("orderId", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
@@ -630,12 +626,10 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
       val personValue = Person(UUID.randomUUID(), "Charles", "Harvey", None)
 
       val insertSome = insertInto(persons)(personId ++ fName ++ lName ++ dob)
-        .values((UUID.randomUUID(), "Charles", "Dent", Option(LocalDate.of(2022, 1, 31))))
+        .values((UUID.randomUUID(), "Charles", "Dent", Some(LocalDate.of(2022, 1, 31))))
 
-      // TODO improve
-      // https://github.com/zio/zio-sql/issues/585
-      val insertNone = insertInto(persons)(personId ++ fName ++ lName ++ dob)
-        .values((UUID.randomUUID(), "Martin", "Harvey", Option.empty[LocalDate]))
+       val insertNone = insertInto(persons)(personId ++ fName ++ lName ++ dob)
+         .values((UUID.randomUUID(), "Martin", "Harvey", None))
 
       val insertNone2 = insertInto(persons)(personId ++ fName ++ lName ++ dob)
         .values(personValue)
