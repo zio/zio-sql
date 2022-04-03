@@ -3,12 +3,9 @@ package zio.sql
 import com.dimafeng.testcontainers.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
 import zio._
-
 import java.util.Properties
 
-trait TestContainer { self =>
-
-  val poolSize = 10
+trait PostgresqlTestContainer extends JdbcRunnableSpec {
 
   private def connProperties(user: String, password: String): Properties = {
     val props = new Properties
@@ -23,17 +20,18 @@ trait TestContainer { self =>
         ZIO.attemptBlocking {
           val c = new PostgreSQLContainer(
             dockerImageNameOverride = Option("postgres:alpine").map(DockerImageName.parse)
-          )
+          ).configure { a =>
+            a.withInitScript("db_schema.sql")
+            ()
+          }
           c.start()
           c
         }
       } { container =>
         ZIO.attemptBlocking(container.stop()).orDie
-      }.map(c => 
-        ConnectionPoolConfig(
-            url = c.jdbcUrl,
-            properties = connProperties(c.username, c.password),
-            poolSize = self.poolSize
-        ))
+      }.map(c => ConnectionPoolConfig(c.jdbcUrl, connProperties(c.username, c.password)))
+
     }
+
+
 }

@@ -9,7 +9,7 @@ import zio.schema.Schema
 trait TransactionModule { self: Jdbc =>
   private[sql] sealed case class Txn(connection: Connection, sqlDriverCore: SqlDriverCore)
 
-  sealed case class ZTransaction[-R: ZTag: IsNotIntersection, +E, +A](unwrap: ZManaged[(R, Txn), E, A]) { self =>
+  sealed case class ZTransaction[-R: ZTag: IsNotIntersection, +E, +A](unwrap: ZIO[(R, Txn), E, A]) { self =>
     def map[B](f: A => B): ZTransaction[R, E, B] =
       ZTransaction(self.unwrap.map(f))
 
@@ -20,23 +20,22 @@ trait TransactionModule { self: Jdbc =>
 
     private[sql] def run(txn: Txn)(implicit
       ev: E <:< Exception
-    ): ZManaged[R, Exception, A] =
+    ): ZIO[R, Throwable, A] =
       for {
-        r <- ZManaged.environment[R]
+        r <- ZIO.environment[R]
         a <- self.unwrap
                .mapError(ev)
                .provideService((r.get, txn))
+               .absorb
                .tapBoth(
                  _ =>
                    ZIO
                      .attemptBlocking(txn.connection.rollback())
-                     .refineToOrDie[Exception]
-                     .toManaged,
+                     .refineToOrDie[Exception],
                  _ =>
                    ZIO
                      .attemptBlocking(txn.connection.commit())
                      .refineToOrDie[Exception]
-                     .toManaged
                )
       } yield a
 
@@ -106,11 +105,11 @@ trait TransactionModule { self: Jdbc =>
 
     def fromEffect[R: ZTag: IsNotIntersection, E, A](zio: ZIO[R, E, A]): ZTransaction[R, E, A] =
       ZTransaction(for {
-        tuple <- ZManaged.service[(R, Txn)]
-        a     <- zio.provideService((tuple._1)).toManaged
+        tuple <- ZIO.service[(R, Txn)]
+        a     <- zio.provideService((tuple._1))
       } yield a)
 
     private val txn: ZTransaction[Any, Nothing, Txn] =
-      ZTransaction(ZManaged.service[(Any, Txn)].map(_._2))
+      ZTransaction(ZIO.service[(Any, Txn)].map(_._2))
   }
 }
