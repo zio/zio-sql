@@ -9,7 +9,7 @@ import zio.test.ZIOSpecDefault
 
 object HelloWorld {
 
-  def sayHello: ZIO[Console, Throwable, Unit] =
+  def sayHello: IO[Throwable, Unit] =
     Console.printLine("Hello, World!")
 }
 
