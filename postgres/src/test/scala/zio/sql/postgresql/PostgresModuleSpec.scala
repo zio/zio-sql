@@ -695,6 +695,13 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
         )
 
       assertM(result)(equalTo(expected))
+    },
+    test("update rows") {
+      import Persons._
+
+      val query = update(persons).set(fName, "Charlie").where(fName === "Charles")
+
+      assertM(execute(query))(equalTo(2))
     }
   ) @@ sequential
 }
