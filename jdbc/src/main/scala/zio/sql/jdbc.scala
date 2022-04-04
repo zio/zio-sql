@@ -12,19 +12,19 @@ trait Jdbc extends zio.sql.Sql with TransactionModule with JdbcInternalModule wi
 
     def read[A](read: Read[A]): Stream[Exception, A]
 
-    def transact[R, A](tx: ZTransaction[R, Exception, A]): ZManaged[R, Exception, A]
+    def transact[R, A](tx: ZTransaction[R, Exception, A]): ZIO[R with Scope, Exception, A]
 
     def insert[A: zio.schema.Schema](insert: Insert[_, A]): IO[Exception, Int]
   }
   object SqlDriver {
     val live: ZLayer[ConnectionPool, Nothing, SqlDriver] =
-      (SqlDriverLive(_)).toLayer
+      ZLayer(ZIO.serviceWith[ConnectionPool](SqlDriverLive(_)))
   }
 
-  def execute[R <: SqlDriver: ZTag: IsNotIntersection, A](
+  def execute[R <: SqlDriver: ZTag, A](
     tx: ZTransaction[R, Exception, A]
-  ): ZManaged[R, Exception, A] =
-    ZManaged.serviceWithManaged(_.transact(tx))
+  ): ZIO[R with Scope, Exception, A] =
+    ZIO.serviceWithZIO[R](_.transact(tx))
 
   def execute[A](read: Read[A]): ZStream[SqlDriver, Exception, A] =
     ZStream.serviceWithStream(_.read(read))
