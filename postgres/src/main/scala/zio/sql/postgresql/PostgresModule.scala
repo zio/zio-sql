@@ -550,6 +550,10 @@ trait PostgresModule extends Jdbc { self =>
       }
     }
 
+    /*
+     * PostgreSQL doesn't allow for `tableName.columnName = value` format in update statement,
+     * instead requires `columnName = value`.
+     */
     private[zio] def renderSetLhs[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit =
       expr match {
         case Expr.Source(_, column) =>
