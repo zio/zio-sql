@@ -18,7 +18,7 @@ object TestContainer {
     }
 
   def postgres(
-    imageName: String = "mcr.microsoft.com/mssql/server:2017-latest"
+    imageName: String = "mcr.microsoft.com/mssql/server:2019-latest"
   ): ZIO[Scope, Throwable, MSSQLServerContainer] =
     ZIO.acquireRelease {
       ZIO.attemptBlocking {
