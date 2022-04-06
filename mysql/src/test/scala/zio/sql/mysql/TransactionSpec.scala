@@ -15,9 +15,11 @@ object TransactionSpec extends MysqlRunnableSpec with ShopSchema {
     test("Transaction is returning the last value") {
       val query = select(customerId) from customers
 
-      val result = execute(
-        ZTransaction(query) *> ZTransaction(query)
-      ).use(ZIO.succeed(_))
+      val result = ZIO.scoped {
+        execute(
+          ZTransaction(query) *> ZTransaction(query)
+        )
+      }
 
       val assertion =
         result
@@ -30,9 +32,11 @@ object TransactionSpec extends MysqlRunnableSpec with ShopSchema {
     test("Transaction is failing") {
       val query = select(customerId) from customers
 
-      val result = execute(
-        ZTransaction(query) *> ZTransaction.fail(new Exception("failing")) *> ZTransaction(query)
-      ).mapError(_.getMessage).use(ZIO.succeed(_))
+      val result = ZIO.scoped {
+        execute(
+          ZTransaction(query) *> ZTransaction.fail(new Exception("failing")) *> ZTransaction(query)
+        ).mapError(_.getMessage)
+      }
 
       assertM(result.flip)(equalTo("failing")).mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
@@ -40,13 +44,15 @@ object TransactionSpec extends MysqlRunnableSpec with ShopSchema {
       val query       = select(customerId) from customers
       val deleteQuery = deleteFrom(customers).where(verified === false)
 
-      val result = (for {
-        allCustomersCount       <- execute(query).map(identity[UUID](_)).runCount.toManaged
-        _                       <- execute(
-                                     ZTransaction(deleteQuery) *> ZTransaction.fail(new Exception("this is error")) *> ZTransaction(query)
-                                   ).catchAllCause(_ => ZManaged.succeed("continue"))
-        remainingCustomersCount <- execute(query).map(identity[UUID](_)).runCount.toManaged
-      } yield (allCustomersCount, remainingCustomersCount)).use(ZIO.succeed(_))
+      val result = ZIO.scoped {
+        for {
+          allCustomersCount       <- execute(query).map(identity[UUID](_)).runCount
+          _                       <- execute(
+                                       ZTransaction(deleteQuery) *> ZTransaction.fail(new Exception("this is error")) *> ZTransaction(query)
+                                     ).catchAllCause(_ => ZIO.succeed("continue"))
+          remainingCustomersCount <- execute(query).map(identity[UUID](_)).runCount
+        } yield (allCustomersCount, remainingCustomersCount)
+      }
 
       assertM(result)(equalTo((5L, 5L))).mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
@@ -56,11 +62,13 @@ object TransactionSpec extends MysqlRunnableSpec with ShopSchema {
 
       val tx = ZTransaction(deleteQuery)
 
-      val result = (for {
-        allCustomersCount       <- execute(query).map(identity[UUID](_)).runCount.toManaged
-        _                       <- execute(tx)
-        remainingCustomersCount <- execute(query).map(identity[UUID](_)).runCount.toManaged
-      } yield (allCustomersCount, remainingCustomersCount)).use(ZIO.succeed(_))
+      val result = ZIO.scoped {
+        for {
+          allCustomersCount       <- execute(query).map(identity[UUID](_)).runCount
+          _                       <- execute(tx)
+          remainingCustomersCount <- execute(query).map(identity[UUID](_)).runCount
+        } yield (allCustomersCount, remainingCustomersCount)
+      }
 
       assertM(result)(equalTo((5L, 4L))).mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
