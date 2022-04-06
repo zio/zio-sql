@@ -24,10 +24,10 @@ addCommandAlias("fmtOnce", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("fmt", "fmtOnce;fmtOnce")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
-val zioVersion                 = "2.0.0-RC2"
+val zioVersion                 = "2.0.0-RC4+28-9c41a0f4-SNAPSHOT"
 val zioSchemaVersion           = "0.1.8"
 val testcontainersVersion      = "1.16.3"
-val testcontainersScalaVersion = "0.40.4"
+val testcontainersScalaVersion = "0.40.5"
 
 lazy val startPostgres = taskKey[Unit]("Start up Postgres")
 startPostgres := startService(Database.Postgres, streams.value)
@@ -85,7 +85,9 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
       "dev.zio" %% "zio-schema-derivation" % zioSchemaVersion,
       "dev.zio" %% "zio-test"              % zioVersion % Test,
       "dev.zio" %% "zio-test-sbt"          % zioVersion % Test
-    )
+    ),
+    dependencyOverrides += "dev.zio" %% "zio" % zioVersion,
+    resolvers += Resolver.sonatypeRepo("snapshots")
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
 
@@ -137,7 +139,9 @@ lazy val driver = project
       "dev.zio" %% "zio-schema-derivation" % zioSchemaVersion,
       "dev.zio" %% "zio-test"              % zioVersion % Test,
       "dev.zio" %% "zio-test-sbt"          % zioVersion % Test
-    )
+    ),
+    dependencyOverrides += "dev.zio" %% "zio" % zioVersion,
+    resolvers += Resolver.sonatypeRepo("snapshots")
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
 

@@ -11,8 +11,8 @@ trait JdbcRunnableSpec extends ZIOSpecDefault with Jdbc {
 
   val poolConfigLayer: ZLayer[Any, Throwable, ConnectionPoolConfig]
 
-  final lazy val jdbcLayer: ZLayer[TestEnvironment, TestFailure[Any], SqlDriver] =
-    ZLayer.makeSome[TestEnvironment, SqlDriver](
+  final lazy val jdbcLayer: ZLayer[Any, TestFailure[Any], SqlDriver] =
+    ZLayer.make[SqlDriver](
       poolConfigLayer.orDie,
       ConnectionPool.live.orDie,
       SqlDriver.live

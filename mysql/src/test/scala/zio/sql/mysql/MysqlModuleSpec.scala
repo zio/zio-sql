@@ -8,7 +8,7 @@ import zio.test._
 import zio.test.Assertion._
 import scala.language.postfixOps
 
-object MysqlModuleTest extends MysqlRunnableSpec with ShopSchema {
+object MysqlModuleSpec extends MysqlRunnableSpec with ShopSchema {
 
   import this.Customers._
   import this.Orders._
@@ -160,6 +160,12 @@ object MysqlModuleTest extends MysqlRunnableSpec with ShopSchema {
       } yield assert(r)(hasSameElementsDistinct(expected))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    test("Can update rows") {
+      val query = update(customers).set(fName, "Roland").where(fName === "Ronald")
+
+      println(renderUpdate(query))
+      assertM(execute(query))(equalTo(1))
     }
   )
 
