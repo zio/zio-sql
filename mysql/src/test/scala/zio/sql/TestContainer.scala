@@ -8,15 +8,17 @@ import zio._
 object TestContainer {
 
   def container[C <: SingleContainer[_]: Tag: IsNotIntersection](c: C): ZLayer[Any, Throwable, C] =
-    ZManaged.acquireReleaseWith {
-      ZIO.attemptBlocking {
-        c.start()
-        c
-      }
-    }(container => ZIO.attemptBlocking(container.stop()).orDie).toLayer
+    ZLayer.scoped {
+      ZIO.acquireRelease {
+        ZIO.attemptBlocking {
+          c.start()
+          c
+        }
+      }(container => ZIO.attemptBlocking(container.stop()).refineToOrDie)
+    }
 
-  def mysql(imageName: String = "mysql"): ZManaged[Any, Throwable, MySQLContainer] =
-    ZManaged.acquireReleaseWith {
+  def mysql(imageName: String = "mysql"): ZIO[Scope, Throwable, MySQLContainer] =
+    ZIO.acquireRelease {
       ZIO.attemptBlocking {
         val c = new MySQLContainer(
           mysqlImageVersion = Option(imageName).map(DockerImageName.parse)
