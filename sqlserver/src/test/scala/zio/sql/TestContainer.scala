@@ -8,17 +8,19 @@ import zio._
 object TestContainer {
 
   def container[C <: SingleContainer[_]: Tag](c: C): ZLayer[Any, Throwable, C] =
-    ZManaged.acquireReleaseWith {
-      ZIO.attemptBlocking {
-        c.start()
-        c
-      }
-    }(container => ZIO.attemptBlocking(container.stop()).orDie).toLayer
+    ZLayer.scoped {
+      ZIO.acquireRelease {
+        ZIO.attemptBlocking {
+          c.start()
+          c
+        }
+      }(container => ZIO.attemptBlocking(container.stop()).refineToOrDie)
+    }
 
   def postgres(
     imageName: String = "mcr.microsoft.com/mssql/server:2017-latest"
-  ): ZManaged[Any, Throwable, MSSQLServerContainer] =
-    ZManaged.acquireReleaseWith {
+  ): ZIO[Scope, Throwable, MSSQLServerContainer] =
+    ZIO.acquireRelease {
       ZIO.attemptBlocking {
         val c = new MSSQLServerContainer(
           dockerImageName = DockerImageName.parse(imageName)
