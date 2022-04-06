@@ -1,7 +1,7 @@
 package zio.sql
 
-import zio.{ durationInt, Clock, Promise, ZIO, ZLayer }
-import zio.test.TestAspect.{ sequential, timeout }
+import zio.{ durationInt, Promise, ZIO, ZLayer }
+import zio.test.TestAspect.{ sequential, timeout, withLiveClock }
 import zio.test.{ TestEnvironment, _ }
 
 import java.util.Properties
@@ -18,16 +18,17 @@ object ConnectionPoolSpec extends ZIOSpecDefault {
   }
 
   val poolConfigLayer: ZLayer[Any, Throwable, ConnectionPoolConfig] =
-    TestContainer
-      .postgres()
-      .map(a =>
-        ConnectionPoolConfig(
-          url = a.jdbcUrl,
-          properties = connProperties(a.username, a.password),
-          poolSize = poolSize
+    ZLayer.scoped {
+      TestContainer
+        .postgres()
+        .map(a =>
+          ConnectionPoolConfig(
+            url = a.jdbcUrl,
+            properties = connProperties(a.username, a.password),
+            poolSize = poolSize
+          )
         )
-      )
-      .toLayer
+    }
 
   override def spec: Spec[TestEnvironment, TestFailure[Any], TestSuccess] =
     specLayered.provideCustomShared((poolConfigLayer >>> ConnectionPool.live).orDie)
@@ -40,14 +41,14 @@ object ConnectionPoolSpec extends ZIOSpecDefault {
         for {
           cp      <- ZIO.service[ConnectionPool]
           promise <- Promise.make[Nothing, Unit]
-          _       <- ZIO.replicateZIO(poolSize)(cp.connection.useDiscard(promise.await).fork)
-          _       <- ZIO.sleep(1.second).provideLayer(Clock.live)
-          waiting <- ZIO.replicateZIO(poolSize)(cp.connection.useDiscard(ZIO.unit).fork)
-          _       <- ZIO.sleep(1.second).provideLayer(Clock.live)
+          _       <- ZIO.replicateZIO(poolSize)(ZIO.scoped(cp.connection *> promise.await).fork)
+          _       <- ZIO.sleep(1.second)
+          waiting <- ZIO.replicateZIO(poolSize)(ZIO.scoped(cp.connection).fork)
+          _       <- ZIO.sleep(1.second)
           _       <- ZIO.foreach(waiting)(_.interrupt)
           _       <- promise.complete(ZIO.unit)
-          _       <- cp.connection.useDiscard(ZIO.unit)
+          _       <- ZIO.scoped(cp.connection)
         } yield assert("")(Assertion.anything)
-      } @@ timeout(10.seconds)
+      } @@ timeout(10.seconds) @@ withLiveClock
     ) @@ sequential
 }
