@@ -139,7 +139,9 @@ lazy val driver = project
       "dev.zio" %% "zio-schema-derivation" % zioSchemaVersion,
       "dev.zio" %% "zio-test"              % zioVersion % Test,
       "dev.zio" %% "zio-test-sbt"          % zioVersion % Test
-    )
+    ),
+    dependencyOverrides += "dev.zio" %% "zio" % zioVersion,
+    resolvers += Resolver.sonatypeRepo("snapshots")
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
 
