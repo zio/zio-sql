@@ -500,12 +500,12 @@ trait PostgresModule extends Jdbc { self =>
     def renderSet(set: List[Set[_, _]])(implicit render: Renderer): Unit =
       set match {
         case head :: tail =>
-          renderExpr(head.lhs)
+          renderSetLhs(head.lhs)
           render(" = ")
           renderExpr(head.rhs)
           tail.foreach { setEq =>
             render(", ")
-            renderExpr(setEq.lhs)
+            renderSetLhs(setEq.lhs)
             render(" = ")
             renderExpr(setEq.rhs)
           }
@@ -549,6 +549,20 @@ trait PostgresModule extends Jdbc { self =>
         case _           => render(lit.value)           // todo fix add TypeTag.Nullable[_] =>
       }
     }
+
+    /*
+     * PostgreSQL doesn't allow for `tableName.columnName = value` format in update statement,
+     * instead requires `columnName = value`.
+     */
+    private[zio] def renderSetLhs[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit =
+      expr match {
+        case Expr.Source(_, column) =>
+          column.name match {
+            case Some(columnName) => render(columnName)
+            case _                => ()
+          }
+        case _                      => ()
+      }
 
     private[zio] def renderExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
       case Expr.Subselect(subselect)                                                    =>
