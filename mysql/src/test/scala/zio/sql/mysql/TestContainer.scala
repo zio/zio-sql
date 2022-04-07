@@ -1,9 +1,8 @@
-package zio.sql
+package zio.sql.mysql
 
-import com.dimafeng.testcontainers.SingleContainer
-import com.dimafeng.testcontainers.MySQLContainer
+import com.dimafeng.testcontainers.{ MySQLContainer, SingleContainer }
 import org.testcontainers.utility.DockerImageName
-import zio._
+import zio.{ IsNotIntersection, Scope, Tag, ZIO, ZLayer }
 
 object TestContainer {
 
@@ -30,5 +29,4 @@ object TestContainer {
         c
       }
     }(container => ZIO.attemptBlocking(container.stop()).orDie)
-
 }

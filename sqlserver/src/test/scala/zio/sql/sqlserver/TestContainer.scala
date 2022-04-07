@@ -1,9 +1,8 @@
-package zio.sql
+package zio.sql.sqlserver
 
-import com.dimafeng.testcontainers.SingleContainer
-import com.dimafeng.testcontainers.MSSQLServerContainer
+import com.dimafeng.testcontainers.{ MSSQLServerContainer, SingleContainer }
 import org.testcontainers.utility.DockerImageName
-import zio._
+import zio.{ Scope, Tag, ZIO, ZLayer }
 
 object TestContainer {
 
@@ -17,13 +16,13 @@ object TestContainer {
       }(container => ZIO.attemptBlocking(container.stop()).refineToOrDie)
     }
 
-  def postgres(
-    imageName: String = "mcr.microsoft.com/mssql/server:2019-latest"
+  def sqlServer(
+    imageName: String = "mcr.microsoft.com/azure-sql-edge:latest"
   ): ZIO[Scope, Throwable, MSSQLServerContainer] =
     ZIO.acquireRelease {
       ZIO.attemptBlocking {
         val c = new MSSQLServerContainer(
-          dockerImageName = DockerImageName.parse(imageName)
+          dockerImageName = DockerImageName.parse(imageName).asCompatibleSubstituteFor("mcr.microsoft.com/mssql/server")
         ).configure { a =>
           a.withInitScript("db_schema.sql")
           ()

@@ -44,7 +44,7 @@ object TransactionSpec extends MysqlRunnableSpec with ShopSchema {
         allCustomersCount       <- execute(query).map(identity[UUID](_)).runCount
         _                       <- execute(
                                      ZTransaction(deleteQuery) *> ZTransaction.fail(new Exception("this is error")) *> ZTransaction(query)
-                                   )
+                                   ).catchAllCause(_ => ZIO.unit)
         remainingCustomersCount <- execute(query).map(identity[UUID](_)).runCount
       } yield (allCustomersCount, remainingCustomersCount))
 
