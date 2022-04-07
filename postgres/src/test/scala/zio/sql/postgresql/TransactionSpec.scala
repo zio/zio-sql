@@ -40,7 +40,7 @@ object TransactionSpec extends PostgresRunnableSpec with DbSchema {
         allCustomersCount       <- execute(query).runCount
         _                       <- execute(
                                      ZTransaction(deleteQuery) *> ZTransaction.fail(new Exception("this is error")) *> ZTransaction(query)
-                                   )
+                                   ).catchAllCause(_ => ZIO.unit)
         remainingCustomersCount <- execute(query).runCount
       } yield (allCustomersCount, remainingCustomersCount))
 

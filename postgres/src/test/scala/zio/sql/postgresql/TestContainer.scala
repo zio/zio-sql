@@ -1,9 +1,8 @@
-package zio.sql
+package zio.sql.postgresql
 
-import com.dimafeng.testcontainers.SingleContainer
-import com.dimafeng.testcontainers.PostgreSQLContainer
+import com.dimafeng.testcontainers.{ PostgreSQLContainer, SingleContainer }
 import org.testcontainers.utility.DockerImageName
-import zio._
+import zio.{ IsNotIntersection, Scope, Tag, ZIO, ZLayer }
 
 object TestContainer {
 

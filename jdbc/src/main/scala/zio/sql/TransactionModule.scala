@@ -19,7 +19,7 @@ trait TransactionModule { self: Jdbc =>
       ZTransaction(self.unwrap.flatMap(a => f(a).unwrap))
 
     private[sql] def run(txn: Txn)(implicit
-      ev: E <:< Exception
+      ev: E <:< Throwable
     ): ZIO[R, Throwable, A] =
       for {
         r <- ZIO.environment[R]
@@ -31,11 +31,11 @@ trait TransactionModule { self: Jdbc =>
                  _ =>
                    ZIO
                      .attemptBlocking(txn.connection.rollback())
-                     .refineToOrDie[Exception],
+                     .refineToOrDie[Throwable],
                  _ =>
                    ZIO
                      .attemptBlocking(txn.connection.commit())
-                     .refineToOrDie[Exception]
+                     .refineToOrDie[Throwable]
                )
       } yield a
 
