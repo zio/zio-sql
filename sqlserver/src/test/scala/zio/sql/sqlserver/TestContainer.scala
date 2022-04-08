@@ -1,6 +1,6 @@
 package zio.sql.sqlserver
 
-import com.dimafeng.testcontainers.MSSQLServerContainer 
+import com.dimafeng.testcontainers.MSSQLServerContainer
 import org.testcontainers.utility.DockerImageName
 import zio._
 
@@ -13,7 +13,9 @@ object TestContainer {
     ZIO.acquireRelease {
       ZIO.attemptBlocking {
         val c = new MSSQLServerContainer(
-          dockerImageName = DockerImageName.parse("mcr.microsoft.com/azure-sql-edge:latest").asCompatibleSubstituteFor("mcr.microsoft.com/mssql/server")
+          dockerImageName = DockerImageName
+            .parse("mcr.microsoft.com/azure-sql-edge:latest")
+            .asCompatibleSubstituteFor("mcr.microsoft.com/mssql/server")
         ).configure { a =>
           a.withInitScript("db_schema.sql")
           ()
