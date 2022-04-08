@@ -17,8 +17,7 @@ trait SqlServerRunnableSpec extends JdbcRunnableSpec with SqlServerModule {
   }
 
   val poolConfigLayer = ZLayer.scoped {
-    TestContainer
-      .sqlServer
+    TestContainer.sqlServer
       .map(a =>
         ConnectionPoolConfig(
           url = a.jdbcUrl,
