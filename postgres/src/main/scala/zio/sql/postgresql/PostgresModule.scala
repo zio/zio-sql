@@ -420,7 +420,7 @@ trait PostgresModule extends Jdbc { self =>
                 case StandardType.MonthType                     => render(s"'${value}'")
                 case StandardType.LocalDateTimeType(formatter)  =>
                   render(s"'${formatter.format(value.asInstanceOf[LocalDateTime])}'")
-                case UnitType                                   => () // ???
+                case UnitType                                   => render("null") // None is encoded as Schema[Unit].transform(_ => None, _ => ())
                 case StandardType.YearMonthType                 => render(s"'${value}'")
                 case DoubleType                                 => render(value)
                 case StandardType.YearType                      => render(s"'${value}'")
@@ -445,18 +445,16 @@ trait PostgresModule extends Jdbc { self =>
                 case BoolType                                   => render(value)
                 case DayOfWeekType                              => render(s"'${value}'")
                 case FloatType                                  => render(value)
-                case StandardType.Duration(_)                   => render(s"'${value}'")
+                case StandardType.DurationType                  => render(s"'${value}'")
               }
             case None    => ()
           }
-        case DynamicValue.Transform(that)           => renderDynamicValue(that)
         case DynamicValue.Tuple(left, right)        =>
           renderDynamicValue(left)
           render(", ")
           renderDynamicValue(right)
         case DynamicValue.SomeValue(value)          => renderDynamicValue(value)
-        case DynamicValue.NoneValue                 => render(s"null")
-        // TODO what about other cases?
+        case DynamicValue.NoneValue                 => render("null")
         case _                                      => ()
       }
 

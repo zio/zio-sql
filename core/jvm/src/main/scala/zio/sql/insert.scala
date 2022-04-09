@@ -2,15 +2,6 @@ package zio.sql
 
 import zio.schema.Schema
 
-/**
- * val data = List(
- *  ('0511474d-8eed-4307-bdb0-e39a561205b6', 'Richard', 'Dent, true' 1999-11-02),
- *   ....
- * )
- *
- * insertInto(customers)(customerId +++ fName +++ lName +++ verified +++ dob)
- *    .values(data)
- */
 trait InsertModule { self: ExprModule with TableModule with SelectModule with InsertUtilsModule =>
 
   sealed case class InsertBuilder[F, Source, AllColumnIdentities, B <: SelectionSet[Source], ColsRepr](
@@ -32,4 +23,13 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule with In
   sealed case class Insert[A, Z](table: Table.Source.Aux[A], sources: SelectionSet[A], values: Seq[Z])(implicit
     schemaN: Schema[Z]
   )
+
+  implicit def convertOptionToSome[A](implicit op: Schema[Option[A]]): Schema[Some[A]] =
+    op.transformOrFail[Some[A]](
+      {
+        case Some(a) => Right(Some(a))
+        case None    => Left("cannot encode Right")
+      },
+      someA => Right(someA)
+    )
 }
