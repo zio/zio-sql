@@ -18,7 +18,7 @@ trait SqlDriverLiveModule { self: Jdbc =>
     def insertOn[A: Schema](insert: Insert[_, A], conn: Connection): IO[Exception, Int]
   }
 
-  sealed case class SqlDriverLive(pool: ConnectionPool) extends SqlDriver with SqlDriverCore { self =>
+  sealed class SqlDriverLive(pool: ConnectionPool) extends SqlDriver with SqlDriverCore { self =>
     def delete(delete: Delete[_]): IO[Exception, Int] =
       ZIO.scoped(pool.connection.flatMap(deleteOn(delete, _)))
 
@@ -96,11 +96,13 @@ trait SqlDriverLiveModule { self: Jdbc =>
     override def insert[A: Schema](insert: Insert[_, A]): IO[Exception, Int] =
       ZIO.scoped(pool.connection.flatMap(insertOn(insert, _)))
 
-    override def transact[R, A](tx: ZTransaction[R, Exception, A]): ZIO[R with Scope, Exception, A] =
-      for {
-        connection <- pool.connection
-        _          <- ZIO.attemptBlocking(connection.setAutoCommit(false)).refineToOrDie[Exception]
-        a          <- tx.run(Txn(connection, self))
-      } yield a
+    override def transact[R, A](tx: ZTransaction[R, Exception, A]): ZIO[R, Throwable, A] =
+      ZIO.scoped[R] {
+        for {
+          connection <- pool.connection
+          _          <- ZIO.attemptBlocking(connection.setAutoCommit(false)).refineToOrDie[Exception]
+          a          <- tx.run(Txn(connection, self))
+        } yield a
+      }
   }
 }
