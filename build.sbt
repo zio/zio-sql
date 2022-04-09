@@ -145,11 +145,13 @@ lazy val jdbc = project
       "com.dimafeng"  %% "testcontainers-scala-postgresql" % testcontainersScalaVersion % Test
     )
   )
-  .settings(Seq(
-    Compile / doc / scalacOptions ++= Seq(
-      "-no-link-warnings" // Suppresses problems with Scaladoc links
+  .settings(
+    Seq(
+      Compile / doc / scalacOptions ++= Seq(
+        "-no-link-warnings" // Suppresses problems with Scaladoc links
+      )
     )
-  ))
+  )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
   .dependsOn(core.jvm)
 
