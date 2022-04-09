@@ -12,19 +12,19 @@ trait Jdbc extends zio.sql.Sql with TransactionModule with JdbcInternalModule wi
 
     def read[A](read: Read[A]): Stream[Exception, A]
 
-    def transact[R, A](tx: ZTransaction[R, Exception, A]): ZManaged[R, Exception, A]
+    def transact[R, A](tx: ZTransaction[R, Exception, A]): ZIO[R, Throwable, A]
 
-    def insert[A: zio.schema.Schema](insert: Insert[_, A]): IO[Exception, Int]
+    def insert[A: Schema](insert: Insert[_, A]): IO[Exception, Int]
   }
   object SqlDriver {
     val live: ZLayer[ConnectionPool, Nothing, SqlDriver] =
-      (SqlDriverLive(_)).toLayer
+      ZLayer(ZIO.serviceWith[ConnectionPool](new SqlDriverLive(_)))
   }
 
   def execute[R <: SqlDriver: ZTag: IsNotIntersection, A](
     tx: ZTransaction[R, Exception, A]
-  ): ZManaged[R, Exception, A] =
-    ZManaged.serviceWithManaged(_.transact(tx))
+  ): ZIO[R, Throwable, A] =
+    ZIO.serviceWithZIO(_.transact(tx))
 
   def execute[A](read: Read[A]): ZStream[SqlDriver, Exception, A] =
     ZStream.serviceWithStream(_.read(read))
@@ -33,5 +33,8 @@ trait Jdbc extends zio.sql.Sql with TransactionModule with JdbcInternalModule wi
     ZIO.serviceWithZIO(_.delete(delete))
 
   def execute[A: Schema](insert: Insert[_, A]): ZIO[SqlDriver, Exception, Int] =
-    ZIO.serviceWithZIO[SqlDriver](_.insert(insert))
+    ZIO.serviceWithZIO(_.insert(insert))
+
+  def execute(update: Update[_]): ZIO[SqlDriver, Exception, Int] =
+    ZIO.serviceWithZIO(_.update(update))
 }

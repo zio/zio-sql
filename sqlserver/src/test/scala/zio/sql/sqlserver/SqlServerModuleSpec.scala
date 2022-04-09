@@ -9,7 +9,7 @@ import java.time._
 import java.util.UUID
 import scala.language.postfixOps
 
-object PostgresModuleSpec extends SqlServerRunnableSpec with DbSchema {
+object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
   import AggregationDef._
   import DbSchema._
