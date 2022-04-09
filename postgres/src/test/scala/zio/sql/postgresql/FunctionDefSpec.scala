@@ -4,14 +4,13 @@ import java.time._
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 import zio.{ Cause, Chunk }
-import zio.{ Random => ZioRandom }
 import zio.stream.ZStream
 import zio.test.Assertion._
 import zio.test._
 import zio.test.TestAspect.{ ignore, timeout }
 import zio.durationInt
 
-object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
+object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
 
   import Customers._
   import FunctionDef.{ CharLength => _, _ }
@@ -632,10 +631,10 @@ object FunctionDefSpec extends PostgresRunnableSpec with ShopSchema {
     },
     suite("parseIdent")(
       test("parseIdent removes quoting of individual identifiers") {
-        val someString: Gen[ZioRandom with Sized, String]    = Gen.string
+        val someString: Gen[Sized, String]    = Gen.string
           .filter(x => x.length < 50 && x.length > 1)
         // NOTE: I don't know if property based testing is worth doing here, I just wanted to try it
-        val genTestString: Gen[ZioRandom with Sized, String] =
+        val genTestString: Gen[Sized, String] =
           for {
             string1 <- someString
             string2 <- someString

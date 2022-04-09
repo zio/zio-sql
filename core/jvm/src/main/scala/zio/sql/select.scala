@@ -2,7 +2,7 @@ package zio.sql
 
 import scala.language.implicitConversions
 
-trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
+trait SelectModule { self: ExprModule with TableModule with UtilsModule with GroupByUtilsModule =>
 
   sealed case class Selector[F, Source, B <: SelectionSet[Source], Unaggregated](selection: Selection[F, Source, B])
 
@@ -84,124 +84,6 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
         Unaggregated
       ](Read.Subselect(Selection[F0, Source0, B0](b), Some(table), true).normalize)
     }
-  }
-
-  sealed case class AggSelectBuilderGroupBy[F, Repr, Source, Head, Tail <: SelectionSet[Source], Unaggregated](
-    select: Read.Select[F, Repr, Source, Head, Tail]
-  ) {
-    import Read.ExprSet._
-
-    // format: off
-    def groupBy[F1, B](expr: Expr[F1, Source, B])(
-        implicit ev1: F1 =:= Unaggregated
-      ): Read.Select[F, Repr, Source, Head, Tail] = 
-      select.copy(groupByExprs = NoExpr ++ expr)
-      
-    def groupBy[F1, F2](expr: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any])(
-      implicit ev1: F1 with F2 <:< Unaggregated
-    ): Read.Select[F, Repr, Source, Head, Tail] = 
-      select.copy(groupByExprs = NoExpr ++ expr ++ expr2)
-
-    def groupBy[F1, F2, F3](expr: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any])(
-      implicit ev1: F1 with F2 with F3 <:< Unaggregated
-    ): Read.Select[F, Repr, Source, Head, Tail] = 
-      select.copy(groupByExprs = NoExpr ++ expr ++ expr2 ++ expr3)
-
-    def groupBy[F1, F2, F3, F4](expr: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any])(
-      implicit ev1: F1 with F2 with F3 with F4 <:< Unaggregated
-    ): Read.Select[F, Repr, Source, Head, Tail] = 
-      select.copy(groupByExprs = NoExpr ++ expr ++ expr2 ++ expr3 ++ expr4)
-
-    def groupBy[F1, F2, F3, F4, F5](expr: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any])(
-      implicit ev1: F1 with F2 with F3 with F4 with F5 <:< Unaggregated
-    ): Read.Select[F, Repr, Source, Head, Tail] = 
-      select.copy(groupByExprs = NoExpr ++ expr ++ expr2 ++ expr3 ++ expr4 ++ expr5)
-
-    def groupBy[F1, F2, F3, F4, F5, F6](expr: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any], expr6: Expr[F6, Source, Any])(
-      implicit ev1: F1 with F2 with F3 with F4 with F5 with F6 <:< Unaggregated
-    ): Read.Select[F, Repr, Source, Head, Tail] = 
-      select.copy(groupByExprs = NoExpr ++ expr ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6)
-
-    def groupBy[F1, F2, F3, F4, F5, F6, F7](expr: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any], expr6: Expr[F6, Source, Any], expr7: Expr[F7, Source, Any])(
-      implicit ev1: F1 with F2 with F3 with F4 with F5 with F6 with F7 <:< Unaggregated
-    ): Read.Select[F, Repr, Source, Head, Tail] = 
-      select.copy(groupByExprs = NoExpr ++ expr ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7)
-
-    def groupBy[F1, F2, F3, F4, F5, F6, F7, F8](expr: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any], expr6: Expr[F6, Source, Any], expr7: Expr[F7, Source, Any], expr8: Expr[F8, Source, Any])(
-      implicit ev1: F1 with F2 with F3 with F4 with F5 with F6 with F7 with F8 <:< Unaggregated
-    ): Read.Select[F, Repr, Source, Head, Tail] = 
-      select.copy(groupByExprs = NoExpr ++ expr ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7 ++ expr8)
-
-    def groupBy[F1, F2, F3, F4, F5, F6, F7, F8, F9](expr: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any], expr6: Expr[F6, Source, Any], expr7: Expr[F7, Source, Any], expr8: Expr[F8, Source, Any], expr9: Expr[F9, Source, Any])(
-      implicit ev1: F1 with F2 with F3 with F4 with F5 with F6 with F7 with F8 with F9 <:< Unaggregated
-    ): Read.Select[F, Repr, Source, Head, Tail] = 
-      select.copy(groupByExprs = NoExpr ++ expr ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7 ++ expr8 ++ expr9)
-
-    def groupBy[F1, F2, F3, F4, F5, F6, F7, F8, F9, F10](expr: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any], expr6: Expr[F6, Source, Any], expr7: Expr[F7, Source, Any], expr8: Expr[F8, Source, Any], expr9: Expr[F9, Source, Any], expr10: Expr[F10, Source, Any])(
-      implicit ev1: F1 with F2 with F3 with F4 with F5 with F6 with F7 with F8 with F9 with F10 <:< Unaggregated
-    ): Read.Select[F, Repr, Source, Head, Tail] = 
-      select.copy(groupByExprs = NoExpr ++ expr ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7 ++ expr8 ++ expr9 ++ expr10)
-
-    def groupBy[F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11](expr: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any], expr6: Expr[F6, Source, Any], expr7: Expr[F7, Source, Any], expr8: Expr[F8, Source, Any], expr9: Expr[F9, Source, Any], expr10: Expr[F10, Source, Any], expr11: Expr[F11, Source, Any])(
-      implicit ev1: F1 with F2 with F3 with F4 with F5 with F6 with F7 with F8 with F9 with F10 with F11 <:< Unaggregated
-    ): Read.Select[F, Repr, Source, Head, Tail] = 
-      select.copy(groupByExprs = NoExpr ++ expr ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7 ++ expr8 ++ expr9 ++ expr10 ++ expr11)
-
-    def groupBy[F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12](expr: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any], expr6: Expr[F6, Source, Any], expr7: Expr[F7, Source, Any], expr8: Expr[F8, Source, Any], expr9: Expr[F9, Source, Any], expr10: Expr[F9, Source, Any], expr11: Expr[F9, Source, Any], expr12: Expr[F9, Source, Any])(
-      implicit ev1: F1 with F2 with F3 with F4 with F5 with F6 with F7 with F8 with F9 with F10 with F11 with F12 <:< Unaggregated
-    ): Read.Select[F, Repr, Source, Head, Tail] = 
-      select.copy(groupByExprs = NoExpr ++ expr ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7 ++ expr8 ++ expr9 ++ expr10 ++ expr11 ++ expr12)
-
-    def groupBy[F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13](expr: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any], expr6: Expr[F6, Source, Any], expr7: Expr[F7, Source, Any], expr8: Expr[F8, Source, Any], expr9: Expr[F9, Source, Any], expr10: Expr[F9, Source, Any], expr11: Expr[F9, Source, Any], expr12: Expr[F9, Source, Any], expr13: Expr[F9, Source, Any])(
-      implicit ev1: F1 with F2 with F3 with F4 with F5 with F6 with F7 with F8 with F9 with F10 with F11 with F12 with F13 <:< Unaggregated
-    ): Read.Select[F, Repr, Source, Head, Tail] = 
-      select.copy(groupByExprs = NoExpr ++ expr ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7 ++ expr8 ++ expr9 ++ expr10 ++ expr11 ++ expr12 ++ expr13)
-
-    def groupBy[F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14](expr: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any], expr6: Expr[F6, Source, Any], expr7: Expr[F7, Source, Any], expr8: Expr[F8, Source, Any], expr9: Expr[F9, Source, Any], expr10: Expr[F9, Source, Any], expr11: Expr[F9, Source, Any], expr12: Expr[F9, Source, Any], expr13: Expr[F9, Source, Any], expr14: Expr[F9, Source, Any])(
-      implicit ev1: F1 with F2 with F3 with F4 with F5 with F6 with F7 with F8 with F9 with F10 with F11 with F12 with F13 with F14 <:< Unaggregated
-    ): Read.Select[F, Repr, Source, Head, Tail] = 
-      select.copy(groupByExprs = NoExpr ++ expr ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7 ++ expr8 ++ expr9 ++ expr10 ++ expr11 ++ expr12 ++ expr13 ++ expr14)
-
-    def groupBy[F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15](expr: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any], expr6: Expr[F6, Source, Any], expr7: Expr[F7, Source, Any], expr8: Expr[F8, Source, Any], expr9: Expr[F9, Source, Any], expr10: Expr[F9, Source, Any], expr11: Expr[F9, Source, Any], expr12: Expr[F9, Source, Any], expr13: Expr[F9, Source, Any], expr14: Expr[F9, Source, Any], expr15: Expr[F9, Source, Any])(
-      implicit ev1: F1 with F2 with F3 with F4 with F5 with F6 with F7 with F8 with F9 with F10 with F11 with F12 with F13 with F14 with F15 <:< Unaggregated
-    ): Read.Select[F, Repr, Source, Head, Tail] = 
-      select.copy(groupByExprs = NoExpr ++ expr ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7 ++ expr8 ++ expr9 ++ expr10 ++ expr11 ++ expr12 ++ expr13 ++ expr14 ++ expr15)
-
-    def groupBy[F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15, F16](expr: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any], expr6: Expr[F6, Source, Any], expr7: Expr[F7, Source, Any], expr8: Expr[F8, Source, Any], expr9: Expr[F9, Source, Any], expr10: Expr[F9, Source, Any], expr11: Expr[F9, Source, Any], expr12: Expr[F9, Source, Any], expr13: Expr[F9, Source, Any], expr14: Expr[F9, Source, Any], expr15: Expr[F9, Source, Any], expr16: Expr[F9, Source, Any])(
-      implicit ev1: F1 with F2 with F3 with F4 with F5 with F6 with F7 with F8 with F9 with F10 with F11 with F12 with F13 with F14 with F15 with F16 <:< Unaggregated
-    ): Read.Select[F, Repr, Source, Head, Tail] = 
-      select.copy(groupByExprs = NoExpr ++ expr ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7 ++ expr8 ++ expr9 ++ expr10 ++ expr11 ++ expr12 ++ expr13 ++ expr14 ++ expr15 ++ expr16)
-
-    def groupBy[F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15, F16, F17](expr: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any], expr6: Expr[F6, Source, Any], expr7: Expr[F7, Source, Any], expr8: Expr[F8, Source, Any], expr9: Expr[F9, Source, Any], expr10: Expr[F9, Source, Any], expr11: Expr[F9, Source, Any], expr12: Expr[F9, Source, Any], expr13: Expr[F9, Source, Any], expr14: Expr[F9, Source, Any], expr15: Expr[F9, Source, Any], expr16: Expr[F9, Source, Any], expr17: Expr[F9, Source, Any])(
-      implicit ev1: F1 with F2 with F3 with F4 with F5 with F6 with F7 with F8 with F9 with F10 with F11 with F12 with F13 with F14 with F15 with F16 with F17 <:< Unaggregated
-    ): Read.Select[F, Repr, Source, Head, Tail] = 
-      select.copy(groupByExprs = NoExpr ++ expr ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7 ++ expr8 ++ expr9 ++ expr10 ++ expr11 ++ expr12 ++ expr13 ++ expr14 ++ expr15 ++ expr16 ++ expr17)
-
-    def groupBy[F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15, F16, F17, F18](expr: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any], expr6: Expr[F6, Source, Any], expr7: Expr[F7, Source, Any], expr8: Expr[F8, Source, Any], expr9: Expr[F9, Source, Any], expr10: Expr[F9, Source, Any], expr11: Expr[F9, Source, Any], expr12: Expr[F9, Source, Any], expr13: Expr[F9, Source, Any], expr14: Expr[F9, Source, Any], expr15: Expr[F9, Source, Any], expr16: Expr[F9, Source, Any], expr17: Expr[F9, Source, Any], expr18: Expr[F9, Source, Any])(
-      implicit ev1: F1 with F2 with F3 with F4 with F5 with F6 with F7 with F8 with F9 with F10 with F11 with F12 with F13 with F14 with F15 with F16 with F17 with F18 <:< Unaggregated
-    ): Read.Select[F, Repr, Source, Head, Tail] = 
-      select.copy(groupByExprs = NoExpr ++ expr ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7 ++ expr8 ++ expr9 ++ expr10 ++ expr11 ++ expr12 ++ expr13 ++ expr14 ++ expr15 ++ expr16 ++ expr17 ++ expr18)
-
-    def groupBy[F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15, F16, F17, F18, F19](expr: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any], expr6: Expr[F6, Source, Any], expr7: Expr[F7, Source, Any], expr8: Expr[F8, Source, Any], expr9: Expr[F9, Source, Any], expr10: Expr[F9, Source, Any], expr11: Expr[F9, Source, Any], expr12: Expr[F9, Source, Any], expr13: Expr[F9, Source, Any], expr14: Expr[F9, Source, Any], expr15: Expr[F9, Source, Any], expr16: Expr[F9, Source, Any], expr17: Expr[F9, Source, Any], expr18: Expr[F9, Source, Any], expr19: Expr[F9, Source, Any])(
-      implicit ev1: F1 with F2 with F3 with F4 with F5 with F6 with F7 with F8 with F9 with F10 with F11 with F12 with F13 with F14 with F15 with F16 with F17 with F18 with F19 <:< Unaggregated
-    ): Read.Select[F, Repr, Source, Head, Tail] = 
-      select.copy(groupByExprs = NoExpr ++ expr ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7 ++ expr8 ++ expr9 ++ expr10 ++ expr11 ++ expr12 ++ expr13 ++ expr14 ++ expr15 ++ expr16 ++ expr17 ++ expr18 ++ expr19)
-
-    def groupBy[F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15, F16, F17, F18, F19, F20](expr: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any], expr6: Expr[F6, Source, Any], expr7: Expr[F7, Source, Any], expr8: Expr[F8, Source, Any], expr9: Expr[F9, Source, Any], expr10: Expr[F9, Source, Any], expr11: Expr[F9, Source, Any], expr12: Expr[F9, Source, Any], expr13: Expr[F9, Source, Any], expr14: Expr[F9, Source, Any], expr15: Expr[F9, Source, Any], expr16: Expr[F9, Source, Any], expr17: Expr[F9, Source, Any], expr18: Expr[F9, Source, Any], expr19: Expr[F9, Source, Any], expr20: Expr[F9, Source, Any])(
-      implicit ev1: F1 with F2 with F3 with F4 with F5 with F6 with F7 with F8 with F9 with F10 with F11 with F12 with F13 with F14 with F15 with F16 with F17 with F18 with F19 with F20 <:< Unaggregated
-    ): Read.Select[F, Repr, Source, Head, Tail] = 
-      select.copy(groupByExprs = NoExpr ++ expr ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7 ++ expr8 ++ expr9 ++ expr10 ++ expr11 ++ expr12 ++ expr13 ++ expr14 ++ expr15 ++ expr16 ++ expr17 ++ expr18 ++ expr19 ++ expr20)
-
-    def groupBy[F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15, F16, F17, F18, F19, F20, F21](expr: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any], expr6: Expr[F6, Source, Any], expr7: Expr[F7, Source, Any], expr8: Expr[F8, Source, Any], expr9: Expr[F9, Source, Any], expr10: Expr[F9, Source, Any], expr11: Expr[F9, Source, Any], expr12: Expr[F9, Source, Any], expr13: Expr[F9, Source, Any], expr14: Expr[F9, Source, Any], expr15: Expr[F9, Source, Any], expr16: Expr[F9, Source, Any], expr17: Expr[F9, Source, Any], expr18: Expr[F9, Source, Any], expr19: Expr[F9, Source, Any], expr20: Expr[F9, Source, Any], expr21: Expr[F9, Source, Any])(
-      implicit ev1: F1 with F2 with F3 with F4 with F5 with F6 with F7 with F8 with F9 with F10 with F11 with F12 with F13 with F14 with F15 with F16 with F17 with F18 with F19 with F20 with F21<:< Unaggregated
-    ): Read.Select[F, Repr, Source, Head, Tail] = 
-      select.copy(groupByExprs = NoExpr ++ expr ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7 ++ expr8 ++ expr9 ++ expr10 ++ expr11 ++ expr12 ++ expr13 ++ expr14 ++ expr15 ++ expr16 ++ expr17 ++ expr18 ++ expr19 ++ expr20 ++ expr21)
-
-    def groupBy[F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15, F16, F17, F18, F19, F20, F21, F22](expr: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any], expr6: Expr[F6, Source, Any], expr7: Expr[F7, Source, Any], expr8: Expr[F8, Source, Any], expr9: Expr[F9, Source, Any], expr10: Expr[F9, Source, Any], expr11: Expr[F9, Source, Any], expr12: Expr[F9, Source, Any], expr13: Expr[F9, Source, Any], expr14: Expr[F9, Source, Any], expr15: Expr[F9, Source, Any], expr16: Expr[F9, Source, Any], expr17: Expr[F9, Source, Any], expr18: Expr[F9, Source, Any], expr19: Expr[F9, Source, Any], expr20: Expr[F9, Source, Any], expr21: Expr[F9, Source, Any], expr22: Expr[F9, Source, Any])(
-      implicit ev1: F1 with F2 with F3 with F4 with F5 with F6 with F7 with F8 with F9 with F10 with F11 with F12 with F13 with F14 with F15 with F16 with F17 with F18 with F19 with F20 with F21 with F22 <:< Unaggregated
-    ): Read.Select[F, Repr, Source, Head, Tail] = 
-      select.copy(groupByExprs = NoExpr ++ expr ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7 ++ expr8 ++ expr9 ++ expr10 ++ expr11 ++ expr12 ++ expr13 ++ expr14 ++ expr15 ++ expr16 ++ expr17 ++ expr18 ++ expr19 ++ expr20 ++ expr21 ++ expr22)
-    // format: on
   }
 
   sealed case class SelectBuilder[F0, Source, B <: SelectionSet[Source]](selection: Selection[F0, Source, B]) {
@@ -307,6 +189,7 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
       type NoExpr = NoExpr.type
       case object NoExpr extends ExprSet[Any] {
         override type Append[F2, Source1 <: Any, B2] = ExprCons[F2, Source1, B2, NoExpr]
+
         override def ++[F2, Source1 <: Any, B2](that: Expr[F2, Source1, B2]): Append[F2, Source1, B2] =
           ExprCons(that, NoExpr)
       }
@@ -341,6 +224,23 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
         Table.DerivedTable[Out2, Mapped[Repr, Out, Out2]](self, name)
     }
 
+    /**
+      * `HAVING` can only be called:
+      *
+      *  1. If its called with an aggregated function returning boolean like `Having Count(id) > 5`, 
+      *     while all the previously selected columns appeared in group by clause.
+      *  2. If its called with a normal expression returning boolean like `having customer_id = '636ae137-5b1a-4c8c-b11f-c47c624d9cdc``
+      *     and all the previously selected columns appeared in group by clause.
+      */
+    trait HavingIsSound[F, GroupByF]
+
+    object HavingIsSound {
+      implicit def havingWasGroupedBy[F, GroupByF, Remainder](implicit
+        i: Features.IsPartiallyAggregated.WithRemainder[F, Remainder],
+        ev: GroupByF <:< Remainder
+      ): HavingIsSound[F, GroupByF] = new HavingIsSound[F, GroupByF] {}
+    }
+
     type Select[F, Repr, Source, Head, Tail <: SelectionSet[Source]] = Subselect[F, Repr, Source, Source, Head, Tail]
 
     sealed case class Subselect[F, Repr, Source, Subsource, Head, Tail <: SelectionSet[Source]](
@@ -354,16 +254,9 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
       limit: Option[Long] = None
     ) extends Read[Repr] { self =>
 
-      /**
-       * The follwing expr would not compile in where clause with F2: Features.IsNotAggregated
-       *
-       *        List(minStationsQuery, maxStationsQuery)
-       *            .flatten
-       *            .reduceLeftOption[Expr[_, metroLine.TableType, Boolean]](_ && _)
-       *            .get
-       *
-       * TODO try to make phantom type F2 composable
-       */
+      type GroupByF <: Any
+
+      // TODO add F2: Features.IsNotAggregated constraint when https://github.com/zio/zio-sql/issues/583 is fixed
       def where[F2](
         whereExpr2: Expr[F2, Source, Boolean]
       ): Subselect[F, Repr, Source, Subsource, Head, Tail] =
@@ -379,28 +272,53 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
       ): Subselect[F, Repr, Source, Subsource, Head, Tail] =
         copy(orderByExprs = self.orderByExprs ++ (o :: os.toList))
 
-      /**
-       * TODO find a way to make following not compile -> fkCustomerId need to be `groupped by`
-       *           select(fkCustomerId)
-       *             .from(orders)
-       *             .having(Count(orderId) > 4)
-       */
-      def having[F2: Features.IsFullyAggregated](
+      def having[F2, Remainder](
         havingExpr2: Expr[F2, Source, Boolean]
+      )(implicit
+        i: Features.IsPartiallyAggregated.WithRemainder[F, Remainder],
+        ev: GroupByF <:< Remainder,
+        i2: HavingIsSound[F2, GroupByF]
       ): Subselect[F, Repr, Source, Subsource, Head, Tail] =
         copy(havingExpr = self.havingExpr && havingExpr2)
 
+      // format: off          
+      def groupBy[F1: Features.IsNotAggregated](expr1: Expr[F1, Source, Any]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1] =
+        new Subselect(selection, table, whereExpr, self.groupByExprs ++ expr1, havingExpr, orderByExprs, offset, limit) {
+         override type GroupByF = self.GroupByF with F1
+       }
+
+      def groupBy[F1: Features.IsNotAggregated, F2: Features.IsNotAggregated](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2] =
+        new Subselect(selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2, havingExpr, orderByExprs, offset, limit) {
+         override type GroupByF = self.GroupByF with  F1 with F2
+      }
+
+      def groupBy[F1: Features.IsNotAggregated, F2: Features.IsNotAggregated, F3: Features.IsNotAggregated](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3] =
+        new Subselect(selection, table, whereExpr,self.groupByExprs ++ expr1 ++ expr2 ++ expr3, havingExpr, orderByExprs, offset, limit) {
+         override type GroupByF =  self.GroupByF with F1 with F2 with F3
+      }
+
+      def groupBy[F1: Features.IsNotAggregated, F2: Features.IsNotAggregated, F3: Features.IsNotAggregated, F4: Features.IsNotAggregated](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3 with F4] =
+        new Subselect(selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4, havingExpr, orderByExprs, offset, limit) {
+         override type GroupByF = self.GroupByF with F1 with F2 with F3 with F4
+      }
+
+      def groupBy[F1: Features.IsNotAggregated, F2: Features.IsNotAggregated, F3: Features.IsNotAggregated, F4: Features.IsNotAggregated, F5: Features.IsNotAggregated](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3 with F4 with F5] =
+        new Subselect(selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5, havingExpr, orderByExprs, offset, limit) {
+         override type GroupByF =  self.GroupByF with F1 with F2 with F3 with F4 with F5
+      }
+
+      def groupBy[F1: Features.IsNotAggregated, F2: Features.IsNotAggregated, F3: Features.IsNotAggregated, F4: Features.IsNotAggregated, F5: Features.IsNotAggregated, F6: Features.IsNotAggregated](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any], expr6: Expr[F6, Source, Any]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6] =
+        new Subselect(selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6, havingExpr, orderByExprs, offset, limit) {
+         override type GroupByF =  self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6
+      }
       /**
-       * TODO restrict _ : IsNotAggregated (hopefully without 22 boilerplate overrides)
-       * cannot move it toAggBuilder because select(fkCustomerId).from(orders) is valid sql)
-       */
-      def groupBy(
-        key: Expr[_, Source, Any],
-        keys: Expr[_, Source, Any]*
-      ): Subselect[F, Repr, Source, Subsource, Head, Tail] =
-        copy(groupByExprs =
-          (key :: keys.toList).foldLeft[ExprSet[Source]](ExprSet.NoExpr)((tail, head) => ExprSet.ExprCons(head, tail))
-        )
+        * TODO add arities up to 22 when needed / requested by users
+        */
+      def groupBy[F1: Features.IsNotAggregated, F2: Features.IsNotAggregated, F3: Features.IsNotAggregated, F4: Features.IsNotAggregated, F5: Features.IsNotAggregated, F6: Features.IsNotAggregated, F7: Features.IsNotAggregated](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any], expr6: Expr[F6, Source, Any], expr7: Expr[F7, Source, Any]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6 with F7] =
+        new Subselect(selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7, havingExpr, orderByExprs, offset, limit) {
+         override type GroupByF =  self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6 with F7
+      }
+      // format: on
 
       def normalize(implicit
         instance: TrailingUnitNormalizer[ResultType]
@@ -427,6 +345,12 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
     }
 
     object Subselect {
+
+      type WithGroupByF[F, Repr, Source, Subsource, Head, Tail <: SelectionSet[Source], GroupByF0] =
+        Subselect[F, Repr, Source, Subsource, Head, Tail] {
+          type GroupByF = GroupByF0
+        }
+
       implicit def subselectToExpr[F <: Features.Aggregated[_], Repr, Source, Subsource, Head](
         subselect: Read.Subselect[F, Repr, _ <: Source, Subsource, Head, SelectionSet.Empty]
       ): Expr[Features.Derived, Any, Head] =

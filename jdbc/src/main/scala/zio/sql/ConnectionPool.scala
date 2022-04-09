@@ -6,31 +6,36 @@ import java.sql._
 import zio.stm._
 import zio._
 
+import zio.sql.ConnectionPool.QueueItem
+
 trait ConnectionPool {
 
   /**
-   * Retrieves a JDBC java.sql.Connection as a [[zio.Managed]] resource.
+   * Retrieves a JDBC java.sql.Connection as a [[ZIO[Scope, Exception, Connection]]] resource.
    * The managed resource will safely acquire and release the connection, and
    * may be interrupted or timed out if necessary.
    */
-  def connection: Managed[Exception, Connection]
+  def connection: ZIO[Scope, Exception, Connection]
 }
 object ConnectionPool {
+
+  case class QueueItem(promise: TPromise[Nothing, ResettableConnection], interrupted: TRef[Boolean])
 
   /**
    * A live layer for `ConnectionPool` that creates a JDBC connection pool
    * from the specified connection pool settings.
    */
-  val live: ZLayer[ConnectionPoolConfig with Clock, IOException, ConnectionPool] =
-    (for {
-      config    <- ZManaged.service[ConnectionPoolConfig]
-      clock     <- ZManaged.service[Clock]
-      queue     <- TQueue.bounded[TPromise[Nothing, ResettableConnection]](config.queueCapacity).commit.toManaged
-      available <- TRef.make(List.empty[ResettableConnection]).commit.toManaged
-      pool       = ConnectionPoolLive(queue, available, config, clock)
-      _         <- pool.initialize.toManaged
-      _         <- ZManaged.finalizer(pool.close.orDie)
-    } yield pool).toLayer
+  val live: ZLayer[ConnectionPoolConfig, IOException, ConnectionPool] =
+    ZLayer.scoped {
+      for {
+        config    <- ZIO.service[ConnectionPoolConfig]
+        queue     <- TQueue.bounded[QueueItem](config.queueCapacity).commit
+        available <- TRef.make(List.empty[ResettableConnection]).commit
+        pool       = ConnectionPoolLive(queue, available, config)
+        _         <- pool.initialize
+        _         <- ZIO.addFinalizer(pool.close.orDie)
+      } yield pool
+    }
 }
 
 /**
@@ -43,10 +48,9 @@ object ConnectionPool {
  *    take it away from them.
  */
 final case class ConnectionPoolLive(
-  queue: TQueue[TPromise[Nothing, ResettableConnection]],
+  queue: TQueue[QueueItem],
   available: TRef[List[ResettableConnection]],
-  config: ConnectionPoolConfig,
-  clock: Clock
+  config: ConnectionPoolConfig
 ) extends ConnectionPool {
 
   /**
@@ -76,7 +80,7 @@ final case class ConnectionPoolLive(
     }.refineToOrDie[IOException]
 
     for {
-      connection <- makeConnection.retry(config.retryPolicy).provideEnvironment(ZEnvironment(clock))
+      connection <- makeConnection.retry(config.retryPolicy)
       _          <- available.update(connection :: _).commit
     } yield connection
   }
@@ -93,23 +97,26 @@ final case class ConnectionPoolLive(
       }
     }
 
-  def connection: Managed[Exception, Connection] =
-    ZManaged
-      .acquireReleaseWith(tryTake.commit.flatMap {
-        case Left(promise) =>
-          ZIO.interruptible(promise.await.commit).onInterrupt {
-            promise.poll.flatMap {
-              case Some(Right(connection)) =>
-                ZSTM.succeed(release(connection))
-
-              case _ => ZSTM.succeed(ZIO.unit)
-            }.commit.flatten
+  def connection: ZIO[Scope, Exception, Connection] =
+    ZIO
+      .acquireRelease(tryTake.commit.flatMap {
+        case Left(queueItem) =>
+          ZIO.interruptible(queueItem.promise.await.commit).onInterrupt {
+            (for {
+              res <- queueItem.promise.poll
+              _   <- res match {
+                       case Some(Right(connection)) =>
+                         ZSTM.succeed(release(connection))
+                       case _                       =>
+                         queueItem.interrupted.set(true)
+                     }
+            } yield ()).commit
           }
 
         case Right(connection) =>
           ZIO.succeed(connection)
       })(release(_))
-      .flatMap(rc => rc.reset.toManaged.as(rc.connection))
+      .flatMap(rc => rc.reset.as(rc.connection))
 
   /**
    * Initializes the connection pool.
@@ -126,29 +133,36 @@ final case class ConnectionPoolLive(
   private def release(connection: ResettableConnection): UIO[Any] =
     ZIO.uninterruptible {
       tryRelease(connection).commit.flatMap {
-        case Some(promise) => promise.succeed(connection).commit
-        case None          => UIO.unit
+        case Some(handle) =>
+          handle.interrupted.get.tap { interrupted =>
+            ZSTM.when(!interrupted)(handle.promise.succeed(connection))
+          }.commit.flatMap { interrupted =>
+            ZIO.when(interrupted)(release(connection))
+          }
+        case None         => UIO.unit
       }
     }
 
   private def tryRelease(
     connection: ResettableConnection
-  ): STM[Nothing, Option[TPromise[Nothing, ResettableConnection]]] =
+  ): STM[Nothing, Option[QueueItem]] =
     for {
       empty  <- queue.isEmpty
       result <- if (empty) available.update(connection :: _) *> STM.none
                 else queue.take.map(Some(_))
     } yield result
 
-  private val tryTake: STM[Nothing, Either[TPromise[Nothing, ResettableConnection], ResettableConnection]] =
+  private val tryTake: STM[Nothing, Either[QueueItem, ResettableConnection]] =
     for {
       headOption <- available.get.map(_.headOption)
       either     <- headOption match {
                       case None =>
                         for {
                           promise <- TPromise.make[Nothing, ResettableConnection]
-                          _       <- queue.offer(promise)
-                        } yield Left(promise)
+                          ref     <- TRef.make[Boolean](false)
+                          item     = QueueItem(promise, ref)
+                          _       <- queue.offer(item)
+                        } yield Left(item)
 
                       case Some(connection) =>
                         available.update(_.tail) *> ZSTM.succeed(Right(connection))
@@ -157,5 +171,5 @@ final case class ConnectionPoolLive(
 }
 
 private[sql] final class ResettableConnection(val connection: Connection, resetter: Connection => Unit) {
-  def reset: UIO[Any] = UIO(resetter(connection))
+  def reset: UIO[Any] = ZIO.succeed(resetter(connection))
 }

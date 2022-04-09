@@ -18,9 +18,9 @@ trait SqlDriverLiveModule { self: Jdbc =>
     def insertOn[A: Schema](insert: Insert[_, A], conn: Connection): IO[Exception, Int]
   }
 
-  sealed case class SqlDriverLive(pool: ConnectionPool) extends SqlDriver with SqlDriverCore { self =>
+  sealed class SqlDriverLive(pool: ConnectionPool) extends SqlDriver with SqlDriverCore { self =>
     def delete(delete: Delete[_]): IO[Exception, Int] =
-      pool.connection.use(deleteOn(delete, _))
+      ZIO.scoped(pool.connection.flatMap(deleteOn(delete, _)))
 
     def deleteOn(delete: Delete[_], conn: Connection): IO[Exception, Int] =
       ZIO.attemptBlocking {
@@ -30,7 +30,7 @@ trait SqlDriverLiveModule { self: Jdbc =>
       }.refineToOrDie[Exception]
 
     def update(update: Update[_]): IO[Exception, Int] =
-      pool.connection.use(updateOn(update, _))
+      ZIO.scoped(pool.connection.flatMap(updateOn(update, _)))
 
     def updateOn(update: Update[_], conn: Connection): IO[Exception, Int] =
       ZIO.attemptBlocking {
@@ -45,7 +45,7 @@ trait SqlDriverLiveModule { self: Jdbc =>
 
     def read[A](read: Read[A]): Stream[Exception, A] =
       ZStream
-        .managed(pool.connection)
+        .scoped(pool.connection)
         .flatMap(readOn(read, _))
 
     override def readOn[A](read: Read[A], conn: Connection): Stream[Exception, A] =
@@ -94,13 +94,15 @@ trait SqlDriverLiveModule { self: Jdbc =>
       }.refineToOrDie[Exception]
 
     override def insert[A: Schema](insert: Insert[_, A]): IO[Exception, Int] =
-      pool.connection.use(insertOn(insert, _))
+      ZIO.scoped(pool.connection.flatMap(insertOn(insert, _)))
 
-    override def transact[R, A](tx: ZTransaction[R, Exception, A]): ZManaged[R, Exception, A] =
-      for {
-        connection <- pool.connection
-        _          <- ZIO.attemptBlocking(connection.setAutoCommit(false)).refineToOrDie[Exception].toManaged
-        a          <- tx.run(Txn(connection, self))
-      } yield a
+    override def transact[R, A](tx: ZTransaction[R, Exception, A]): ZIO[R, Throwable, A] =
+      ZIO.scoped[R] {
+        for {
+          connection <- pool.connection
+          _          <- ZIO.attemptBlocking(connection.setAutoCommit(false)).refineToOrDie[Exception]
+          a          <- tx.run(Txn(connection, self))
+        } yield a
+      }
   }
 }

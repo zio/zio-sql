@@ -1,6 +1,6 @@
 package zio.sql.sqlserver
 
-import zio.sql.Jdbc
+import zio.sql.{ Jdbc, Renderer }
 import zio.schema.Schema
 
 trait SqlServerModule extends Jdbc { self =>
@@ -37,11 +37,15 @@ trait SqlServerModule extends Jdbc { self =>
           left.columnSet ++ right.columnSet
 
         override val columnToExpr: ColumnToExpr[A with B] = new ColumnToExpr[A with B] {
-          def toExpr[C](column: Column[C]): Expr[Features.Source[column.Identity], A with B, C] =
+          def toExpr[C](column: Column[C]): Expr[Features.Source[column.Identity, A with B], A with B, C] =
             if (left.columnSet.contains(column))
-              left.columnToExpr.toExpr(column)
+              left.columnToExpr
+                .toExpr(column)
+                .asInstanceOf[Expr[Features.Source[column.Identity, A with B], A with B, C]]
             else
-              right.columnToExpr.toExpr(column)
+              right.columnToExpr
+                .toExpr(column)
+                .asInstanceOf[Expr[Features.Source[column.Identity, A with B], A with B, C]]
         }
       }
 
@@ -86,28 +90,109 @@ trait SqlServerModule extends Jdbc { self =>
     }
   }
 
-  override def renderDelete(delete: Delete[_]): String = ??? // TODO: https://github.com/zio/zio-sql/issues/159
-
-  override def renderUpdate(update: self.Update[_]): String = ???
-
-  override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = ???
-
   override def renderRead(read: self.Read[_]): String = {
-    val builder = new StringBuilder
+    implicit val render: Renderer = Renderer()
+    SqlServerRenderModule.renderReadImpl(read)
+    render.toString
+  }
 
-    def buildExpr[A, B](expr: self.Expr[_, A, B]): Unit = expr match {
+  override def renderUpdate(update: Update[_]): String = {
+    implicit val render: Renderer = Renderer()
+    SqlServerRenderModule.renderUpdateImpl(update)
+    render.toString
+  }
+
+  override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = {
+    implicit val render: Renderer = Renderer()
+    SqlServerRenderModule.renderInsertImpl(insert)
+    render.toString
+  }
+
+  override def renderDelete(delete: Delete[_]): String = {
+    implicit val render: Renderer = Renderer()
+    SqlServerRenderModule.renderDeleteImpl(delete)
+    render.toString
+  }
+
+  object SqlServerRenderModule {
+
+    private[zio] def renderReadImpl(read: self.Read[_])(implicit render: Renderer): Unit =
+      read match {
+        // case Read.Mapped(read, _) => renderReadImpl(read.asInstanceOf[Read[Out]])
+        case Read.Mapped(read, _) => renderReadImpl(read)
+
+        // todo offset (needs orderBy, must use fetch _instead_ of top)
+        case read0 @ Read.Subselect(_, _, _, _, _, _, _, _) =>
+          object Dummy {
+            type F
+            type Repr
+            type Source
+            type Head
+            type Tail <: SelectionSet[Source]
+          }
+          val read = read0.asInstanceOf[Read.Select[Dummy.F, Dummy.Repr, Dummy.Source, Dummy.Head, Dummy.Tail]]
+          import read._
+
+          render("SELECT ")
+          limit match {
+            case Some(limit) =>
+              render("TOP ", limit, " ")
+            case None        => ()
+          }
+          buildSelection(selection.value)
+          table.foreach { t =>
+            render(" FROM ")
+            buildTable(t)
+          }
+          whereExpr match {
+            case Expr.Literal(true) => ()
+            case _                  =>
+              render(" WHERE ")
+              buildExpr(whereExpr)
+          }
+          groupByExprs match {
+            case Read.ExprSet.ExprCons(_, _) =>
+              render(" GROUP BT ")
+              buildExprList(groupByExprs)
+
+              havingExpr match {
+                case Expr.Literal(true) => ()
+                case _                  =>
+                  render(" HAVING ")
+                  buildExpr(havingExpr)
+              }
+            case Read.ExprSet.NoExpr         => ()
+          }
+          orderByExprs match {
+            case _ :: _ =>
+              render(" ORDER BY ")
+              buildOrderingList(orderByExprs)
+            case Nil    => ()
+          }
+
+        case Read.Union(left, right, distinct) =>
+          renderReadImpl(left)
+          render(" UNION ")
+          if (!distinct) render("ALL ")
+          renderReadImpl(right)
+
+        case Read.Literal(values) =>
+          render(" (", values.mkString(","), ") ") // todo fix needs escaping
+      }
+
+    def buildExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
       case Expr.Subselect(subselect)                                                            =>
-        builder.append(" (")
-        builder.append(renderRead(subselect))
-        val _ = builder.append(") ")
+        render(" (")
+        render(renderRead(subselect))
+        render(") ")
       case Expr.Source(table, column)                                                           =>
         (table, column.name) match {
           case (tableName: TableName, Some(columnName)) =>
-            val _ = builder.append(tableName).append(".").append(columnName)
+            render(tableName, ".", columnName)
           case _                                        => ()
         }
       case Expr.Unary(base, op)                                                                 =>
-        val _ = builder.append(" ").append(op.symbol)
+        render(" ", op.symbol)
         buildExpr(base)
       case Expr.Property(base, op)                                                              =>
         buildExpr(base)
@@ -117,18 +202,18 @@ trait SqlServerModule extends Jdbc { self =>
           case PropertyOp.IsTrue    => "= 1"
           case PropertyOp.IsNotTrue => "= 0"
         }
-        val _      = builder.append(" ").append(symbol)
+        render(" ", symbol)
       case Expr.Binary(left, right, op)                                                         =>
         buildExpr(left)
-        builder.append(" ").append(op.symbol).append(" ")
+        render(" ", op.symbol, " ")
         buildExpr(right)
       case Expr.Relational(left, right, op)                                                     =>
         buildExpr(left)
-        builder.append(" ").append(op.symbol).append(" ")
+        render(" ", op.symbol, " ")
         buildExpr(right)
       case Expr.In(value, set)                                                                  =>
         buildExpr(value)
-        buildReadString(set)
+        renderReadImpl(set)
       case literal @ Expr.Literal(value)                                                        =>
         val lit = literal.typeTag match {
           case TypeTag.TBoolean        =>
@@ -155,191 +240,128 @@ trait SqlServerModule extends Jdbc { self =>
             s"'$x'"
           case _                       => s"'${value.toString}'"
         }
-        val _   = builder.append(lit)
+        render(lit)
       case Expr.AggregationCall(param, aggregation)                                             =>
-        builder.append(aggregation.name.name)
-        builder.append("(")
+        render(aggregation.name.name)
+        render("(")
         buildExpr(param)
-        val _ = builder.append(")")
+        render(")")
       case Expr.ParenlessFunctionCall0(function)                                                =>
-        val _ = builder.append(function.name)
+        render(function.name)
       case Expr.FunctionCall0(function)                                                         =>
-        builder.append(function.name.name)
-        builder.append("(")
-        val _ = builder.append(")")
+        render(function.name.name)
+        render("(")
+        render(")")
       case Expr.FunctionCall1(param, function)                                                  =>
-        builder.append(function.name.name)
-        builder.append("(")
+        render(function.name.name)
+        render("(")
         buildExpr(param)
-        val _ = builder.append(")")
+        render(")")
       case Expr.FunctionCall2(param1, param2, function)                                         =>
-        builder.append(function.name.name)
-        builder.append("(")
+        render(function.name.name)
+        render("(")
         buildExpr(param1)
-        builder.append(",")
+        render(",")
         buildExpr(param2)
-        val _ = builder.append(")")
+        render(")")
       case Expr.FunctionCall3(param1, param2, param3, function)                                 =>
-        builder.append(function.name.name)
-        builder.append("(")
+        render(function.name.name)
+        render("(")
         buildExpr(param1)
-        builder.append(",")
+        render(",")
         buildExpr(param2)
-        builder.append(",")
+        render(",")
         buildExpr(param3)
-        val _ = builder.append(")")
+        render(")")
       case Expr.FunctionCall4(param1, param2, param3, param4, function)                         =>
-        builder.append(function.name.name)
-        builder.append("(")
+        render(function.name.name)
+        render("(")
         buildExpr(param1)
-        builder.append(",")
+        render(",")
         buildExpr(param2)
-        builder.append(",")
+        render(",")
         buildExpr(param3)
-        builder.append(",")
+        render(",")
         buildExpr(param4)
-        val _ = builder.append(")")
+        render(")")
       case Expr.FunctionCall5(param1, param2, param3, param4, param5, function)                 =>
-        builder.append(function.name.name)
-        builder.append("(")
+        render(function.name.name)
+        render("(")
         buildExpr(param1)
-        builder.append(",")
+        render(",")
         buildExpr(param2)
-        builder.append(",")
+        render(",")
         buildExpr(param3)
-        builder.append(",")
+        render(",")
         buildExpr(param4)
-        builder.append(",")
+        render(",")
         buildExpr(param5)
-        val _ = builder.append(")")
+        render(")")
       case Expr.FunctionCall6(param1, param2, param3, param4, param5, param6, function)         =>
-        builder.append(function.name.name)
-        builder.append("(")
+        render(function.name.name)
+        render("(")
         buildExpr(param1)
-        builder.append(",")
+        render(",")
         buildExpr(param2)
-        builder.append(",")
+        render(",")
         buildExpr(param3)
-        builder.append(",")
+        render(",")
         buildExpr(param4)
-        builder.append(",")
+        render(",")
         buildExpr(param5)
-        builder.append(",")
+        render(",")
         buildExpr(param6)
-        val _ = builder.append(")")
+        render(")")
       case Expr.FunctionCall7(param1, param2, param3, param4, param5, param6, param7, function) =>
-        builder.append(function.name.name)
-        builder.append("(")
+        render(function.name.name)
+        render("(")
         buildExpr(param1)
-        builder.append(",")
+        render(",")
         buildExpr(param2)
-        builder.append(",")
+        render(",")
         buildExpr(param3)
-        builder.append(",")
+        render(",")
         buildExpr(param4)
-        builder.append(",")
+        render(",")
         buildExpr(param5)
-        builder.append(",")
+        render(",")
         buildExpr(param6)
-        builder.append(",")
+        render(",")
         buildExpr(param7)
-        val _ = builder.append(")")
+        render(")")
     }
 
-    def buildReadString[Out](read: Read[Out]): Unit =
-      read match {
-        case Read.Mapped(read, _) => buildReadString(read.asInstanceOf[Read[Out]])
-
-        // todo offset (needs orderBy, must use fetch _instead_ of top)
-        case read0 @ Read.Subselect(_, _, _, _, _, _, _, _) =>
-          object Dummy {
-            type F
-            type Repr
-            type Source
-            type Head
-            type Tail <: SelectionSet[Source]
-          }
-          val read = read0.asInstanceOf[Read.Select[Dummy.F, Dummy.Repr, Dummy.Source, Dummy.Head, Dummy.Tail]]
-          import read._
-
-          builder.append("select ")
-          limit match {
-            case Some(limit) =>
-              builder.append("top ").append(limit).append(" ")
-            case None        => ()
-          }
-          buildSelection(selection.value)
-          table.foreach { t =>
-            builder.append(" from ")
-            buildTable(t)
-          }
-          whereExpr match {
-            case Expr.Literal(true) => ()
-            case _                  =>
-              builder.append(" where ")
-              buildExpr(whereExpr)
-          }
-          groupByExprs match {
-            case Read.ExprSet.ExprCons(_, _) =>
-              builder.append(" group by ")
-              buildExprList(groupByExprs)
-
-              havingExpr match {
-                case Expr.Literal(true) => ()
-                case _                  =>
-                  builder.append(" having ")
-                  buildExpr(havingExpr)
-              }
-            case Read.ExprSet.NoExpr         => ()
-          }
-          orderByExprs match {
-            case _ :: _ =>
-              builder.append(" order by ")
-              buildOrderingList(orderByExprs)
-            case Nil    => ()
-          }
-
-        case Read.Union(left, right, distinct) =>
-          buildReadString(left)
-          builder.append(" union ")
-          if (!distinct) builder.append("all ")
-          buildReadString(right)
-
-        case Read.Literal(values) =>
-          val _ = builder.append(" (").append(values.mkString(",")).append(") ") // todo fix needs escaping
-      }
-
-    def buildExprList(expr: Read.ExprSet[_]): Unit                   =
+    def buildExprList(expr: Read.ExprSet[_])(implicit render: Renderer): Unit                   =
       expr match {
         case Read.ExprSet.ExprCons(head, tail) =>
           buildExpr(head)
           tail.asInstanceOf[Read.ExprSet[_]] match {
             case Read.ExprSet.ExprCons(_, _) =>
-              builder.append(", ")
+              render(", ")
               buildExprList(tail.asInstanceOf[Read.ExprSet[_]])
             case Read.ExprSet.NoExpr         => ()
           }
         case Read.ExprSet.NoExpr               => ()
       }
-    def buildOrderingList(expr: List[Ordering[Expr[_, _, _]]]): Unit =
+    def buildOrderingList(expr: List[Ordering[Expr[_, _, _]]])(implicit render: Renderer): Unit =
       expr match {
         case head :: tail =>
           head match {
             case Ordering.Asc(value)  => buildExpr(value)
             case Ordering.Desc(value) =>
               buildExpr(value)
-              builder.append(" desc")
+              render(" desc")
           }
           tail match {
             case _ :: _ =>
-              builder.append(", ")
+              render(", ")
               buildOrderingList(tail)
             case Nil    => ()
           }
         case Nil          => ()
       }
 
-    def buildSelection(selectionSet: SelectionSet[_]): Unit =
+    def buildSelection(selectionSet: SelectionSet[_])(implicit render: Renderer): Unit =
       selectionSet match {
         case cons0 @ SelectionSet.Cons(_, _) =>
           object Dummy {
@@ -351,19 +373,19 @@ trait SqlServerModule extends Jdbc { self =>
           import cons._
           buildColumnSelection(head)
           if (tail != SelectionSet.Empty) {
-            builder.append(", ")
+            render(", ")
             buildSelection(tail)
           }
         case SelectionSet.Empty              => ()
       }
 
-    def buildColumnSelection[A, B](columnSelection: ColumnSelection[A, B]): Unit =
+    def buildColumnSelection[A, B](columnSelection: ColumnSelection[A, B])(implicit render: Renderer): Unit =
       columnSelection match {
         case ColumnSelection.Constant(value, name) =>
-          builder.append(value.toString()) // todo fix escaping
+          render(value.toString()) // todo fix escaping
           name match {
             case Some(name) =>
-              val _ = builder.append(" as ").append(name)
+              render(" as ", name)
             case None       => ()
           }
         case ColumnSelection.Computed(expr, name)  =>
@@ -372,24 +394,24 @@ trait SqlServerModule extends Jdbc { self =>
             case Some(name) =>
               Expr.exprName(expr) match {
                 case Some(sourceName) if name != sourceName =>
-                  val _ = builder.append(" as ").append(name)
+                  render(" as ", name)
                 case _                                      => ()
               }
             case _          => () // todo what do we do if we don't have a name?
           }
       }
 
-    def buildTable(table: Table): Unit =
+    def buildTable(table: Table)(implicit render: Renderer): Unit =
       table match {
 
         case Table.DerivedTable(read, name) =>
-          builder.append(" ( ")
-          builder.append(renderRead(read.asInstanceOf[Read[_]]))
-          builder.append(" ) ")
-          val _ = builder.append(name)
+          render(" ( ")
+          render(renderRead(read.asInstanceOf[Read[_]]))
+          render(" ) ")
+          render(name)
 
         case sourceTable: self.Table.Source =>
-          val _ = builder.append(sourceTable.name)
+          render(sourceTable.name)
 
         case Table.DialectSpecificTable(tableExtension) =>
           tableExtension match {
@@ -397,8 +419,8 @@ trait SqlServerModule extends Jdbc { self =>
               buildTable(left)
 
               crossType match {
-                case SqlServerSpecific.SqlServerTable.CrossType.CrossApply => builder.append(" cross apply ")
-                case SqlServerSpecific.SqlServerTable.CrossType.OuterApply => builder.append(" outer apply ")
+                case SqlServerSpecific.SqlServerTable.CrossType.CrossApply => render(" cross apply ")
+                case SqlServerSpecific.SqlServerTable.CrossType.OuterApply => render(" outer apply ")
               }
 
               val _ = buildTable(derivedTable)
@@ -406,18 +428,35 @@ trait SqlServerModule extends Jdbc { self =>
 
         case Table.Joined(joinType, left, right, on) =>
           buildTable(left)
-          builder.append(joinType match {
+          render(joinType match {
             case JoinType.Inner      => " inner join "
             case JoinType.LeftOuter  => " left join "
             case JoinType.RightOuter => " right join "
             case JoinType.FullOuter  => " outer join "
           })
           buildTable(right)
-          builder.append(" on ")
+          render(" on ")
           buildExpr(on)
-          val _ = builder.append(" ")
+          render(" ")
       }
-    buildReadString(read)
-    builder.toString()
+
+    def renderDeleteImpl(delete: Delete[_])(implicit render: Renderer) = {
+      render("DELETE FROM ")
+      buildTable(delete.table)
+      delete.whereExpr match {
+        case Expr.Literal(true) => ()
+        case _                  =>
+          render(" WHERE ")
+          buildExpr(delete.whereExpr)
+      }
+    }
+
+    // TODO https://github.com/zio/zio-sql/issues/160
+    def renderUpdateImpl(update: Update[_])(implicit render: Renderer) =
+      ???
+
+    // TODO https://github.com/zio/zio-sql/issues/160
+    def renderInsertImpl[A](insert: Insert[_, A])(implicit render: Renderer, schema: Schema[A]) =
+      ???
   }
 }
