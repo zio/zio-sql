@@ -3,7 +3,7 @@ package zio.sql.sqlserver
 import zio._
 import zio.test._
 import java.util.Properties
-import zio.sql.{ ConnectionPoolConfig, JdbcRunnableSpec, TestContainer }
+import zio.sql.{ ConnectionPoolConfig, JdbcRunnableSpec }
 
 trait SqlServerRunnableSpec extends JdbcRunnableSpec with SqlServerModule {
 
@@ -17,8 +17,7 @@ trait SqlServerRunnableSpec extends JdbcRunnableSpec with SqlServerModule {
   }
 
   val poolConfigLayer = ZLayer.scoped {
-    TestContainer
-      .postgres()
+    TestContainer.sqlServer
       .map(a =>
         ConnectionPoolConfig(
           url = a.jdbcUrl,
