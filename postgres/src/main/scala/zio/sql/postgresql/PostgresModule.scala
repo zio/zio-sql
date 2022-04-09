@@ -420,7 +420,7 @@ trait PostgresModule extends Jdbc { self =>
                 case StandardType.MonthType                     => render(s"'${value}'")
                 case StandardType.LocalDateTimeType(formatter)  =>
                   render(s"'${formatter.format(value.asInstanceOf[LocalDateTime])}'")
-                case UnitType                                   => () // ???
+                case UnitType                                   => render("null") // None is encoded as Schema[Unit].transform(_ => None, _ => ())
                 case StandardType.YearMonthType                 => render(s"'${value}'")
                 case DoubleType                                 => render(value)
                 case StandardType.YearType                      => render(s"'${value}'")
@@ -445,18 +445,16 @@ trait PostgresModule extends Jdbc { self =>
                 case BoolType                                   => render(value)
                 case DayOfWeekType                              => render(s"'${value}'")
                 case FloatType                                  => render(value)
-                case StandardType.Duration(_)                   => render(s"'${value}'")
+                case StandardType.DurationType                  => render(s"'${value}'")
               }
             case None    => ()
           }
-        case DynamicValue.Transform(that)           => renderDynamicValue(that)
         case DynamicValue.Tuple(left, right)        =>
           renderDynamicValue(left)
           render(", ")
           renderDynamicValue(right)
         case DynamicValue.SomeValue(value)          => renderDynamicValue(value)
-        case DynamicValue.NoneValue                 => render(s"null")
-        // TODO what about other cases?
+        case DynamicValue.NoneValue                 => render("null")
         case _                                      => ()
       }
 
@@ -500,12 +498,12 @@ trait PostgresModule extends Jdbc { self =>
     def renderSet(set: List[Set[_, _]])(implicit render: Renderer): Unit =
       set match {
         case head :: tail =>
-          renderExpr(head.lhs)
+          renderSetLhs(head.lhs)
           render(" = ")
           renderExpr(head.rhs)
           tail.foreach { setEq =>
             render(", ")
-            renderExpr(setEq.lhs)
+            renderSetLhs(setEq.lhs)
             render(" = ")
             renderExpr(setEq.rhs)
           }
@@ -549,6 +547,20 @@ trait PostgresModule extends Jdbc { self =>
         case _           => render(lit.value)           // todo fix add TypeTag.Nullable[_] =>
       }
     }
+
+    /*
+     * PostgreSQL doesn't allow for `tableName.columnName = value` format in update statement,
+     * instead requires `columnName = value`.
+     */
+    private[zio] def renderSetLhs[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit =
+      expr match {
+        case Expr.Source(_, column) =>
+          column.name match {
+            case Some(columnName) => render(columnName)
+            case _                => ()
+          }
+        case _                      => ()
+      }
 
     private[zio] def renderExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
       case Expr.Subselect(subselect)                                                    =>
