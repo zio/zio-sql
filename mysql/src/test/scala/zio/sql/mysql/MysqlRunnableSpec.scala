@@ -1,8 +1,7 @@
 package zio.sql.mysql
 
 import java.util.Properties
-
-import zio.sql._
+import zio.sql.{ ConnectionPoolConfig, JdbcRunnableSpec }
 import zio.test._
 import zio.ZLayer
 

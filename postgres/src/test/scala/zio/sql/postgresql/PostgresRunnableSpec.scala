@@ -3,7 +3,7 @@ package zio.sql.postgresql
 import zio._
 import zio.test._
 import java.util.Properties
-import zio.sql.{ ConnectionPoolConfig, JdbcRunnableSpec, TestContainer }
+import zio.sql.{ ConnectionPoolConfig, JdbcRunnableSpec }
 
 trait PostgresRunnableSpec extends JdbcRunnableSpec with PostgresModule {
 

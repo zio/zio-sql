@@ -9,7 +9,7 @@ import zio.schema.Schema
 trait TransactionModule { self: Jdbc =>
   private[sql] sealed case class Txn(connection: Connection, sqlDriverCore: SqlDriverCore)
 
-  sealed case class ZTransaction[-R: ZTag, +E, +A](unwrap: ZIO[(R, Txn) with Scope, E, A]) { self =>
+  sealed case class ZTransaction[-R: ZTag: IsNotIntersection, +E, +A](unwrap: ZIO[(R, Txn), E, A]) { self =>
     def map[B](f: A => B): ZTransaction[R, E, B] =
       ZTransaction(self.unwrap.map(f))
 
@@ -19,22 +19,23 @@ trait TransactionModule { self: Jdbc =>
       ZTransaction(self.unwrap.flatMap(a => f(a).unwrap))
 
     private[sql] def run(txn: Txn)(implicit
-      ev: E <:< Exception
-    ): ZIO[R with Scope, Exception, A] =
+      ev: E <:< Throwable
+    ): ZIO[R, Throwable, A] =
       for {
         r <- ZIO.environment[R]
         a <- self.unwrap
                .mapError(ev)
-               .provideSomeEnvironment[Scope](_.add((r.get, txn)))
+               .provideService((r.get, txn))
+               .absorb
                .tapBoth(
                  _ =>
                    ZIO
                      .attemptBlocking(txn.connection.rollback())
-                     .refineToOrDie[Exception],
+                     .refineToOrDie[Throwable],
                  _ =>
                    ZIO
                      .attemptBlocking(txn.connection.commit())
-                     .refineToOrDie[Exception]
+                     .refineToOrDie[Throwable]
                )
       } yield a
 
