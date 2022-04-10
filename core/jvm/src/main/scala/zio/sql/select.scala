@@ -138,13 +138,13 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
       ]
       val b: B0 = selection.value.asInstanceOf[B0]
 
-      Read.Subselect(Selection[F, Source with ParentTable, B0](b), Some(table), None).normalize
+      Read.Subselect(Selection[F, Source with ParentTable, B0](b), Some(table), true).normalize
     }
   }
 
   /**
-    * A `Read[A]` models a selection of a set of values of type `A`.
-    */
+   * A `Read[A]` models a selection of a set of values of type `A`.
+   */
   sealed trait Read[+Out] { self =>
     type ResultType
 
@@ -159,16 +159,18 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
     val columnSet: CS
 
     /**
-      * Maps the [[Read]] query's output to another type by providing a function
-      * that can transform from the current type to the new type.
-      */
+     * Maps the [[Read]] query's output to another type by providing a function
+     * that can transform from the current type to the new type.
+     */
     def map[Out2](f: Out => Out2): Read.Aux[ResultType, Out2] =
       Read.Mapped(self, f)
 
     def asTable(name: TableName): Table.DerivedTable[Out, Read[Out]]
 
     def to[Target](f: Out => Target): Read[Target] =
-      self.map(resultType => f(resultType))
+      self.map { resultType =>
+        f(resultType)
+      }
 
     def union[Out1 >: Out](that: Read.Aux[ResultType, Out1]): Read.Aux[ResultType, Out1] =
       Read.Union[ResultType, Out1](self, that, true)
@@ -225,7 +227,7 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
     /**
       * `HAVING` can only be called:
       *
-      *  1. If its called with an aggregated function returning boolean like `Having Count(id) > 5`,
+      *  1. If its called with an aggregated function returning boolean like `Having Count(id) > 5`, 
       *     while all the previously selected columns appeared in group by clause.
       *  2. If its called with a normal expression returning boolean like `having customer_id = '636ae137-5b1a-4c8c-b11f-c47c624d9cdc``
       *     and all the previously selected columns appeared in group by clause.
@@ -279,183 +281,43 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
       ): Subselect[F, Repr, Source, Subsource, Head, Tail] =
         copy(havingExpr = self.havingExpr && havingExpr2)
 
-      // format: off
-      def groupBy[F1: Features.IsNotAggregated](
-          expr1: Expr[F1, Source, Any]
-      ): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1] =
+      // format: off          
+      def groupBy[F1: Features.IsNotAggregated](expr1: Expr[F1, Source, Any]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1] =
         new Subselect(selection, table, whereExpr, self.groupByExprs ++ expr1, havingExpr, orderByExprs, offset, limit) {
-          override type GroupByF = self.GroupByF with F1
-        }
+         override type GroupByF = self.GroupByF with F1
+       }
 
-      def groupBy[F1: Features.IsNotAggregated, F2: Features.IsNotAggregated](
-          expr1: Expr[F1, Source, Any],
-          expr2: Expr[F2, Source, Any]
-      ): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2] =
-        new Subselect(
-          selection,
-          table,
-          whereExpr,
-          self.groupByExprs ++ expr1 ++ expr2,
-          havingExpr,
-          orderByExprs,
-          offset,
-          limit
-        ) {
-          override type GroupByF = self.GroupByF with F1 with F2
-        }
+      def groupBy[F1: Features.IsNotAggregated, F2: Features.IsNotAggregated](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2] =
+        new Subselect(selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2, havingExpr, orderByExprs, offset, limit) {
+         override type GroupByF = self.GroupByF with  F1 with F2
+      }
 
-      def groupBy[F1: Features.IsNotAggregated, F2: Features.IsNotAggregated, F3: Features.IsNotAggregated](
-          expr1: Expr[F1, Source, Any],
-          expr2: Expr[F2, Source, Any],
-          expr3: Expr[F3, Source, Any]
-      ): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3] =
-        new Subselect(
-          selection,
-          table,
-          whereExpr,
-          self.groupByExprs ++ expr1 ++ expr2 ++ expr3,
-          havingExpr,
-          orderByExprs,
-          offset,
-          limit
-        ) {
-          override type GroupByF = self.GroupByF with F1 with F2 with F3
-        }
+      def groupBy[F1: Features.IsNotAggregated, F2: Features.IsNotAggregated, F3: Features.IsNotAggregated](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3] =
+        new Subselect(selection, table, whereExpr,self.groupByExprs ++ expr1 ++ expr2 ++ expr3, havingExpr, orderByExprs, offset, limit) {
+         override type GroupByF =  self.GroupByF with F1 with F2 with F3
+      }
 
-      def groupBy[
-          F1: Features.IsNotAggregated,
-          F2: Features.IsNotAggregated,
-          F3: Features.IsNotAggregated,
-          F4: Features.IsNotAggregated
-      ](
-          expr1: Expr[F1, Source, Any],
-          expr2: Expr[F2, Source, Any],
-          expr3: Expr[F3, Source, Any],
-          expr4: Expr[F4, Source, Any]
-      ): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3 with F4] =
-        new Subselect(
-          selection,
-          table,
-          whereExpr,
-          self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4,
-          havingExpr,
-          orderByExprs,
-          offset,
-          limit
-        ) {
-          override type GroupByF = self.GroupByF with F1 with F2 with F3 with F4
-        }
+      def groupBy[F1: Features.IsNotAggregated, F2: Features.IsNotAggregated, F3: Features.IsNotAggregated, F4: Features.IsNotAggregated](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3 with F4] =
+        new Subselect(selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4, havingExpr, orderByExprs, offset, limit) {
+         override type GroupByF = self.GroupByF with F1 with F2 with F3 with F4
+      }
 
-      def groupBy[
-          F1: Features.IsNotAggregated,
-          F2: Features.IsNotAggregated,
-          F3: Features.IsNotAggregated,
-          F4: Features.IsNotAggregated,
-          F5: Features.IsNotAggregated
-      ](
-          expr1: Expr[F1, Source, Any],
-          expr2: Expr[F2, Source, Any],
-          expr3: Expr[F3, Source, Any],
-          expr4: Expr[F4, Source, Any],
-          expr5: Expr[F5, Source, Any]
-      ): Subselect.WithGroupByF[
-        F,
-        Repr,
-        Source,
-        Subsource,
-        Head,
-        Tail,
-        self.GroupByF with F1 with F2 with F3 with F4 with F5
-      ] =
-        new Subselect(
-          selection,
-          table,
-          whereExpr,
-          self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5,
-          havingExpr,
-          orderByExprs,
-          offset,
-          limit
-        ) {
-          override type GroupByF = self.GroupByF with F1 with F2 with F3 with F4 with F5
-        }
+      def groupBy[F1: Features.IsNotAggregated, F2: Features.IsNotAggregated, F3: Features.IsNotAggregated, F4: Features.IsNotAggregated, F5: Features.IsNotAggregated](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3 with F4 with F5] =
+        new Subselect(selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5, havingExpr, orderByExprs, offset, limit) {
+         override type GroupByF =  self.GroupByF with F1 with F2 with F3 with F4 with F5
+      }
 
-      def groupBy[
-          F1: Features.IsNotAggregated,
-          F2: Features.IsNotAggregated,
-          F3: Features.IsNotAggregated,
-          F4: Features.IsNotAggregated,
-          F5: Features.IsNotAggregated,
-          F6: Features.IsNotAggregated
-      ](
-          expr1: Expr[F1, Source, Any],
-          expr2: Expr[F2, Source, Any],
-          expr3: Expr[F3, Source, Any],
-          expr4: Expr[F4, Source, Any],
-          expr5: Expr[F5, Source, Any],
-          expr6: Expr[F6, Source, Any]
-      ): Subselect.WithGroupByF[
-        F,
-        Repr,
-        Source,
-        Subsource,
-        Head,
-        Tail,
-        self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6
-      ] =
-        new Subselect(
-          selection,
-          table,
-          whereExpr,
-          self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6,
-          havingExpr,
-          orderByExprs,
-          offset,
-          limit
-        ) {
-          override type GroupByF = self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6
-        }
-
+      def groupBy[F1: Features.IsNotAggregated, F2: Features.IsNotAggregated, F3: Features.IsNotAggregated, F4: Features.IsNotAggregated, F5: Features.IsNotAggregated, F6: Features.IsNotAggregated](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any], expr6: Expr[F6, Source, Any]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6] =
+        new Subselect(selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6, havingExpr, orderByExprs, offset, limit) {
+         override type GroupByF =  self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6
+      }
       /**
         * TODO add arities up to 22 when needed / requested by users
         */
-      def groupBy[
-          F1: Features.IsNotAggregated,
-          F2: Features.IsNotAggregated,
-          F3: Features.IsNotAggregated,
-          F4: Features.IsNotAggregated,
-          F5: Features.IsNotAggregated,
-          F6: Features.IsNotAggregated,
-          F7: Features.IsNotAggregated
-      ](
-          expr1: Expr[F1, Source, Any],
-          expr2: Expr[F2, Source, Any],
-          expr3: Expr[F3, Source, Any],
-          expr4: Expr[F4, Source, Any],
-          expr5: Expr[F5, Source, Any],
-          expr6: Expr[F6, Source, Any],
-          expr7: Expr[F7, Source, Any]
-      ): Subselect.WithGroupByF[
-        F,
-        Repr,
-        Source,
-        Subsource,
-        Head,
-        Tail,
-        self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6 with F7
-      ] =
-        new Subselect(
-          selection,
-          table,
-          whereExpr,
-          self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7,
-          havingExpr,
-          orderByExprs,
-          offset,
-          limit
-        ) {
-          override type GroupByF = self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6 with F7
-        }
+      def groupBy[F1: Features.IsNotAggregated, F2: Features.IsNotAggregated, F3: Features.IsNotAggregated, F4: Features.IsNotAggregated, F5: Features.IsNotAggregated, F6: Features.IsNotAggregated, F7: Features.IsNotAggregated](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any], expr6: Expr[F6, Source, Any], expr7: Expr[F7, Source, Any]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6 with F7] =
+        new Subselect(selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7, havingExpr, orderByExprs, offset, limit) {
+         override type GroupByF =  self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6 with F7
+      }
       // format: on
 
       def normalize(implicit
@@ -537,8 +399,8 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
   }
 
   /**
-    * A columnar selection of `B` from a source `A`, modeled as `A => B`.
-    */
+   * A columnar selection of `B` from a source `A`, modeled as `A => B`.
+   */
   sealed case class Selection[F, -A, +B <: SelectionSet[A]](value: B) { self =>
 
     type ColsRepr = value.ResultTypeRepr

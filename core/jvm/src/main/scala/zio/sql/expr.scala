@@ -9,9 +9,9 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
   self: SelectModule with TableModule =>
 
   /**
-    * Models a function `A => B`.
-    * SELECT product.price + 10
-    */
+   * Models a function `A => B`.
+   * SELECT product.price + 10
+   */
   sealed trait Expr[F, -A, +B] { self =>
 
     def +[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =

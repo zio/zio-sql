@@ -3,23 +3,23 @@ package zio.sql.postgresql
 import java.time._
 import java.time.format.DateTimeFormatter
 import java.util.UUID
-import zio.{ Cause, Chunk }
+import zio.{Cause, Chunk}
 import zio.stream.ZStream
 import zio.test.Assertion._
 import zio.test._
-import zio.test.TestAspect.{ ignore, timeout }
+import zio.test.TestAspect.{ignore, timeout}
 import zio.durationInt
 
 object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
 
   import Customers._
-  import FunctionDef.{ CharLength => _, _ }
+  import FunctionDef.{CharLength => _, _}
   import PostgresFunctionDef._
   import PostgresSpecific._
 
   private def collectAndCompare[R, E](
-    expected: Seq[String],
-    testResult: ZStream[R, E, String]
+      expected: Seq[String],
+      testResult: ZStream[R, E, String]
   ) = {
     val assertion = for {
       r <- testResult.runCollect
@@ -632,7 +632,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
       },
       suite("parseIdent")(
         test("parseIdent removes quoting of individual identifiers") {
-          val someString: Gen[Sized, String]    = Gen.string
+          val someString: Gen[Sized, String] = Gen.string
             .filter(x => x.length < 50 && x.length > 1)
           // NOTE: I don't know if property based testing is worth doing here, I just wanted to try it
           val genTestString: Gen[Sized, String] =
@@ -953,8 +953,9 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
             )
           )
 
-        val testResult = execute(query).map { case (id, fname, lname, verified, dob) =>
-          Customer(id, fname, lname, verified, dob)
+        val testResult = execute(query).map {
+          case (id, fname, lname, verified, dob) =>
+            Customer(id, fname, lname, verified, dob)
         }
 
         val assertion = for {
@@ -1189,12 +1190,13 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
         val testResult = execute(query)
 
         val expectedRoundTripTimestamp = ZonedDateTime.of(2020, 11, 21, 19, 10, 25, 0, ZoneId.of(ZoneOffset.UTC.getId))
-        val roundTripQuery             =
+        val roundTripQuery =
           select(createdString ++ createdTimestamp) from customers
-        val roundTripResults           = execute(roundTripQuery).map { case row =>
-          (row._1, ZonedDateTime.parse(row._1), row._2)
+        val roundTripResults = execute(roundTripQuery).map {
+          case row =>
+            (row._1, ZonedDateTime.parse(row._1), row._2)
         }
-        val roundTripExpected          = List(
+        val roundTripExpected = List(
           ("2020-11-21T19:10:25+00:00", ZonedDateTime.parse("2020-11-21T19:10:25+00:00"), expectedRoundTripTimestamp),
           ("2020-11-21T15:10:25-04:00", ZonedDateTime.parse("2020-11-21T15:10:25-04:00"), expectedRoundTripTimestamp),
           ("2020-11-22T02:10:25+07:00", ZonedDateTime.parse("2020-11-22T02:10:25+07:00"), expectedRoundTripTimestamp),
@@ -1218,8 +1220,9 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
         val expected = ("Russe_", "special ::__::")
 
         val testResult =
-          execute(query).map { case row =>
-            (row._1, row._2)
+          execute(query).map {
+            case row =>
+              (row._1, row._2)
           }
 
         val assertion = for {
@@ -1297,10 +1300,10 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
           t1 <- assertM(runTest(Interval()))(equalTo(Interval()))
           t2 <- assertM(runTest(Interval(days = 10)))(equalTo(Interval(days = 10)))
           t3 <- assertM(
-                  runTest(Interval(years = 10, months = 2, days = 5, hours = 6, minutes = 20, seconds = 15))
-                )(
-                  equalTo(Interval(years = 10, months = 2, days = 5, hours = 6, minutes = 20, seconds = 15))
-                )
+            runTest(Interval(years = 10, months = 2, days = 5, hours = 6, minutes = 20, seconds = 15))
+          )(
+            equalTo(Interval(years = 10, months = 2, days = 5, hours = 6, minutes = 20, seconds = 15))
+          )
         } yield t1 && t2 && t3).mapErrorCause(cause => Cause.stackless(cause.untraced))
       },
       test("make_time") {
@@ -1337,11 +1340,11 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
           Timestampz.fromZonedDateTime(ZonedDateTime.of(2020, 11, 21, 19, 10, 25, 0, ZoneId.of(ZoneOffset.UTC.getId)))
         (for {
           t1 <- assertM(runTest(Timestampz(2013, 7, 15, 8, 15, 23.5)))(
-                  equalTo(Timestampz.fromZonedDateTime(ZonedDateTime.parse("2013-07-15T08:15:23.5+00:00")))
-                )
+            equalTo(Timestampz.fromZonedDateTime(ZonedDateTime.parse("2013-07-15T08:15:23.5+00:00")))
+          )
           t2 <- assertM(runTest(Timestampz(2020, 11, 21, 19, 10, 25, "+00:00")))(
-                  equalTo(expectedRoundTripTimestamp)
-                )
+            equalTo(expectedRoundTripTimestamp)
+          )
           t3 <- assertM(runTest(Timestampz(2020, 11, 21, 15, 10, 25, "-04:00")))(equalTo(expectedRoundTripTimestamp))
           t4 <- assertM(runTest(Timestampz(2020, 11, 22, 2, 10, 25, "+07:00")))(equalTo(expectedRoundTripTimestamp))
           t5 <- assertM(runTest(Timestampz(2020, 11, 21, 12, 10, 25, "-07:00")))(equalTo(expectedRoundTripTimestamp))
