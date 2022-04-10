@@ -816,46 +816,46 @@ trait PostgresModule extends Jdbc { self =>
       render(lit.encode)
   }
 
-  implicit case object EInterval extends Encoder[PostgresSpecific.Interval] {
+  implicit case object EInterval   extends Encoder[PostgresSpecific.Interval]   {
     override def render(value: PostgresSpecific.Interval): String = value.toString
   }
   implicit case object ETimestampz extends Encoder[PostgresSpecific.Timestampz] {
     override def render(value: PostgresSpecific.Timestampz): String = value.toString
   }
-  implicit case object EByteArray extends Encoder[Chunk[Byte]] {
+  implicit case object EByteArray  extends Encoder[Chunk[Byte]]                 {
     override def render(value: Chunk[Byte]): String = value.map("""\%03o""" format _).mkString("E\'", "", "\'")
   } // todo fix `cast` infers correctly but map doesn't work for some reason
 
   private def escape(str: String): String = str.replace("'", "''")
-  implicit case object EChar extends Encoder[Char] {
+  implicit case object EChar           extends Encoder[Char]           {
     override def render(value: Char): String =
       s"'${escape(value.toString)}'"
   }
-  implicit case object EString extends Encoder[String] {
+  implicit case object EString         extends Encoder[String]         {
     override def render(value: String): String = s"'${escape(value)}'"
   }
-  implicit case object EInstant extends Encoder[Instant] {
+  implicit case object EInstant        extends Encoder[Instant]        {
     override def render(value: Instant): String = s"TIMESTAMP '$value'"
   }
-  implicit case object ELocalDate extends Encoder[LocalDate] {
+  implicit case object ELocalDate      extends Encoder[LocalDate]      {
     override def render(value: LocalDate): String = s"DATE '$value'"
   }
-  implicit case object ELocalDateTime extends Encoder[LocalDateTime] {
+  implicit case object ELocalDateTime  extends Encoder[LocalDateTime]  {
     override def render(value: LocalDateTime): String = s"DATE '$value'"
   }
-  implicit case object ELocalTime extends Encoder[LocalTime] {
+  implicit case object ELocalTime      extends Encoder[LocalTime]      {
     override def render(value: LocalTime): String = s"$value" // todo still broken
   }
   implicit case object EOffsetDateTime extends Encoder[OffsetDateTime] {
     override def render(value: OffsetDateTime): String = s"DATE '$value'"
   }
-  implicit case object EOffsetTime extends Encoder[OffsetTime] {
+  implicit case object EOffsetTime     extends Encoder[OffsetTime]     {
     override def render(value: OffsetTime): String = super.render(value) // todo still broken
   }
-  implicit case object EUUID extends Encoder[UUID] {
+  implicit case object EUUID           extends Encoder[UUID]           {
     override def render(value: UUID): String = s"'$value'"
   }
-  implicit case object EZonedDateTime extends Encoder[ZonedDateTime] {
+  implicit case object EZonedDateTime  extends Encoder[ZonedDateTime]  {
     override def render(value: ZonedDateTime): String = s"DATE '$value'"
   }
 

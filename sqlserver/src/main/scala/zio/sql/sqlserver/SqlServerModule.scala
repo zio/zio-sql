@@ -1,9 +1,9 @@
 package zio.sql.sqlserver
 
-import zio.sql.{ Jdbc, Renderer, Encoder }
+import zio.sql.{ Encoder, Jdbc, Renderer }
 import zio.schema.Schema
 
-import java.time.{Instant, LocalDate, LocalDateTime, OffsetDateTime, ZonedDateTime}
+import java.time.{ Instant, LocalDate, LocalDateTime, OffsetDateTime, ZonedDateTime }
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 trait SqlServerModule extends Jdbc { self =>
@@ -215,7 +215,7 @@ trait SqlServerModule extends Jdbc { self =>
       case Expr.In(value, set)                                                                  =>
         buildExpr(value)
         renderReadImpl(set)
-      case literal @ Expr.Literal(_)								 =>
+      case literal @ Expr.Literal(_)                                                            =>
         render(literal.encode)
       case Expr.AggregationCall(param, aggregation)                                             =>
         render(aggregation.name.name)
@@ -436,15 +436,15 @@ trait SqlServerModule extends Jdbc { self =>
       ???
   }
 
-  implicit case object EBoolean extends Encoder[Boolean] {
+  implicit case object EBoolean        extends Encoder[Boolean]        {
     override def render(value: Boolean): String = if (value) "0 = 0" else "0 = 1"
   }
-  implicit case object ELocalDateTime extends Encoder[LocalDateTime] {
+  implicit case object ELocalDateTime  extends Encoder[LocalDateTime]  {
     private val format = DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss")
 
     override def render(value: LocalDateTime): String = s"'${value.format(format)}'"
   }
-  implicit case object EZonedDateTime extends Encoder[ZonedDateTime] {
+  implicit case object EZonedDateTime  extends Encoder[ZonedDateTime]  {
     private val format = DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss")
 
     override def render(value: ZonedDateTime): String = s"'${value.format(format)}'"
@@ -455,21 +455,21 @@ trait SqlServerModule extends Jdbc { self =>
     override def render(value: OffsetDateTime): String = s"'${value.format(format)}'"
   }
   private def escape(value: String): String = value.replace("'", "''")
-  implicit case object EString extends Encoder[String] {
+  implicit case object EString         extends Encoder[String]         {
     override def render(value: String): String = s"'${escape(value)}'"
   }
-  implicit case object EChar extends Encoder[Char] {
+  implicit case object EChar           extends Encoder[Char]           {
     override def render(value: Char): String = s"'${escape(value.toString)}'"
   }
-  implicit case object EUUID extends Encoder[UUID] {
+  implicit case object EUUID           extends Encoder[UUID]           {
     override def render(value: UUID): String = s"'$value'"
   }
-  implicit case object ELocalDate extends Encoder[LocalDate] {
+  implicit case object ELocalDate      extends Encoder[LocalDate]      {
     private val format = DateTimeFormatter.ofPattern("YYYY-MM-dd")
 
     override def render(value: LocalDate): String = s"'${value.format(format)}'"
   }
-  implicit case object EInstant extends Encoder[Instant] {
+  implicit case object EInstant        extends Encoder[Instant]        {
 
     override def render(value: Instant): String = s"'${value.toString}'"
   }

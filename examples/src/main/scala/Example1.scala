@@ -1,4 +1,4 @@
-import zio.sql.{Encoder, Sql}
+import zio.sql.{ Encoder, Sql }
 import zio.schema.Schema
 
 import java.time.LocalDate
