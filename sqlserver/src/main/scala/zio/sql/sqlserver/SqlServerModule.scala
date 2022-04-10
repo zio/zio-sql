@@ -1,9 +1,9 @@
 package zio.sql.sqlserver
 
-import zio.sql.{ Encoder, Jdbc, Renderer }
+import zio.sql.{Encoder, Jdbc, Renderer}
 import zio.schema.Schema
 
-import java.time.{ Instant, LocalDate, LocalDateTime, OffsetDateTime, ZonedDateTime }
+import java.time.{Instant, LocalDate, LocalDateTime, OffsetDateTime, ZonedDateTime}
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
@@ -26,15 +26,15 @@ trait SqlServerModule extends Jdbc { self =>
       }
 
       sealed private[SqlServerModule] case class CrossOuterApplyTable[A, B](
-        crossType: CrossType,
-        left: Table.Aux[A],
-        right: Table.Aux[B]
+          crossType: CrossType,
+          left: Table.Aux[A],
+          right: Table.Aux[B]
       ) extends SqlServerTable[A with B] { self =>
 
         override type ColumnHead = left.ColumnHead
 
         override type HeadIdentity0 = left.HeadIdentity0
-        override type ColumnTail    =
+        override type ColumnTail =
           left.columnSet.tail.Append[ColumnSet.Cons[right.ColumnHead, right.ColumnTail, right.HeadIdentity0]]
 
         override val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail, HeadIdentity0] =
@@ -54,7 +54,7 @@ trait SqlServerModule extends Jdbc { self =>
       }
 
       implicit def tableSourceToSelectedBuilder[A](
-        table: Table.Aux[A]
+          table: Table.Aux[A]
       ): CrossOuterApplyTableBuilder[A] =
         new CrossOuterApplyTableBuilder(table)
 
@@ -62,7 +62,7 @@ trait SqlServerModule extends Jdbc { self =>
         self =>
 
         final def crossApply[Out](
-          right: Table.DerivedTable[Out, Read[Out]]
+            right: Table.DerivedTable[Out, Read[Out]]
         ): Table.DialectSpecificTable[A with right.TableType] = {
 
           val tableExtension = CrossOuterApplyTable[A, right.TableType](
@@ -75,7 +75,7 @@ trait SqlServerModule extends Jdbc { self =>
         }
 
         final def outerApply[Out](
-          right: Table.DerivedTable[Out, Read[Out]]
+            right: Table.DerivedTable[Out, Read[Out]]
         ): Table.DialectSpecificTable[A with right.TableType] = {
 
           val tableExtension = CrossOuterApplyTable[A, right.TableType](
@@ -141,7 +141,7 @@ trait SqlServerModule extends Jdbc { self =>
           limit match {
             case Some(limit) =>
               render("TOP ", limit, " ")
-            case None        => ()
+            case None => ()
           }
           buildSelection(selection.value)
           table.foreach { t =>
@@ -159,17 +159,17 @@ trait SqlServerModule extends Jdbc { self =>
 
               havingExpr match {
                 case Expr.Literal(true) => ()
-                case _                  =>
+                case _ =>
                   render(" HAVING ")
                   buildExpr(havingExpr)
               }
-            case Read.ExprSet.NoExpr         => ()
+            case Read.ExprSet.NoExpr => ()
           }
           orderByExprs match {
             case _ :: _ =>
               render(" ORDER BY ")
               buildOrderingList(orderByExprs)
-            case Nil    => ()
+            case Nil => ()
           }
 
         case Read.Union(left, right, distinct) =>
@@ -183,20 +183,20 @@ trait SqlServerModule extends Jdbc { self =>
       }
 
     def buildExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
-      case Expr.Subselect(subselect)                                                            =>
+      case Expr.Subselect(subselect) =>
         render(" (")
         render(renderRead(subselect))
         render(") ")
-      case Expr.Source(table, column)                                                           =>
+      case Expr.Source(table, column) =>
         (table, column.name) match {
           case (tableName: TableName, Some(columnName)) =>
             render(tableName, ".", columnName)
-          case _                                        => ()
+          case _ => ()
         }
-      case Expr.Unary(base, op)                                                                 =>
+      case Expr.Unary(base, op) =>
         render(" ", op.symbol)
         buildExpr(base)
-      case Expr.Property(base, op)                                                              =>
+      case Expr.Property(base, op) =>
         buildExpr(base)
         val symbol = op match {
           case PropertyOp.IsNull    => "is null"
@@ -205,43 +205,43 @@ trait SqlServerModule extends Jdbc { self =>
           case PropertyOp.IsNotTrue => "= 0"
         }
         render(" ", symbol)
-      case Expr.Binary(left, right, op)                                                         =>
+      case Expr.Binary(left, right, op) =>
         buildExpr(left)
         render(" ", op.symbol, " ")
         buildExpr(right)
-      case Expr.Relational(left, right, op)                                                     =>
+      case Expr.Relational(left, right, op) =>
         buildExpr(left)
         render(" ", op.symbol, " ")
         buildExpr(right)
-      case Expr.In(value, set)                                                                  =>
+      case Expr.In(value, set) =>
         buildExpr(value)
         renderReadImpl(set)
-      case literal @ Expr.Literal(_)                                                            =>
+      case literal @ Expr.Literal(_) =>
         render(literal.encode)
-      case Expr.AggregationCall(param, aggregation)                                             =>
+      case Expr.AggregationCall(param, aggregation) =>
         render(aggregation.name.name)
         render("(")
         buildExpr(param)
         render(")")
-      case Expr.ParenlessFunctionCall0(function)                                                =>
+      case Expr.ParenlessFunctionCall0(function) =>
         render(function.name)
-      case Expr.FunctionCall0(function)                                                         =>
+      case Expr.FunctionCall0(function) =>
         render(function.name.name)
         render("(")
         render(")")
-      case Expr.FunctionCall1(param, function)                                                  =>
+      case Expr.FunctionCall1(param, function) =>
         render(function.name.name)
         render("(")
         buildExpr(param)
         render(")")
-      case Expr.FunctionCall2(param1, param2, function)                                         =>
+      case Expr.FunctionCall2(param1, param2, function) =>
         render(function.name.name)
         render("(")
         buildExpr(param1)
         render(",")
         buildExpr(param2)
         render(")")
-      case Expr.FunctionCall3(param1, param2, param3, function)                                 =>
+      case Expr.FunctionCall3(param1, param2, param3, function) =>
         render(function.name.name)
         render("(")
         buildExpr(param1)
@@ -250,7 +250,7 @@ trait SqlServerModule extends Jdbc { self =>
         render(",")
         buildExpr(param3)
         render(")")
-      case Expr.FunctionCall4(param1, param2, param3, param4, function)                         =>
+      case Expr.FunctionCall4(param1, param2, param3, param4, function) =>
         render(function.name.name)
         render("(")
         buildExpr(param1)
@@ -261,7 +261,7 @@ trait SqlServerModule extends Jdbc { self =>
         render(",")
         buildExpr(param4)
         render(")")
-      case Expr.FunctionCall5(param1, param2, param3, param4, param5, function)                 =>
+      case Expr.FunctionCall5(param1, param2, param3, param4, param5, function) =>
         render(function.name.name)
         render("(")
         buildExpr(param1)
@@ -274,7 +274,7 @@ trait SqlServerModule extends Jdbc { self =>
         render(",")
         buildExpr(param5)
         render(")")
-      case Expr.FunctionCall6(param1, param2, param3, param4, param5, param6, function)         =>
+      case Expr.FunctionCall6(param1, param2, param3, param4, param5, param6, function) =>
         render(function.name.name)
         render("(")
         buildExpr(param1)
@@ -308,7 +308,7 @@ trait SqlServerModule extends Jdbc { self =>
         render(")")
     }
 
-    def buildExprList(expr: Read.ExprSet[_])(implicit render: Renderer): Unit                   =
+    def buildExprList(expr: Read.ExprSet[_])(implicit render: Renderer): Unit =
       expr match {
         case Read.ExprSet.ExprCons(head, tail) =>
           buildExpr(head)
@@ -316,15 +316,15 @@ trait SqlServerModule extends Jdbc { self =>
             case Read.ExprSet.ExprCons(_, _) =>
               render(", ")
               buildExprList(tail.asInstanceOf[Read.ExprSet[_]])
-            case Read.ExprSet.NoExpr         => ()
+            case Read.ExprSet.NoExpr => ()
           }
-        case Read.ExprSet.NoExpr               => ()
+        case Read.ExprSet.NoExpr => ()
       }
     def buildOrderingList(expr: List[Ordering[Expr[_, _, _]]])(implicit render: Renderer): Unit =
       expr match {
         case head :: tail =>
           head match {
-            case Ordering.Asc(value)  => buildExpr(value)
+            case Ordering.Asc(value) => buildExpr(value)
             case Ordering.Desc(value) =>
               buildExpr(value)
               render(" desc")
@@ -333,9 +333,9 @@ trait SqlServerModule extends Jdbc { self =>
             case _ :: _ =>
               render(", ")
               buildOrderingList(tail)
-            case Nil    => ()
+            case Nil => ()
           }
-        case Nil          => ()
+        case Nil => ()
       }
 
     def buildSelection(selectionSet: SelectionSet[_])(implicit render: Renderer): Unit =
@@ -353,7 +353,7 @@ trait SqlServerModule extends Jdbc { self =>
             render(", ")
             buildSelection(tail)
           }
-        case SelectionSet.Empty              => ()
+        case SelectionSet.Empty => ()
       }
 
     def buildColumnSelection[A, B](columnSelection: ColumnSelection[A, B])(implicit render: Renderer): Unit =
@@ -363,18 +363,18 @@ trait SqlServerModule extends Jdbc { self =>
           name match {
             case Some(name) =>
               render(" as ", name)
-            case None       => ()
+            case None => ()
           }
-        case ColumnSelection.Computed(expr, name)  =>
+        case ColumnSelection.Computed(expr, name) =>
           buildExpr(expr)
           name match {
             case Some(name) =>
               Expr.exprName(expr) match {
                 case Some(sourceName) if name != sourceName =>
                   render(" as ", name)
-                case _                                      => ()
+                case _ => ()
               }
-            case _          => () // todo what do we do if we don't have a name?
+            case _ => () // todo what do we do if we don't have a name?
           }
       }
 
@@ -422,7 +422,7 @@ trait SqlServerModule extends Jdbc { self =>
       buildTable(delete.table)
       delete.whereExpr match {
         case Expr.Literal(true) => ()
-        case _                  =>
+        case _ =>
           render(" WHERE ")
           buildExpr(delete.whereExpr)
       }
@@ -437,15 +437,15 @@ trait SqlServerModule extends Jdbc { self =>
       ???
   }
 
-  implicit case object EBoolean        extends Encoder[Boolean]        {
+  implicit case object EBoolean extends Encoder[Boolean] {
     override def render(value: Boolean): String = if (value) "0 = 0" else "0 = 1"
   }
-  implicit case object ELocalDateTime  extends Encoder[LocalDateTime]  {
+  implicit case object ELocalDateTime extends Encoder[LocalDateTime] {
     private val format = DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss")
 
     override def render(value: LocalDateTime): String = s"'${value.format(format)}'"
   }
-  implicit case object EZonedDateTime  extends Encoder[ZonedDateTime]  {
+  implicit case object EZonedDateTime extends Encoder[ZonedDateTime] {
     private val format = DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss")
 
     override def render(value: ZonedDateTime): String = s"'${value.format(format)}'"
@@ -456,21 +456,21 @@ trait SqlServerModule extends Jdbc { self =>
     override def render(value: OffsetDateTime): String = s"'${value.format(format)}'"
   }
   private def escape(value: String): String = value.replace("'", "''")
-  implicit case object EString         extends Encoder[String]         {
+  implicit case object EString extends Encoder[String] {
     override def render(value: String): String = s"'${escape(value)}'"
   }
-  implicit case object EChar           extends Encoder[Char]           {
+  implicit case object EChar extends Encoder[Char] {
     override def render(value: Char): String = s"'${escape(value.toString)}'"
   }
-  implicit case object EUUID           extends Encoder[UUID]           {
+  implicit case object EUUID extends Encoder[UUID] {
     override def render(value: UUID): String = s"'$value'"
   }
-  implicit case object ELocalDate      extends Encoder[LocalDate]      {
+  implicit case object ELocalDate extends Encoder[LocalDate] {
     private val format = DateTimeFormatter.ofPattern("YYYY-MM-dd")
 
     override def render(value: LocalDate): String = s"'${value.format(format)}'"
   }
-  implicit case object EInstant        extends Encoder[Instant]        {
+  implicit case object EInstant extends Encoder[Instant] {
 
     override def render(value: Instant): String = s"'${value.toString}'"
   }

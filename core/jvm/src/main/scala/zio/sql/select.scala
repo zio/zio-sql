@@ -8,31 +8,32 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
 
   object Selector extends SelectorImplicitLowerPriority {
     implicit def aggregatedSelectorToBuilder[F, Source, B <: SelectionSet[Source]](
-      selector: Selector[F, Source, B, Any]
+        selector: Selector[F, Source, B, Any]
     )(implicit i: Features.IsFullyAggregated[F]): SelectBuilder[F, Source, B] =
       SelectBuilder(selector.selection)
 
     implicit def notAggregatedSelectorToBuilder[F, Source, B <: SelectionSet[Source], Unaggregated](
-      selector: Selector[F, Source, B, Unaggregated]
+        selector: Selector[F, Source, B, Unaggregated]
     )(implicit i: Features.IsNotAggregated[F]): SelectBuilder[F, Source, B] =
       SelectBuilder(selector.selection)
   }
 
   trait SelectorImplicitLowerPriority {
     implicit def partiallyAggregatedSelectorToBuilder[F, Source, B <: SelectionSet[Source], Unaggregated](
-      selector: Selector[F, Source, B, Unaggregated]
+        selector: Selector[F, Source, B, Unaggregated]
     ): AggSelectBuilder[F, Source, B, Unaggregated] =
       AggSelectBuilder[F, Source, B, Unaggregated](selector.selection)
 
     implicit def noTable[F, Source >: Any, B <: SelectionSet[Source]](
-      selectBuilder: Selector[F, Source, B, Any]
-    )(implicit
-      ev: B <:< SelectionSet.Cons[
-        Source,
-        selectBuilder.selection.value.ColumnHead,
-        selectBuilder.selection.value.SelectionTail
-      ],
-      normalizer: TrailingUnitNormalizer[selectBuilder.selection.value.ResultTypeRepr]
+        selectBuilder: Selector[F, Source, B, Any]
+    )(
+        implicit
+        ev: B <:< SelectionSet.Cons[
+          Source,
+          selectBuilder.selection.value.ColumnHead,
+          selectBuilder.selection.value.SelectionTail
+        ],
+        normalizer: TrailingUnitNormalizer[selectBuilder.selection.value.ResultTypeRepr]
     ): Read.Select[
       F,
       normalizer.Out,
@@ -53,12 +54,13 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
   }
 
   sealed case class AggSelectBuilder[F0, Source, B <: SelectionSet[Source], Unaggregated](
-    selection: Selection[F0, Source, B]
+      selection: Selection[F0, Source, B]
   ) {
 
-    def from[Source0 <: Source](table: Table.Aux[Source0])(implicit
-      ev: B <:< SelectionSet.Cons[Source0, selection.value.ColumnHead, selection.value.SelectionTail],
-      normalizer: TrailingUnitNormalizer[selection.value.ResultTypeRepr]
+    def from[Source0 <: Source](table: Table.Aux[Source0])(
+        implicit
+        ev: B <:< SelectionSet.Cons[Source0, selection.value.ColumnHead, selection.value.SelectionTail],
+        normalizer: TrailingUnitNormalizer[selection.value.ResultTypeRepr]
     ): AggSelectBuilderGroupBy[
       F0,
       normalizer.Out,
@@ -88,9 +90,10 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
 
   sealed case class SelectBuilder[F0, Source, B <: SelectionSet[Source]](selection: Selection[F0, Source, B]) {
 
-    def from[Source0 <: Source](table: Table.Aux[Source0])(implicit
-      ev: B <:< SelectionSet.Cons[Source0, selection.value.ColumnHead, selection.value.SelectionTail],
-      normalizer: TrailingUnitNormalizer[selection.value.ResultTypeRepr]
+    def from[Source0 <: Source](table: Table.Aux[Source0])(
+        implicit
+        ev: B <:< SelectionSet.Cons[Source0, selection.value.ColumnHead, selection.value.SelectionTail],
+        normalizer: TrailingUnitNormalizer[selection.value.ResultTypeRepr]
     ): Read.Select[
       F0,
       normalizer.Out,
@@ -116,12 +119,13 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
   }
 
   sealed case class SubselectBuilder[F, Source, B <: SelectionSet[Source], ParentTable](
-    selection: Selection[F, Source, B]
+      selection: Selection[F, Source, B]
   ) {
-    def from[Source0](table: Table.Aux[Source0])(implicit
-      ev1: Source0 with ParentTable <:< Source,
-      ev2: B <:< SelectionSet.Cons[Source, selection.value.ColumnHead, selection.value.SelectionTail],
-      normalizer: TrailingUnitNormalizer[selection.value.ResultTypeRepr]
+    def from[Source0](table: Table.Aux[Source0])(
+        implicit
+        ev1: Source0 with ParentTable <:< Source,
+        ev2: B <:< SelectionSet.Cons[Source, selection.value.ColumnHead, selection.value.SelectionTail],
+        normalizer: TrailingUnitNormalizer[selection.value.ResultTypeRepr]
     ): Read.Subselect[
       F,
       normalizer.Out,
@@ -168,7 +172,7 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
     def asTable(name: TableName): Table.DerivedTable[Out, Read[Out]]
 
     def to[Target](f: Out => Target): Read[Target] =
-      self.map(resultType => f(resultType))
+      self.map { resultType => f(resultType) }
 
     def union[Out1 >: Out](that: Read.Aux[ResultType, Out1]): Read.Aux[ResultType, Out1] =
       Read.Union[ResultType, Out1](self, that, true)
@@ -233,30 +237,31 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
     trait HavingIsSound[F, GroupByF]
 
     object HavingIsSound {
-      implicit def havingWasGroupedBy[F, GroupByF, Remainder](implicit
-        i: Features.IsPartiallyAggregated.WithRemainder[F, Remainder],
-        ev: GroupByF <:< Remainder
+      implicit def havingWasGroupedBy[F, GroupByF, Remainder](
+          implicit
+          i: Features.IsPartiallyAggregated.WithRemainder[F, Remainder],
+          ev: GroupByF <:< Remainder
       ): HavingIsSound[F, GroupByF] = new HavingIsSound[F, GroupByF] {}
     }
 
     type Select[F, Repr, Source, Head, Tail <: SelectionSet[Source]] = Subselect[F, Repr, Source, Source, Head, Tail]
 
     sealed case class Subselect[F, Repr, Source, Subsource, Head, Tail <: SelectionSet[Source]](
-      selection: Selection[F, Source, SelectionSet.ConsAux[Repr, Source, Head, Tail]],
-      table: Option[Table.Aux[Subsource]],
-      whereExpr: Option[Expr[_, Source, Boolean]],
-      groupByExprs: ExprSet[Source] = ExprSet.NoExpr,
-      havingExpr: Expr[_, Source, Boolean] = true,
-      orderByExprs: List[Ordering[Expr[_, Source, Any]]] = Nil,
-      offset: Option[Long] = None, // todo don't know how to do this outside of postgres/mysql
-      limit: Option[Long] = None
+        selection: Selection[F, Source, SelectionSet.ConsAux[Repr, Source, Head, Tail]],
+        table: Option[Table.Aux[Subsource]],
+        whereExpr: Option[Expr[_, Source, Boolean]],
+        groupByExprs: ExprSet[Source] = ExprSet.NoExpr,
+        havingExpr: Expr[_, Source, Boolean] = true,
+        orderByExprs: List[Ordering[Expr[_, Source, Any]]] = Nil,
+        offset: Option[Long] = None, // todo don't know how to do this outside of postgres/mysql
+        limit: Option[Long] = None
     ) extends Read[Repr] { self =>
 
       type GroupByF <: Any
 
       // TODO add F2: Features.IsNotAggregated constraint when https://github.com/zio/zio-sql/issues/583 is fixed
       def where[F2](
-        whereExpr2: Expr[F2, Source, Boolean]
+          whereExpr2: Expr[F2, Source, Boolean]
       ): Subselect[F, Repr, Source, Subsource, Head, Tail] =
         copy(whereExpr = Some(self.whereExpr.fold[Expr[_, Source, Boolean]](whereExpr2)(_ && whereExpr2)))
 
@@ -265,17 +270,18 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
       def offset(n: Long): Subselect[F, Repr, Source, Subsource, Head, Tail] = copy(offset = Some(n))
 
       def orderBy(
-        o: Ordering[Expr[_, Source, Any]],
-        os: Ordering[Expr[_, Source, Any]]*
+          o: Ordering[Expr[_, Source, Any]],
+          os: Ordering[Expr[_, Source, Any]]*
       ): Subselect[F, Repr, Source, Subsource, Head, Tail] =
         copy(orderByExprs = self.orderByExprs ++ (o :: os.toList))
 
       def having[F2, Remainder](
-        havingExpr2: Expr[F2, Source, Boolean]
-      )(implicit
-        i: Features.IsPartiallyAggregated.WithRemainder[F, Remainder],
-        ev: GroupByF <:< Remainder,
-        i2: HavingIsSound[F2, GroupByF]
+          havingExpr2: Expr[F2, Source, Boolean]
+      )(
+          implicit
+          i: Features.IsPartiallyAggregated.WithRemainder[F, Remainder],
+          ev: GroupByF <:< Remainder,
+          i2: HavingIsSound[F2, GroupByF]
       ): Subselect[F, Repr, Source, Subsource, Head, Tail] =
         copy(havingExpr = self.havingExpr && havingExpr2)
 
@@ -458,13 +464,14 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
         }
       // format: on
 
-      def normalize(implicit
-        instance: TrailingUnitNormalizer[ResultType]
+      def normalize(
+          implicit
+          instance: TrailingUnitNormalizer[ResultType]
       ): Subselect[F, instance.Out, Source, Subsource, Head, Tail] =
         self.asInstanceOf[Subselect[F, instance.Out, Source, Subsource, Head, Tail]]
 
       override def asTable(
-        name: TableName
+          name: TableName
       ): Table.DerivedTable[Repr, Subselect[F, Repr, Source, Subsource, Head, Tail]] =
         Table.DerivedTable[Repr, Subselect[F, Repr, Source, Subsource, Head, Tail]](self, name)
 
@@ -490,7 +497,7 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
         }
 
       implicit def subselectToExpr[F <: Features.Aggregated[_], Repr, Source, Subsource, Head](
-        subselect: Read.Subselect[F, Repr, _ <: Source, Subsource, Head, SelectionSet.Empty]
+          subselect: Read.Subselect[F, Repr, _ <: Source, Subsource, Head, SelectionSet.Empty]
       ): Expr[Features.Derived, Any, Head] =
         Expr.Subselect(subselect)
     }
@@ -544,14 +551,14 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
     type ColsRepr = value.ResultTypeRepr
 
     def ++[F2, A1 <: A, C <: SelectionSet[A1]](
-      that: Selection[F2, A1, C]
+        that: Selection[F2, A1, C]
     ): Selection[F :||: F2, A1, self.value.Append[A1, C]] =
       Selection(self.value ++ that.value)
   }
 
   object Selection {
     import ColumnSelection._
-    import SelectionSet.{ Cons, Empty }
+    import SelectionSet.{Cons, Empty}
 
     type Aux[F, -A, +B <: SelectionSet[A], ColsRepr0] = Selection[F, A, B] {
       type ColsRepr = ColsRepr0
@@ -713,16 +720,16 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
   }
 
   object DecodingError {
-    sealed case class UnexpectedNull(column: Int)                       extends DecodingError {
+    sealed case class UnexpectedNull(column: Int) extends DecodingError {
       def message = s"Expected column with index ${column} to be non-null"
     }
     sealed case class UnexpectedType(expected: TypeTag[_], actual: Int) extends DecodingError {
       def message = s"Expected type ${expected} but found ${actual}"
     }
-    sealed case class MissingColumn(column: Int)                        extends DecodingError {
+    sealed case class MissingColumn(column: Int) extends DecodingError {
       def message = s"The column with index ${column} does not exist"
     }
-    case object Closed                                                  extends DecodingError {
+    case object Closed extends DecodingError {
       def message = s"The ResultSet has been closed, so decoding is impossible"
     }
   }

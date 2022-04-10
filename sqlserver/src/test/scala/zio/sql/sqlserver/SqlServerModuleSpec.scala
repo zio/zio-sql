@@ -15,7 +15,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
   import DbSchema._
 
   private def customerSelectJoseAssertion[F: Features.IsNotAggregated](
-    condition: Expr[F, customers.TableType, Boolean]
+      condition: Expr[F, customers.TableType, Boolean]
   ) = {
     case class Customer(id: UUID, fname: String, lname: String, verified: Boolean, dateOfBirth: LocalDate)
 
@@ -83,9 +83,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
             )
           )
 
-        val testResult = execute(query).map { case row =>
-          Customer(row._1, row._2, row._3, row._4)
-        }
+        val testResult = execute(query).map { row => Customer(row._1, row._2, row._3, row._4) }
 
         val assertion = for {
           r <- testResult.runCollect
@@ -132,9 +130,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
             )
           )
 
-        val testResult = execute(query).map { case row =>
-          Customer(row._1, row._2, row._3, row._4)
-        }
+        val testResult = execute(query).map { row => Customer(row._1, row._2, row._3, row._4) }
 
         val assertion = for {
           r <- testResult.runCollect
@@ -177,9 +173,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
         val query = select(fName ++ lName ++ (subquery as "Count")).from(customers)
 
-        val result = execute(query).map { case row =>
-          Row(row._1, row._2, row._3)
-        }
+        val result = execute(query).map { row => Row(row._1, row._2, row._3) }
 
         val assertion = for {
           r <- result.runCollect
@@ -236,8 +230,9 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
           Row.create("5883CB62-D792-4EE3-ACBC-FE85B6BAA998", "D5137D3A-894A-4109-9986-E982541B434F", 55.0000)
         )
 
-        val result = execute(query).map { case (id, productId, price) =>
-          Row(id, productId, price)
+        val result = execute(query).map {
+          case (id, productId, price) =>
+            Row(id, productId, price)
         }
 
         val assertion = for {
@@ -318,9 +313,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
           Row("0a48ffb0-ec61-4147-af56-fc4dbca8de0a", "f35b0053-855b-4145-abe1-dc62bc1fdb96", 6.0)
         )
 
-        val result = execute(query).map { case row =>
-          Row(row._1, row._2, row._3)
-        }
+        val result = execute(query).map { row => Row(row._1, row._2, row._3) }
 
         val assertion = for {
           r <- result.runCollect
@@ -377,9 +370,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
             .from(customers.crossApply(orderDateDerivedTable))
             .orderBy(Ordering.Desc(orderDateDerived))
 
-        val result = execute(query).map { case row =>
-          Row(row._1, row._2, row._3, row._4)
-        }
+        val result = execute(query).map { row => Row(row._1, row._2, row._3, row._4) }
 
         val assertion = for {
           r <- result.runCollect
@@ -406,9 +397,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
         val query = select(fName ++ lName ++ orderDateDerived).from(customers.crossApply(subquery))
 
-        val result = execute(query).map { case row =>
-          CustomerAndDateRow(row._1, row._2, row._3)
-        }
+        val result = execute(query).map { row => CustomerAndDateRow(row._1, row._2, row._3) }
 
         val assertion = for {
           r <- result.runCollect
@@ -425,9 +414,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
         val query = select(fName ++ lName ++ orderDateDerived).from(customers.crossApply(subquery))
 
-        val result = execute(query).map { case row =>
-          CustomerAndDateRow(row._1, row._2, row._3)
-        }
+        val result = execute(query).map { row => CustomerAndDateRow(row._1, row._2, row._3) }
 
         val assertion = for {
           r <- result.runCollect
@@ -444,9 +431,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
         val query = select(fName ++ lName ++ orderDateDerived).from(customers.crossApply(subquery))
 
-        val result = execute(query).map { case row =>
-          CustomerAndDateRow(row._1, row._2, row._3)
-        }
+        val result = execute(query).map { row => CustomerAndDateRow(row._1, row._2, row._3) }
 
         val assertion = for {
           r <- result.runCollect
@@ -463,9 +448,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
         val query = select(fName ++ lName ++ orderDateDerived).from(customers.outerApply(subquery))
 
-        val result = execute(query).map { case row =>
-          CustomerAndDateRow(row._1, row._2, row._3)
-        }
+        val result = execute(query).map { row => CustomerAndDateRow(row._1, row._2, row._3) }
 
         val assertion = for {
           r <- result.runCollect
@@ -531,9 +514,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
           Row("Mila", "Paterso", LocalDate.parse("2020-04-30"))
         )
 
-        val result = execute(query).map { case row =>
-          Row(row._1, row._2, row._3)
-        }
+        val result = execute(query).map { row => Row(row._1, row._2, row._3) }
 
         val assertion = for {
           r <- result.runCollect
