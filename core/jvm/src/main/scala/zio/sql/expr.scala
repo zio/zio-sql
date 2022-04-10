@@ -9,9 +9,9 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
   self: SelectModule with TableModule =>
 
   /**
-   * Models a function `A => B`.
-   * SELECT product.price + 10
-   */
+    * Models a function `A => B`.
+    * SELECT product.price + 10
+    */
   sealed trait Expr[F, -A, +B] { self =>
 
     def +[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =
@@ -117,7 +117,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
 
     def typeTagOf[A](expr: Expr[_, _, A]): TypeTag[A] = expr.asInstanceOf[InvariantExpr[_, _, A]].typeTag
 
-    implicit def literal[A: TypeTag](a: A): Expr[Features.Literal, Any, A] = Expr.Literal(a)
+    implicit def literal[A: TypeTag: Encoder](a: A): Expr[Features.Literal, Any, A] = Expr.Literal(a)
 
     def exprName[F, A, B](expr: Expr[F, A, B]): Option[String] =
       expr match {
@@ -167,8 +167,9 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
       def typeTag: TypeTag[Boolean] = TypeTag.TBoolean
     }
 
-    sealed case class Literal[B: TypeTag](value: B) extends InvariantExpr[Features.Literal, Any, B] {
+    sealed case class Literal[B: TypeTag: Encoder](value: B) extends InvariantExpr[Features.Literal, Any, B] {
       def typeTag: TypeTag[B] = implicitly[TypeTag[B]]
+      def encode: String      = implicitly[Encoder[B]].render(value)
     }
 
     sealed case class AggregationCall[F, A, B, Z: TypeTag](param: Expr[F, A, B], aggregation: AggregationDef[B, Z])

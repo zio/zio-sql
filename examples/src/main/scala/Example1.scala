@@ -1,8 +1,15 @@
-import zio.sql.Sql
+import zio.sql.{Encoder, Sql}
 import zio.schema.Schema
+
+import java.time.LocalDate
+import java.util.UUID
 
 object Example1 extends Sql {
   import ColumnSet._
+
+  implicit object EString    extends Encoder[String]
+  implicit object EUUID      extends Encoder[UUID]
+  implicit object ELocalDate extends Encoder[LocalDate]
 
   def renderRead(read: this.Read[_]): String = ???
 

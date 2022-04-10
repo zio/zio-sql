@@ -2,13 +2,13 @@ package zio.sql.postgresql
 
 import org.postgresql.util.PGInterval
 import zio.Chunk
-import zio.sql.{ Jdbc, Renderer }
+import zio.sql.{ Encoder, Jdbc, Renderer }
 
 import java.sql.ResultSet
 import java.text.DecimalFormat
 import java.time._
 import java.time.format.DateTimeFormatter
-import java.util.Calendar
+import java.util.{ Calendar, UUID }
 import zio.schema._
 import zio.schema.StandardType.BigDecimalType
 import zio.schema.StandardType.CharType
@@ -38,7 +38,7 @@ trait PostgresModule extends Jdbc { self =>
     object PostgresSpecificTable {
       import scala.language.implicitConversions
 
-      private[PostgresModule] sealed case class LateraLTable[A, B](left: Table.Aux[A], right: Table.Aux[B])
+      sealed private[PostgresModule] case class LateraLTable[A, B](left: Table.Aux[A], right: Table.Aux[B])
           extends PostgresSpecificTable[A with B] { self =>
 
         override type ColumnHead = left.ColumnHead
@@ -420,10 +420,10 @@ trait PostgresModule extends Jdbc { self =>
                 case StandardType.MonthType                     => render(s"'${value}'")
                 case StandardType.LocalDateTimeType(formatter)  =>
                   render(s"'${formatter.format(value.asInstanceOf[LocalDateTime])}'")
-                case UnitType                                   => render("null") // None is encoded as Schema[Unit].transform(_ => None, _ => ())
-                case StandardType.YearMonthType                 => render(s"'${value}'")
-                case DoubleType                                 => render(value)
-                case StandardType.YearType                      => render(s"'${value}'")
+                case UnitType                   => render("null") // None is encoded as Schema[Unit].transform(_ => None, _ => ())
+                case StandardType.YearMonthType => render(s"'${value}'")
+                case DoubleType                 => render(value)
+                case StandardType.YearType      => render(s"'${value}'")
                 case StandardType.OffsetDateTimeType(formatter) =>
                   render(s"'${formatter.format(value.asInstanceOf[OffsetDateTime])}'")
                 case StandardType.ZonedDateTimeType(_)          =>
@@ -442,29 +442,27 @@ trait PostgresModule extends Jdbc { self =>
                 case StandardType.ZoneIdType                    => render(s"'${value}'")
                 case StandardType.LocalDateType(formatter)      =>
                   render(s"'${formatter.format(value.asInstanceOf[LocalDate])}'")
-                case BoolType                                   => render(value)
-                case DayOfWeekType                              => render(s"'${value}'")
-                case FloatType                                  => render(value)
-                case StandardType.DurationType                  => render(s"'${value}'")
+                case BoolType                  => render(value)
+                case DayOfWeekType             => render(s"'${value}'")
+                case FloatType                 => render(value)
+                case StandardType.DurationType => render(s"'${value}'")
               }
             case None    => ()
           }
-        case DynamicValue.Tuple(left, right)        =>
+        case DynamicValue.Tuple(left, right) =>
           renderDynamicValue(left)
           render(", ")
           renderDynamicValue(right)
-        case DynamicValue.SomeValue(value)          => renderDynamicValue(value)
-        case DynamicValue.NoneValue                 => render("null")
-        case _                                      => ()
+        case DynamicValue.SomeValue(value) => renderDynamicValue(value)
+        case DynamicValue.NoneValue        => render("null")
+        case _                             => ()
       }
 
     def renderColumnNames(sources: SelectionSet[_])(implicit render: Renderer): Unit =
       sources match {
         case SelectionSet.Empty                       => () // table is a collection of at least ONE column
         case SelectionSet.Cons(columnSelection, tail) =>
-          val _ = columnSelection.name.map { name =>
-            render(name)
-          }
+          val _ = columnSelection.name.map(name => render(name))
           tail.asInstanceOf[SelectionSet[_]] match {
             case SelectionSet.Empty             => ()
             case next @ SelectionSet.Cons(_, _) =>
@@ -509,44 +507,6 @@ trait PostgresModule extends Jdbc { self =>
           }
         case Nil          => // TODO restrict Update to not allow empty set
       }
-
-    private[zio] def renderLit[A, B](lit: self.Expr.Literal[_])(implicit render: Renderer): Unit = {
-      import PostgresSpecific.PostgresTypeTag._
-      import TypeTag._
-      lit.typeTag match {
-        case TDialectSpecific(tt) =>
-          tt match {
-            case tt @ TInterval                         => render(tt.cast(lit.value))
-            case tt @ TTimestampz                       => render(tt.cast(lit.value))
-            case _: PostgresSpecific.PostgresTypeTag[_] => ???
-          }
-        case TByteArray           =>
-          render(
-            lit.value.asInstanceOf[Chunk[Byte]].map("""\%03o""" format _).mkString("E\'", "", "\'")
-          ) // todo fix `cast` infers correctly but map doesn't work for some reason
-        case tt @ TChar           =>
-          render("'", tt.cast(lit.value), "'") // todo is this the same as a string? fix escaping
-        case tt @ TInstant        => render("TIMESTAMP '", tt.cast(lit.value), "'")
-        case tt @ TLocalDate      => render("DATE '", tt.cast(lit.value), "'")
-        case tt @ TLocalDateTime  => render("DATE '", tt.cast(lit.value), "'")
-        case tt @ TLocalTime      => render(tt.cast(lit.value)) // todo still broken
-        case tt @ TOffsetDateTime => render("DATE '", tt.cast(lit.value), "'")
-        case tt @ TOffsetTime     => render(tt.cast(lit.value)) // todo still broken
-        case tt @ TUUID           => render("'", tt.cast(lit.value), "'")
-        case tt @ TZonedDateTime  => render("DATE '", tt.cast(lit.value), "'")
-
-        case TByte       => render(lit.value)           // default toString is probably ok
-        case TBigDecimal => render(lit.value)           // default toString is probably ok
-        case TBoolean    => render(lit.value)           // default toString is probably ok
-        case TDouble     => render(lit.value)           // default toString is probably ok
-        case TFloat      => render(lit.value)           // default toString is probably ok
-        case TInt        => render(lit.value)           // default toString is probably ok
-        case TLong       => render(lit.value)           // default toString is probably ok
-        case TShort      => render(lit.value)           // default toString is probably ok
-        case TString     => render("'", lit.value, "'") // todo fix escaping
-        case _           => render(lit.value)           // todo fix add TypeTag.Nullable[_] =>
-      }
-    }
 
     /*
      * PostgreSQL doesn't allow for `tableName.columnName = value` format in update statement,
@@ -707,11 +667,9 @@ trait PostgresModule extends Jdbc { self =>
             render(" FROM ")
             renderTable(t)
           }
-          whereExpr match {
-            case Expr.Literal(true) => ()
-            case _                  =>
-              render(" WHERE ")
-              renderExpr(whereExpr)
+          whereExpr.fold(()) { w =>
+            render(" WHERE ")
+            renderExpr(w)
           }
           groupByExprs match {
             case Read.ExprSet.ExprCons(_, _) =>
@@ -851,5 +809,52 @@ trait PostgresModule extends Jdbc { self =>
           renderExpr(on)
           render(" ")
       }
+
+    private[zio] def renderLit[A, B](lit: self.Expr.Literal[_])(implicit render: Renderer): Unit =
+      render(lit.encode)
   }
+
+  implicit case object EInterval   extends Encoder[PostgresSpecific.Interval]   {
+    override def render(value: PostgresSpecific.Interval): String = value.toString
+  }
+  implicit case object ETimestampz extends Encoder[PostgresSpecific.Timestampz] {
+    override def render(value: PostgresSpecific.Timestampz): String = value.toString
+  }
+  implicit case object EByteArray  extends Encoder[Chunk[Byte]]                 {
+    override def render(value: Chunk[Byte]): String = value.map("""\%03o""" format _).mkString("E\'", "", "\'")
+  } // todo fix `cast` infers correctly but map doesn't work for some reason
+
+  private def escape(str: String): String = str.replace("'", "''")
+  implicit case object EChar           extends Encoder[Char]           {
+    override def render(value: Char): String =
+      s"'${escape(value.toString)}'"
+  }
+  implicit case object EString         extends Encoder[String]         {
+    override def render(value: String): String = s"'${escape(value)}'"
+  }
+  implicit case object EInstant        extends Encoder[Instant]        {
+    override def render(value: Instant): String = s"TIMESTAMP '$value'"
+  }
+  implicit case object ELocalDate      extends Encoder[LocalDate]      {
+    override def render(value: LocalDate): String = s"DATE '$value'"
+  }
+  implicit case object ELocalDateTime  extends Encoder[LocalDateTime]  {
+    override def render(value: LocalDateTime): String = s"DATE '$value'"
+  }
+  implicit case object ELocalTime      extends Encoder[LocalTime]      {
+    override def render(value: LocalTime): String = s"$value" // todo still broken
+  }
+  implicit case object EOffsetDateTime extends Encoder[OffsetDateTime] {
+    override def render(value: OffsetDateTime): String = s"DATE '$value'"
+  }
+  implicit case object EOffsetTime     extends Encoder[OffsetTime]     {
+    override def render(value: OffsetTime): String = super.render(value) // todo still broken
+  }
+  implicit case object EUUID           extends Encoder[UUID]           {
+    override def render(value: UUID): String = s"'$value'"
+  }
+  implicit case object EZonedDateTime  extends Encoder[ZonedDateTime]  {
+    override def render(value: ZonedDateTime): String = s"DATE '$value'"
+  }
+
 }

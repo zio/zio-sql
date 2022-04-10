@@ -1,11 +1,13 @@
 package zio.sql.mysql
 
 import zio.Chunk
-import zio.sql.{ Jdbc, Renderer }
+import zio.sql.{ Encoder, Jdbc, Renderer }
 
 import java.sql.ResultSet
-import java.time.Year
+import java.time.{ Instant, LocalDate, LocalDateTime, LocalTime, OffsetDateTime, OffsetTime, Year, ZonedDateTime }
 import zio.schema.Schema
+
+import java.util.UUID
 
 trait MysqlModule extends Jdbc { self =>
 
@@ -101,11 +103,9 @@ trait MysqlModule extends Jdbc { self =>
             render(" FROM ")
             renderTable(t)
           }
-          whereExpr match {
-            case Expr.Literal(true) => ()
-            case _                  =>
-              render(" WHERE ")
-              renderExpr(whereExpr)
+          whereExpr.fold(()) { w =>
+            render(" WHERE ")
+            renderExpr(w)
           }
           groupByExprs match {
             case Read.ExprSet.ExprCons(_, _) =>
@@ -307,60 +307,7 @@ trait MysqlModule extends Jdbc { self =>
         render(")")
     }
 
-    private def renderLit[A, B](lit: self.Expr.Literal[_])(implicit render: Renderer): Unit = {
-      import MysqlSpecific.MysqlTypeTag._
-      import TypeTag._
-      lit.typeTag match {
-        case TDialectSpecific(tt) =>
-          tt match {
-            case tt @ TYear                       =>
-              render(tt.cast(lit.value))
-            case _: MysqlSpecific.MysqlTypeTag[_] => ???
-          }
-        case TByteArray           =>
-          render(
-            lit.value.asInstanceOf[Chunk[Byte]].map("""\%02X""" format _).mkString("x'", "", "'")
-          ) // todo fix `cast` infers correctly but map doesn't work for some reason
-        case tt @ TChar           =>
-          render("'", tt.cast(lit.value), "'") // todo is this the same as a string? fix escaping
-        case tt @ TInstant        =>
-          render("TIMESTAMP '", tt.cast(lit.value), "'")
-        case tt @ TLocalDate      =>
-          render("DATE '", tt.cast(lit.value), "'")
-        case tt @ TLocalDateTime  =>
-          render("DATE '", tt.cast(lit.value), "'")
-        case tt @ TLocalTime      =>
-          render("TIME '", tt.cast(lit.value), "'")
-        case tt @ TOffsetDateTime =>
-          render("DATE '", tt.cast(lit.value), "'")
-        case tt @ TOffsetTime     =>
-          render("TIME '", tt.cast(lit.value), "'")
-        case tt @ TUUID           =>
-          render("'", tt.cast(lit.value), "'")
-        case tt @ TZonedDateTime  =>
-          render("DATE '", tt.cast(lit.value), "'")
-        case TByte                =>
-          render(lit.value)
-        case TBigDecimal          =>
-          render(lit.value)
-        case TBoolean             =>
-          render(lit.value)
-        case TDouble              =>
-          render(lit.value)
-        case TFloat               =>
-          render(lit.value)
-        case TInt                 =>
-          render(lit.value)
-        case TLong                =>
-          render(lit.value)
-        case TShort               =>
-          render(lit.value)
-        case TString              =>
-          render("'", lit.value, "'") // todo fix escaping
-        case _                    =>
-          render(lit.value) // todo fix add TypeTag.Nullable[_] =>
-      }
-    }
+    private def renderLit[A, B](lit: self.Expr.Literal[_])(implicit render: Renderer): Unit = render(lit.encode)
 
     private def renderSelection[A](selectionSet: SelectionSet[A])(implicit render: Renderer): Unit =
       selectionSet match {
@@ -431,6 +378,52 @@ trait MysqlModule extends Jdbc { self =>
           }
         case Nil          => ()
       }
+  }
+
+  implicit case object EByte      extends Encoder[Byte]        {
+    override def render(value: Byte): String = super.render(value)
+  }
+  implicit case object EYear      extends Encoder[Year]        {
+    override def render(value: Year): String = String.valueOf(value)
+  }
+  implicit case object EByteArray extends Encoder[Chunk[Byte]] {
+    override def render(value: Chunk[Byte]): String =
+      value.map("""\%02X""" format _).mkString("x'", "", "'")
+    // todo fix `cast` infers correctly but map doesn't work for some reason
+  }
+
+  private def escape(str: String): String = str.replace("'", "''")
+  implicit case object EChar extends Encoder[Char] {
+    override def render(value: Char): String =
+      s"'${escape(value.toString)}'"
+  }
+
+  implicit case object EInstance       extends Encoder[Instant]        {
+    override def render(value: Instant): String = s"TIMESTAMP '$value'"
+  }
+  implicit case object ELocalDate      extends Encoder[LocalDate]      {
+    override def render(value: LocalDate): String = s"DATE '$value'"
+  }
+  implicit case object ELocalDateTime  extends Encoder[LocalDateTime]  {
+    override def render(value: LocalDateTime): String = s"DATE '$value'"
+  }
+  implicit case object ELocalTime      extends Encoder[LocalTime]      {
+    override def render(value: LocalTime): String = s"TIME '$value'"
+  }
+  implicit case object EOffsetDateTime extends Encoder[OffsetDateTime] {
+    override def render(value: OffsetDateTime): String = s"DATE '$value'"
+  }
+  implicit case object EOffsetTime     extends Encoder[OffsetTime]     {
+    override def render(value: OffsetTime): String = s"TIME '$value'"
+  }
+  implicit case object EUUID           extends Encoder[UUID]           {
+    override def render(value: UUID): String = s"'$value'"
+  }
+  implicit case object EZonedDateTime  extends Encoder[ZonedDateTime]  {
+    override def render(value: ZonedDateTime): String = s"DATE '$value'"
+  }
+  implicit case object EString         extends Encoder[String]         {
+    override def render(value: String): String = s"'${escape(value)}'"
   }
 
 }
