@@ -138,7 +138,7 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
       ]
       val b: B0 = selection.value.asInstanceOf[B0]
 
-      Read.Subselect(Selection[F, Source with ParentTable, B0](b), Some(table), true).normalize
+      Read.Subselect(Selection[F, Source with ParentTable, B0](b), Some(table), None).normalize
     }
   }
 
