@@ -11,6 +11,7 @@ trait Sql
     with TableModule
     with InsertModule
     with UtilsModule
+    with SelectUtilsModule
     with InsertUtilsModule {
   self =>
 
@@ -26,11 +27,10 @@ trait Sql
    *
    * SELECT ARBITRARY(age), COUNT(*) FROM person GROUP BY age
    */
-  def select[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B])(implicit
-    i: Features.IsPartiallyAggregated[F]
-  ): Selector[F, A, B, i.Unaggregated] =
-    Selector[F, A, B, i.Unaggregated](selection)
 
+  val select: SelectByCommaBuilder = SelectByCommaBuilder()
+
+  // TODO comma syntax for subselect
   def subselect[ParentTable]: SubselectPartiallyApplied[ParentTable] = new SubselectPartiallyApplied[ParentTable]
 
   def subselectFrom[ParentTable, F, Source, B <: SelectionSet[Source]](
@@ -46,12 +46,9 @@ trait Sql
 
   def update[A](table: Table.Aux[A]): UpdateBuilder[A] = UpdateBuilder(table)
 
-  def insertInto[F, Source, AllColumnIdentities, B <: SelectionSet[Source]](
+  def insertInto[Source, AllColumnIdentities](
     table: Table.Source.Aux_[Source, AllColumnIdentities]
-  )(
-    sources: Selection[F, Source, B]
-  ) =
-    InsertBuilder[F, Source, AllColumnIdentities, B, sources.ColsRepr](table, sources)
+  ): InsertIntoBuilder[Source, AllColumnIdentities] = InsertIntoBuilder(table)
 
   def renderDelete(delete: self.Delete[_]): String
 
