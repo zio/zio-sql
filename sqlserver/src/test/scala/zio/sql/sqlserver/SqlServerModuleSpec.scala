@@ -20,7 +20,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
     case class Customer(id: UUID, fname: String, lname: String, verified: Boolean, dateOfBirth: LocalDate)
 
     val query =
-      select(customerId ++ fName ++ lName ++ verified ++ dob).from(customers).where(condition)
+      select(customerId, fName, lName, verified, dob).from(customers).where(condition)
 
     val expected =
       Seq(
@@ -48,7 +48,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
     test("Can select from single table") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
-      val query = select(customerId ++ fName ++ lName ++ dob).from(customers)
+      val query = select(customerId, fName, lName, dob).from(customers)
 
       val expected =
         Seq(
@@ -121,7 +121,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
     test("Can select from single table with limit, offset and order by") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
-      val query = select(customerId ++ fName ++ lName ++ dob).from(customers).limit(1).offset(1).orderBy(fName)
+      val query = select(customerId, fName, lName, dob).from(customers).limit(1).offset(1).orderBy(fName)
 
       val expected =
         Seq(
@@ -177,7 +177,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
       val subquery =
         customers.subselect(Count(orderId)).from(orders).where(fkCustomerId === customerId)
 
-      val query = select(fName ++ lName ++ (subquery as "Count")).from(customers)
+      val query = select(fName, lName, (subquery as "Count")).from(customers)
 
       val result = execute(query).map { case row =>
         Row(row._1, row._2, row._3)
@@ -198,7 +198,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
        *                                       from product_prices )
        */
 
-      val query = select(orderDetailsId ++ productId ++ unitPrice)
+      val query = select(orderDetailsId, productId, unitPrice)
         .from(orderDetails)
         .where(
           unitPrice > select(Avg(price)).from(productPrices)
@@ -257,7 +257,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
        *  where derived.unit_price  > (select avg(order_details.unit_price) from order_details where derived.product_id = order_details.product_id)
        */
 
-      val query = select(derivedOrderId ++ derivedProductId ++ derivedUnitPrice)
+      val query = select(derivedOrderId, derivedProductId, derivedUnitPrice)
         .from(orderDetailsDerived)
         .where(
           derivedUnitPrice > subselect[orderDetailsDerived.TableType](Avg(unitPrice))
@@ -363,7 +363,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
       import SqlServerSpecific.SqlServerTable._
 
       val query =
-        select(customerId ++ fName ++ lName ++ orderDateDerived)
+        select(customerId, fName, lName, orderDateDerived)
           .from(customers.crossApply(orderDateDerivedTable))
           .orderBy(Ordering.Desc(orderDateDerived))
 
@@ -394,7 +394,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       val orderDateDerived = subquery.columns
 
-      val query = select(fName ++ lName ++ orderDateDerived).from(customers.crossApply(subquery))
+      val query = select(fName, lName, orderDateDerived).from(customers.crossApply(subquery))
 
       val result = execute(query).map { case row =>
         CustomerAndDateRow(row._1, row._2, row._3)
@@ -413,7 +413,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       val orderDateDerived = subquery.columns
 
-      val query = select(fName ++ lName ++ orderDateDerived).from(customers.crossApply(subquery))
+      val query = select(fName, lName, orderDateDerived).from(customers.crossApply(subquery))
 
       val result = execute(query).map { case row =>
         CustomerAndDateRow(row._1, row._2, row._3)
@@ -432,7 +432,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       val orderDateDerived = subquery.columns
 
-      val query = select(fName ++ lName ++ orderDateDerived).from(customers.crossApply(subquery))
+      val query = select(fName, lName, orderDateDerived).from(customers.crossApply(subquery))
 
       val result = execute(query).map { case row =>
         CustomerAndDateRow(row._1, row._2, row._3)
@@ -451,7 +451,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       val orderDateDerived = subquery.columns
 
-      val query = select(fName ++ lName ++ orderDateDerived).from(customers.outerApply(subquery))
+      val query = select(fName, lName, orderDateDerived).from(customers.outerApply(subquery))
 
       val result = execute(query).map { case row =>
         CustomerAndDateRow(row._1, row._2, row._3)
@@ -489,7 +489,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
       assertM(result)(equalTo(1L))
     },
     test("Can select from joined tables (inner join)") {
-      val query = select(fName ++ lName ++ orderDate).from(customers.join(orders).on(fkCustomerId === customerId))
+      val query = select(fName, lName, orderDate).from(customers.join(orders).on(fkCustomerId === customerId))
 
       case class Row(firstName: String, lastName: String, orderDate: LocalDate)
 

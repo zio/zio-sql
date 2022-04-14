@@ -23,7 +23,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
     case class Customer(id: UUID, fname: String, lname: String, verified: Boolean, dateOfBirth: LocalDate)
 
     val query =
-      select(customerId ++ fName ++ lName ++ verified ++ dob).from(customers).where(condition)
+      select(customerId, fName, lName, verified, dob).from(customers).where(condition)
 
     val expected =
       Seq(
@@ -51,7 +51,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
     test("Can select from single table") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
-      val query = select(customerId ++ fName ++ lName ++ dob).from(customers)
+      val query = select(customerId, fName, lName, dob).from(customers)
 
       val expected =
         Seq(
@@ -156,7 +156,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
     test("Can select from single table with limit, offset and order by") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
-      val query = select(customerId ++ fName ++ lName ++ dob).from(customers).limit(1).offset(1).orderBy(fName)
+      val query = select(customerId, fName, lName, dob).from(customers).limit(1).offset(1).orderBy(fName)
 
       val expected =
         Seq(
@@ -188,7 +188,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
       } yield assert(r.head)(equalTo(expected))
     },
     test("Can select from joined tables (inner join)") {
-      val query = select(fName ++ lName ++ orderDate).from(customers.join(orders).on(fkCustomerId === customerId))
+      val query = select(fName, lName, orderDate).from(customers.join(orders).on(fkCustomerId === customerId))
 
       case class Row(firstName: String, lastName: String, orderDate: LocalDate)
 
@@ -259,7 +259,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
       import DerivedTables._
 
       val query =
-        select(customerId ++ fName ++ lName ++ orderDateDerived)
+        select(customerId, fName, lName, orderDateDerived)
           .from(customers.lateral(orderDateDerivedTable))
           .orderBy(Ordering.Desc(orderDateDerived))
 
@@ -294,7 +294,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
       val subquery =
         customers.subselect(Count(orderId)).from(orders).where(fkCustomerId === customerId)
 
-      val query = select(fName ++ lName ++ (subquery as "Count")).from(customers)
+      val query = select(fName, lName, (subquery as "Count")).from(customers)
 
       val result = execute(query).map { case row =>
         Row(row._1, row._2, row._3)
@@ -309,7 +309,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
     test("Can select using like") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
-      val query = select(customerId ++ fName ++ lName ++ dob).from(customers).where(fName like "Jo%")
+      val query = select(customerId, fName, lName, dob).from(customers).where(fName like "Jo%")
 
       val expected = Seq(
         Customer(
@@ -391,7 +391,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
 
       val expected = List(6, 5, 5, 5, 4)
 
-      val query = select(fkCustomerId ++ Count(orderId))
+      val query = select(fkCustomerId, Count(orderId))
         .from(orders)
         .groupBy(fkCustomerId)
         .orderBy(Ordering.Desc(Count(orderId)))
@@ -453,7 +453,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
         CustomerRow(UUID.randomUUID(), "Jaro", "Regec", true, LocalDate.ofYearDay(1990, 1), created.toString, created)
 
       val query = insertInto(customers)(
-        customerId ++ fName ++ lName ++ verified ++ dob ++ createdString ++ createdTimestamp
+        customerId, fName, lName, verified, dob, createdString, createdTimestamp
       ).values(data)
 
       assertM(execute(query))(equalTo(1))
@@ -499,7 +499,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
         InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now())
       )
 
-      val query = insertInto(orders)(orderId ++ fkCustomerId ++ orderDate)
+      val query = insertInto(orders)(orderId, fkCustomerId, orderDate)
         .values(data)
 
       assertM(execute(query))(equalTo(10))
@@ -544,7 +544,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
         OrderDetailsRow(UUID.randomUUID(), UUID.randomUUID(), 2, BigDecimal.valueOf(10.50))
       )
 
-      val query = insertInto(orderDetails)(orderDetailsOrderId ++ orderDetailsProductId ++ quantity ++ unitPrice)
+      val query = insertInto(orderDetails)(orderDetailsOrderId, orderDetailsProductId, quantity, unitPrice)
         .values(rows)
 
       assertM(execute(query))(equalTo(4))
@@ -560,7 +560,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
 
       import OrderDetails._
 
-      val query = insertInto(orderDetails)(orderDetailsOrderId ++ orderDetailsProductId ++ quantity ++ unitPrice)
+      val query = insertInto(orderDetails)(orderDetailsOrderId, orderDetailsProductId, quantity, unitPrice)
         .values((UUID.randomUUID(), UUID.randomUUID(), 4, BigDecimal.valueOf(11.00)))
 
       assertM(execute(query))(equalTo(1))
@@ -580,7 +580,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
         ((UUID.randomUUID(), "Jaro", "Regec", true, LocalDate.ofYearDay(1990, 1), created.toString, created))
 
       val query = insertInto(customers)(
-        customerId ++ fName ++ lName ++ verified ++ dob ++ createdString ++ createdTimestamp
+        customerId, fName, lName, verified, dob, createdString, createdTimestamp
       ).values(row)
 
       assertM(execute(query))(equalTo(1))
@@ -595,14 +595,14 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
         (UUID.randomUUID(), "product 4", "product desription", "image url")
       )
 
-      val query = insertInto(products)(productId ++ productName ++ description ++ imageURL).values(tupleData)
+      val query = insertInto(products)(productId, productName, description, imageURL).values(tupleData)
 
       assertM(execute(query))(equalTo(4))
     },
     test("insert and query nullable field") {
       import Persons._
 
-      val query = select(fName ++ lName ++ dob)
+      val query = select(fName, lName, dob)
         .from(persons)
 
       final case class Person(id: UUID, firstName: String, lastName: String, dateOfBirth: Option[LocalDate])
@@ -625,13 +625,13 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
 
       val personValue = Person(UUID.randomUUID(), "Charles", "Harvey", None)
 
-      val insertSome = insertInto(persons)(personId ++ fName ++ lName ++ dob)
+      val insertSome = insertInto(persons)(personId, fName, lName, dob)
         .values((UUID.randomUUID(), "Charles", "Dent", Some(LocalDate.of(2022, 1, 31))))
 
-      val insertNone = insertInto(persons)(personId ++ fName ++ lName ++ dob)
+      val insertNone = insertInto(persons)(personId, fName, lName, dob)
         .values((UUID.randomUUID(), "Martin", "Harvey", None))
 
-      val insertNone2 = insertInto(persons)(personId ++ fName ++ lName ++ dob)
+      val insertNone2 = insertInto(persons)(personId, fName, lName, dob)
         .values(personValue)
 
       val result = for {
@@ -668,7 +668,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
        */
       val lineCount = (Count(metroLineId) as "line_count")
 
-      val complexQuery = select(metroSystemName ++ cityName ++ lineCount)
+      val complexQuery = select(metroSystemName, cityName, lineCount)
         .from(
           metroLine
             .join(metroSystem)
