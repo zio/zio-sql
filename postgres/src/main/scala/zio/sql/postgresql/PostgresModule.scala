@@ -28,30 +28,6 @@ import zio.schema.StandardType.FloatType
 trait PostgresModule extends Jdbc { self =>
   import TypeTag._
 
-  object Example {
-
-    import ColumnSet._
-    //import AggregationDef._
-
-    val personTable = (string("name") ++ int("age")).table("person")
-
-    val (name, age) = personTable.columns
-
-
-    val insertQuery = insertInto(personTable)(name, age).values(("Jaro", 30))
-
-    //execute(insertQuery)
-
-    val selectQuery2 = select(name, age).from(personTable)
-
-    // val selectQuery = 
-    //   select(name ++ age ++ Count(age))
-    //     .from(personTable)
-    //     .groupBy(name)
-
-    
-  }
-
   override type TypeTagExtension[+A] = PostgresSpecific.PostgresTypeTag[A]
 
   override type TableExtension[A] = PostgresSpecific.PostgresSpecificTable[A]
