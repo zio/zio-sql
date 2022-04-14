@@ -27,20 +27,9 @@ trait Sql
    *
    * SELECT ARBITRARY(age), COUNT(*) FROM person GROUP BY age
    */
-
   val select: SelectByCommaBuilder = SelectByCommaBuilder()
 
-  // TODO comma syntax for subselect
   def subselect[ParentTable]: SubselectPartiallyApplied[ParentTable] = new SubselectPartiallyApplied[ParentTable]
-
-  def subselectFrom[ParentTable, F, Source, B <: SelectionSet[Source]](
-    parentTable: Table.Aux[ParentTable]
-  )(selection: Selection[F, Source, B]) = {
-    // parentTable value is here to infer parent table type parameter when doing subqueries
-    // e.g. subselectFrom(customers)(orderDate).from(orders).where(customers.id == orders.id))
-    val _ = parentTable
-    SubselectBuilder[F, Source, B, ParentTable](selection)
-  }
 
   def deleteFrom[T <: Table](table: T): Delete[table.TableType] = Delete(table, true)
 
