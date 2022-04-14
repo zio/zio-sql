@@ -390,9 +390,9 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
        */
       import SqlServerSpecific.SqlServerTable._
       val subquery =
-        subselect[customers.TableType](orderDate).from(orders).where(customerId === fkCustomerId).asTable("ooo")
+        subselect[customers.TableType](orderDate, orderId).from(orders).where(customerId === fkCustomerId).asTable("ooo")
 
-      val orderDateDerived = subquery.columns
+      val (orderDateDerived, _ ) = subquery.columns
 
       val query = select(fName, lName, orderDateDerived).from(customers.crossApply(subquery))
 
@@ -410,25 +410,6 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
       import SqlServerSpecific.SqlServerTable._
       val subquery =
         customers.subselect(orderDate).from(orders).where(customerId === fkCustomerId).asTable("ooo")
-
-      val orderDateDerived = subquery.columns
-
-      val query = select(fName, lName, orderDateDerived).from(customers.crossApply(subquery))
-
-      val result = execute(query).map { case row =>
-        CustomerAndDateRow(row._1, row._2, row._3)
-      }
-
-      val assertion = for {
-        r <- result.runCollect
-      } yield assert(r)(hasSameElementsDistinct(crossOuterApplyExpected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    },
-    test("cross apply with subselect from") {
-      import SqlServerSpecific.SqlServerTable._
-      val subquery =
-        subselectFrom(customers)(orderDate).from(orders).where(customerId === fkCustomerId).asTable("ooo")
 
       val orderDateDerived = subquery.columns
 
