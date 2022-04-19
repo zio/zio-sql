@@ -390,9 +390,12 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
        */
       import SqlServerSpecific.SqlServerTable._
       val subquery =
-        subselect[customers.TableType](orderDate, orderId).from(orders).where(customerId === fkCustomerId).asTable("ooo")
+        subselect[customers.TableType](orderDate, orderId)
+          .from(orders)
+          .where(customerId === fkCustomerId)
+          .asTable("ooo")
 
-      val (orderDateDerived, _ ) = subquery.columns
+      val (orderDateDerived, _) = subquery.columns
 
       val query = select(fName, lName, orderDateDerived).from(customers.crossApply(subquery))
 

@@ -24,8 +24,9 @@ object TestBasicSelect {
 
     // fName and lName already have column names, shouldn't have to do this
     val basicSelectWithAliases = (select(
-      (fName as "first_name"), (lName as "last_name")
-     ) from userTable)
+      (fName as "first_name"),
+      (lName as "last_name")
+    ) from userTable)
   }
 }
 
