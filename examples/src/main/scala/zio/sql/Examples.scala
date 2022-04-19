@@ -56,10 +56,10 @@ object Examples extends App with ShopSchema with SqlServerModule {
   val orderValues =
     select(
       userId,
-        fName,
-        lName,
-        (Sum(quantity * unitPrice) as "total_spend"),
-        Sum(Abs(quantity))
+      fName,
+      lName,
+      (Sum(quantity * unitPrice) as "total_spend"),
+      Sum(Abs(quantity))
     )
       .from(
         users

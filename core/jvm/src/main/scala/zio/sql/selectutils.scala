@@ -33,9 +33,9 @@ package zio.sql
           SubselectBuilder(selection)
         }"""
  */ 
+// format: off
 trait SelectUtilsModule { self: TableModule with ExprModule with InsertModule with SelectModule =>
 
-  // format: off
   sealed case class InsertIntoBuilder[Source, AllColumnIdentities](
     table: Table.Source.Aux_[Source, AllColumnIdentities]
   ) {
@@ -545,5 +545,5 @@ trait SelectUtilsModule { self: TableModule with ExprModule with InsertModule wi
       SubselectBuilder(selection)
     }  
   }
-   // format: on
 }
+// format: on

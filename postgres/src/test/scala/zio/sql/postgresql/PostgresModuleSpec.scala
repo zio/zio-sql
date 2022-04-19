@@ -453,7 +453,13 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
         CustomerRow(UUID.randomUUID(), "Jaro", "Regec", true, LocalDate.ofYearDay(1990, 1), created.toString, created)
 
       val query = insertInto(customers)(
-        customerId, fName, lName, verified, dob, createdString, createdTimestamp
+        customerId,
+        fName,
+        lName,
+        verified,
+        dob,
+        createdString,
+        createdTimestamp
       ).values(data)
 
       assertM(execute(query))(equalTo(1))
@@ -580,7 +586,13 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
         ((UUID.randomUUID(), "Jaro", "Regec", true, LocalDate.ofYearDay(1990, 1), created.toString, created))
 
       val query = insertInto(customers)(
-        customerId, fName, lName, verified, dob, createdString, createdTimestamp
+        customerId,
+        fName,
+        lName,
+        verified,
+        dob,
+        createdString,
+        createdTimestamp
       ).values(row)
 
       assertM(execute(query))(equalTo(1))
