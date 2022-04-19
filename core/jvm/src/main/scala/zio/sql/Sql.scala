@@ -29,6 +29,11 @@ trait Sql
    */
   val select: SelectByCommaBuilder = SelectByCommaBuilder()
 
+  def select[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B])(implicit
+    i: Features.IsPartiallyAggregated[F]
+  ): Selector[F, A, B, i.Unaggregated] =
+    Selector[F, A, B, i.Unaggregated](selection)
+
   def subselect[ParentTable]: SubselectPartiallyApplied[ParentTable] = new SubselectPartiallyApplied[ParentTable]
 
   def deleteFrom[T <: Table](table: T): Delete[table.TableType] = Delete(table, true)

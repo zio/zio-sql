@@ -45,7 +45,7 @@ values
 zio-sql gives us nice typesafe DSL that feels similar to writing SQL:
 ```scala
 insertInto(customers)
-    (customerId ++ dob ++ fName ++ lName ++ verified ++ created)
+    (customerId, dob, fName, lName, verified, created)
   .values((UUID.randomUUID(), LocalDate.ofYearDay(1990, 1), "Ronald", "Russell", true, ZonedDateTime.now()))
 ```
 Compiler verifies your inserts and your query fails with compile-time error at any of the following situations:
@@ -66,7 +66,7 @@ val data =
         )
 
 val query = insertInto(customers)(
-        customerId ++ dob ++ fName ++ lName ++ verified ++ createdString ++ createdTimestamp
+        customerId, dob, fName, lName, verified, createdString, createdTimestamp
       ).values(data)
 ```
 
@@ -101,7 +101,7 @@ Then your insert looks almost the same as before:
 val data: Customer = Customer(UUID.randomUUID(), LocalDate.ofYearDay(1990, 1), "Ronald", "Russel", true, ZonedDateTime.now())
 
 val query = insertInto(customers)(
-        customerId ++ dob ++ fName ++ lName ++ verified ++ createdString ++ createdTimestamp
+        customerId, dob, fName, lName, verified, createdString, createdTimestamp
       ).values(data)
 ```
 Or you can insert multiple rows at once. Just define data as a `List` or any collection of your choice.
@@ -115,7 +115,7 @@ val data : List[Customer] = ???
 In case you want to see the exact query that zio-sql generated, you can use `renderInsert` method inside repo that has PostgresModule (or TableModel from above example) mixed in.
 ```scala
 val query = insertInto(customers)(
-        customerId ++ dob ++ fName ++ lName ++ verified ++ createdString ++ createdTimestamp
+        customerId, dob, fName, lName, verified, createdString, createdTimestamp
       ).values((UUID.randomUUID(), LocalDate.ofYearDay(1990, 1), "Ronald", "Russell", true, ZonedDateTime.now()))
 
 val sqlString: String = renderInsert(query)
@@ -126,7 +126,7 @@ val sqlString: String = renderInsert(query)
 In order to execute a query, we use `execute` method inside repo that has PostgresModule (or TableModel from the above example) mixed in.
 ```scala
 val query = insertInto(customers)(
-        customerId ++ dob ++ fName ++ lName ++ verified ++ createdString ++ createdTimestamp
+        customerId, dob, fName, lName, verified, createdString, createdTimestamp
       ).values((UUID.randomUUID(), LocalDate.ofYearDay(1990, 1), "Ronald", "Russell", true, ZonedDateTime.now()))
 
 val executed : ZIO[Has[SqlDriver], Exception, Int] = execute(query)
@@ -172,7 +172,7 @@ val orderDetailsId :*: productId :*: unitPrice :*: _ = orderDetails.columns
 ```
 We can create query very easily. In fact, just type it like a regular sql query and let your IDE auto completion guide you! 
 ```scala
-val query = select(orderDetailsId ++ productId ++ unitPrice)
+val query = select(orderDetailsId, productId, unitPrice)
         .from(orderDetails)
         .where(
           unitPrice > select(Avg(price)).from(productPrices)
@@ -215,7 +215,7 @@ ZIO SQL query:
 val subquery =
         customers.subselect(Count(orderId)).from(orders).where(fkCustomerId === customerId)
 
-val query = select(fName ++ lName ++ (subquery as "Count")).from(customers)
+val query = select(fName, lName, (subquery as "Count")).from(customers)
 ```
 All of these examples and more can be found and run in zio-sql tests.
 
@@ -256,7 +256,7 @@ Finally, we have all the ingredients we need to describe our query with zio-sql.
 import PostgresSpecific.PostgresSpecificTable._
 
 val query =
-        select(customerId ++ fName ++ lName ++ orderDateDerived)
+        select(customerId, fName, lName, orderDateDerived)
           .from(customers.lateral(derivedTable))
           .orderBy(Ordering.Desc(orderDateDerived))
 ```
