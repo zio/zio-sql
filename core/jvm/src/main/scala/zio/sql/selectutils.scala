@@ -39,6 +39,10 @@ trait SelectUtilsModule { self: TableModule with ExprModule with InsertModule wi
   sealed case class InsertIntoBuilder[Source, AllColumnIdentities](
     table: Table.Source.Aux_[Source, AllColumnIdentities]
   ) {
+
+      def apply[F, B <: SelectionSet[Source]](sources: Selection[F, Source, B]) =
+        InsertBuilder[F, Source, AllColumnIdentities, B, sources.ColsRepr](table, sources)
+
       def apply[F1, B1](expr1: Expr[F1, Source, B1]) = {
         type B = SelectionSet.Cons[Source, B1, SelectionSet.Empty]
 
@@ -433,8 +437,8 @@ trait SelectUtilsModule { self: TableModule with ExprModule with InsertModule wi
   }
 
   final class SubselectPartiallyApplied[ParentTable] {
-    def apply[F1, Source, B1](expr: Expr[F1, Source, B1]): SubselectBuilder[F1, Source, SelectionSet.Cons[Source, B1, SelectionSet.Empty], ParentTable] = 
-      SubselectBuilder(expr)
+    def apply[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]): SubselectBuilder[F, A, B, ParentTable] =
+      SubselectBuilder(selection)
   
     def apply[F1, F2, Source, B1, B2](expr1: Expr[F1, Source, B1], expr2: Expr[F2, Source, B2]): SubselectBuilder[Features.Union[F1, F2], Source, SelectionSet.Cons[Source, B1, SelectionSet.Cons[Source, B2, SelectionSet.Empty]], ParentTable] = {
       val selection = expr1 ++ expr2
