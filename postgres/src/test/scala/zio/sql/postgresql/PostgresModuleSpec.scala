@@ -691,9 +691,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
       assertM(result)(equalTo(expected))
     },
     test("update rows") {
-      import Persons._
-
-      val query = update(persons).set(fName, "Charlie").where(fName === "Charles")
+      val query = update(customers).set(fName, "Jaroslav").where(fName === "Jaro")
 
       assertM(execute(query))(equalTo(2))
     }
