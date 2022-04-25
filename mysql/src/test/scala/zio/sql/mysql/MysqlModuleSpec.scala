@@ -17,7 +17,7 @@ object MysqlModuleSpec extends MysqlRunnableSpec with ShopSchema {
     test("Can select from single table") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
-      val query = select(customerId ++ fName ++ lName ++ dob) from customers
+      val query = select(customerId, fName, lName, dob) from customers
 
       println(renderRead(query))
 
@@ -68,7 +68,7 @@ object MysqlModuleSpec extends MysqlRunnableSpec with ShopSchema {
     test("Can select with property operator") {
       case class Customer(id: UUID, fname: String, lname: String, verified: Boolean, dateOfBirth: LocalDate)
 
-      val query = select(customerId ++ fName ++ lName ++ verified ++ dob) from customers where (verified isNotTrue)
+      val query = select(customerId, fName, lName, verified, dob) from customers where (verified isNotTrue)
 
       println(renderRead(query))
 
@@ -96,7 +96,7 @@ object MysqlModuleSpec extends MysqlRunnableSpec with ShopSchema {
     test("Can select from single table with limit, offset and order by") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
-      val query = (select(customerId ++ fName ++ lName ++ dob) from customers).limit(1).offset(1).orderBy(fName)
+      val query = (select(customerId, fName, lName, dob) from customers).limit(1).offset(1).orderBy(fName)
 
       println(renderRead(query))
 
@@ -136,7 +136,7 @@ object MysqlModuleSpec extends MysqlRunnableSpec with ShopSchema {
     //   } yield assert(r.head)(equalTo(expected))
     // },
     test("Can select from joined tables (inner join)") {
-      val query = select(fName ++ lName ++ orderDate) from (customers join orders).on(
+      val query = select(fName, lName, orderDate) from (customers join orders).on(
         fkCustomerId === customerId
       ) where (verified isNotTrue)
 
