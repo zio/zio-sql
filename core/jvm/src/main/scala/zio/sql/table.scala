@@ -5,7 +5,7 @@ import zio.Chunk
 import java.time._
 import java.util.UUID
 
-trait TableModule { self: ExprModule with SelectModule with UtilsModule =>
+trait TableModule { self: ExprModule with SelectModule with UtilsModule with SelectUtilsModule =>
 
   sealed trait Singleton0[A] {
     type SingletonIdentity

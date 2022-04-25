@@ -439,7 +439,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("ceil") {
-      val query = select(Ceil(53.7) ++ Ceil(-53.7))
+      val query = select(Ceil(53.7), Ceil(-53.7))
 
       val expected = (54.0, -53.0)
 
@@ -939,7 +939,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
       case class Customer(id: UUID, fname: String, lname: String, verified: Boolean, dateOfBirth: LocalDate)
 
       val query =
-        (select(customerId ++ fName ++ lName ++ verified ++ dob) from customers).where(StartsWith(fName, "R"))
+        (select(customerId, fName, lName, verified, dob) from customers).where(StartsWith(fName, "R"))
 
       val expected =
         Seq(
@@ -1143,7 +1143,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("setseed") {
-      val query = select(SetSeed(0.12) ++ Random() ++ Random()) from customers
+      val query = select(SetSeed(0.12), Random(), Random()) from customers
 
       val randomTupleForSeed = (0.019967750719779076, 0.8378369929936333)
       val testResult         = execute(query).map { case (_, b, c) => (b, c) }
@@ -1189,7 +1189,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
 
       val expectedRoundTripTimestamp = ZonedDateTime.of(2020, 11, 21, 19, 10, 25, 0, ZoneId.of(ZoneOffset.UTC.getId))
       val roundTripQuery             =
-        select(createdString ++ createdTimestamp) from customers
+        select(createdString, createdTimestamp) from customers
       val roundTripResults           = execute(roundTripQuery).map { case row =>
         (row._1, ZonedDateTime.parse(row._1), row._2)
       }
@@ -1212,7 +1212,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
       val lastNameReplaced = Replace(lName, "ll", "_") as "lastNameReplaced"
       val computedReplace  = Replace("special ::ąę::", "ąę", "__") as "computedReplace"
 
-      val query = select(lastNameReplaced ++ computedReplace) from customers
+      val query = select(lastNameReplaced, computedReplace) from customers
 
       val expected = ("Russe_", "special ::__::")
 
