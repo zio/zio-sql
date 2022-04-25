@@ -19,10 +19,10 @@ trait DbSchema extends Jdbc { self =>
   object Customers     {
     // https://github.com/zio/zio-sql/issues/320 Once Insert is supported, we can remove created_timestamp_string
     val customers =
-      (uuid("id") ++ localDate("dob") ++ string("first_name") ++ string("last_name") ++ boolean(
-        "verified"
-      ) ++ string("created_timestamp_string") ++ zonedDateTime("created_timestamp"))
-        .table("customers")
+      (uuid("Id") ++ localDate("Dob") ++ string("First_name") ++ string("Last_name") ++ boolean(
+        "Verified"
+      ) ++ string("Created_timestamp_string") ++ zonedDateTime("Created_timestamp"))
+        .table("Customers")
 
     val (customerId, dob, fName, lName, verified, createdString, createdTimestamp) =
       customers.columns
@@ -61,7 +61,7 @@ trait DbSchema extends Jdbc { self =>
     import Orders._
 
     val orderDetailsDerived =
-      select(orderDetailsOrderId ++ orderDetailsProductId ++ unitPrice).from(orderDetails).asTable("derived")
+      select(orderDetailsOrderId, orderDetailsProductId, unitPrice).from(orderDetails).asTable("derived")
 
     val (derivedOrderId, derivedProductId, derivedUnitPrice) = orderDetailsDerived.columns
     val orderDateDerivedTable                                = customers

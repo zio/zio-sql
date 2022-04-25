@@ -25,7 +25,7 @@ object GroupByExamples extends App with ShopSchema with SqlServerModule {
 
   def test2[F, A, B](value: Expr[F, A, B])(implicit i: Features.IsPartiallyAggregated[F]): i.Unaggregated = ???
 
-  val orderValue = select(name ++ Sum(price))
+  val orderValue = select(name, Sum(price))
     .from(productTable)
     .groupBy(name, price)
     .having(Sum(price) > 10)
@@ -35,7 +35,7 @@ object GroupByExamples extends App with ShopSchema with SqlServerModule {
     .groupBy(name)
     .having(Sum(price) > 10)
 
-  select(name ++ amount ++ price)
+  select(name, amount, price)
     .from(productTable)
     .groupBy(name, amount, price)
     .having(Sum(price) > 10)
