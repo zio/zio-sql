@@ -11,6 +11,7 @@ trait Sql
     with TableModule
     with InsertModule
     with UtilsModule
+    with SelectUtilsModule
     with InsertUtilsModule {
   self =>
 
@@ -26,6 +27,8 @@ trait Sql
    *
    * SELECT ARBITRARY(age), COUNT(*) FROM person GROUP BY age
    */
+  val select: SelectByCommaBuilder = SelectByCommaBuilder()
+
   def select[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B])(implicit
     i: Features.IsPartiallyAggregated[F]
   ): Selector[F, A, B, i.Unaggregated] =
@@ -33,25 +36,13 @@ trait Sql
 
   def subselect[ParentTable]: SubselectPartiallyApplied[ParentTable] = new SubselectPartiallyApplied[ParentTable]
 
-  def subselectFrom[ParentTable, F, Source, B <: SelectionSet[Source]](
-    parentTable: Table.Aux[ParentTable]
-  )(selection: Selection[F, Source, B]) = {
-    // parentTable value is here to infer parent table type parameter when doing subqueries
-    // e.g. subselectFrom(customers)(orderDate).from(orders).where(customers.id == orders.id))
-    val _ = parentTable
-    SubselectBuilder[F, Source, B, ParentTable](selection)
-  }
-
   def deleteFrom[T <: Table](table: T): Delete[table.TableType] = Delete(table, true)
 
   def update[A](table: Table.Aux[A]): UpdateBuilder[A] = UpdateBuilder(table)
 
-  def insertInto[F, Source, AllColumnIdentities, B <: SelectionSet[Source]](
+  def insertInto[Source, AllColumnIdentities](
     table: Table.Source.Aux_[Source, AllColumnIdentities]
-  )(
-    sources: Selection[F, Source, B]
-  ) =
-    InsertBuilder[F, Source, AllColumnIdentities, B, sources.ColsRepr](table, sources)
+  ): InsertIntoBuilder[Source, AllColumnIdentities] = InsertIntoBuilder(table)
 
   def renderDelete(delete: self.Delete[_]): String
 

@@ -61,7 +61,7 @@ trait DbSchema extends Jdbc { self =>
     import Orders._
 
     val orderDetailsDerived =
-      select(orderDetailsOrderId ++ orderDetailsProductId ++ unitPrice).from(orderDetails).asTable("derived")
+      select(orderDetailsOrderId, orderDetailsProductId, unitPrice).from(orderDetails).asTable("derived")
 
     val (derivedOrderId, derivedProductId, derivedUnitPrice) = orderDetailsDerived.columns
     val orderDateDerivedTable                                = customers
