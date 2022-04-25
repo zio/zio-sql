@@ -110,11 +110,6 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
     }
   }
 
-  final class SubselectPartiallyApplied[ParentTable] {
-    def apply[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]): SubselectBuilder[F, A, B, ParentTable] =
-      SubselectBuilder(selection)
-  }
-
   sealed case class SubselectBuilder[F, Source, B <: SelectionSet[Source], ParentTable](
     selection: Selection[F, Source, B]
   ) {
