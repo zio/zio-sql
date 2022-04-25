@@ -28,7 +28,7 @@ trait DbSchema extends Jdbc { self =>
 
     val (orderDetailsId, productId, quantity, unitPrice) = orderDetails.columns
 
-    val orderDetailsDerived = select(orderDetailsId ++ productId ++ unitPrice).from(orderDetails).asTable("derived")
+    val orderDetailsDerived = select(orderDetailsId, productId, unitPrice).from(orderDetails).asTable("derived")
 
     val (derivedOrderId, derivedProductId, derivedUnitPrice) = orderDetailsDerived.columns
 
