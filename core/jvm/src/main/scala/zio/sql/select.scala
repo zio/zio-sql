@@ -48,7 +48,7 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
       ]
       val b: B0 = selectBuilder.selection.value.asInstanceOf[B0]
 
-      Read.Subselect(Selection[F, Source, B0](b), None, true).normalize
+      Read.Subselect(Selection[F, Source, B0](b), None, None).normalize
     }
   }
 
@@ -82,7 +82,7 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
         selection.value.ColumnHead,
         selection.value.SelectionTail,
         Unaggregated
-      ](Read.Subselect(Selection[F0, Source0, B0](b), Some(table), true).normalize)
+      ](Read.Subselect(Selection[F0, Source0, B0](b), Some(table), None).normalize)
     }
   }
 
@@ -106,7 +106,7 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
       ]
       val b: B0 = selection.value.asInstanceOf[B0]
 
-      Read.Subselect(Selection[F0, Source0, B0](b), Some(table), true).normalize
+      Read.Subselect(Selection[F0, Source0, B0](b), Some(table), None).normalize
     }
   }
 
@@ -133,7 +133,7 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
       ]
       val b: B0 = selection.value.asInstanceOf[B0]
 
-      Read.Subselect(Selection[F, Source with ParentTable, B0](b), Some(table), true).normalize
+      Read.Subselect(Selection[F, Source with ParentTable, B0](b), Some(table), None).normalize
     }
   }
 
@@ -241,7 +241,7 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
     sealed case class Subselect[F, Repr, Source, Subsource, Head, Tail <: SelectionSet[Source]](
       selection: Selection[F, Source, SelectionSet.ConsAux[Repr, Source, Head, Tail]],
       table: Option[Table.Aux[Subsource]],
-      whereExpr: Expr[_, Source, Boolean],
+      whereExpr: Option[Expr[_, Source, Boolean]],
       groupByExprs: ExprSet[Source] = ExprSet.NoExpr,
       havingExpr: Expr[_, Source, Boolean] = true,
       orderByExprs: List[Ordering[Expr[_, Source, Any]]] = Nil,
@@ -255,7 +255,7 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
       def where[F2](
         whereExpr2: Expr[F2, Source, Boolean]
       ): Subselect[F, Repr, Source, Subsource, Head, Tail] =
-        copy(whereExpr = self.whereExpr && whereExpr2)
+        copy(whereExpr = Some(self.whereExpr.fold[Expr[_, Source, Boolean]](whereExpr2)(_ && whereExpr2)))
 
       def limit(n: Long): Subselect[F, Repr, Source, Subsource, Head, Tail] = copy(limit = Some(n))
 

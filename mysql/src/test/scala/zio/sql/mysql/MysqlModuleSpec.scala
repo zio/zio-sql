@@ -166,6 +166,17 @@ object MysqlModuleSpec extends MysqlRunnableSpec with ShopSchema {
 
       println(renderUpdate(query))
       assertM(execute(query))(equalTo(1))
+    },
+    test("Can escape string") {
+      val query1 = select(fName).from(customers).where(fName === "Rol'and")
+      val query2 = select(fName).from(customers).where(fName === "Rol''and")
+
+      println(renderRead(query1))
+      println(renderRead(query2))
+      for {
+        a <- assertM(execute(query1).runCollect)(anything)
+        b <- assertM(execute(query2).runCollect)(anything)
+      } yield a && b
     }
   )
 

@@ -7,6 +7,9 @@ import zio.test.ZIOSpecDefault
 class LogicalOpsSpec extends ZIOSpecDefault {
   import ProductSchema._
 
+  implicit case object EString extends Encoder[String] {
+    override def render(value: String): String = s"'$value'"
+  }
   def spec = suite("Relational operators")(
     test("<= works on integer columns") {
       val query = selectAll.where(baseAmount <= finalAmount)

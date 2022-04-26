@@ -150,11 +150,9 @@ trait OracleModule extends Jdbc { self =>
           builder.append(" FROM ")
           buildTable(t, builder)
         }
-        whereExpr match {
-          case Expr.Literal(true) => ()
-          case _                  =>
-            builder.append(" WHERE ")
-            buildExpr(whereExpr, builder)
+        whereExpr.fold(()) { w =>
+          builder.append(" WHERE ")
+          buildExpr(w, builder)
         }
         groupByExprs match {
           case Read.ExprSet.ExprCons(_, _) =>
