@@ -1,8 +1,8 @@
 package zio.sql
 
-import zio.sql.sqlserver.SqlServerModule
+import zio.sql.sqlserver.SqlServerJdbcModule
 
-object Examples extends App with ShopSchema with SqlServerModule {
+object Examples extends App with ShopSchema with SqlServerJdbcModule {
   import this.AggregationDef._
   import this.FunctionDef._
   import this.OrderDetails._

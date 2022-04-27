@@ -1,4 +1,4 @@
-package zio.sql
+package zio.sql.driver
 
 private[sql] class Renderer(val builder: StringBuilder) extends AnyVal {
   // not using vararg to avoid allocating `Seq`s

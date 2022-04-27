@@ -1,15 +1,22 @@
 package zio.sql.oracle
 
-import zio.sql.Jdbc
 import zio.schema.Schema
 
-trait OracleModule extends Jdbc { self =>
+trait OracleRenderModule extends OracleSqlModule { self =>
 
-  object OracleFunctionDef {
-    val Sind = FunctionDef[Double, Double](FunctionName("sind"))
+  override def renderDelete(delete: self.Delete[_]): String = ???
+
+  override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = ???
+
+  override def renderRead(read: self.Read[_]): String = {
+    val builder = new StringBuilder
+    buildReadString(read, builder)
+    builder.toString()
   }
 
-  def buildExpr[A, B](expr: self.Expr[_, A, B], builder: StringBuilder): Unit = expr match {
+  override def renderUpdate(update: self.Update[_]): String = ???
+
+  private def buildExpr[A, B](expr: self.Expr[_, A, B], builder: StringBuilder): Unit = expr match {
     case Expr.Subselect(subselect)                                                            =>
       builder.append(" (")
       builder.append(renderRead(subselect))
@@ -129,7 +136,7 @@ trait OracleModule extends Jdbc { self =>
       val _ = builder.append(")")
   }
 
-  def buildReadString(read: self.Read[_], builder: StringBuilder): Unit =
+  private def buildReadString(read: self.Read[_], builder: StringBuilder): Unit =
     read match {
       case Read.Mapped(read, _) => buildReadString(read, builder)
 
@@ -199,7 +206,7 @@ trait OracleModule extends Jdbc { self =>
         val _ = builder.append(" (").append(values.mkString(",")).append(") ") // todo fix needs escaping
     }
 
-  def buildExprList(expr: Read.ExprSet[_], builder: StringBuilder): Unit                   =
+  private def buildExprList(expr: Read.ExprSet[_], builder: StringBuilder): Unit                   =
     expr match {
       case Read.ExprSet.ExprCons(head, tail) =>
         buildExpr(head, builder)
@@ -211,7 +218,7 @@ trait OracleModule extends Jdbc { self =>
         }
       case Read.ExprSet.NoExpr               => ()
     }
-  def buildOrderingList(expr: List[Ordering[Expr[_, _, _]]], builder: StringBuilder): Unit =
+  private def buildOrderingList(expr: List[Ordering[Expr[_, _, _]]], builder: StringBuilder): Unit =
     expr match {
       case head :: tail =>
         head match {
@@ -229,7 +236,7 @@ trait OracleModule extends Jdbc { self =>
       case Nil          => ()
     }
 
-  def buildSelection[A](selectionSet: SelectionSet[A], builder: StringBuilder): Unit =
+  private def buildSelection[A](selectionSet: SelectionSet[A], builder: StringBuilder): Unit =
     selectionSet match {
       case cons0 @ SelectionSet.Cons(_, _) =>
         object Dummy {
@@ -247,7 +254,7 @@ trait OracleModule extends Jdbc { self =>
       case SelectionSet.Empty              => ()
     }
 
-  def buildColumnSelection[A, B](columnSelection: ColumnSelection[A, B], builder: StringBuilder): Unit =
+  private def buildColumnSelection[A, B](columnSelection: ColumnSelection[A, B], builder: StringBuilder): Unit =
     columnSelection match {
       case ColumnSelection.Constant(value, name) =>
         builder.append(value.toString()) // todo fix escaping
@@ -268,7 +275,7 @@ trait OracleModule extends Jdbc { self =>
           case _          => () // todo what do we do if we don't have a name?
         }
     }
-  def buildTable(table: Table, builder: StringBuilder): Unit                                           =
+  private def buildTable(table: Table, builder: StringBuilder): Unit                                           =
     table match {
       case Table.DialectSpecificTable(_)           => ???
       // The outer reference in this type test cannot be checked at run time?!
@@ -292,16 +299,4 @@ trait OracleModule extends Jdbc { self =>
         buildExpr(on, builder)
         val _ = builder.append(" ")
     }
-
-  override def renderRead(read: self.Read[_]): String = {
-    val builder = new StringBuilder
-    buildReadString(read, builder)
-    builder.toString()
-  }
-
-  override def renderDelete(delete: self.Delete[_]): String = ???
-
-  override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = ???
-
-  override def renderUpdate(update: self.Update[_]): String = ???
 }

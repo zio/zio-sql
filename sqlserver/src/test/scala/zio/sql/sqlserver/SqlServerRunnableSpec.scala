@@ -5,7 +5,7 @@ import zio.test._
 import java.util.Properties
 import zio.sql.{ ConnectionPoolConfig, JdbcRunnableSpec }
 
-trait SqlServerRunnableSpec extends JdbcRunnableSpec with SqlServerModule {
+trait SqlServerRunnableSpec extends JdbcRunnableSpec with SqlServerJdbcModule {
 
   def autoCommit: Boolean = true
 
