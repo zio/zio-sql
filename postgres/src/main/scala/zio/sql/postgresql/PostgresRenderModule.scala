@@ -148,7 +148,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
         case SelectionSet.Empty                       => () // table is a collection of at least ONE column
         case SelectionSet.Cons(columnSelection, tail) =>
           val _ = columnSelection.name.map { name =>
-            render(name)
+            render(quoted(name))
           }
           tail.asInstanceOf[SelectionSet[_]] match {
             case SelectionSet.Empty             => ()
@@ -241,11 +241,13 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
       expr match {
         case Expr.Source(_, column) =>
           column.name match {
-            case Some(columnName) => render(columnName)
+            case Some(columnName) => render(quoted(columnName))
             case _                => ()
           }
         case _                      => ()
       }
+
+    private[zio] def quoted(name: String): String = "\"" + name + "\""
 
     private[zio] def renderExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
       case Expr.Subselect(subselect)                                                    =>
@@ -255,7 +257,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
       case Expr.Source(table, column)                                                   =>
         (table, column.name) match {
           case (tableName: TableName, Some(columnName)) =>
-            render(tableName, ".", columnName)
+            render(quoted(tableName), ".", quoted(columnName))
           case _                                        => ()
         }
       case Expr.Unary(base, op)                                                         =>
@@ -517,7 +519,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
               renderTable(derivedTable)
           }
         // The outer reference in this type test cannot be checked at run time?!
-        case sourceTable: self.Table.Source             => render(sourceTable.name)
+        case sourceTable: self.Table.Source             => render(quoted(sourceTable.name))
         case Table.DerivedTable(read, name)             =>
           render(" ( ")
           render(renderRead(read.asInstanceOf[Read[_]]))

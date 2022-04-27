@@ -11,17 +11,17 @@ object Examples extends App with ShopSchema with SqlServerJdbcModule {
 
   // select first_name, last_name from users
   val basicSelect =
-    select(fName ++ lName).from(users)
+    select(fName, lName).from(users)
   println(renderRead(basicSelect))
 
   // select first_name as first, last_name as last from users
   val basicSelectWithAliases =
-    select((fName as "first") ++ (lName as "last")).from(users)
+    select((fName as "first"), (lName as "last")).from(users)
   println(renderRead(basicSelectWithAliases))
 
   // select top 2 first_name, last_name from users order by last_name, first_name desc
   val selectWithRefinements =
-    select(fName ++ lName)
+    select(fName, lName)
       .from(users)
       .orderBy(lName, fName.desc)
       .limit(2)
@@ -44,7 +44,7 @@ object Examples extends App with ShopSchema with SqlServerJdbcModule {
 
   // select first_name, last_name, order_date from users left join orders on users.usr_id = orders.usr_id
   val basicJoin =
-    select(fName ++ lName ++ orderDate).from(users.leftOuter(orders).on(fkUserId === userId))
+    select(fName, lName, orderDate).from(users.leftOuter(orders).on(fkUserId === userId))
   println(renderRead(basicJoin))
   /*
     select users.usr_id, first_name, last_name, sum(quantity * unit_price) as "total_spend"
@@ -55,11 +55,11 @@ object Examples extends App with ShopSchema with SqlServerJdbcModule {
 
   val orderValues =
     select(
-      userId ++
-        fName ++
-        lName ++
-        (Sum(quantity * unitPrice) as "total_spend") ++
-        Sum(Abs(quantity))
+      userId,
+      fName,
+      lName,
+      (Sum(quantity * unitPrice) as "total_spend"),
+      Sum(Abs(quantity))
     )
       .from(
         users
@@ -76,6 +76,6 @@ object Examples extends App with ShopSchema with SqlServerJdbcModule {
   /*
    * select users.first_name, users.last_name from users where true and users.first_name is not null
    */
-  val withPropertyOp = select(fName ++ lName).from(users).where(fName isNotNull)
+  val withPropertyOp = select(fName, lName).from(users).where(fName isNotNull)
   println(renderRead(withPropertyOp))
 }

@@ -26,8 +26,8 @@ addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck"
 
 val zioVersion                 = "2.0.0-RC5"
 val zioSchemaVersion           = "0.1.9"
-val testcontainersVersion      = "1.16.3"
-val testcontainersScalaVersion = "0.40.5"
+val testcontainersVersion      = "1.17.1"
+val testcontainersScalaVersion = "0.40.6"
 
 lazy val startPostgres = taskKey[Unit]("Start up Postgres")
 startPostgres := startService(Database.Postgres, streams.value)
@@ -141,8 +141,15 @@ lazy val jdbc = project
     libraryDependencies ++= Seq(
       "dev.zio"       %% "zio-test"                        % zioVersion                 % Test,
       "dev.zio"       %% "zio-test-sbt"                    % zioVersion                 % Test,
-      "org.postgresql" % "postgresql"                      % "42.3.3"                   % Test,
+      "org.postgresql" % "postgresql"                      % "42.3.4"                   % Test,
       "com.dimafeng"  %% "testcontainers-scala-postgresql" % testcontainersScalaVersion % Test
+    )
+  )
+  .settings(
+    Seq(
+      Compile / doc / scalacOptions ++= Seq(
+        "-no-link-warnings" // Suppresses problems with Scaladoc links
+      )
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
@@ -160,7 +167,7 @@ lazy val mysql = project
       "org.testcontainers" % "database-commons"           % testcontainersVersion      % Test,
       "org.testcontainers" % "jdbc"                       % testcontainersVersion      % Test,
       "org.testcontainers" % "mysql"                      % testcontainersVersion      % Test,
-      "mysql"              % "mysql-connector-java"       % "8.0.28"                   % Test,
+      "mysql"              % "mysql-connector-java"       % "8.0.29"                   % Test,
       "com.dimafeng"      %% "testcontainers-scala-mysql" % testcontainersScalaVersion % Test
     )
   )
@@ -196,7 +203,7 @@ lazy val postgres = project
       "org.testcontainers" % "database-commons"                % testcontainersVersion      % Test,
       "org.testcontainers" % "postgresql"                      % testcontainersVersion      % Test,
       "org.testcontainers" % "jdbc"                            % testcontainersVersion      % Test,
-      "org.postgresql"     % "postgresql"                      % "42.3.3"                   % Compile,
+      "org.postgresql"     % "postgresql"                      % "42.3.4"                   % Compile,
       "com.dimafeng"      %% "testcontainers-scala-postgresql" % testcontainersScalaVersion % Test
     )
   )
