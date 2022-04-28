@@ -28,11 +28,11 @@ Connection pool | :white_check_mark:
 
 Feature | PostgreSQL | SQL Server | Oracle | MySQL
 :------------ | :-------------| :-------------| :-------------| :-------------
-Render Read | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-Render Delete | :white_check_mark: | :white_check_mark: | | :white_check_mark: | 
-Render Update | :white_check_mark: | :white_check_mark: | | :white_check_mark: |
-Render Insert | :white_check_mark: | :white_check_mark: | |
-Functions     | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+Render Read | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+Render Delete | :heavy_check_mark: | :heavy_check_mark: | | :white_check_mark: | 
+Render Update | :heavy_check_mark: | :heavy_check_mark: | | :white_check_mark: |
+Render Insert | :heavy_check_mark: | :heavy_check_mark: | |
+Functions     | :heavy_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 Types         | :white_check_mark: | | | :white_check_mark: |
 Operators     | | | |
 
