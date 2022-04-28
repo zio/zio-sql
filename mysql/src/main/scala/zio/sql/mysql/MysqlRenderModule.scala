@@ -1,45 +1,14 @@
 package zio.sql.mysql
 
 import zio.Chunk
-import zio.sql.{ Jdbc, Renderer }
-
-import java.sql.ResultSet
-import java.time.Year
 import zio.schema.Schema
+import zio.sql.driver.Renderer
 
-trait MysqlModule extends Jdbc { self =>
-
-  override type TypeTagExtension[+A] = MysqlSpecific.MysqlTypeTag[A]
-
-  object MysqlSpecific {
-    trait MysqlTypeTag[+A] extends Tag[A] with Decodable[A]
-
-    object MysqlTypeTag {
-      implicit case object TYear extends MysqlTypeTag[Year] {
-        override def decode(column: Int, resultSet: ResultSet): Either[DecodingError, Year] =
-          scala.util
-            .Try(Year.of(resultSet.getByte(column).toInt))
-            .fold(
-              _ => Left(DecodingError.UnexpectedNull(column)),
-              r => Right(r)
-            )
-      }
-
-    }
-  }
-
-  object MysqlFunctionDef {
-    val Crc32     = FunctionDef[String, Long](FunctionName("crc32"))
-    val Degrees   = FunctionDef[Double, Double](FunctionName("degrees"))
-    val Log2      = FunctionDef[Double, Double](FunctionName("log2"))
-    val Log10     = FunctionDef[Double, Double](FunctionName("log10"))
-    val Pi        = Expr.FunctionCall0[Double](FunctionDef[Any, Double](FunctionName("pi")))
-    val BitLength = FunctionDef[String, Int](FunctionName("bit_length"))
-  }
+trait MysqlRenderModule extends MysqlSqlModule { self =>
 
   override def renderRead(read: self.Read[_]): String = {
     implicit val render: Renderer = Renderer()
-    MysqlRenderModule.renderReadImpl(read)
+    MysqlRenderer.renderReadImpl(read)
     render.toString
   }
 
@@ -47,17 +16,17 @@ trait MysqlModule extends Jdbc { self =>
 
   override def renderDelete(delete: self.Delete[_]): String = {
     implicit val render: Renderer = Renderer()
-    MysqlRenderModule.renderDeleteImpl(delete)
+    MysqlRenderer.renderDeleteImpl(delete)
     render.toString
   }
 
   override def renderUpdate(update: self.Update[_]): String = {
     implicit val render: Renderer = Renderer()
-    MysqlRenderModule.renderUpdateImpl(update)
+    MysqlRenderer.renderUpdateImpl(update)
     render.toString
   }
 
-  object MysqlRenderModule {
+  object MysqlRenderer {
     def renderDeleteImpl(delete: Delete[_])(implicit render: Renderer) = {
       render("DELETE FROM ")
       renderTable(delete.table)
