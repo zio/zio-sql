@@ -27,8 +27,8 @@ trait SqlServerRunnableSpec extends JdbcRunnableSpec with SqlServerJdbcModule {
       )
   }
 
-  override def spec: Spec[TestEnvironment, TestFailure[Any], TestSuccess] =
+  override def spec: Spec[TestEnvironment, Any] =
     specLayered.provideCustomLayerShared(jdbcLayer)
 
-  def specLayered: Spec[JdbcEnvironment, TestFailure[Object], TestSuccess]
+  def specLayered: Spec[JdbcEnvironment, Object]
 }

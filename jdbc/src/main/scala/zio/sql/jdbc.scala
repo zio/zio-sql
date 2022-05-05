@@ -21,7 +21,7 @@ trait Jdbc extends zio.sql.Sql with TransactionModule with JdbcInternalModule wi
       ZLayer(ZIO.serviceWith[ConnectionPool](new SqlDriverLive(_)))
   }
 
-  def execute[R <: SqlDriver: ZTag: IsNotIntersection, A](
+  def execute[R <: SqlDriver: ZTag, A](
     tx: ZTransaction[R, Exception, A]
   ): ZIO[R, Throwable, A] =
     ZIO.serviceWithZIO(_.transact(tx))
