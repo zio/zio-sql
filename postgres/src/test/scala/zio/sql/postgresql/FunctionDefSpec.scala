@@ -1237,9 +1237,9 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
       }
 
       (for {
-        t1 <- assertM(runTest("hi", "xy"))(equalTo("xyxhi"))
-        t2 <- assertM(runTest("hello", "xy"))(equalTo("hello"))
-        t3 <- assertM(runTest("hello world", "xy"))(equalTo("hello"))
+        t1 <- assertZIO(runTest("hi", "xy"))(equalTo("xyxhi"))
+        t2 <- assertZIO(runTest("hello", "xy"))(equalTo("hello"))
+        t3 <- assertZIO(runTest("hello world", "xy"))(equalTo("hello"))
       } yield t1 && t2 && t3).mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("rpad") {
@@ -1252,9 +1252,9 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
       }
 
       (for {
-        t1 <- assertM(runTest("hi", "xy"))(equalTo("hixyx"))
-        t2 <- assertM(runTest("hello", "xy"))(equalTo("hello"))
-        t3 <- assertM(runTest("hello world", "xy"))(equalTo("hello"))
+        t1 <- assertZIO(runTest("hi", "xy"))(equalTo("hixyx"))
+        t2 <- assertZIO(runTest("hello", "xy"))(equalTo("hello"))
+        t3 <- assertZIO(runTest("hello world", "xy"))(equalTo("hello"))
       } yield t1 && t2 && t3).mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("pg_client_encoding") {
@@ -1293,9 +1293,9 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
       }
 
       (for {
-        t1 <- assertM(runTest(Interval()))(equalTo(Interval()))
-        t2 <- assertM(runTest(Interval(days = 10)))(equalTo(Interval(days = 10)))
-        t3 <- assertM(
+        t1 <- assertZIO(runTest(Interval()))(equalTo(Interval()))
+        t2 <- assertZIO(runTest(Interval(days = 10)))(equalTo(Interval(days = 10)))
+        t3 <- assertZIO(
                 runTest(Interval(years = 10, months = 2, days = 5, hours = 6, minutes = 20, seconds = 15))
               )(
                 equalTo(Interval(years = 10, months = 2, days = 5, hours = 6, minutes = 20, seconds = 15))
@@ -1335,15 +1335,15 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
       val expectedRoundTripTimestamp =
         Timestampz.fromZonedDateTime(ZonedDateTime.of(2020, 11, 21, 19, 10, 25, 0, ZoneId.of(ZoneOffset.UTC.getId)))
       (for {
-        t1 <- assertM(runTest(Timestampz(2013, 7, 15, 8, 15, 23.5)))(
+        t1 <- assertZIO(runTest(Timestampz(2013, 7, 15, 8, 15, 23.5)))(
                 equalTo(Timestampz.fromZonedDateTime(ZonedDateTime.parse("2013-07-15T08:15:23.5+00:00")))
               )
-        t2 <- assertM(runTest(Timestampz(2020, 11, 21, 19, 10, 25, "+00:00")))(
+        t2 <- assertZIO(runTest(Timestampz(2020, 11, 21, 19, 10, 25, "+00:00")))(
                 equalTo(expectedRoundTripTimestamp)
               )
-        t3 <- assertM(runTest(Timestampz(2020, 11, 21, 15, 10, 25, "-04:00")))(equalTo(expectedRoundTripTimestamp))
-        t4 <- assertM(runTest(Timestampz(2020, 11, 22, 2, 10, 25, "+07:00")))(equalTo(expectedRoundTripTimestamp))
-        t5 <- assertM(runTest(Timestampz(2020, 11, 21, 12, 10, 25, "-07:00")))(equalTo(expectedRoundTripTimestamp))
+        t3 <- assertZIO(runTest(Timestampz(2020, 11, 21, 15, 10, 25, "-04:00")))(equalTo(expectedRoundTripTimestamp))
+        t4 <- assertZIO(runTest(Timestampz(2020, 11, 22, 2, 10, 25, "+07:00")))(equalTo(expectedRoundTripTimestamp))
+        t5 <- assertZIO(runTest(Timestampz(2020, 11, 21, 12, 10, 25, "-07:00")))(equalTo(expectedRoundTripTimestamp))
       } yield t1 && t2 && t3 && t4 && t5).mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("cannot compile a select without from clause if a table source is required") {
@@ -1357,7 +1357,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
       val dummyUsage = zio.ZIO.succeed((Left(()), Right(())))
 
       val result = typeCheck("execute((select(CharLength(Customers.fName))).to[Int, Int](identity))")
-      assertM(dummyUsage *> result)(isLeft)
+      assertZIO(dummyUsage *> result)(isLeft)
     }
   ) @@ timeout(5.minutes)
 }

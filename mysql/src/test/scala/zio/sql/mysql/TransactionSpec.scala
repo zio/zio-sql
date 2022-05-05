@@ -11,7 +11,7 @@ object TransactionSpec extends MysqlRunnableSpec with ShopSchema {
 
   import Customers._
 
-  override def specLayered: Spec[JdbcEnvironment, TestFailure[Object], TestSuccess] = suite("MySQL module")(
+  override def specLayered = suite("MySQL module")(
     test("Transaction is returning the last value") {
       val query = select(customerId) from customers
 
@@ -34,7 +34,7 @@ object TransactionSpec extends MysqlRunnableSpec with ShopSchema {
         ZTransaction(query) *> ZTransaction.fail(new Exception("failing")) *> ZTransaction(query)
       ).mapError(_.getMessage)
 
-      assertM(result.flip)(equalTo("failing")).mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertZIO(result.flip)(equalTo("failing")).mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("Transaction failed and didn't deleted rows") {
       val query       = select(customerId) from customers
@@ -48,7 +48,7 @@ object TransactionSpec extends MysqlRunnableSpec with ShopSchema {
         remainingCustomersCount <- execute(query).map(identity[UUID](_)).runCount
       } yield (allCustomersCount, remainingCustomersCount))
 
-      assertM(result)(equalTo((5L, 5L))).mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertZIO(result)(equalTo((5L, 5L))).mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("Transaction succeeded and deleted rows") {
       val query       = select(customerId) from customers
@@ -62,7 +62,7 @@ object TransactionSpec extends MysqlRunnableSpec with ShopSchema {
         remainingCustomersCount <- execute(query).map(identity[UUID](_)).runCount
       } yield (allCustomersCount, remainingCustomersCount))
 
-      assertM(result)(equalTo((5L, 4L))).mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertZIO(result)(equalTo((5L, 4L))).mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
   ) @@ sequential
 }
