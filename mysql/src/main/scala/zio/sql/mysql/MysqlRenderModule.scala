@@ -1,58 +1,32 @@
 package zio.sql.mysql
 
-import zio.sql.{ Jdbc, Renderer }
 import zio.Chunk
-import java.time.Year
-import java.sql.ResultSet
+import zio.schema.Schema
+import zio.sql.driver.Renderer
 
-trait MysqlModule extends Jdbc { self =>
-
-  override type TypeTagExtension[+A] = MysqlSpecific.MysqlTypeTag[A]
-
-  object MysqlSpecific {
-    trait MysqlTypeTag[+A] extends Tag[A] with Decodable[A]
-
-    object MysqlTypeTag {
-      implicit case object TYear extends MysqlTypeTag[Year] {
-        override def decode(column: Either[Int, String], resultSet: ResultSet): Either[DecodingError, Year] =
-          scala.util
-            .Try(Year.of(column.fold(resultSet.getByte(_), resultSet.getByte(_)).toInt))
-            .fold(
-              _ => Left(DecodingError.UnexpectedNull(column)),
-              r => Right(r)
-            )
-      }
-
-    }
-  }
-
-  object MysqlFunctionDef {
-    val Crc32   = FunctionDef[String, Long](FunctionName("crc32"))
-    val Degrees = FunctionDef[Double, Double](FunctionName("degrees"))
-    val Log2    = FunctionDef[Double, Double](FunctionName("log2"))
-    val Log10   = FunctionDef[Double, Double](FunctionName("log10"))
-    val Pi      = Expr.FunctionCall0[Double](FunctionDef[Any, Double](FunctionName("pi")))
-  }
+trait MysqlRenderModule extends MysqlSqlModule { self =>
 
   override def renderRead(read: self.Read[_]): String = {
     implicit val render: Renderer = Renderer()
-    MysqlRenderModule.renderReadImpl(read)
+    MysqlRenderer.renderReadImpl(read)
     render.toString
   }
 
+  override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = ???
+
   override def renderDelete(delete: self.Delete[_]): String = {
     implicit val render: Renderer = Renderer()
-    MysqlRenderModule.renderDeleteImpl(delete)
+    MysqlRenderer.renderDeleteImpl(delete)
     render.toString
   }
 
   override def renderUpdate(update: self.Update[_]): String = {
     implicit val render: Renderer = Renderer()
-    MysqlRenderModule.renderUpdateImpl(update)
+    MysqlRenderer.renderUpdateImpl(update)
     render.toString
   }
 
-  object MysqlRenderModule {
+  object MysqlRenderer {
     def renderDeleteImpl(delete: Delete[_])(implicit render: Renderer) = {
       render("DELETE FROM ")
       renderTable(delete.table)
@@ -77,11 +51,17 @@ trait MysqlModule extends Jdbc { self =>
 
     def renderReadImpl(read: self.Read[_])(implicit render: Renderer): Unit =
       read match {
-        case Read.Mapped(read, _)                        =>
-          renderReadImpl(read)
-        case read0 @ Read.Select(_, _, _, _, _, _, _, _) =>
-          object Dummy { type F; type A; type B <: SelectionSet[A] }
-          val read = read0.asInstanceOf[Read.Select[Dummy.F, Dummy.A, Dummy.B]]
+        case Read.Mapped(read, _) => renderReadImpl(read)
+
+        case read0 @ Read.Subselect(_, _, _, _, _, _, _, _) =>
+          object Dummy {
+            type F
+            type Repr
+            type Source
+            type Head
+            type Tail <: SelectionSet[Source]
+          }
+          val read = read0.asInstanceOf[Read.Select[Dummy.F, Dummy.Repr, Dummy.Source, Dummy.Head, Dummy.Tail]]
           import read._
 
           render("SELECT ")
@@ -96,10 +76,10 @@ trait MysqlModule extends Jdbc { self =>
               render(" WHERE ")
               renderExpr(whereExpr)
           }
-          groupBy match {
-            case _ :: _ =>
+          groupByExprs match {
+            case Read.ExprSet.ExprCons(_, _) =>
               render(" GROUP BY ")
-              renderExprList(groupBy)
+              renderExprList(groupByExprs)
 
               havingExpr match {
                 case Expr.Literal(true) => ()
@@ -107,12 +87,12 @@ trait MysqlModule extends Jdbc { self =>
                   render(" HAVING ")
                   renderExpr(havingExpr)
               }
-            case Nil    => ()
+            case Read.ExprSet.NoExpr         => ()
           }
-          orderBy match {
+          orderByExprs match {
             case _ :: _ =>
               render(" ORDER BY ")
-              renderOrderingList(orderBy)
+              renderOrderingList(orderByExprs)
             case Nil    => ()
           }
           limit match {
@@ -131,7 +111,7 @@ trait MysqlModule extends Jdbc { self =>
           renderReadImpl(right)
 
         case Read.Literal(values) =>
-          render(" (", values.mkString(","), ") ") //todo fix needs escaping
+          render(" (", values.mkString(","), ") ") // todo fix needs escaping
       }
 
     private def renderSet(set: List[Set[_, _]])(implicit render: Renderer): Unit =
@@ -146,14 +126,20 @@ trait MysqlModule extends Jdbc { self =>
             render(" = ")
             renderExpr(setEq.rhs)
           }
-        case Nil          => //TODO restrict Update to not allow empty set
+        case Nil          => // TODO restrict Update to not allow empty set
       }
 
     private def renderTable(table: Table)(implicit render: Renderer): Unit =
       table match {
-        //The outer reference in this type test cannot be checked at run time?!
+        case Table.DialectSpecificTable(_)           => ???
+        // The outer reference in this type test cannot be checked at run time?!
         case sourceTable: self.Table.Source          =>
           render(sourceTable.name)
+        case Table.DerivedTable(read, name)          =>
+          render(" ( ")
+          renderRead(read.asInstanceOf[Read[_]])
+          render(" ) ")
+          render(name)
         case Table.Joined(joinType, left, right, on) =>
           renderTable(left)
           render(joinType match {
@@ -169,7 +155,15 @@ trait MysqlModule extends Jdbc { self =>
       }
 
     private def renderExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
-      case Expr.Source(tableName, column)                                               => render(tableName, ".", column.name)
+      case Expr.Subselect(subselect)                                                    =>
+        render(" (")
+        renderRead(subselect)
+        render(") ")
+      case Expr.Source(table, column)                                                   =>
+        (table, column.name) match {
+          case (tableName: TableName, Some(columnName)) => render(tableName, ".", columnName)
+          case _                                        => ()
+        }
       case Expr.Unary(base, op)                                                         =>
         render(" ", op.symbol)
         renderExpr(base)
@@ -297,7 +291,7 @@ trait MysqlModule extends Jdbc { self =>
             lit.value.asInstanceOf[Chunk[Byte]].map("""\%02X""" format _).mkString("x'", "", "'")
           ) // todo fix `cast` infers correctly but map doesn't work for some reason
         case tt @ TChar           =>
-          render("'", tt.cast(lit.value), "'") //todo is this the same as a string? fix escaping
+          render("'", tt.cast(lit.value), "'") // todo is this the same as a string? fix escaping
         case tt @ TInstant        =>
           render("TIMESTAMP '", tt.cast(lit.value), "'")
         case tt @ TLocalDate      =>
@@ -331,9 +325,9 @@ trait MysqlModule extends Jdbc { self =>
         case TShort               =>
           render(lit.value)
         case TString              =>
-          render("'", lit.value, "'") //todo fix escaping
+          render("'", lit.value, "'") // todo fix escaping
         case _                    =>
-          render(lit.value) //todo fix add TypeTag.Nullable[_] =>
+          render(lit.value) // todo fix add TypeTag.Nullable[_] =>
       }
     }
 
@@ -358,7 +352,7 @@ trait MysqlModule extends Jdbc { self =>
     private def renderColumnSelection[A, B](columnSelection: ColumnSelection[A, B])(implicit render: Renderer): Unit =
       columnSelection match {
         case ColumnSelection.Constant(value, name) =>
-          render(value) //todo fix escaping
+          render(value) // todo fix escaping
           name match {
             case Some(name) => render(" AS ", name)
             case None       => ()
@@ -371,21 +365,21 @@ trait MysqlModule extends Jdbc { self =>
                 case Some(sourceName) if name != sourceName => render(" AS ", name)
                 case _                                      => ()
               }
-            case _          => () //todo what do we do if we don't have a name?
+            case _          => () // todo what do we do if we don't have a name?
           }
       }
 
-    private def renderExprList(expr: List[Expr[_, _, _]])(implicit render: Renderer): Unit =
+    private def renderExprList(expr: Read.ExprSet[_])(implicit render: Renderer): Unit =
       expr match {
-        case head :: tail =>
+        case Read.ExprSet.ExprCons(head, tail) =>
           renderExpr(head)
-          tail match {
-            case _ :: _ =>
+          tail.asInstanceOf[Read.ExprSet[_]] match {
+            case Read.ExprSet.ExprCons(_, _) =>
               render(", ")
-              renderExprList(tail)
-            case Nil    => ()
+              renderExprList(tail.asInstanceOf[Read.ExprSet[_]])
+            case Read.ExprSet.NoExpr         => ()
           }
-        case Nil          => ()
+        case Read.ExprSet.NoExpr               => ()
       }
 
     def renderOrderingList(expr: List[Ordering[Expr[_, _, _]]])(implicit render: Renderer): Unit =

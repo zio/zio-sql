@@ -1,24 +1,19 @@
 package zio.sql
 
-import zio.test.environment.TestEnvironment
-import zio.test.DefaultRunnableSpec
+import zio.test.TestEnvironment
 import zio.ZLayer
-import zio.blocking.Blocking
-import zio.clock.Clock
-import zio.Has
+import zio.test.ZIOSpecDefault
 
-trait JdbcRunnableSpec extends DefaultRunnableSpec with Jdbc {
+trait JdbcRunnableSpec extends ZIOSpecDefault with Jdbc {
 
-  type JdbcEnvironment = TestEnvironment with Has[SqlDriver]
+  type JdbcEnvironment = TestEnvironment with SqlDriver
 
-  val poolConfigLayer: ZLayer[Blocking, Throwable, Has[ConnectionPoolConfig]]
+  val poolConfigLayer: ZLayer[Any, Throwable, ConnectionPoolConfig]
 
-  final lazy val executorLayer = {
-    val connectionPoolLayer: ZLayer[Blocking with Clock, Throwable, Has[ConnectionPool]] =
-      ((Blocking.any >+> poolConfigLayer) ++ Clock.any) >>> ConnectionPool.live
-
-    (Blocking.any ++ connectionPoolLayer >+> SqlDriver.live).orDie
-  }
-
-  final lazy val jdbcLayer = TestEnvironment.live >+> executorLayer
+  final lazy val jdbcLayer: ZLayer[Any, Any, SqlDriver] =
+    ZLayer.make[SqlDriver](
+      poolConfigLayer.orDie,
+      ConnectionPool.live.orDie,
+      SqlDriver.live
+    )
 }

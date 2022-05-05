@@ -1,10 +1,14 @@
 package zio.sql
 
+import zio.schema.Schema
+
 object ProductSchema {
-  val sql = new Sql {
-    override def renderDelete(delete: this.Delete[_]): String = ???
-    override def renderRead(read: this.Read[_]): String       = ???
-    override def renderUpdate(update: this.Update[_]): String = ???
+  val sql = new Sql { self =>
+    override def renderDelete(delete: self.Delete[_]): String = ???
+    override def renderRead(read: self.Read[_]): String       = ???
+    override def renderUpdate(update: self.Update[_]): String = ???
+
+    override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = ???
   }
   import sql.ColumnSet._
   import sql._
@@ -18,7 +22,7 @@ object ProductSchema {
       boolean("deleted")
   ).table("product")
 
-  val id :*: lastUpdated :*: name :*: baseAmount :*: finalAmount :*: deleted :*: _ = productTable.columns
+  val (id, lastUpdated, name, baseAmount, finalAmount, deleted) = productTable.columns
 
-  val selectAll = select(id ++ lastUpdated ++ baseAmount ++ deleted) from productTable
+  val selectAll = select(id, lastUpdated, baseAmount, deleted) from productTable
 }

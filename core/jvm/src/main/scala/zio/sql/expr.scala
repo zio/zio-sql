@@ -1,9 +1,8 @@
 package zio.sql
 
-import java.time._
-
 import com.github.ghik.silencer.silent
 
+import java.time._
 import scala.language.implicitConversions
 
 trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
@@ -24,7 +23,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     def *[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =
       Expr.Binary(self, that, BinaryOp.Mul[B1]())
 
-    //todo do something special for divide by 0? also Mod/log/whatever else is really a partial function.. PartialExpr?
+    // todo do something special for divide by 0? also Mod/log/whatever else is really a partial function.. PartialExpr?
     def /[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =
       Expr.Binary(self, that, BinaryOp.Div[B1]())
 
@@ -86,8 +85,11 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     def isNotTrue[A1 <: A](implicit ev: B <:< Boolean): Expr[F, A1, Boolean] =
       Expr.Property(self, PropertyOp.IsNotTrue)
 
-    def as[B1 >: B](name: String): Selection[F, A, SelectionSet.Cons[A, B1, SelectionSet.Empty]] =
-      Selection.computedAs(self, name)
+    // TODO https://github.com/zio/zio-sql/issues/564
+    def as[B1 >: B](name: String): Expr[F, A, B1] = {
+      val _ = name
+      self
+    }
 
     def ascending: Ordering[Expr[F, A, B]] = Ordering.Asc(self)
 
@@ -107,6 +109,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
   }
 
   object Expr {
+    implicit val subqueryToExpr = self.Read.Subselect.subselectToExpr _
 
     sealed trait InvariantExpr[F, -A, B] extends Expr[F, A, B] {
       def typeTag: TypeTag[B]
@@ -118,17 +121,26 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
 
     def exprName[F, A, B](expr: Expr[F, A, B]): Option[String] =
       expr match {
-        case Expr.Source(_, c) => Some(c.name)
-        case _                 => None
+        case Expr.Source(_, Column.Named(name)) => Some(name)
+        case _                                  => None
       }
 
     implicit def expToSelection[F, A, B](
       expr: Expr[F, A, B]
     ): Selection[F, A, SelectionSet.Cons[A, B, SelectionSet.Empty]] =
-      Selection.computedOption(expr, exprName(expr))
+      Selection.computedOption[F, A, B](expr, Expr.exprName(expr))
 
-    sealed case class Source[A, B] private[sql] (tableName: TableName, column: Column[B])
-        extends InvariantExpr[Features.Source, A, B] {
+    // aggregated F should not be propagated
+    sealed case class Subselect[F <: Features.Aggregated[_], Repr, Source, Subsource, Head](
+      subselect: Read.Subselect[F, Repr, _ <: Source, Subsource, Head, SelectionSet.Empty]
+    ) extends InvariantExpr[Features.Derived, Any, Head] {
+      override def typeTag: TypeTag[Head] = subselect.selection.value.head.toColumn.typeTag
+    }
+
+    sealed case class Source[-A, B, ColumnIdentity, TableType] private[sql] (
+      tableName: TableName,
+      column: Column.Aux[B, ColumnIdentity]
+    ) extends InvariantExpr[Features.Source[ColumnIdentity, TableType], A, B] {
       def typeTag: TypeTag[B] = column.typeTag
     }
 
@@ -263,12 +275,11 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
   }
 
   object AggregationDef {
-    val Count                                            = AggregationDef[Any, Long](FunctionName("count"))
-    val Sum                                              = AggregationDef[Double, Double](FunctionName("sum"))
-    def Arbitrary[F, A, B: TypeTag](expr: Expr[F, A, B]) = AggregationDef[B, B](FunctionName("arbitrary"))(expr)
-    val Avg                                              = AggregationDef[Double, Double](FunctionName("avg"))
-    def Min[F, A, B: TypeTag](expr: Expr[F, A, B])       = AggregationDef[B, B](FunctionName("min"))(expr)
-    def Max[F, A, B: TypeTag](expr: Expr[F, A, B])       = AggregationDef[B, B](FunctionName("max"))(expr)
+    val Count                                      = AggregationDef[Any, Long](FunctionName("count"))
+    val Sum                                        = AggregationDef[Double, Double](FunctionName("sum"))
+    val Avg                                        = AggregationDef[Double, Double](FunctionName("avg"))
+    def Min[F, A, B: TypeTag](expr: Expr[F, A, B]) = AggregationDef[B, B](FunctionName("min"))(expr)
+    def Max[F, A, B: TypeTag](expr: Expr[F, A, B]) = AggregationDef[B, B](FunctionName("max"))(expr)
   }
 
   sealed case class FunctionDef[-A, +B](name: FunctionName) { self =>
@@ -377,7 +388,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
 
   object FunctionDef {
 
-    //math functions
+    // math functions
     val Abs         = FunctionDef[Double, Double](FunctionName("abs"))
     val Acos        = FunctionDef[Double, Double](FunctionName("acos"))
     val Asin        = FunctionDef[Double, Double](FunctionName("asin"))
@@ -397,10 +408,10 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     val Tan         = FunctionDef[Double, Double](FunctionName("tan"))
     val WidthBucket = FunctionDef[(Double, Double, Double, Int), Int](FunctionName("width_bucket"))
 
-    //string functions
+    // string functions
     val Ascii       = FunctionDef[String, Int](FunctionName("ascii"))
     val CharLength  = FunctionDef[String, Int](FunctionName("character_length"))
-    val Concat      = FunctionDef[(String, String), String](FunctionName("concat")) //todo varargs
+    val Concat      = FunctionDef[(String, String), String](FunctionName("concat")) // todo varargs
     val ConcatWs2   = FunctionDef[(String, String), String](FunctionName("concat_ws"))
     val ConcatWs3   = FunctionDef[(String, String, String), String](FunctionName("concat_ws"))
     val ConcatWs4   = FunctionDef[(String, String, String, String), String](FunctionName("concat_ws"))
@@ -412,7 +423,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     val Replace     = FunctionDef[(String, String, String), String](FunctionName("replace"))
     val Rtrim       = FunctionDef[String, String](FunctionName("rtrim"))
     val Substring   = FunctionDef[(String, Int, Option[Int]), String](FunctionName("substring"))
-    //TODO substring regex
+    // TODO substring regex
     val Trim        = FunctionDef[String, String](FunctionName("trim"))
     val Upper       = FunctionDef[String, String](FunctionName("upper"))
 

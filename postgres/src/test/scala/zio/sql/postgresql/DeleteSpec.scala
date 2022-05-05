@@ -4,12 +4,12 @@ import zio.Cause
 import zio.test.Assertion._
 import zio.test._
 
-object DeleteSpec extends PostgresRunnableSpec with ShopSchema {
+object DeleteSpec extends PostgresRunnableSpec with DbSchema {
 
   import Customers._
 
   override def specLayered = suite("Postgres module delete")(
-    testM("Can delete from single table with a condition") {
+    test("Can delete from single table with a condition") {
       val query = deleteFrom(customers).where(verified.isNotTrue)
 
       val result = execute(query)

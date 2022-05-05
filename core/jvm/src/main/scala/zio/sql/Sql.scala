@@ -1,6 +1,19 @@
 package zio.sql
 
-trait Sql extends SelectModule with DeleteModule with UpdateModule with ExprModule with TableModule { self =>
+import zio.schema.Schema
+
+trait Sql
+    extends SelectModule
+    with GroupByUtilsModule
+    with DeleteModule
+    with UpdateModule
+    with ExprModule
+    with TableModule
+    with InsertModule
+    with UtilsModule
+    with SelectUtilsModule
+    with InsertUtilsModule {
+  self =>
 
   /*
    * (SELECT *, "foo", table.a + table.b AS sum... FROM table WHERE cond) UNION (SELECT ... FROM table)
@@ -14,12 +27,22 @@ trait Sql extends SelectModule with DeleteModule with UpdateModule with ExprModu
    *
    * SELECT ARBITRARY(age), COUNT(*) FROM person GROUP BY age
    */
-  def select[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]): SelectBuilder[F, A, B] =
-    SelectBuilder(selection)
+  val select: SelectByCommaBuilder = SelectByCommaBuilder()
+
+  def select[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B])(implicit
+    i: Features.IsPartiallyAggregated[F]
+  ): Selector[F, A, B, i.Unaggregated] =
+    Selector[F, A, B, i.Unaggregated](selection)
+
+  def subselect[ParentTable]: SubselectPartiallyApplied[ParentTable] = new SubselectPartiallyApplied[ParentTable]
 
   def deleteFrom[T <: Table](table: T): Delete[table.TableType] = Delete(table, true)
 
   def update[A](table: Table.Aux[A]): UpdateBuilder[A] = UpdateBuilder(table)
+
+  def insertInto[Source, AllColumnIdentities](
+    table: Table.Source.Aux_[Source, AllColumnIdentities]
+  ): InsertIntoBuilder[Source, AllColumnIdentities] = InsertIntoBuilder(table)
 
   def renderDelete(delete: self.Delete[_]): String
 
@@ -27,4 +50,5 @@ trait Sql extends SelectModule with DeleteModule with UpdateModule with ExprModu
 
   def renderUpdate(update: self.Update[_]): String
 
+  def renderInsert[A: Schema](insert: self.Insert[_, A]): String
 }

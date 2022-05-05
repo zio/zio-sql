@@ -10,7 +10,7 @@ trait TypeTagModule { self: SelectModule with ExprModule with TableModule =>
   type TypeTagExtension[+A] <: Tag[A] with Decodable[A]
 
   trait Decodable[+A] {
-    def decode(column: Either[Int, String], resultSet: ResultSet): Either[DecodingError, A]
+    def decode(column: Int, resultSet: ResultSet): Either[DecodingError, A]
   }
 
   trait Tag[+A] {
