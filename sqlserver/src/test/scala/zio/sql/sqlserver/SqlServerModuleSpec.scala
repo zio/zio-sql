@@ -458,7 +458,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       val result = execute(query).runHead.some
 
-      assertM(result)(equalTo(4L))
+      assertZIO(result)(equalTo(4L))
     },
     test("handle isNotTrue to 0 bit type") {
       import AggregationDef._
@@ -470,7 +470,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       val result = execute(query).runHead.some
 
-      assertM(result)(equalTo(1L))
+      assertZIO(result)(equalTo(1L))
     },
     test("Can select from joined tables (inner join)") {
       val query = select(fName, lName, orderDate).from(customers.join(orders).on(fkCustomerId === customerId))
@@ -520,7 +520,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       val result = execute(query)
 
-      assertM(result)(equalTo(1))
+      assertZIO(result)(equalTo(1))
     }
   ) @@ sequential
 

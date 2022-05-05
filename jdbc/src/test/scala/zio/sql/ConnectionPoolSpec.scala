@@ -30,10 +30,10 @@ object ConnectionPoolSpec extends ZIOSpecDefault {
         )
     }
 
-  override def spec: Spec[TestEnvironment, TestFailure[Any], TestSuccess] =
+  override def spec: Spec[TestEnvironment, Any] =
     specLayered.provideCustomShared((poolConfigLayer >>> ConnectionPool.live).orDie)
 
-  def specLayered: Spec[TestEnvironment with ConnectionPool, TestFailure[Object], TestSuccess] =
+  def specLayered: Spec[TestEnvironment with ConnectionPool, Object] =
     suite("Postgres module")(
       test("Fibers waiting for connections can be interrupted") {
         // We need to actually sleep here to make sure that the started fibers

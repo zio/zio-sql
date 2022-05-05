@@ -139,7 +139,7 @@ final case class ConnectionPoolLive(
           }.commit.flatMap { interrupted =>
             ZIO.when(interrupted)(release(connection))
           }
-        case None         => UIO.unit
+        case None         => ZIO.unit
       }
     }
 
