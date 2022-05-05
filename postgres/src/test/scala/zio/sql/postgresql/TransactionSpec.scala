@@ -19,7 +19,7 @@ object TransactionSpec extends PostgresRunnableSpec with DbSchema {
         ZTransaction(query) *> ZTransaction(query)
       )
 
-      val assertion = assertM(result.flatMap(_.runCount))(equalTo(5L)).orDie
+      val assertion = assertZIO(result.flatMap(_.runCount))(equalTo(5L)).orDie
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
@@ -30,7 +30,7 @@ object TransactionSpec extends PostgresRunnableSpec with DbSchema {
         ZTransaction(query) *> ZTransaction.fail(new Exception("failing")) *> ZTransaction(query)
       ).mapError(_.getMessage)
 
-      assertM(result.flip)(equalTo("failing")).mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertZIO(result.flip)(equalTo("failing")).mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("Transaction failed and didn't deleted rows") {
       val query       = select(customerId) from customers
@@ -44,7 +44,7 @@ object TransactionSpec extends PostgresRunnableSpec with DbSchema {
         remainingCustomersCount <- execute(query).runCount
       } yield (allCustomersCount, remainingCustomersCount))
 
-      assertM(result)(equalTo((5L, 5L))).mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertZIO(result)(equalTo((5L, 5L))).mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("Transaction succeeded and deleted rows") {
       val query       = select(customerId) from customers
@@ -58,7 +58,7 @@ object TransactionSpec extends PostgresRunnableSpec with DbSchema {
         remainingCustomersCount <- execute(query).runCount
       } yield (allCustomersCount, remainingCustomersCount))
 
-      assertM(result)(equalTo((5L, 4L))).mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertZIO(result)(equalTo((5L, 4L))).mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
   ) @@ sequential
 }
