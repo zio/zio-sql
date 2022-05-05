@@ -95,6 +95,36 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
           render(" (", values.mkString(","), ") ") // todo fix needs escaping
       }
 
+    private[zio] def renderLit[A, B](lit: self.Expr.Literal[_])(implicit render: Renderer): Unit = {
+      import TypeTag._
+      lit.typeTag match {
+        case TBoolean        =>
+          // MSSQL server variant of true/false
+          val x = if (lit.value.asInstanceOf[Boolean]) {
+            "0 = 0"
+          } else {
+            "0 = 1"
+          }
+          render(x)
+        case TLocalDateTime  =>
+          val x = lit.value
+            .asInstanceOf[java.time.LocalDateTime]
+            .format(java.time.format.DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss"))
+          render(s"'$x'")
+        case TZonedDateTime  =>
+          val x = lit.value
+            .asInstanceOf[java.time.ZonedDateTime]
+            .format(java.time.format.DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss"))
+          render(s"'$x'")
+        case TOffsetDateTime =>
+          val x = lit.value
+            .asInstanceOf[java.time.OffsetDateTime]
+            .format(java.time.format.DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss"))
+          render(s"'$x'")
+        case _                       => render(s"'${lit.value.toString}'")
+      }
+    }
+
     def buildExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
       case Expr.Subselect(subselect)                                                            =>
         render(" (")
@@ -129,33 +159,8 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
       case Expr.In(value, set)                                                                  =>
         buildExpr(value)
         renderReadImpl(set)
-      case literal @ Expr.Literal(value)                                                        =>
-        val lit = literal.typeTag match {
-          case TypeTag.TBoolean        =>
-            // MSSQL server variant of true/false
-            if (value.asInstanceOf[Boolean]) {
-              "0 = 0"
-            } else {
-              "0 = 1"
-            }
-          case TypeTag.TLocalDateTime  =>
-            val x = value
-              .asInstanceOf[java.time.LocalDateTime]
-              .format(java.time.format.DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss"))
-            s"'$x'"
-          case TypeTag.TZonedDateTime  =>
-            val x = value
-              .asInstanceOf[java.time.ZonedDateTime]
-              .format(java.time.format.DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss"))
-            s"'$x'"
-          case TypeTag.TOffsetDateTime =>
-            val x = value
-              .asInstanceOf[java.time.OffsetDateTime]
-              .format(java.time.format.DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss"))
-            s"'$x'"
-          case _                       => s"'${value.toString}'"
-        }
-        render(lit)
+      case lit: Expr.Literal[_]                                                                 =>
+        renderLit(lit)
       case Expr.AggregationCall(param, aggregation)                                             =>
         render(aggregation.name.name)
         render("(")
