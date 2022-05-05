@@ -165,7 +165,7 @@ object MysqlModuleSpec extends MysqlRunnableSpec with ShopSchema {
       val query = update(customers).set(fName, "Roland").where(fName === "Ronald")
 
       println(renderUpdate(query))
-      assertM(execute(query))(equalTo(1))
+      assertZIO(execute(query))(equalTo(1))
     }
   )
 

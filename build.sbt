@@ -24,7 +24,7 @@ addCommandAlias("fmtOnce", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("fmt", "fmtOnce;fmtOnce")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
-val zioVersion                 = "2.0.0-RC5"
+val zioVersion                 = "2.0.0-RC6"
 val zioSchemaVersion           = "0.1.9"
 val testcontainersVersion      = "1.17.1"
 val testcontainersScalaVersion = "0.40.7"
@@ -158,6 +158,7 @@ lazy val jdbc = project
 lazy val mysql = project
   .in(file("mysql"))
   .dependsOn(jdbc % "compile->compile;test->test")
+  .dependsOn(driver)
   .settings(stdSettings("zio-sql-mysql"))
   .settings(buildInfoSettings("zio.sql.mysql"))
   .settings(
@@ -175,6 +176,7 @@ lazy val mysql = project
 lazy val oracle = project
   .in(file("oracle"))
   .dependsOn(jdbc % "compile->compile;test->test")
+  .dependsOn(driver)
   .settings(stdSettings("zio-sql-oracle"))
   .settings(buildInfoSettings("zio.sql.oracle"))
   .settings(
@@ -192,6 +194,7 @@ lazy val oracle = project
 lazy val postgres = project
   .in(file("postgres"))
   .dependsOn(jdbc % "compile->compile;test->test")
+  .dependsOn(driver)
   .settings(stdSettings("zio-sql-postgres"))
   .settings(buildInfoSettings("zio.sql.postgres"))
   .settings(
@@ -209,6 +212,7 @@ lazy val postgres = project
 lazy val sqlserver = project
   .in(file("sqlserver"))
   .dependsOn(jdbc % "compile->compile;test->test")
+  .dependsOn(driver)
   .settings(stdSettings("zio-sql-sqlserver"))
   .settings(buildInfoSettings("zio.sql.sqlserver"))
   .settings(
