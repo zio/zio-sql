@@ -49,7 +49,7 @@ trait SqlDriverLiveModule { self: Jdbc =>
         .flatMap(readOn(read, _))
 
     override def readOn[A](read: Read[A], conn: Connection): Stream[Exception, A] =
-      Stream.unwrap {
+      ZStream.unwrap {
         ZIO.attemptBlocking {
           val schema = getColumns(read).zipWithIndex.map { case (value, index) =>
             (value, index + 1)
