@@ -28,9 +28,9 @@ trait PostgresRunnableSpec extends JdbcRunnableSpec with PostgresJdbcModule {
       )
   }
 
-  override def spec: Spec[TestEnvironment, TestFailure[Any], TestSuccess] =
+  override def spec: Spec[TestEnvironment, Any] =
     specLayered.provideCustomShared(jdbcLayer)
 
-  def specLayered: Spec[JdbcEnvironment, TestFailure[Object], TestSuccess]
+  def specLayered: Spec[JdbcEnvironment, Object]
 
 }

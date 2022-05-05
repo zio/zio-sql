@@ -21,9 +21,9 @@ trait MysqlRunnableSpec extends JdbcRunnableSpec with MysqlJdbcModule {
         .map(a => ConnectionPoolConfig(a.jdbcUrl, connProperties(a.username, a.password)))
     }
 
-  override def spec: Spec[TestEnvironment, TestFailure[Any], TestSuccess] =
+  override def spec: Spec[TestEnvironment, Any] =
     specLayered.provideCustomLayerShared(jdbcLayer)
 
-  def specLayered: Spec[JdbcEnvironment, TestFailure[Object], TestSuccess]
+  def specLayered: Spec[JdbcEnvironment, Object]
 
 }
