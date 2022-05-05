@@ -432,7 +432,7 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
       computedOption(expr, Some(name))
   }
 
-  sealed trait ColumnSelection[-Source, +ColumnType] {
+  sealed trait ColumnSelection[-Source, ColumnType] {
     type ColumnType0 <: ColumnType
 
     def name: Option[ColumnName]

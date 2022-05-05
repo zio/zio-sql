@@ -128,7 +128,7 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule with Sel
       Cons(Column.Named[A, ColumnIdentity](name), Empty)
   }
 
-  sealed trait Column[+A] {
+  sealed trait Column[A] {
     type Identity
     def typeTag: TypeTag[A]
 
@@ -139,7 +139,7 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule with Sel
 
   object Column {
 
-    type Aux[+A0, Identity0] = Column[A0] {
+    type Aux[A0, Identity0] = Column[A0] {
       type Identity = Identity0
     }
 
