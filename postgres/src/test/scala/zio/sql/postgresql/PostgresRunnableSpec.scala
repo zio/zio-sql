@@ -5,7 +5,7 @@ import zio.test._
 import java.util.Properties
 import zio.sql.{ ConnectionPoolConfig, JdbcRunnableSpec }
 
-trait PostgresRunnableSpec extends JdbcRunnableSpec with PostgresModule {
+trait PostgresRunnableSpec extends JdbcRunnableSpec with PostgresJdbcModule {
 
   def autoCommit: Boolean = true
 
@@ -28,9 +28,9 @@ trait PostgresRunnableSpec extends JdbcRunnableSpec with PostgresModule {
       )
   }
 
-  override def spec: Spec[TestEnvironment, TestFailure[Any], TestSuccess] =
+  override def spec: Spec[TestEnvironment, Any] =
     specLayered.provideCustomShared(jdbcLayer)
 
-  def specLayered: Spec[JdbcEnvironment, TestFailure[Object], TestSuccess]
+  def specLayered: Spec[JdbcEnvironment, Object]
 
 }

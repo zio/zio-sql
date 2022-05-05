@@ -376,7 +376,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
 
       val actual = execute(query).map(_.toString()).runCollect.map(_.toList)
 
-      assertM(actual)(equalTo(expected))
+      assertZIO(actual)(equalTo(expected))
     },
     test("group by have to be called on column from selection") {
 
@@ -398,7 +398,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
 
       val actual = execute(query).map(arg => arg._2.toInt).runCollect.map(_.toList)
 
-      assertM(actual)(equalTo(expected))
+      assertZIO(actual)(equalTo(expected))
     },
     test("insert - 1 rows into customers") {
 
@@ -462,7 +462,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
         createdTimestamp
       ).values(data)
 
-      assertM(execute(query))(equalTo(1))
+      assertZIO(execute(query))(equalTo(1))
     },
     test("insert - insert 10 rows into orders") {
 
@@ -508,7 +508,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
       val query = insertInto(orders)(orderId, fkCustomerId, orderDate)
         .values(data)
 
-      assertM(execute(query))(equalTo(10))
+      assertZIO(execute(query))(equalTo(10))
     },
     test("insert - 4 rows into orderDetails") {
 
@@ -553,7 +553,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
       val query = insertInto(orderDetails)(orderDetailsOrderId, orderDetailsProductId, quantity, unitPrice)
         .values(rows)
 
-      assertM(execute(query))(equalTo(4))
+      assertZIO(execute(query))(equalTo(4))
     },
     test("insert into orderDetails with tuples") {
 
@@ -569,7 +569,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
       val query = insertInto(orderDetails)(orderDetailsOrderId, orderDetailsProductId, quantity, unitPrice)
         .values((UUID.randomUUID(), UUID.randomUUID(), 4, BigDecimal.valueOf(11.00)))
 
-      assertM(execute(query))(equalTo(1))
+      assertZIO(execute(query))(equalTo(1))
     },
     test("insert into customers with tuples") {
 
@@ -595,7 +595,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
         createdTimestamp
       ).values(row)
 
-      assertM(execute(query))(equalTo(1))
+      assertZIO(execute(query))(equalTo(1))
     },
     test("insert into products") {
       import Products._
@@ -609,7 +609,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
 
       val query = insertInto(products)(productId, productName, description, imageURL).values(tupleData)
 
-      assertM(execute(query))(equalTo(4))
+      assertZIO(execute(query))(equalTo(4))
     },
     test("insert and query nullable field") {
       import Persons._
@@ -664,7 +664,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
         ("Charles", "Harvey", None)
       )
 
-      assertM(result)(equalTo(expected))
+      assertZIO(result)(equalTo(expected))
     },
     test("in joined tables, columns of the same name from different table are treated as different columns") {
       import Cities._
@@ -700,12 +700,12 @@ object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
           ("Metro Warszawskie", "Warszawa", 2L)
         )
 
-      assertM(result)(equalTo(expected))
+      assertZIO(result)(equalTo(expected))
     },
     test("update rows") {
       val query = update(customers).set(fName, "Jaroslav").where(fName === "Jaro")
 
-      assertM(execute(query))(equalTo(2))
+      assertZIO(execute(query))(equalTo(2))
     }
   ) @@ sequential
 }
