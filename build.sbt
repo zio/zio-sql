@@ -26,6 +26,7 @@ addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck"
 
 val zioVersion                 = "2.0.0-RC6"
 val zioSchemaVersion           = "0.1.9"
+//val zioSchemaVersion           = "0.2.0-RC5"
 val testcontainersVersion      = "1.17.1"
 val testcontainersScalaVersion = "0.40.7"
 
