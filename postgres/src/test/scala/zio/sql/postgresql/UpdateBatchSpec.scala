@@ -1,33 +1,27 @@
 package zio.sql.postgresql
 
+//import zio._
 import zio.Cause
 import zio.test.Assertion._
 import zio.test._
 
+
 import java.time.{LocalDate, ZonedDateTime}
 import java.util.UUID
 
-object DeleteBatchSpec extends PostgresRunnableSpec with DbSchema {
+object UpdateBatchSpec extends PostgresRunnableSpec with DbSchema {
 
   import Customers._
 
-  private def delete_(c:Customer):Delete[customers.TableType]  =
-    deleteFrom(customers).where((verified.isTrue) && (customerId === c.id))
+  private def update_(c:Customer):Update[customers.TableType]  =
+    update(customers)
+      .set(verified, !c.verified)
+      .where(customerId === c.id)
 
 
-  override def specLayered = suite("Postgres module batch delete")(
-    test("Can delete more than one customer from single table with a condition") {
-      val query = deleteFrom(customers).where(verified.isNotTrue)
 
-      val result = executeBatchDelete(List(query))
-
-      val assertion = for {
-        r <- result
-      } yield assert(r)(equalTo(List(1)))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    },
-    test("Can insert more than one customer into single table prior to deleting them") {
+  override def specLayered = suite("Postgres module batch update")(
+    test("Can update more than one customer from single table with a condition") {
       val id1=UUID.randomUUID()
       val id2=UUID.randomUUID()
       val id3=UUID.randomUUID()
@@ -40,6 +34,8 @@ object DeleteBatchSpec extends PostgresRunnableSpec with DbSchema {
       val allCustomer = List(c1, c2, c3, c4)
       val data = allCustomer.map(Customer.unapply(_).get)
       val query = insertInto(customers)(ALL).values(data)
+
+      //ZIO.logInfo(s"Query to insert more than one Customer is ${query.map(renderInsert)}") *>
       val resultInsert = execute(query)
 
       val insertAssertion = for {
@@ -52,12 +48,10 @@ object DeleteBatchSpec extends PostgresRunnableSpec with DbSchema {
 
       val assertion_ = for {
         x <- r
-        updated = x.toList.map(delete_)
-        result <- executeBatchDelete(updated).map(l => l.fold(0)((a, b) => a + b))
-      }yield  assert(result)(equalTo(4))
+         updated = x.toList.map(update_)
+         result <- executeBatchUpdate(updated).map(l => l.reduce((a, b) => a + b))
+      }yield  assert(result)(equalTo(5))
       assertion_.mapErrorCause(cause => Cause.stackless(cause.untraced))
-
-
     }
     )
 

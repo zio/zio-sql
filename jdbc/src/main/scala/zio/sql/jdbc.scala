@@ -38,18 +38,18 @@ trait Jdbc extends zio.sql.Sql with TransactionModule with JdbcInternalModule wi
   def execute(delete: Delete[_]): ZIO[SqlDriver, Exception, Int] =
     ZIO.serviceWithZIO(_.delete(delete))
 
-  def executeBatch(delete: List[Delete[_]]): ZIO[SqlDriver, Exception, List[Int]] =
+  def executeBatchDelete(delete: List[Delete[_]]): ZIO[SqlDriver, Exception, List[Int]] =
     ZIO.serviceWithZIO(_.delete(delete))
 
   def execute[A: Schema](insert: Insert[_, A]): ZIO[SqlDriver, Exception, Int] =
     ZIO.serviceWithZIO(_.insert(insert))
 
-  def execute[A: Schema](insert: List[Insert[_, A]]): ZIO[SqlDriver, Exception, List[Int]] =
+  def executeBatchInsert[A: Schema](insert: List[Insert[_, A]]): ZIO[SqlDriver, Exception, List[Int]] =
     ZIO.serviceWithZIO(_.insert(insert))
 
   def execute(update: Update[_]): ZIO[SqlDriver, Exception, Int] =
     ZIO.serviceWithZIO(_.update(update))
 
-  def execute(update: List[Update[_]]): ZIO[SqlDriver, Exception, List[Int]] =
+  def executeBatchUpdate(update: List[Update[_]]): ZIO[SqlDriver, Exception, List[Int]] =
     ZIO.serviceWithZIO(_.update(update))
 }
