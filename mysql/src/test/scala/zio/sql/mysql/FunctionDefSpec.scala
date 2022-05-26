@@ -169,6 +169,15 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
         execute(select(CurrentTime)).runHead.some
           .map(t => DateTimeFormatter.ofPattern("HH:mm:ss").format(t))
       )(matchesRegex("(2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]"))
+    },
+    test("Radians") {
+      val query = select(Radians(40d))
+
+      val expected = Math.toRadians(40d)
+
+      val testResult = execute(query)
+
+      assertZIO(testResult.runHead.some)(equalTo(expected))
     }
   )
 }

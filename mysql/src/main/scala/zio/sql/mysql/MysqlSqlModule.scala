@@ -40,5 +40,6 @@ trait MysqlSqlModule extends Sql { self =>
     val Rand        = FunctionDef[Int, Double](FunctionName("rand"))
     val RPad        = FunctionDef[(String, Int, String), String](FunctionName("rpad"))
     val Uuid        = Expr.FunctionCall0[UUID](FunctionDef[Any, UUID](FunctionName("uuid")))
+    val Radians     = FunctionDef[Double, Double](FunctionName("radians"))
   }
 }
