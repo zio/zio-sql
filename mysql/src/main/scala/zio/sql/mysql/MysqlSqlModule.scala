@@ -33,6 +33,7 @@ trait MysqlSqlModule extends Sql { self =>
     val Log10     = FunctionDef[Double, Double](FunctionName("log10"))
     val Pi        = Expr.FunctionCall0[Double](FunctionDef[Any, Double](FunctionName("pi")))
     val BitLength = FunctionDef[String, Int](FunctionName("bit_length"))
+    val RPad      = FunctionDef[(String, Int, String), String](FunctionName("rpad"))
   }
 
 }

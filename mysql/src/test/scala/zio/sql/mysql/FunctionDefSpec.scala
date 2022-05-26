@@ -143,6 +143,21 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
       } yield assert(r.head)(equalTo(expected))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    test("rpad") {
+      val cases = Seq(("hi", 5, "?", "hi???"), ("hi", 1, "?", "h"))
+
+      check(Gen.fromIterable(cases)) { case (str, len, pad, exp) =>
+        val query = select(RPad(str, len, pad))
+
+        val testResult = execute(query)
+
+        val assertion = for {
+          r <- testResult.runCollect
+        } yield assert(r.head)(equalTo(exp))
+
+        assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      }
     }
   )
 }
