@@ -1,7 +1,7 @@
 package zio.sql.mysql
 
+import java.time.{ LocalDate, LocalTime, Year, ZonedDateTime }
 import java.sql.ResultSet
-import java.time.Year
 
 import zio.sql.Sql
 
@@ -27,12 +27,15 @@ trait MysqlSqlModule extends Sql { self =>
   }
 
   object MysqlFunctionDef {
-    val Crc32     = FunctionDef[String, Long](FunctionName("crc32"))
-    val Degrees   = FunctionDef[Double, Double](FunctionName("degrees"))
-    val Log2      = FunctionDef[Double, Double](FunctionName("log2"))
-    val Log10     = FunctionDef[Double, Double](FunctionName("log10"))
-    val Pi        = Expr.FunctionCall0[Double](FunctionDef[Any, Double](FunctionName("pi")))
-    val BitLength = FunctionDef[String, Int](FunctionName("bit_length"))
+    val BitLength   = FunctionDef[String, Int](FunctionName("bit_length"))
+    val CurrentDate = Expr.ParenlessFunctionCall0[LocalDate](FunctionName("current_date"))
+    val Crc32       = FunctionDef[String, Long](FunctionName("crc32"))
+    val Degrees     = FunctionDef[Double, Double](FunctionName("degrees"))
+    val Log2        = FunctionDef[Double, Double](FunctionName("log2"))
+    val Log10       = FunctionDef[Double, Double](FunctionName("log10"))
+    val MakeTime    = FunctionDef[(Int, Int, Double), LocalTime](FunctionName("maketime"))
+    val Now         = FunctionDef[Any, ZonedDateTime](FunctionName("now"))
+    val Pi          = Expr.FunctionCall0[Double](FunctionDef[Any, Double](FunctionName("pi")))
     val Soundex   = FunctionDef[String, String](FunctionName("soundex"))
   }
 
