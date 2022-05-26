@@ -141,7 +141,7 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
       } yield assert(r.head)(equalTo(expected))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    }
+    },
     test("pi") {
       val query = select(Pi) from customers
 
