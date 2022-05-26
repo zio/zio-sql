@@ -1,8 +1,7 @@
 package zio.sql.mysql
 
 import java.sql.ResultSet
-import java.time.{ LocalDate, OffsetTime, Year, ZonedDateTime }
-
+import java.time.{ LocalDate, LocalTime, OffsetTime, Year, ZonedDateTime }
 import zio.sql.Sql
 
 trait MysqlSqlModule extends Sql { self =>
