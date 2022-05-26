@@ -42,7 +42,7 @@ trait SqlDriverLiveModule { self: Jdbc =>
       ZIO.attemptBlocking {
         val statement = conn.createStatement()
         delete.map(delete_ => statement.addBatch(renderDelete(delete_)))
-       statement.executeBatch().toList
+        statement.executeBatch().toList
       }.refineToOrDie[Exception]
 
     def update(update: Update[_]): IO[Exception, Int] =
@@ -68,7 +68,6 @@ trait SqlDriverLiveModule { self: Jdbc =>
         update.map(update_ => statement.addBatch(renderUpdate(update_)))
         statement.executeBatch().toList
       }.refineToOrDie[Exception]
-
 
     def read[A](read: Read[A]): Stream[Exception, A] =
       ZStream
@@ -130,7 +129,7 @@ trait SqlDriverLiveModule { self: Jdbc =>
     override def insert[A: Schema](insert: Insert[_, A]): IO[Exception, Int] =
       ZIO.scoped(pool.connection.flatMap(insertOn(insert, _)))
 
-     def insert[A: Schema](insert: List[Insert[_, A]]): IO[Exception, List[Int]] =
+    def insert[A: Schema](insert: List[Insert[_, A]]): IO[Exception, List[Int]] =
       ZIO.scoped(pool.connection.flatMap(insertOnBatch(insert, _)))
 
     override def transact[R, A](tx: ZTransaction[R, Exception, A]): ZIO[R, Throwable, A] =
