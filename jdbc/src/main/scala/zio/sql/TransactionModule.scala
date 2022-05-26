@@ -87,7 +87,7 @@ trait TransactionModule { self: Jdbc =>
         ZTransaction.fromEffect(coreDriver.updateOn(update, connection))
       }
 
-    def apply(update: List[self.Update[_]]): ZTransaction[Any, Exception, List[Int]] =
+    def batchUpdate(update: List[self.Update[_]]): ZTransaction[Any, Exception, List[Int]] =
       txn.flatMap { case Txn(connection, coreDriver) =>
         ZTransaction.fromEffect(coreDriver.updateOnBatch(update, connection))
       }
@@ -96,7 +96,7 @@ trait TransactionModule { self: Jdbc =>
         ZTransaction.fromEffect(coreDriver.insertOn(insert, connection))
       }
 
-    def apply[Z: Schema](insert: List[self.Insert[_, Z]]): ZTransaction[Any, Exception, List[Int]] =
+    def batchInsert[Z: Schema](insert: List[self.Insert[_, Z]]): ZTransaction[Any, Exception, List[Int]] =
       txn.flatMap { case Txn(connection, coreDriver) =>
         ZTransaction.fromEffect(coreDriver.insertOnBatch(insert, connection))
       }
@@ -105,7 +105,7 @@ trait TransactionModule { self: Jdbc =>
       txn.flatMap { case Txn(connection, coreDriver) =>
         ZTransaction.fromEffect(coreDriver.deleteOn(delete, connection))
       }
-    def applyBatch(delete: List[self.Delete[_]]): ZTransaction[Any, Exception, List[Int]] =
+    def batchDelete(delete: List[self.Delete[_]]): ZTransaction[Any, Exception, List[Int]] =
       txn.flatMap { case Txn(connection, coreDriver) =>
         ZTransaction.fromEffect(coreDriver.deleteOnBatch(delete, connection))
       }
