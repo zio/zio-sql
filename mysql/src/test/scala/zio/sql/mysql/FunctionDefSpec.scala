@@ -5,6 +5,9 @@ import zio.test._
 import zio.test.Assertion._
 import java.time.LocalDate
 
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+
 object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
   import Customers._
@@ -156,7 +159,22 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
       val assertion = for {
         r <- testResult.runCollect
       } yield assert(r.head)(equalTo(expected))
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    test("now") {
+      val timestampFormatter =
+        DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss").withZone(ZoneId.of("UTC"))
 
+      val query = select(Now())
+
+      val testResult = execute(query)
+
+      val assertion =
+        for {
+          r <- testResult.runCollect
+        } yield assert(timestampFormatter.format(r.head))(
+          Assertion.matchesRegex("[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}")
+        )
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("bit_length") {
