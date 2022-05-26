@@ -198,6 +198,12 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
+    test("rpad") {
+      val cases = Seq(("hi", 5, "?", "hi???"), ("hi", 1, "?", "h"))
+      check(Gen.fromIterable(cases)) { case (str, len, pad, exp) =>
+        assertZIO(execute(select(RPad(str, len, pad))).runHead.some)(equalTo(exp))
+      }
+    },
     test("current_time") {
       assertZIO(
         execute(select(CurrentTime)).runHead.some
