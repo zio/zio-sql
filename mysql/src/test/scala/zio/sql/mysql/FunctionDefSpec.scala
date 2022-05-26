@@ -148,6 +148,9 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       assertZIO(testResult.runHead.some)(equalTo(expected))
     },
+    test("uuid") {
+      assertZIO(execute(select(Uuid)).runHead.some)(!isNull)
+    },
     test("rand") {
       val query = select(Rand(5))
 

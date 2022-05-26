@@ -2,6 +2,7 @@ package zio.sql.mysql
 
 import java.sql.ResultSet
 import java.time.{ LocalDate, LocalTime, OffsetTime, Year, ZonedDateTime }
+import java.util.UUID
 import zio.sql.Sql
 
 trait MysqlSqlModule extends Sql { self =>
@@ -21,7 +22,6 @@ trait MysqlSqlModule extends Sql { self =>
               r => Right(r)
             )
       }
-
     }
   }
 
@@ -39,6 +39,6 @@ trait MysqlSqlModule extends Sql { self =>
     val Pi          = Expr.FunctionCall0[Double](FunctionDef[Any, Double](FunctionName("pi")))
     val Rand        = FunctionDef[Int, Double](FunctionName("rand"))
     val RPad        = FunctionDef[(String, Int, String), String](FunctionName("rpad"))
+    val Uuid        = Expr.FunctionCall0[UUID](FunctionDef[Any, UUID](FunctionName("uuid")))
   }
-
 }
