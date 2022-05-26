@@ -1,8 +1,7 @@
 package zio.sql.mysql
 
 import java.sql.ResultSet
-import java.time.Year
-
+import java.time.{LocalTime, Year}
 import zio.sql.Sql
 
 trait MysqlSqlModule extends Sql { self =>
@@ -33,6 +32,7 @@ trait MysqlSqlModule extends Sql { self =>
     val Log10     = FunctionDef[Double, Double](FunctionName("log10"))
     val Pi        = Expr.FunctionCall0[Double](FunctionDef[Any, Double](FunctionName("pi")))
     val BitLength = FunctionDef[String, Int](FunctionName("bit_length"))
+    val MakeTime  = FunctionDef[(Int, Int, Double), LocalTime](FunctionName("maketime"))
   }
 
 }
