@@ -133,7 +133,7 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("current_date") {
-      val query = select(CurrentDate())
+      val query = select(CurrentDate)
 
       val expected = LocalDate.now()
 
