@@ -31,6 +31,7 @@ trait MysqlSqlModule extends Sql { self =>
     val CurrentDate = Expr.ParenlessFunctionCall0[LocalDate](FunctionName("current_date"))
     val CurrentTime = Expr.ParenlessFunctionCall0[OffsetTime](FunctionName("current_time"))
     val Degrees     = FunctionDef[Double, Double](FunctionName("degrees"))
+    val Hex         = FunctionDef[Long, String](FunctionName("hex"))
     val Log2        = FunctionDef[Double, Double](FunctionName("log2"))
     val Log10       = FunctionDef[Double, Double](FunctionName("log10"))
     val MakeTime    = FunctionDef[(Int, Int, Double), LocalTime](FunctionName("maketime"))
