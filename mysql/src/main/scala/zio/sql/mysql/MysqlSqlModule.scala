@@ -1,7 +1,7 @@
 package zio.sql.mysql
 
 import java.sql.ResultSet
-import java.time.{ OffsetTime, Year }
+import java.time.{ LocalDate, OffsetTime, Year }
 import zio.sql.Sql
 
 trait MysqlSqlModule extends Sql { self =>
@@ -28,6 +28,7 @@ trait MysqlSqlModule extends Sql { self =>
   object MysqlFunctionDef {
     val BitLength   = FunctionDef[String, Int](FunctionName("bit_length"))
     val Crc32       = FunctionDef[String, Long](FunctionName("crc32"))
+    val CurrentDate = Expr.ParenlessFunctionCall0[LocalDate](FunctionName("current_date"))
     val CurrentTime = Expr.ParenlessFunctionCall0[OffsetTime](FunctionName("current_time"))
     val Degrees     = FunctionDef[Double, Double](FunctionName("degrees"))
     val Log2        = FunctionDef[Double, Double](FunctionName("log2"))
