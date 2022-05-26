@@ -401,6 +401,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     val Log         = FunctionDef[(Double, Double), Double](FunctionName("log"))
     val Mod         = FunctionDef[(Double, Double), Double](FunctionName("mod"))
     val Power       = FunctionDef[(Double, Double), Double](FunctionName("power"))
+    val Radian      = FunctionDef[Double, Double](FunctionName("radians"))
     val Round       = FunctionDef[(Double, Int), Double](FunctionName("round"))
     val Sign        = FunctionDef[Double, Int](FunctionName("sign"))
     val Sin         = FunctionDef[Double, Double](FunctionName("sin"))
