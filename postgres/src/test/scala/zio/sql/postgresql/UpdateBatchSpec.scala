@@ -1,6 +1,5 @@
 package zio.sql.postgresql
 
-//import zio._
 import zio.Cause
 import zio.test.Assertion._
 import zio.test._
@@ -13,29 +12,27 @@ object UpdateBatchSpec extends PostgresRunnableSpec with DbSchema {
 
   import Customers._
 
-  private def update_(c:Customer):Update[customers.TableType]  =
+  private def update_(c: Customer): Update[customers.TableType] =
     update(customers)
       .set(verified, !c.verified)
       .where(customerId === c.id)
 
 
-
   override def specLayered = suite("Postgres module batch update")(
     test("Can update more than one customer from single table with a condition") {
-      val id1=UUID.randomUUID()
-      val id2=UUID.randomUUID()
-      val id3=UUID.randomUUID()
-      val id4=UUID.randomUUID()
-      val c1=Customer(id1,"fnameCustomer1", "lnameCustomer1", true, LocalDate.now(), LocalDate.now().toString,ZonedDateTime.now())
-      val c2=Customer(id2,"fnameCustomer2", "lnameCustomer2", true, LocalDate.now(), LocalDate.now().toString,ZonedDateTime.now())
-      val c3=Customer(id3,"fnameCustomer3", "lnameCustomer3", true, LocalDate.now(), LocalDate.now().toString,ZonedDateTime.now())
-      val c4=Customer(id4,"fnameCustomer4", "lnameCustomer4", false, LocalDate.now(), LocalDate.now().toString,ZonedDateTime.now())
+      val id1 = UUID.randomUUID()
+      val id2 = UUID.randomUUID()
+      val id3 = UUID.randomUUID()
+      val id4 = UUID.randomUUID()
+      val c1 = Customer(id1, "fnameCustomer1", "lnameCustomer1", true, LocalDate.now(), LocalDate.now().toString, ZonedDateTime.now())
+      val c2 = Customer(id2, "fnameCustomer2", "lnameCustomer2", true, LocalDate.now(), LocalDate.now().toString, ZonedDateTime.now())
+      val c3 = Customer(id3, "fnameCustomer3", "lnameCustomer3", true, LocalDate.now(), LocalDate.now().toString, ZonedDateTime.now())
+      val c4 = Customer(id4, "fnameCustomer4", "lnameCustomer4", false, LocalDate.now(), LocalDate.now().toString, ZonedDateTime.now())
 
       val allCustomer = List(c1, c2, c3, c4)
       val data = allCustomer.map(Customer.unapply(_).get)
       val query = insertInto(customers)(ALL).values(data)
 
-      //ZIO.logInfo(s"Query to insert more than one Customer is ${query.map(renderInsert)}") *>
       val resultInsert = execute(query)
 
       val insertAssertion = for {
@@ -48,11 +45,11 @@ object UpdateBatchSpec extends PostgresRunnableSpec with DbSchema {
 
       val assertion_ = for {
         x <- r
-         updated = x.toList.map(update_)
-         result <- executeBatchUpdate(updated).map(l => l.reduce((a, b) => a + b))
-      }yield  assert(result)(equalTo(5))
+        updated = x.toList.map(update_)
+        result <- executeBatchUpdate(updated).map(l => l.reduce((a, b) => a + b))
+      } yield assert(result)(equalTo(5))
       assertion_.mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
-    )
+  )
 
 }

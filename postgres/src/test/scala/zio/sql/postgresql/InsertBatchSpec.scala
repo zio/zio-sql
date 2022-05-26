@@ -13,14 +13,14 @@ object InsertBatchSpec extends PostgresRunnableSpec with DbSchema {
 
   override def specLayered = suite("Postgres module batch insert")(
     test("Can insert more than one customer into a table with a condition") {
-      val id1=UUID.randomUUID()
-      val id2=UUID.randomUUID()
-      val id3=UUID.randomUUID()
-      val id4=UUID.randomUUID()
-      val c1=Customer(id1,"fnameCustomer1", "lnameCustomer1", true, LocalDate.now(), LocalDate.now().toString,ZonedDateTime.now())
-      val c2=Customer(id2,"fnameCustomer2", "lnameCustomer2", true, LocalDate.now(), LocalDate.now().toString,ZonedDateTime.now())
-      val c3=Customer(id3,"fnameCustomer3", "lnameCustomer3", true, LocalDate.now(), LocalDate.now().toString,ZonedDateTime.now())
-      val c4=Customer(id4,"fnameCustomer4", "lnameCustomer4", false, LocalDate.now(), LocalDate.now().toString,ZonedDateTime.now())
+      val id1 = UUID.randomUUID()
+      val id2 = UUID.randomUUID()
+      val id3 = UUID.randomUUID()
+      val id4 = UUID.randomUUID()
+      val c1 = Customer(id1, "fnameCustomer1", "lnameCustomer1", true, LocalDate.now(), LocalDate.now().toString, ZonedDateTime.now())
+      val c2 = Customer(id2, "fnameCustomer2", "lnameCustomer2", true, LocalDate.now(), LocalDate.now().toString, ZonedDateTime.now())
+      val c3 = Customer(id3, "fnameCustomer3", "lnameCustomer3", true, LocalDate.now(), LocalDate.now().toString, ZonedDateTime.now())
+      val c4 = Customer(id4, "fnameCustomer4", "lnameCustomer4", false, LocalDate.now(), LocalDate.now().toString, ZonedDateTime.now())
 
       val allCustomer = List(c1, c2, c3, c4)
       val data = allCustomer.map(Customer.unapply(_).get)
@@ -33,6 +33,6 @@ object InsertBatchSpec extends PostgresRunnableSpec with DbSchema {
       } yield assert(r)(equalTo(4))
       insertAssertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
-    )
+  )
 
 }
