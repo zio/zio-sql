@@ -196,6 +196,12 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
       check(Gen.fromIterable(cases)) { case (str, len, pad, exp) =>
         assertZIO(execute(select(RPad(str, len, pad))).runHead.some)(equalTo(exp))
       }
+    },
+    test("current_time") {
+      assertZIO(
+        execute(select(CurrentTime)).runHead.some
+          .map(t => DateTimeFormatter.ofPattern("HH:mm:ss").format(t))
+      )(matchesRegex("(2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]"))
     }
   )
 }
