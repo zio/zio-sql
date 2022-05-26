@@ -4,9 +4,10 @@ trait ShopSchema extends Jdbc { self =>
   import self.ColumnSet._
 
   object Users         {
-    val users = (uuid("id") ++ localDate("dob") ++ string("first_name") ++ string("last_name")).table("users")
+    val users =
+      (uuid("id") ++ int("age") ++ localDate("dob") ++ string("first_name") ++ string("last_name")).table("users")
 
-    val (userId, dob, fName, lName) = users.columns
+    val (userId, age, dob, fName, lName) = users.columns
   }
   object Orders        {
     val orders = (uuid("id") ++ uuid("usr_id") ++ localDate("order_date")).table("orders")
