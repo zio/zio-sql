@@ -1,5 +1,8 @@
 package zio.sql.mysql
 
+import zio.Cause
+import zio.test._
+import zio.test.Assertion._
 import java.time.LocalDate
 
 object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
