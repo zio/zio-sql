@@ -1,11 +1,9 @@
 package zio.sql.mysql
 
-import zio.Cause
 import zio.test._
 import zio.test.Assertion._
 
-import java.time.LocalDate
-import java.time.{ LocalTime, ZoneId }
+import java.time.{ LocalDate, LocalTime, ZoneId }
 import java.time.format.DateTimeFormatter
 
 object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
@@ -76,6 +74,13 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       assertZIO(testResult.runHead.some)(equalTo(expected))
     },
+    test("hex") {
+      val query       = select(Hex(255L)) from customers
+      val expected    = "FF"
+      val queryResult = execute(query)
+
+      assertZIO(queryResult.runHead.some)(equalTo(expected))
+    },
     test("log2") {
       val query = select(Log2(8d)) from customers
 
@@ -102,14 +107,10 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       val testResult = execute(query)
 
-      val assertion =
-        for {
-          r <- testResult.runCollect
-        } yield assert(timestampFormatter.format(r.head))(
-          Assertion.matchesRegex("[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}")
-        )
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertZIO(
+        testResult.runHead.some
+          .map(t => timestampFormatter.format(t))
+      )(matchesRegex("[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}"))
     },
     test("bit_length") {
       val query = select(BitLength("hello"))
@@ -146,6 +147,18 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
       val testResult = execute(query)
 
       assertZIO(testResult.runHead.some)(equalTo(expected))
+    },
+    test("rpad") {
+      val cases = Seq(("hi", 5, "?", "hi???"), ("hi", 1, "?", "h"))
+      check(Gen.fromIterable(cases)) { case (str, len, pad, exp) =>
+        assertZIO(execute(select(RPad(str, len, pad))).runHead.some)(equalTo(exp))
+      }
+    },
+    test("current_time") {
+      assertZIO(
+        execute(select(CurrentTime)).runHead.some
+          .map(t => DateTimeFormatter.ofPattern("HH:mm:ss").format(t))
+      )(matchesRegex("(2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]"))
     }
   )
 }
