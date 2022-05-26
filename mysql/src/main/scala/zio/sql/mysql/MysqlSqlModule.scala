@@ -37,6 +37,7 @@ trait MysqlSqlModule extends Sql { self =>
     val MakeTime    = FunctionDef[(Int, Int, Double), LocalTime](FunctionName("maketime"))
     val Now         = FunctionDef[Any, ZonedDateTime](FunctionName("now"))
     val Pi          = Expr.FunctionCall0[Double](FunctionDef[Any, Double](FunctionName("pi")))
+    val Rand        = FunctionDef[Int, Double](FunctionName("rand"))
     val RPad        = FunctionDef[(String, Int, String), String](FunctionName("rpad"))
   }
 
