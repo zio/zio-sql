@@ -4,6 +4,7 @@ import java.time.{ LocalDate, LocalTime, Year, ZonedDateTime }
 import java.sql.ResultSet
 
 import zio.sql.Sql
+import java.util.Random
 
 trait MysqlSqlModule extends Sql { self =>
 
@@ -36,6 +37,7 @@ trait MysqlSqlModule extends Sql { self =>
     val MakeTime    = FunctionDef[(Int, Int, Double), LocalTime](FunctionName("maketime"))
     val Now         = FunctionDef[Any, ZonedDateTime](FunctionName("now"))
     val Pi          = Expr.FunctionCall0[Double](FunctionDef[Any, Double](FunctionName("pi")))
+    val Random      = Function[Int, Double](FunctionName("rand"))
   }
 
 }
