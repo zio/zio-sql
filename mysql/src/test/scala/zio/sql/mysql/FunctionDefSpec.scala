@@ -3,6 +3,7 @@ package zio.sql.mysql
 import zio.Cause
 import zio.test._
 import zio.test.Assertion._
+import java.time.LocalDate
 
 object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
@@ -122,6 +123,19 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
       val query = select(BitLength("hello"))
 
       val expected = 40
+
+      val testResult = execute(query)
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    test("current_date") {
+      val query = select(CurrentDate)
+
+      val expected = LocalDate.now()
 
       val testResult = execute(query)
 
