@@ -1,8 +1,7 @@
 package zio.sql.mysql
 
 import java.sql.ResultSet
-import java.time.Year
-
+import java.time.{ OffsetTime, Year }
 import zio.sql.Sql
 
 trait MysqlSqlModule extends Sql { self =>
@@ -27,12 +26,13 @@ trait MysqlSqlModule extends Sql { self =>
   }
 
   object MysqlFunctionDef {
-    val Crc32     = FunctionDef[String, Long](FunctionName("crc32"))
-    val Degrees   = FunctionDef[Double, Double](FunctionName("degrees"))
-    val Log2      = FunctionDef[Double, Double](FunctionName("log2"))
-    val Log10     = FunctionDef[Double, Double](FunctionName("log10"))
-    val Pi        = Expr.FunctionCall0[Double](FunctionDef[Any, Double](FunctionName("pi")))
-    val BitLength = FunctionDef[String, Int](FunctionName("bit_length"))
+    val BitLength   = FunctionDef[String, Int](FunctionName("bit_length"))
+    val Crc32       = FunctionDef[String, Long](FunctionName("crc32"))
+    val CurrentTime = Expr.ParenlessFunctionCall0[OffsetTime](FunctionName("current_time"))
+    val Degrees     = FunctionDef[Double, Double](FunctionName("degrees"))
+    val Log2        = FunctionDef[Double, Double](FunctionName("log2"))
+    val Log10       = FunctionDef[Double, Double](FunctionName("log10"))
+    val Pi          = Expr.FunctionCall0[Double](FunctionDef[Any, Double](FunctionName("pi")))
   }
 
 }

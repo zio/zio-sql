@@ -4,6 +4,8 @@ import zio.Cause
 import zio.test._
 import zio.test.Assertion._
 
+import java.time.format.DateTimeFormatter
+
 object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
   import Customers._
@@ -143,6 +145,12 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
       } yield assert(r.head)(equalTo(expected))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    test("current_time") {
+      assertZIO(
+        execute(select(CurrentTime)).runHead.some
+          .map(t => DateTimeFormatter.ofPattern("HH:mm:ss").format(t))
+      )(matchesRegex("(2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]"))
     }
   )
 }
