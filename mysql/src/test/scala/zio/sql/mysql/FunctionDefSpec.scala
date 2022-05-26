@@ -147,10 +147,10 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    test("pi") {
-      val query = select(Pi) from customers
+    test("maketime") {
+      val query = select(MakeTime(12, 15, 30.5)) from customers
 
-      val expected = 3.141593d
+      val expected = LocalTime.parse("12:15:30.5")
 
       val testResult = execute(query)
 
@@ -160,10 +160,10 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    test("maketime") {
-      val query = select(MakeTime(12, 15, 30.5)) from customers
+    test("pi") {
+      val query = select(Pi) from customers
 
-      val expected = LocalTime.parse("12:15:30.5")
+      val expected = 3.141593d
 
       val testResult = execute(query)
 
