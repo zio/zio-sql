@@ -27,12 +27,13 @@ trait MysqlSqlModule extends Sql { self =>
   }
 
   object MysqlFunctionDef {
+    val BitLength = FunctionDef[String, Int](FunctionName("bit_length"))
     val Crc32     = FunctionDef[String, Long](FunctionName("crc32"))
     val Degrees   = FunctionDef[Double, Double](FunctionName("degrees"))
-    val Log2      = FunctionDef[Double, Double](FunctionName("log2"))
+    val Hex       = FunctionDef[Any, String](FunctionName("hex"))
     val Log10     = FunctionDef[Double, Double](FunctionName("log10"))
+    val Log2      = FunctionDef[Double, Double](FunctionName("log2"))
     val Pi        = Expr.FunctionCall0[Double](FunctionDef[Any, Double](FunctionName("pi")))
-    val BitLength = FunctionDef[String, Int](FunctionName("bit_length"))
   }
 
 }
