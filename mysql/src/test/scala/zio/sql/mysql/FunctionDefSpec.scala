@@ -94,22 +94,11 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("hex") {
-      val firstQuery  = select(Hex("abc")) from customers
-      val secondQuery = select(Hex(255)) from customers
+      val query       = select(Hex(255L)) from customers
+      val expected    = "FF"
+      val queryResult = execute(query)
 
-      val firstExpected  = "616263"
-      val secondExpected = "FF"
-
-      val firstHexQueryResult  = execute(firstQuery)
-      val secondHexQueryResult = execute(secondQuery)
-
-      val assertion = for {
-        firstResult  <- firstHexQueryResult.runCollect
-        secondResult <- secondHexQueryResult.runCollect
-      } yield assertTrue(firstResult.head == firstExpected) &&
-        assertTrue(secondResult.head == secondExpected)
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertZIO(queryResult.runHead.some)(equalTo(expected))
     },
     test("log2") {
       val query = select(Log2(8d)) from customers
