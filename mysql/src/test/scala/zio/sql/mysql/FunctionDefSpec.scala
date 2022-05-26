@@ -151,6 +151,13 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
     test("uuid") {
       assertZIO(execute(select(Uuid)).runHead.some)(!isNull)
     },
+    test("rand") {
+      val query = select(Rand(5))
+
+      val testResult = execute(query)
+
+      assertZIO(testResult.runHead.some)(isGreaterThanEqualTo(0d) && isLessThanEqualTo(1d))
+    },
     test("rpad") {
       val cases = Seq(("hi", 5, "?", "hi???"), ("hi", 1, "?", "h"))
       check(Gen.fromIterable(cases)) { case (str, len, pad, exp) =>
