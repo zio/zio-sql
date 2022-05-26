@@ -13,8 +13,6 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
   import FunctionDef._
   import MysqlFunctionDef._
 
-  private val timestampFormatter = DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss.SSSS").withZone(ZoneId.of("UTC"))
-
   override def specLayered = suite("MySQL FunctionDef")(
     test("lower") {
       val query = select(Lower(fName)) from customers limit (1)
@@ -124,6 +122,9 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("now") {
+      val timestampFormatter =
+        DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss").withZone(ZoneId.of("UTC"))
+
       val query = select(Now())
 
       val testResult = execute(query)
@@ -132,7 +133,7 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
         for {
           r <- testResult.runCollect
         } yield assert(timestampFormatter.format(r.head))(
-          Assertion.matchesRegex("[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{4}")
+          Assertion.matchesRegex("[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}")
         )
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
