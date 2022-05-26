@@ -4,8 +4,7 @@ import java.sql.ResultSet
 import java.text.DecimalFormat
 import java.time._
 import java.time.format.DateTimeFormatter
-import java.util.Calendar
-
+import java.util.{Calendar, UUID}
 import org.postgresql.util.PGInterval
 import zio.Chunk
 import zio.sql.Sql
@@ -308,6 +307,7 @@ trait PostgresSqlModule extends Sql { self =>
     val SetSeed                     = FunctionDef[Double, Unit](FunctionName("setseed"))
     val BitLength                   = FunctionDef[String, Int](FunctionName("bit_length"))
     val Pi                          = Expr.FunctionCall0[Double](FunctionDef[Any, Double](FunctionName("pi")))
+    val GenRandomUuid               = Expr.FunctionCall0[UUID](FunctionDef[Any, UUID](FunctionName("gen_random_uuid")))
   }
 
 }
