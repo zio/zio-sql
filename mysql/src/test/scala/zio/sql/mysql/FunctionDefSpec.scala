@@ -96,6 +96,13 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
+    test("hex") {
+      val query       = select(Hex(255L)) from customers
+      val expected    = "FF"
+      val queryResult = execute(query)
+
+      assertZIO(queryResult.runHead.some)(equalTo(expected))
+    },
     test("log2") {
       val query = select(Log2(8d)) from customers
 
@@ -201,6 +208,17 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
       } yield assert(r.head)(Assertion.isGreaterThanEqualTo(0d) && Assertion.isLessThanEqualTo(1d))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    test("rpad") {
+      val cases = Seq(("hi", 5, "?", "hi???"), ("hi", 1, "?", "h"))
+      check(Gen.fromIterable(cases)) { case (str, len, pad, exp) =>
+        assertZIO(execute(select(RPad(str, len, pad))).runHead.some)(equalTo(exp))
+      }
+    },
+    test("current_time") {
+      assertZIO(
+        execute(select(CurrentTime)).runHead.some
+          .map(t => DateTimeFormatter.ofPattern("HH:mm:ss").format(t))
+      )(matchesRegex("(2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]"))
     }
   )
 }
