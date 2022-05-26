@@ -4,7 +4,7 @@ import java.sql.ResultSet
 import java.text.DecimalFormat
 import java.time._
 import java.time.format.DateTimeFormatter
-import java.util.{Calendar, UUID}
+import java.util.{ Calendar, UUID }
 import org.postgresql.util.PGInterval
 import zio.Chunk
 import zio.sql.Sql
