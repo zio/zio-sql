@@ -192,7 +192,7 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("rand") {
-      val query = select(Rand())
+      val query = select(Rand(5))
 
       val testResult = execute(query)
 
