@@ -4,6 +4,8 @@ import zio.Cause
 import zio.test._
 import zio.test.Assertion._
 
+import java.time.format.DateTimeFormatter
+
 object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
   import Customers._
@@ -141,6 +143,21 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
       val assertion = for {
         r <- testResult.runCollect
       } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    test("current_time") {
+      val query      = select(CurrentTime)
+      val testResult = execute(query)
+
+      val assertion =
+        for {
+          r <- testResult.runCollect
+        } yield assert(DateTimeFormatter.ofPattern("HH:mm:ss").format(r.head))(
+          matchesRegex(
+            "(2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]"
+          )
+        )
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
