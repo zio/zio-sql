@@ -1,6 +1,16 @@
 package zio.sql.oracle
 
 import zio.schema.Schema
+import zio.schema.DynamicValue
+import zio.schema.StandardType
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import java.time.format.DateTimeFormatter
+import java.time.ZonedDateTime
+import java.time.LocalTime
+import java.time.OffsetTime
+import java.time.LocalDate
 
 trait OracleRenderModule extends OracleSqlModule { self =>
 
@@ -10,7 +20,11 @@ trait OracleRenderModule extends OracleSqlModule { self =>
     builder.toString
   }
 
-  override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = ???
+  override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = {
+    val builder = new StringBuilder
+    buildInsertString(insert, builder)
+    builder.toString()
+  }
 
   override def renderRead(read: self.Read[_]): String = {
     val builder = new StringBuilder
@@ -218,6 +232,208 @@ trait OracleRenderModule extends OracleSqlModule { self =>
       case Read.Literal(values) =>
         val _ = builder.append(" (").append(values.mkString(",")).append(") ") // todo fix needs escaping
     }
+
+  private def buildInsertString[A: Schema](insert: self.Insert[_, A], builder: StringBuilder): Unit = {
+
+    builder.append("INSERT INTO ")
+    renderTable(insert.table, builder)
+
+    builder.append(" (")
+    renderColumnNames(insert.sources, builder)
+    builder.append(") VALUES ")
+
+    renderInsertValues(insert.values, builder)
+  }
+
+  private def renderTable(table: Table, builder: StringBuilder): Unit                                         = table match {
+    case Table.DerivedTable(read, name)             =>
+      builder.append(" ( ")
+      builder.append(renderRead(read))
+      builder.append(" ) ")
+      builder.append(name)
+      ()
+    case Table.DialectSpecificTable(tableExtension) => ???
+    case Table.Joined(joinType, left, right, on)    =>
+      renderTable(left, builder)
+      val joinTypeRepr = joinType match {
+        case JoinType.Inner      => " INNER JOIN "
+        case JoinType.LeftOuter  => " LEFT JOIN "
+        case JoinType.RightOuter => " RIGHT JOIN "
+        case JoinType.FullOuter  => " OUTER JOIN "
+      }
+      builder.append(joinTypeRepr)
+      renderTable(right, builder)
+      builder.append(" ON ")
+      buildExpr(on, builder)
+      builder.append(" ")
+      ()
+    case source: Table.Source                       =>
+      builder.append(quoted(source.name))
+      ()
+  }
+  private def renderColumnNames(sources: SelectionSet[_], builder: StringBuilder): Unit                       =
+    sources match {
+      case SelectionSet.Empty                       => () // table is a collection of at least ONE column
+      case SelectionSet.Cons(columnSelection, tail) =>
+        val _ = columnSelection.name.map { name =>
+          builder.append(quoted(name))
+        }
+        tail.asInstanceOf[SelectionSet[_]] match {
+          case SelectionSet.Empty             => ()
+          case next @ SelectionSet.Cons(_, _) =>
+            builder.append(", ")
+            renderColumnNames(next.asInstanceOf[SelectionSet[_]], builder)
+        }
+    }
+  private def renderInsertValues[A](values: Seq[A], builder: StringBuilder)(implicit schema: Schema[A]): Unit =
+    values.toList match {
+      case head :: Nil  =>
+        builder.append("(")
+        renderInsertValue(head, builder)
+        builder.append(");")
+        ()
+      case head :: next =>
+        builder.append("(")
+        renderInsertValue(head, builder)
+        builder.append(" ),")
+        renderInsertValues(next, builder)
+      case Nil          => ()
+    }
+
+  def renderInsertValue[Z](z: Z, builder: StringBuilder)(implicit schema: Schema[Z]): Unit =
+    schema.toDynamic(z) match {
+      case DynamicValue.Record(listMap) =>
+        listMap.values.toList match {
+          case head :: Nil  => renderDynamicValue(head, builder)
+          case head :: next =>
+            renderDynamicValue(head, builder)
+            builder.append(", ")
+            renderDynamicValues(next, builder)
+          case Nil          => ()
+        }
+      case value                        => renderDynamicValue(value, builder)
+    }
+
+  def renderDynamicValue(dynValue: DynamicValue, builder: StringBuilder): Unit =
+    dynValue match {
+      case DynamicValue.Primitive(value, typeTag) =>
+        // need to do this since StandardType is invariant in A
+        import StandardType._
+        StandardType.fromString(typeTag.tag) match {
+          case Some(v) =>
+            v match {
+              case BigDecimalType                             =>
+                builder.append(value)
+                ()
+              case StandardType.InstantType(formatter)        =>
+                builder.append(s"'${formatter.format(value.asInstanceOf[Instant])}'")
+                ()
+              case CharType                                   =>
+                builder.append(s"'${value}'")
+                ()
+              case IntType                                    =>
+                builder.append(value)
+                ()
+              case StandardType.MonthDayType                  =>
+                builder.append(s"'${value}'")
+                ()
+              case BinaryType                                 =>
+                builder.append(s"'${value}'")
+                ()
+              case StandardType.MonthType                     =>
+                builder.append(s"'${value}'")
+                ()
+              case StandardType.LocalDateTimeType(formatter)  =>
+                builder.append(s"'${formatter.format(value.asInstanceOf[LocalDateTime])}'")
+                ()
+              case UnitType                                   =>
+                builder.append("null") // None is encoded as Schema[Unit].transform(_ => None, _ => ())
+                ()
+              case StandardType.YearMonthType                 =>
+                builder.append(s"'${value}'")
+                ()
+              case DoubleType                                 =>
+                builder.append(value)
+                ()
+              case StandardType.YearType                      =>
+                builder.append(s"'${value}'")
+                ()
+              case StandardType.OffsetDateTimeType(formatter) =>
+                builder.append(s"'${formatter.format(value.asInstanceOf[OffsetDateTime])}'")
+                ()
+              case StandardType.ZonedDateTimeType(_)          =>
+                builder.append(s"'${DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(value.asInstanceOf[ZonedDateTime])}'")
+                ()
+              case BigIntegerType                             =>
+                builder.append(s"'${value}'")
+                ()
+              case UUIDType                                   =>
+                builder.append(s"'${value}'")
+                ()
+              case StandardType.ZoneOffsetType                =>
+                builder.append(s"'${value}'")
+                ()
+              case ShortType                                  =>
+                builder.append(value)
+                ()
+              case StandardType.LocalTimeType(formatter)      =>
+                builder.append(s"'${formatter.format(value.asInstanceOf[LocalTime])}'")
+                ()
+              case StandardType.OffsetTimeType(formatter)     =>
+                builder.append(s"'${formatter.format(value.asInstanceOf[OffsetTime])}'")
+                ()
+              case LongType                                   =>
+                builder.append(value)
+                ()
+              case StringType                                 =>
+                builder.append(s"'${value}'")
+                ()
+              case StandardType.PeriodType                    =>
+                builder.append(s"'${value}'")
+                ()
+              case StandardType.ZoneIdType                    =>
+                builder.append(s"'${value}'")
+                ()
+              case StandardType.LocalDateType(formatter)      =>
+                builder.append(s"'${formatter.format(value.asInstanceOf[LocalDate])}'")
+                ()
+              case BoolType                                   =>
+                builder.append(value)
+                ()
+              case DayOfWeekType                              =>
+                builder.append(s"'${value}'")
+                ()
+              case FloatType                                  =>
+                builder.append(value)
+                ()
+              case StandardType.DurationType                  =>
+                builder.append(s"'${value}'")
+                ()
+            }
+          case None    => ()
+        }
+      case DynamicValue.Tuple(left, right)        =>
+        renderDynamicValue(left, builder)
+        builder.append(", ")
+        renderDynamicValue(right, builder)
+      case DynamicValue.SomeValue(value)          => renderDynamicValue(value, builder)
+      case DynamicValue.NoneValue                 =>
+        builder.append("null")
+        ()
+      case _                                      => ()
+    }
+
+  def renderDynamicValues(dynValues: List[DynamicValue], builder: StringBuilder): Unit =
+    dynValues match {
+      case head :: Nil  => renderDynamicValue(head, builder)
+      case head :: tail =>
+        renderDynamicValue(head, builder)
+        builder.append(", ")
+        renderDynamicValues(tail, builder)
+      case Nil          => ()
+    }
+
+  private def quoted(name: String): String = "\"" + name + "\""
 
   private def buildExprList(expr: Read.ExprSet[_], builder: StringBuilder): Unit                   =
     expr match {
