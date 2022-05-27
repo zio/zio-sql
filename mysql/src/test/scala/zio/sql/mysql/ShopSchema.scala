@@ -21,7 +21,7 @@ trait ShopSchema extends Jdbc { self =>
     val products =
       (int("id") ++ string("name") ++ string("description") ++ string("image_url")).table("products")
 
-    val (productId, producttName, description, imageURL) = products.columns
+    val (productId, productName, description, imageURL) = products.columns
   }
   object ProductPrices {
     val productPrices =

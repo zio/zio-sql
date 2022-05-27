@@ -89,4 +89,11 @@ object Examples extends App with ShopSchema with PostgresJdbcModule {
   // SELECT "users"."first_name", "users"."last_name" FROM "users" WHERE true and "users"."first_name" is not null
   val withPropertyOp = select(fName, lName).from(users).where(fName isNotNull)
   println(renderRead(withPropertyOp))
+
+  /* SELECT "users"."user_id" FROM "users"
+     UNION
+     SELECT "orders"."usr_id" FROM "orders"
+   */
+  val selectWithUnion = select(userId).from(users).union(select(fkUserId).from(orders))
+
 }

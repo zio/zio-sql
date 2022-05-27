@@ -2,10 +2,10 @@ package zio.sql.mysql
 
 import java.time.LocalDate
 import java.util.UUID
-
-import zio.Cause
+import zio._
 import zio.test._
 import zio.test.Assertion._
+
 import scala.language.postfixOps
 
 object MysqlModuleSpec extends MysqlRunnableSpec with ShopSchema {
@@ -119,6 +119,20 @@ object MysqlModuleSpec extends MysqlRunnableSpec with ShopSchema {
       } yield assert(r)(hasSameElementsDistinct(expected))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    test("Can union two tables") {
+      val query = select(customerId).from(customers).union(select(fkCustomerId).from(orders))
+
+      val expected =
+        Seq(
+          UUID.fromString("60b01fc9-c902-4468-8d49-3c0f989def37"),
+          UUID.fromString("f76c9ace-be07-4bf3-bd4c-4a9c62882e64"),
+          UUID.fromString("784426a5-b90a-4759-afbb-571b7a0ba35e"),
+          UUID.fromString("df8215a2-d5fd-4c6c-9984-801a1b3a2a0b"),
+          UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc")
+        )
+
+      assertZIO(execute(query).runCollect)(hasSameElementsDistinct(expected))
     },
     /*
      * This is a failing test for aggregation function.
