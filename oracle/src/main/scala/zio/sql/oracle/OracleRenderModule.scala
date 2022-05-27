@@ -1,6 +1,8 @@
 package zio.sql.oracle
 
 import zio.schema.Schema
+import zio.sql.driver.Renderer
+import zio.sql.driver.Renderer.Extensions
 
 trait OracleRenderModule extends OracleSqlModule { self =>
 
@@ -14,8 +16,13 @@ trait OracleRenderModule extends OracleSqlModule { self =>
     builder.toString()
   }
 
-  override def renderUpdate(update: self.Update[_]): String = ???
+  override def renderUpdate(update: self.Update[_]): String = {
+    implicit val render: Renderer = Renderer()
+    OracleRender.renderUpdateImpl(update)
+    render.toString
+  }
 
+  // TODO: to consider the refactoring and using the implicit `Renderer`, see `renderExpr` in `PostgresRenderModule`
   private def buildExpr[A, B](expr: self.Expr[_, A, B], builder: StringBuilder): Unit = expr match {
     case Expr.Subselect(subselect)                                                            =>
       builder.append(" (")
@@ -299,4 +306,45 @@ trait OracleRenderModule extends OracleSqlModule { self =>
         buildExpr(on, builder)
         val _ = builder.append(" ")
     }
+
+  private[oracle] object OracleRender {
+
+    def renderUpdateImpl(update: Update[_])(implicit render: Renderer): Unit =
+      update match {
+        case Update(table, set, whereExpr) =>
+          render("UPDATE ")
+          buildTable(table, render.builder)
+          render(" SET ")
+          renderSet(set)
+          render(" WHERE ")
+          buildExpr(whereExpr, render.builder)
+      }
+
+    def renderSet(set: List[Set[_, _]])(implicit render: Renderer): Unit =
+      set match {
+        case head :: tail =>
+          renderSetLhs(head.lhs)
+          render(" = ")
+          buildExpr(head.rhs, render.builder)
+          tail.foreach { setEq =>
+            render(", ")
+            renderSetLhs(setEq.lhs)
+            render(" = ")
+            buildExpr(setEq.rhs, render.builder)
+          }
+        case Nil          => // TODO restrict Update to not allow empty set
+      }
+
+    private[zio] def renderSetLhs[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit =
+      expr match {
+        // TODO: to check if Oracle allows for `tableName.columnName = value` format in update statement,
+        //  or it requires `columnName = value` instead?
+        case Expr.Source(_, column) =>
+          column.name match {
+            case Some(columnName) => render(columnName.quoted)
+            case _                => ()
+          }
+        case _                      => ()
+      }
+  }
 }
