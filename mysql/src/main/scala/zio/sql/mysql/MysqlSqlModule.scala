@@ -34,7 +34,7 @@ trait MysqlSqlModule extends Sql { self =>
     val Degrees     = FunctionDef[Double, Double](FunctionName("degrees"))
     val Log2        = FunctionDef[Double, Double](FunctionName("log2"))
     val Log10       = FunctionDef[Double, Double](FunctionName("log10"))
-    val MakeDate  = FunctionDef[(Int, Int), LocalDate](FunctionName("makedate"))
+    val MakeDate    = FunctionDef[(Int, Int), LocalDate](FunctionName("makedate"))
     val Pi          = Expr.FunctionCall0[Double](FunctionDef[Any, Double](FunctionName("pi")))
   }
 
