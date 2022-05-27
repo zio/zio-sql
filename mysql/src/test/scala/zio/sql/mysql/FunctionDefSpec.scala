@@ -178,6 +178,15 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
       val testResult = execute(query)
 
       assertZIO(testResult.runHead.some)(equalTo(expected))
+    },
+    test("makedate") {
+      val query = select(MakeDate(2022, 31)) from customers
+
+      val expected = LocalDate.of(2022, 1, 31)
+
+      val testResult = execute(query)
+
+      assertZIO(testResult.runHead.some)(equalTo(expected))
     }
   )
 }
