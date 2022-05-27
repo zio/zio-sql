@@ -246,14 +246,14 @@ trait OracleRenderModule extends OracleSqlModule { self =>
   }
 
   private def renderTable(table: Table, builder: StringBuilder): Unit                                         = table match {
-    case Table.DerivedTable(read, name)             =>
+    case Table.DerivedTable(read, name)          =>
       builder.append(" ( ")
       builder.append(renderRead(read.asInstanceOf[Read[_]]))
       builder.append(" ) ")
       builder.append(name)
       ()
-    case Table.DialectSpecificTable(tableExtension) => ???
-    case Table.Joined(joinType, left, right, on)    =>
+    case Table.DialectSpecificTable(_)           => ??? // there are no extensions for Oracle
+    case Table.Joined(joinType, left, right, on) =>
       renderTable(left, builder)
       val joinTypeRepr = joinType match {
         case JoinType.Inner      => " INNER JOIN "
@@ -267,7 +267,7 @@ trait OracleRenderModule extends OracleSqlModule { self =>
       buildExpr(on, builder)
       builder.append(" ")
       ()
-    case source: Table.Source                       =>
+    case source: Table.Source                    =>
       builder.append(quoted(source.name))
       ()
   }
