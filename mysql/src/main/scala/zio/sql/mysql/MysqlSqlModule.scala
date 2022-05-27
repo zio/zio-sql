@@ -4,7 +4,6 @@ import java.sql.ResultSet
 import java.time.{ LocalDate, Year }
 
 import zio.sql.Sql
-import java.time.LocalDate
 
 trait MysqlSqlModule extends Sql { self =>
 
