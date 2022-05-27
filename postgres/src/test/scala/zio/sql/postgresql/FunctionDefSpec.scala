@@ -177,6 +177,17 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
 
         assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
       },
+      test("gen_random_uuid") {
+        val query = select(GenRandomUuid)
+
+        val testResult = execute(query)
+
+        val assertion = for {
+          r <- testResult.runCollect
+        } yield assert(r.head)(!isNull)
+
+        assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      },
       suite("format function")(
         test("format0") {
           import Expr._
