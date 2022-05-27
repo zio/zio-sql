@@ -308,6 +308,7 @@ trait PostgresSqlModule extends Sql { self =>
     val BitLength                   = FunctionDef[String, Int](FunctionName("bit_length"))
     val Pi                          = Expr.FunctionCall0[Double](FunctionDef[Any, Double](FunctionName("pi")))
     val GenRandomUuid               = Expr.FunctionCall0[UUID](FunctionDef[Any, UUID](FunctionName("gen_random_uuid")))
+    val DateTrunc                   = FunctionDef[(String, Instant), LocalDateTime](FunctionName("date_trunc"))
   }
 
 }
