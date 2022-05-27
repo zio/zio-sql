@@ -1,8 +1,8 @@
 package zio.sql.oracle
 
 import zio.ZLayer
-import zio.sql.{ConnectionPoolConfig, JdbcRunnableSpec}
-import zio.test.{Spec, TestEnvironment}
+import zio.sql.{ ConnectionPoolConfig, JdbcRunnableSpec }
+import zio.test.{ Spec, TestEnvironment }
 
 import java.util.Properties
 
@@ -21,7 +21,7 @@ trait OracleRunnableSpec extends JdbcRunnableSpec with OracleJdbcModule {
       .map(container =>
         ConnectionPoolConfig(
           url = container.jdbcUrl,
-          properties = connProperties(container.username, container.password),
+          properties = connProperties(container.username, container.password)
         )
       )
   }

@@ -2,7 +2,7 @@ package zio.sql.oracle
 
 import com.dimafeng.testcontainers.OracleContainer
 import org.testcontainers.utility.DockerImageName
-import zio.{Scope, ZIO}
+import zio.{ Scope, ZIO }
 
 object TestContainer {
 

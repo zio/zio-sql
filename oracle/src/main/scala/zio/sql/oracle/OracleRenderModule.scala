@@ -36,7 +36,12 @@ trait OracleRenderModule extends OracleSqlModule { self =>
       buildExpr(base, builder)
     case Expr.Property(base, op)                                                              =>
       buildExpr(base, builder)
-      val _ = builder.append(" ").append(op.symbol)
+      val opString = op match {
+        case PropertyOp.IsNull | PropertyOp.IsNotNull => op.symbol
+        case PropertyOp.IsTrue                        => "= 1"
+        case PropertyOp.IsNotTrue                     => "= 0"
+      }
+      val _        = builder.append(" ").append(opString)
     case Expr.Binary(left, right, op)                                                         =>
       buildExpr(left, builder)
       builder.append(" ").append(op.symbol).append(" ")
@@ -48,6 +53,10 @@ trait OracleRenderModule extends OracleSqlModule { self =>
     case Expr.In(value, set)                                                                  =>
       buildExpr(value, builder)
       buildReadString(set, builder)
+    case Expr.Literal(true)                                                                   =>
+      val _ = builder.append("1")
+    case Expr.Literal(false)                                                                  =>
+      val _ = builder.append("0")
     case Expr.Literal(value)                                                                  =>
       val _ = builder.append(value.toString) // todo fix escaping
     case Expr.AggregationCall(param, aggregation)                                             =>
@@ -303,7 +312,6 @@ trait OracleRenderModule extends OracleSqlModule { self =>
         buildExpr(on, builder)
         val _ = builder.append(" ")
     }
-
 
   private def buildDeleteString(delete: Delete[_], builder: StringBuilder) = {
     builder.append("DELETE FROM ")
