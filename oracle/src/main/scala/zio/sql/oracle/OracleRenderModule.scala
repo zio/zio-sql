@@ -6,7 +6,11 @@ import zio.sql.driver.Renderer.Extensions
 
 trait OracleRenderModule extends OracleSqlModule { self =>
 
-  override def renderDelete(delete: self.Delete[_]): String = ???
+  override def renderDelete(delete: self.Delete[_]): String = {
+    val builder = new StringBuilder
+    buildDeleteString(delete, builder)
+    builder.toString
+  }
 
   override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = ???
 
@@ -39,7 +43,12 @@ trait OracleRenderModule extends OracleSqlModule { self =>
       buildExpr(base, builder)
     case Expr.Property(base, op)                                                              =>
       buildExpr(base, builder)
-      val _ = builder.append(" ").append(op.symbol)
+      val opString = op match {
+        case PropertyOp.IsNull | PropertyOp.IsNotNull => op.symbol
+        case PropertyOp.IsTrue                        => "= 1"
+        case PropertyOp.IsNotTrue                     => "= 0"
+      }
+      val _        = builder.append(" ").append(opString)
     case Expr.Binary(left, right, op)                                                         =>
       buildExpr(left, builder)
       builder.append(" ").append(op.symbol).append(" ")
@@ -51,6 +60,10 @@ trait OracleRenderModule extends OracleSqlModule { self =>
     case Expr.In(value, set)                                                                  =>
       buildExpr(value, builder)
       buildReadString(set, builder)
+    case Expr.Literal(true)                                                                   =>
+      val _ = builder.append("1")
+    case Expr.Literal(false)                                                                  =>
+      val _ = builder.append("0")
     case Expr.Literal(value)                                                                  =>
       val _ = builder.append(value.toString) // todo fix escaping
     case Expr.AggregationCall(param, aggregation)                                             =>
@@ -306,6 +319,18 @@ trait OracleRenderModule extends OracleSqlModule { self =>
         buildExpr(on, builder)
         val _ = builder.append(" ")
     }
+
+  private def buildDeleteString(delete: Delete[_], builder: StringBuilder) = {
+    builder.append("DELETE FROM ")
+    buildTable(delete.table, builder)
+    delete.whereExpr match {
+      case Expr.Literal(true) => ()
+      case _                  =>
+        builder.append(" WHERE ")
+        buildExpr(delete.whereExpr, builder)
+    }
+  }
+
 
   private[oracle] object OracleRender {
 

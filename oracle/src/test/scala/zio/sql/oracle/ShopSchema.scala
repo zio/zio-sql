@@ -1,4 +1,4 @@
-package zio.sql.mysql
+package zio.sql.oracle
 
 import zio.sql.Jdbc
 
