@@ -138,12 +138,10 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
       val resultForRobert = execute(queryForRobert)
       val resultForTam    = execute(queryForTam)
 
-      val assertion = for {
+      for {
         robertResult <- resultForRobert.runCollect
         tamResult    <- resultForTam.runCollect
       } yield assert(robertResult.head.equals(tamResult.head))(equalTo(false))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("soundex outputs should match for equivalent strings") {
       val queryForRobert = select(Soundex("Robert"))
@@ -152,12 +150,10 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
       val resultForRobert = execute(queryForRobert)
       val resultForRupert = execute(queryForRupert)
 
-      val assertion = for {
+      for {
         robertResult <- resultForRobert.runCollect
         rupertResult <- resultForRupert.runCollect
       } yield assert(robertResult.head.equals(rupertResult.head))(equalTo(true))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("soundex") {
       val query    = select(Soundex("Robert"))
@@ -165,11 +161,7 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       val testResult = execute(query)
 
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertZIO(testResult.runHead.some)(equalTo(expected))
     },
     test("pi") {
       val query = select(Pi) from customers
