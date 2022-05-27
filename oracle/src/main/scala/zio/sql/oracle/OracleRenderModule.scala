@@ -248,7 +248,7 @@ trait OracleRenderModule extends OracleSqlModule { self =>
   private def renderTable(table: Table, builder: StringBuilder): Unit                                         = table match {
     case Table.DerivedTable(read, name)             =>
       builder.append(" ( ")
-      builder.append(renderRead(read))
+      builder.append(renderRead(read.asInstanceOf[Read[_]]))
       builder.append(" ) ")
       builder.append(name)
       ()
