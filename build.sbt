@@ -114,7 +114,7 @@ lazy val examples = project
     publish / skip := true,
     moduleName     := "examples"
   )
-  .dependsOn(sqlserver)
+  .dependsOn(postgres)
 
 lazy val driver = project
   .in(file("driver"))
