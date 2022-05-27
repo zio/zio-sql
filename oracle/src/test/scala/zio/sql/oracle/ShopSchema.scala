@@ -1,23 +1,27 @@
-package zio.sql
+package zio.sql.oracle
+
+import zio.sql.Jdbc
 
 trait ShopSchema extends Jdbc { self =>
   import self.ColumnSet._
 
-  object Users         {
-    val users = (uuid("id") ++ localDate("dob") ++ string("first_name") ++ string("last_name")).table("users")
+  object Customers     {
+    val customers =
+      (uuid("id") ++ localDate("dob") ++ string("first_name") ++ string("last_name") ++ boolean("verified"))
+        .table("customers")
 
-    val (userId, dob, fName, lName) = users.columns
+    val (customerId, dob, fName, lName, verified) = customers.columns
   }
   object Orders        {
-    val orders = (uuid("id") ++ uuid("usr_id") ++ localDate("order_date")).table("orders")
+    val orders = (uuid("id") ++ uuid("customer_id") ++ localDate("order_date")).table("orders")
 
-    val (orderId, fkUserId, orderDate) = orders.columns
+    val (orderId, fkCustomerId, orderDate) = orders.columns
   }
   object Products      {
     val products =
       (int("id") ++ string("name") ++ string("description") ++ string("image_url")).table("products")
 
-    val (productId, name, description, imageURL) = products.columns
+    val (productId, productName, description, imageURL) = products.columns
   }
   object ProductPrices {
     val productPrices =
