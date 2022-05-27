@@ -15,32 +15,23 @@ object TransactionSpec extends PostgresRunnableSpec with DbSchema {
     test("Transaction is returning the last value") {
       val query = select(customerId) from customers
 
-      val result = execute(
-        ZTransaction(query) *> ZTransaction(query)
+      val result = transact(
+        (query.run *> query.run).runCount
       )
 
-      val assertion = assertZIO(result.flatMap(_.runCount))(equalTo(5L)).orDie
+      val assertion = assertZIO(result)(equalTo(5L)).orDie
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    test("Transaction is failing") {
-      val query = select(customerId) from customers
-
-      val result = execute(
-        ZTransaction(query) *> ZTransaction.fail(new Exception("failing")) *> ZTransaction(query)
-      ).mapError(_.getMessage)
-
-      assertZIO(result.flip)(equalTo("failing")).mapErrorCause(cause => Cause.stackless(cause.untraced))
-    },
-    test("Transaction failed and didn't deleted rows") {
+    test("Transaction failed and didn't delete rows") {
       val query       = select(customerId) from customers
       val deleteQuery = deleteFrom(customers).where(verified === false)
 
       val result = (for {
         allCustomersCount       <- execute(query).runCount
-        _                       <- execute(
-                                     ZTransaction(deleteQuery) *> ZTransaction.fail(new Exception("this is error")) *> ZTransaction(query)
-                                   ).catchAllCause(_ => ZIO.unit)
+        _                       <- transact {
+                                     deleteQuery.run *> ZIO.fail(new Exception("this is error")) *> query.run.runCount
+                                   }.catchAllCause(_ => ZIO.unit)
         remainingCustomersCount <- execute(query).runCount
       } yield (allCustomersCount, remainingCustomersCount))
 
@@ -50,11 +41,11 @@ object TransactionSpec extends PostgresRunnableSpec with DbSchema {
       val query       = select(customerId) from customers
       val deleteQuery = deleteFrom(customers).where(verified === false)
 
-      val tx = ZTransaction(deleteQuery)
+      val tx = transact(deleteQuery.run)
 
       val result = (for {
         allCustomersCount       <- execute(query).runCount
-        _                       <- execute(tx)
+        _                       <- tx
         remainingCustomersCount <- execute(query).runCount
       } yield (allCustomersCount, remainingCustomersCount))
 
