@@ -1,19 +1,20 @@
 package zio.sql.mysql
 
-import java.time.LocalDate
+import java.time._
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
-import zio.Cause
+import scala.language.postfixOps
+
+import zio._
 import zio.schema._
 import zio.test._
 import zio.test.Assertion._
-import scala.language.postfixOps
 
 object MysqlModuleSpec extends MysqlRunnableSpec with ShopSchema {
 
-  import this.Customers._
-  import this.Orders._
+  import Customers._
+  import Orders._
 
   override def specLayered = suite("Mysql module")(
     test("Can select from single table") {
@@ -200,6 +201,35 @@ object MysqlModuleSpec extends MysqlRunnableSpec with ShopSchema {
         fName,
         lName,
         verified
+      ).values(rows)
+
+      println(renderInsert(command))
+
+      assertZIO(execute(command))(equalTo(2))
+    },
+    test("Can insert tuples") {
+      implicit val optionLocalDateTimeSchema = Schema.option[LocalDateTime]
+
+      val rows = List(
+        (
+          UUID.randomUUID(),
+          UUID.randomUUID(),
+          LocalDate.of(2022, 1, 1),
+          None
+        ),
+        (
+          UUID.randomUUID(),
+          UUID.randomUUID(),
+          LocalDate.of(2022, 1, 5),
+          Some(LocalDateTime.of(2022, 1, 10, 3, 20))
+        )
+      )
+
+      val command = insertInto(orders)(
+        orderId,
+        fkCustomerId,
+        orderDate,
+        deleted_at
       ).values(rows)
 
       println(renderInsert(command))
