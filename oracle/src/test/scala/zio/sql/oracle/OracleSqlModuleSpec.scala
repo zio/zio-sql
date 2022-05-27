@@ -6,7 +6,7 @@ import zio.test._
 
 import scala.language.postfixOps
 
-object OracleModuleSpec extends OracleRunnableSpec with ShopSchema {
+object OracleSqlModuleSpec extends OracleRunnableSpec with ShopSchema {
 
   import Customers._
 
