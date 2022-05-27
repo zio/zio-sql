@@ -120,11 +120,25 @@ object MysqlModuleSpec extends MysqlRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    test("Can union two tables") {
+    test("Execute union on select queries") {
       val query = select(customerId).from(customers).union(select(fkCustomerId).from(orders))
 
       val expected =
         Seq(
+          UUID.fromString("60b01fc9-c902-4468-8d49-3c0f989def37"),
+          UUID.fromString("f76c9ace-be07-4bf3-bd4c-4a9c62882e64"),
+          UUID.fromString("784426a5-b90a-4759-afbb-571b7a0ba35e"),
+          UUID.fromString("df8215a2-d5fd-4c6c-9984-801a1b3a2a0b"),
+          UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc")
+        )
+
+      assertZIO(execute(query).runCollect)(hasSameElements(expected))
+    },
+    test("Execute union all on select queries") {
+      val query = select(customerId).from(customers).unionAll(select(fkCustomerId).from(orders))
+
+      val expected =
+        Chunk(
           UUID.fromString("60b01fc9-c902-4468-8d49-3c0f989def37"),
           UUID.fromString("f76c9ace-be07-4bf3-bd4c-4a9c62882e64"),
           UUID.fromString("784426a5-b90a-4759-afbb-571b7a0ba35e"),

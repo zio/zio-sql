@@ -96,4 +96,9 @@ object Examples extends App with ShopSchema with PostgresJdbcModule {
    */
   val selectWithUnion = select(userId).from(users).union(select(fkUserId).from(orders))
 
+  /* SELECT "users"."user_id" FROM "users"
+     UNION ALL
+     SELECT "orders"."usr_id" FROM "orders"
+   */
+  val selectWithUnion = select(userId).from(users).unionAll(select(fkUserId).from(orders))
 }
