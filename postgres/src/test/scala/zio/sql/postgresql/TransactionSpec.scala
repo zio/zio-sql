@@ -16,7 +16,7 @@ object TransactionSpec extends PostgresRunnableSpec with DbSchema {
       val query = select(customerId) from customers
 
       val result = transact(
-        (query.run *> query.run).runCount
+        query.run.runCount *> query.run.runCount
       )
 
       val assertion = assertZIO(result)(equalTo(5L)).orDie

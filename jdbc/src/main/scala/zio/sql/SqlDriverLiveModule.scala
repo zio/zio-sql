@@ -139,28 +139,26 @@ trait SqlDriverLiveModule { self: Jdbc =>
         } yield a
 =======
     override def transaction: ZLayer[Any, Exception, SqlTransaction] =
-      ZLayer {
-        ZIO.scoped {
-          for {
-            connection <- pool.connection
-            _          <- ZIO.attemptBlocking(connection.setAutoCommit(false)).refineToOrDie[Exception]
-            _          <- ZIO.addFinalizerExit(c =>
-                            ZIO.attempt(if (c.isSuccess) connection.commit() else connection.rollback()).ignore
-                          )
-          } yield new SqlTransaction {
-            def delete(delete: Delete[_]): IO[Exception, Int] =
-              deleteOn(delete, connection)
+      ZLayer.scoped {
+        for {
+          connection <- pool.connection
+          _          <- ZIO.attemptBlocking(connection.setAutoCommit(false)).refineToOrDie[Exception]
+          _          <- ZIO.addFinalizerExit(c =>
+                          ZIO.attempt(if (c.isSuccess) connection.commit() else connection.rollback()).ignore
+                        )
+        } yield new SqlTransaction {
+          def delete(delete: Delete[_]): IO[Exception, Int] =
+            deleteOn(delete, connection)
 
-            def update(update: Update[_]): IO[Exception, Int] =
-              updateOn(update, connection)
+          def update(update: Update[_]): IO[Exception, Int] =
+            updateOn(update, connection)
 
-            def read[A](read: Read[A]): Stream[Exception, A] =
-              readOn(read, connection)
+          def read[A](read: Read[A]): Stream[Exception, A] =
+            readOn(read, connection)
 
-            def insert[A: Schema](insert: Insert[_, A]): IO[Exception, Int] =
-              insertOn(insert, connection)
+          def insert[A: Schema](insert: Insert[_, A]): IO[Exception, Int] =
+            insertOn(insert, connection)
 
-          }
         }
 >>>>>>> ca2e4fd (Add SqlTransaction type)
       }
