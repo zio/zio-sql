@@ -4,7 +4,11 @@ import zio.schema.Schema
 
 trait OracleRenderModule extends OracleSqlModule { self =>
 
-  override def renderDelete(delete: self.Delete[_]): String = ???
+  override def renderDelete(delete: self.Delete[_]): String = {
+    val builder = new StringBuilder
+    buildDeleteString(delete, builder)
+    builder.toString
+  }
 
   override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = ???
 
@@ -299,4 +303,17 @@ trait OracleRenderModule extends OracleSqlModule { self =>
         buildExpr(on, builder)
         val _ = builder.append(" ")
     }
+
+
+  private def buildDeleteString(delete: Delete[_], builder: StringBuilder) = {
+    builder.append("DELETE FROM ")
+    buildTable(delete.table, builder)
+    delete.whereExpr match {
+      case Expr.Literal(true) => ()
+      case _                  =>
+        builder.append(" WHERE ")
+        buildExpr(delete.whereExpr, builder)
+    }
+  }
+
 }
