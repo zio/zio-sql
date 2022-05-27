@@ -268,7 +268,7 @@ trait OracleRenderModule extends OracleSqlModule { self =>
       builder.append(" ")
       ()
     case source: Table.Source                    =>
-      builder.append(quoted(source.name))
+      builder.append(source.name)
       ()
   }
   private def renderColumnNames(sources: SelectionSet[_], builder: StringBuilder): Unit                       =
@@ -276,7 +276,7 @@ trait OracleRenderModule extends OracleSqlModule { self =>
       case SelectionSet.Empty                       => () // table is a collection of at least ONE column
       case SelectionSet.Cons(columnSelection, tail) =>
         val _ = columnSelection.name.map { name =>
-          builder.append(quoted(name))
+          builder.append(name)
         }
         tail.asInstanceOf[SelectionSet[_]] match {
           case SelectionSet.Empty             => ()
@@ -432,8 +432,6 @@ trait OracleRenderModule extends OracleSqlModule { self =>
         renderDynamicValues(tail, builder)
       case Nil          => ()
     }
-
-  private def quoted(name: String): String = "\"" + name + "\""
 
   private def buildExprList(expr: Read.ExprSet[_], builder: StringBuilder): Unit                   =
     expr match {
