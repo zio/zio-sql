@@ -240,7 +240,7 @@ trait OracleRenderModule extends OracleSqlModule { self =>
 
     builder.append(" (")
     renderColumnNames(insert.sources, builder)
-    builder.append(") VALUES ")
+    builder.append(") ")
 
     renderInsertValues(insert.values, builder)
   }
@@ -288,14 +288,14 @@ trait OracleRenderModule extends OracleSqlModule { self =>
   private def renderInsertValues[A](values: Seq[A], builder: StringBuilder)(implicit schema: Schema[A]): Unit =
     values.toList match {
       case head :: Nil  =>
-        builder.append("(")
+        builder.append("SELECT (")
         renderInsertValue(head, builder)
-        builder.append(")")
+        builder.append(") FROM DUAL;")
         ()
       case head :: next =>
-        builder.append("(")
+        builder.append("SELECT (")
         renderInsertValue(head, builder)
-        builder.append(" ),")
+        builder.append(" ) FROM DUAL UNION")
         renderInsertValues(next, builder)
       case Nil          => ()
     }
