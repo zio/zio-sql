@@ -288,14 +288,14 @@ trait OracleRenderModule extends OracleSqlModule { self =>
   private def renderInsertValues[A](values: Seq[A], builder: StringBuilder)(implicit schema: Schema[A]): Unit =
     values.toList match {
       case head :: Nil  =>
-        builder.append("SELECT (")
+        builder.append("SELECT ")
         renderInsertValue(head, builder)
-        builder.append(") FROM DUAL")
+        builder.append(" FROM DUAL")
         ()
       case head :: next =>
-        builder.append("SELECT (")
+        builder.append("SELECT ")
         renderInsertValue(head, builder)
-        builder.append(") FROM DUAL UNION ")
+        builder.append(" FROM DUAL UNION ALL ")
         renderInsertValues(next, builder)
       case Nil          => ()
     }
