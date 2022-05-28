@@ -60,12 +60,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
             render(" FROM ")
             buildTable(t)
           }
-          whereExpr match {
-            case Expr.Literal(true) => ()
-            case _                  =>
-              render(" WHERE ")
-              buildExpr(whereExpr)
-          }
+          buildWhereExpr(whereExpr)
           groupByExprs match {
             case Read.ExprSet.ExprCons(_, _) =>
               render(" GROUP BT ")
@@ -126,7 +121,11 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
       case Expr.Relational(left, right, op)                                                     =>
         buildExpr(left)
         render(" ", op.symbol, " ")
-        buildExpr(right)
+        right.asInstanceOf[Expr[_, A, B]] match {
+          case Expr.Literal(true)  => val _ = render("1")
+          case Expr.Literal(false) => val _ = render("0")
+          case otherValue          => buildExpr(otherValue)
+        }
       case Expr.In(value, set)                                                                  =>
         buildExpr(value)
         renderReadImpl(set)
@@ -356,15 +355,24 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
           render(" ")
       }
 
+    /**
+      * Drops the initial Litaral(true) present at the start of every WHERE expressions by default 
+      * and proceeds to the rest of Expr's.
+      */
+    def buildWhereExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
+      case Expr.Literal(true)   => ()
+      case Expr.Binary(_, b, _) =>
+        render(" WHERE ")
+        buildExpr(b)
+      case _                    =>
+        render(" WHERE ")
+        buildExpr(expr)
+    }
+
     def renderDeleteImpl(delete: Delete[_])(implicit render: Renderer) = {
       render("DELETE FROM ")
       buildTable(delete.table)
-      delete.whereExpr match {
-        case Expr.Literal(true) => ()
-        case _                  =>
-          render(" WHERE ")
-          buildExpr(delete.whereExpr)
-      }
+      buildWhereExpr(delete.whereExpr)
     }
 
     // TODO https://github.com/zio/zio-sql/issues/160

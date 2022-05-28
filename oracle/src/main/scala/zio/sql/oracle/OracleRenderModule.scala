@@ -183,12 +183,7 @@ trait OracleRenderModule extends OracleSqlModule { self =>
           builder.append(" FROM ")
           buildTable(t, builder)
         }
-        whereExpr match {
-          case Expr.Literal(true) => ()
-          case _                  =>
-            builder.append(" WHERE ")
-            buildExpr(whereExpr, builder)
-        }
+        buildWhereExpr(whereExpr, builder)
         groupByExprs match {
           case Read.ExprSet.ExprCons(_, _) =>
             builder.append(" GROUP BY ")
@@ -326,15 +321,24 @@ trait OracleRenderModule extends OracleSqlModule { self =>
         val _ = builder.append(" ")
     }
 
+  /**
+    * Drops the initial Litaral(true) present at the start of every WHERE expressions by default 
+    * and proceeds to the rest of Expr's.
+    */
+  def buildWhereExpr[A, B](expr: self.Expr[_, A, B], builder: mutable.StringBuilder): Unit = expr match {
+    case Expr.Literal(true)   => ()
+    case Expr.Binary(_, b, _) =>
+      builder.append(" WHERE ")
+      buildExpr(b, builder)
+    case _                    =>
+      builder.append(" WHERE ")
+      buildExpr(expr, builder)
+  }
+
   private def buildDeleteString(delete: Delete[_], builder: mutable.StringBuilder): Unit = {
     builder.append("DELETE FROM ")
     buildTable(delete.table, builder)
-    delete.whereExpr match {
-      case Expr.Literal(true) => ()
-      case _                  =>
-        builder.append(" WHERE ")
-        buildExpr(delete.whereExpr, builder)
-    }
+    buildWhereExpr(delete.whereExpr, builder)
   }
 
   private[oracle] object OracleRender {
@@ -346,8 +350,7 @@ trait OracleRenderModule extends OracleSqlModule { self =>
           buildTable(table, render.builder)
           render(" SET ")
           renderSet(set)
-          render(" WHERE ")
-          buildExpr(whereExpr, render.builder)
+          buildWhereExpr(whereExpr, render.builder)
       }
 
     def renderSet(set: List[Set[_, _]])(implicit render: Renderer): Unit =
