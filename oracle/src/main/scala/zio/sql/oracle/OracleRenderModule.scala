@@ -290,7 +290,7 @@ trait OracleRenderModule extends OracleSqlModule { self =>
       case head :: Nil  =>
         builder.append("SELECT (")
         renderInsertValue(head, builder)
-        builder.append(") FROM DUAL;")
+        builder.append(") FROM DUAL")
         ()
       case head :: next =>
         builder.append("SELECT (")
