@@ -4,6 +4,8 @@ import zio.schema.Schema
 import zio.sql.driver.Renderer
 import zio.sql.driver.Renderer.Extensions
 
+import scala.collection.mutable
+
 trait OracleRenderModule extends OracleSqlModule { self =>
 
   override def renderDelete(delete: self.Delete[_]): String = {
@@ -56,16 +58,20 @@ trait OracleRenderModule extends OracleSqlModule { self =>
     case Expr.Relational(left, right, op)                                                     =>
       buildExpr(left, builder)
       builder.append(" ").append(op.symbol).append(" ")
-      buildExpr(right, builder)
+      right.asInstanceOf[Expr[_, A, B]] match {
+        case Expr.Literal(true)  => val _ = builder.append("1")
+        case Expr.Literal(false) => val _ = builder.append("0")
+        case otherValue          => buildExpr(otherValue, builder)
+      }
     case Expr.In(value, set)                                                                  =>
       buildExpr(value, builder)
       buildReadString(set, builder)
     case Expr.Literal(true)                                                                   =>
-      val _ = builder.append("1")
+      val _ = builder.append("1 = 1")
     case Expr.Literal(false)                                                                  =>
-      val _ = builder.append("0")
+      val _ = builder.append("0 = 1")
     case Expr.Literal(value)                                                                  =>
-      val _ = builder.append(value.toString) // todo fix escaping
+      val _ = builder.append(value.toString.singleQuoted)
     case Expr.AggregationCall(param, aggregation)                                             =>
       builder.append(aggregation.name.name)
       builder.append("(")
@@ -320,7 +326,7 @@ trait OracleRenderModule extends OracleSqlModule { self =>
         val _ = builder.append(" ")
     }
 
-  private def buildDeleteString(delete: Delete[_], builder: StringBuilder) = {
+  private def buildDeleteString(delete: Delete[_], builder: mutable.StringBuilder): Unit = {
     builder.append("DELETE FROM ")
     buildTable(delete.table, builder)
     delete.whereExpr match {
@@ -330,7 +336,6 @@ trait OracleRenderModule extends OracleSqlModule { self =>
         buildExpr(delete.whereExpr, builder)
     }
   }
-
 
   private[oracle] object OracleRender {
 
@@ -362,14 +367,12 @@ trait OracleRenderModule extends OracleSqlModule { self =>
 
     private[zio] def renderSetLhs[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit =
       expr match {
-        // TODO: to check if Oracle allows for `tableName.columnName = value` format in update statement,
-        //  or it requires `columnName = value` instead?
-        case Expr.Source(_, column) =>
-          column.name match {
-            case Some(columnName) => render(columnName.quoted)
-            case _                => ()
+        case Expr.Source(table, column) =>
+          (table, column.name) match {
+            case (tableName, Some(columnName)) => val _ = render(tableName, ".", columnName)
+            case _                             => ()
           }
-        case _                      => ()
+        case _                          => ()
       }
   }
 }
