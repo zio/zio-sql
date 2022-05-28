@@ -15,7 +15,7 @@ object OracleModuleSpec extends OracleRunnableSpec with ShopSchema {
   import Customers._
   import Orders._
 
-  override def specLayered = suite("Postgres module")(
+  override def specLayered = suite("Oracle module")(
     test("Can delete from single table with a condition") {
       val query = deleteFrom(customers) where (verified isNotTrue)
       println(renderDelete(query))
