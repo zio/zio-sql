@@ -1,7 +1,11 @@
 package zio.sql.mysql
 
+import java.time._
+import java.time.format.DateTimeFormatter
+
 import zio.Chunk
-import zio.schema.Schema
+import zio.schema._
+import zio.schema.StandardType._
 import zio.sql.driver.Renderer
 
 trait MysqlRenderModule extends MysqlSqlModule { self =>
@@ -12,7 +16,11 @@ trait MysqlRenderModule extends MysqlSqlModule { self =>
     render.toString
   }
 
-  override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = ???
+  override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = {
+    implicit val render: Renderer = Renderer()
+    MysqlRenderer.renderInsertImpl(insert)
+    render.toString
+  }
 
   override def renderDelete(delete: self.Delete[_]): String = {
     implicit val render: Renderer = Renderer()
@@ -27,6 +35,17 @@ trait MysqlRenderModule extends MysqlSqlModule { self =>
   }
 
   object MysqlRenderer {
+    def renderInsertImpl[A](insert: Insert[_, A])(implicit render: Renderer, schema: Schema[A]) = {
+      render("INSERT INTO ")
+      renderTable(insert.table)
+
+      render(" (")
+      renderColumnNames(insert.sources)
+      render(") VALUES ")
+
+      renderInsertValues(insert.values)
+    }
+
     def renderDeleteImpl(delete: Delete[_])(implicit render: Renderer) = {
       render("DELETE FROM ")
       renderTable(delete.table)
@@ -114,6 +133,114 @@ trait MysqlRenderModule extends MysqlSqlModule { self =>
           render(" (", values.mkString(","), ") ") // todo fix needs escaping
       }
 
+    private def renderInsertValues[A](col: Seq[A])(implicit render: Renderer, schema: Schema[A]): Unit =
+      col.toList match {
+        case head :: Nil  =>
+          render("(")
+          renderInsertValue(head)
+          render(");")
+        case head :: next =>
+          render("(")
+          renderInsertValue(head)(render, schema)
+          render(" ),")
+          renderInsertValues(next)
+        case Nil          => ()
+      }
+
+    private def renderInsertValue[Z](z: Z)(implicit render: Renderer, schema: Schema[Z]): Unit =
+      schema.toDynamic(z) match {
+        case DynamicValue.Record(listMap) =>
+          listMap.values.toList match {
+            case head :: Nil  => renderDynamicValue(head)
+            case head :: next =>
+              renderDynamicValue(head)
+              render(", ")
+              renderDynamicValues(next)
+            case Nil          => ()
+          }
+        case value                        => renderDynamicValue(value)
+      }
+
+    private def renderDynamicValues(dynValues: List[DynamicValue])(implicit render: Renderer): Unit =
+      dynValues match {
+        case head :: Nil  => renderDynamicValue(head)
+        case head :: tail =>
+          renderDynamicValue(head)
+          render(", ")
+          renderDynamicValues(tail)
+        case Nil          => ()
+      }
+
+    def renderDynamicValue(dynValue: DynamicValue)(implicit render: Renderer): Unit =
+      dynValue match {
+        case DynamicValue.Primitive(value, typeTag) =>
+          StandardType.fromString(typeTag.tag) match {
+            case Some(v) =>
+              v match {
+                case BigDecimalType                             =>
+                  render(value)
+                case StandardType.InstantType(formatter)        =>
+                  render(s"'${formatter.format(value.asInstanceOf[Instant])}'")
+                case CharType                                   => render(s"'${value}'")
+                case IntType                                    => render(value)
+                case StandardType.MonthDayType                  => render(s"'${value}'")
+                case BinaryType                                 => render(s"'${value}'")
+                case StandardType.MonthType                     => render(s"'${value}'")
+                case StandardType.LocalDateTimeType(formatter)  =>
+                  render(s"'${formatter.format(value.asInstanceOf[LocalDateTime])}'")
+                case UnitType                                   => render("null") // None is encoded as Schema[Unit].transform(_ => None, _ => ())
+                case StandardType.YearMonthType                 => render(s"'${value}'")
+                case DoubleType                                 => render(value)
+                case StandardType.YearType                      => render(s"'${value}'")
+                case StandardType.OffsetDateTimeType(formatter) =>
+                  render(s"'${formatter.format(value.asInstanceOf[OffsetDateTime])}'")
+                case StandardType.ZonedDateTimeType(_)          =>
+                  render(s"'${DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(value.asInstanceOf[ZonedDateTime])}'")
+                case BigIntegerType                             => render(s"'${value}'")
+                case UUIDType                                   => render(s"'${value}'")
+                case StandardType.ZoneOffsetType                => render(s"'${value}'")
+                case ShortType                                  => render(value)
+                case StandardType.LocalTimeType(formatter)      =>
+                  render(s"'${formatter.format(value.asInstanceOf[LocalTime])}'")
+                case StandardType.OffsetTimeType(formatter)     =>
+                  render(s"'${formatter.format(value.asInstanceOf[OffsetTime])}'")
+                case LongType                                   => render(value)
+                case StringType                                 => render(s"'${value}'")
+                case StandardType.PeriodType                    => render(s"'${value}'")
+                case StandardType.ZoneIdType                    => render(s"'${value}'")
+                case StandardType.LocalDateType(formatter)      =>
+                  render(s"'${formatter.format(value.asInstanceOf[LocalDate])}'")
+                case BoolType                                   => render(value)
+                case DayOfWeekType                              => render(s"'${value}'")
+                case FloatType                                  => render(value)
+                case StandardType.DurationType                  => render(s"'${value}'")
+              }
+            case None    => ()
+          }
+        case DynamicValue.Tuple(left, right)        =>
+          renderDynamicValue(left)
+          render(", ")
+          renderDynamicValue(right)
+        case DynamicValue.SomeValue(value)          => renderDynamicValue(value)
+        case DynamicValue.NoneValue                 => render("null")
+        case _                                      => ()
+      }
+
+    private def renderColumnNames(sources: SelectionSet[_])(implicit render: Renderer): Unit =
+      sources match {
+        case SelectionSet.Empty                       => ()
+        case SelectionSet.Cons(columnSelection, tail) =>
+          val _ = columnSelection.name.map { name =>
+            render(name)
+          }
+          tail.asInstanceOf[SelectionSet[_]] match {
+            case SelectionSet.Empty             => ()
+            case next @ SelectionSet.Cons(_, _) =>
+              render(", ")
+              renderColumnNames(next.asInstanceOf[SelectionSet[_]])(render)
+          }
+      }
+
     private def renderSet(set: List[Set[_, _]])(implicit render: Renderer): Unit =
       set match {
         case head :: tail =>
@@ -153,6 +280,8 @@ trait MysqlRenderModule extends MysqlSqlModule { self =>
           renderExpr(on)
           render(" ")
       }
+
+    private[zio] def quoted(name: String): String = "\"" + name + "\""
 
     private def renderExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
       case Expr.Subselect(subselect)                                                    =>

@@ -1,7 +1,11 @@
 package zio.sql.mysql
 
+import java.time._
 import java.sql.ResultSet
-import java.time.{ LocalDate, LocalTime, OffsetTime, Year, ZonedDateTime }
+import java.time.format.DateTimeFormatter
+import java.util.UUID
+
+import zio.schema.Schema
 import zio.sql.Sql
 
 trait MysqlSqlModule extends Sql { self =>
@@ -21,7 +25,6 @@ trait MysqlSqlModule extends Sql { self =>
               r => Right(r)
             )
       }
-
     }
   }
 
@@ -34,10 +37,20 @@ trait MysqlSqlModule extends Sql { self =>
     val Hex         = FunctionDef[Long, String](FunctionName("hex"))
     val Log2        = FunctionDef[Double, Double](FunctionName("log2"))
     val Log10       = FunctionDef[Double, Double](FunctionName("log10"))
+    val MakeDate    = FunctionDef[(Int, Int), LocalDate](FunctionName("makedate"))
     val MakeTime    = FunctionDef[(Int, Int, Double), LocalTime](FunctionName("maketime"))
     val Now         = FunctionDef[Any, ZonedDateTime](FunctionName("now"))
     val Pi          = Expr.FunctionCall0[Double](FunctionDef[Any, Double](FunctionName("pi")))
+    val Rand        = FunctionDef[Int, Double](FunctionName("rand"))
     val RPad        = FunctionDef[(String, Int, String), String](FunctionName("rpad"))
+    val Uuid        = Expr.FunctionCall0[UUID](FunctionDef[Any, UUID](FunctionName("uuid")))
+    val Radians     = FunctionDef[Double, Double](FunctionName("radians"))
   }
+
+  implicit val localDateSchema =
+    Schema.primitive[LocalDate](zio.schema.StandardType.LocalDateType(DateTimeFormatter.ISO_DATE))
+
+  implicit val localDateTimeSchema =
+    Schema.primitive[LocalDateTime](zio.schema.StandardType.LocalDateTimeType(DateTimeFormatter.ISO_DATE_TIME))
 
 }
