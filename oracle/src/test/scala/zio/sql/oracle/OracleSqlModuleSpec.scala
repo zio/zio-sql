@@ -11,18 +11,26 @@ object OracleSqlModuleSpec extends OracleRunnableSpec with ShopSchema {
   import Customers._
 
   override def specLayered: Spec[SqlDriver, Exception] = suite("Oracle module")(
-    test("Can update rows") {
+    test("Can update selected rows") {
       /**
-       * UPDATE customers SET customers.first_name = 'Jaroslav'
+       * UPDATE customers SET customers.first_name = 'Antek'
        * WHERE 1 = 1 and customers.verified = 0 and customers.verified <> 1
        */
       val query =
         update(customers)
-          .set(fName, "Jaroslav")
+          .set(fName, "Antek")
           .where(verified isNotTrue)
           .where(verified <> true) // we intentionally verify two syntax variants
 
       assertZIO(execute(query))(equalTo(1))
+    },
+    test("Can update all rows") {
+      /**
+       * UPDATE customers SET customers.first_name = 'Antek' WHERE 1 = 1
+       */
+      val query = update(customers).set(fName, "Antek")
+
+      assertZIO(execute(query))(equalTo(5))
     },
     test("Can delete from single table with a condition") {
       /**
