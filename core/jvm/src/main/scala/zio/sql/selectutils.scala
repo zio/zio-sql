@@ -2,8 +2,8 @@ package zio.sql
 
 /**
  * Generated with https://github.com/kitlangton/boilerplate
- * 
-  val insertInto = 
+ *
+  val insertInto =
     bp"""
       def apply[${bp"F${num(1)}".rep(", ")}, ${bp"B${num(1)}".rep(", ")}](${bp"expr${num(1)}: Expr[F${num(1)}, Source, B${num(1)}]".rep(", ")}) = {
         val selection = ${bp"expr${num(1)}".rep(" ++ ")}
@@ -17,7 +17,7 @@ package zio.sql
       }
       """
 
- val selectSyntax = 
+ val selectSyntax =
    bp"""
       def apply[${bp"F${num(1)}".rep(", ")}, Source, ${bp"B${num(1)}".rep(", ")}](${bp"expr${num(1)}: Expr[F${num(1)}, Source, B${num(1)}]".rep(", ")})(implicit
           i: Features.IsPartiallyAggregated[${bp"${lit("Features.Union[").rep("", -1)}"}F1, ${bp"F${num(2)}".rep("], ", -1)}]]
@@ -26,13 +26,13 @@ package zio.sql
           Selector[${bp"${lit("Features.Union[").rep("", -1)}"}F1, ${bp"F${num(2)}".rep("], ", -1)}, Source, ${bp"SelectionSet.Cons[Source, B${num(1)}".rep(", ")}, SelectionSet.Empty${bp"${lit("]").rep("")}"}, i.Unaggregated](selection)
       }"""
 
-  val subselectSyntax = 
+  val subselectSyntax =
     bp"""
         def apply[${bp"F${num(1)}".rep(", ")}, Source, ${bp"B${num(1)}".rep(", ")}](${bp"expr${num(1)}: Expr[F${num(1)}, Source, B${num(1)}]".rep(", ")}): SubselectBuilder[${bp"${lit("Features.Union[").rep("", -1)}"}F1, ${bp"F${num(2)}".rep("], ", -1)}], Source, ${bp"SelectionSet.Cons[Source, B${num(1)}".rep(", ")}, SelectionSet.Empty${bp"${lit("]").rep("")}"}, ParentTable] = {
           val selection = ${bp"expr${num(1)}".rep(" ++ ")}
           SubselectBuilder(selection)
         }"""
- */ 
+ */
 // format: off
 trait SelectUtilsModule { self: TableModule with ExprModule with InsertModule with SelectModule =>
 
