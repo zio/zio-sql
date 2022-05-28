@@ -12,6 +12,7 @@ object OracleSqlModuleSpec extends OracleRunnableSpec with ShopSchema {
 
   override def specLayered: Spec[SqlDriver, Exception] = suite("Oracle module")(
     test("Can update selected rows") {
+
       /**
        * UPDATE customers SET customers.first_name = 'Antek'
        * WHERE 1 = 1 and customers.verified = 0 and customers.verified <> 1
@@ -25,6 +26,7 @@ object OracleSqlModuleSpec extends OracleRunnableSpec with ShopSchema {
       assertZIO(execute(query))(equalTo(1))
     },
     test("Can update all rows") {
+
       /**
        * UPDATE customers SET customers.first_name = 'Antek' WHERE 1 = 1
        */
@@ -33,6 +35,7 @@ object OracleSqlModuleSpec extends OracleRunnableSpec with ShopSchema {
       assertZIO(execute(query))(equalTo(5))
     },
     test("Can delete from single table with a condition") {
+
       /**
        * DELETE FROM customers WHERE customers.verified = 0
        */
@@ -44,6 +47,7 @@ object OracleSqlModuleSpec extends OracleRunnableSpec with ShopSchema {
       assertZIO(result)(equalTo(expected))
     },
     test("Can delete all from a single table") {
+
       /**
        * DELETE FROM customers
        */
