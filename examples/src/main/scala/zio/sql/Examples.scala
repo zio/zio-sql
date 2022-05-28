@@ -142,4 +142,16 @@ object Examples extends App with ShopSchema with PostgresJdbcModule {
 
   val insertedSchemaRows = execute(insertSchema)
   println(s"$insertedSchemaRows rows are inserted!")
+
+  /* SELECT "users"."user_id" FROM "users"
+     UNION
+     SELECT "orders"."usr_id" FROM "orders"
+   */
+  val selectWithUnion = select(userId).from(users).union(select(fkUserId).from(orders))
+
+  /* SELECT "users"."user_id" FROM "users"
+     UNION ALL
+     SELECT "orders"."usr_id" FROM "orders"
+   */
+  val selectWithUnionAll = select(userId).from(users).unionAll(select(fkUserId).from(orders))
 }
