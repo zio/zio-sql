@@ -398,7 +398,12 @@ trait OracleRenderModule extends OracleSqlModule { self =>
                 builder.append(s"'${formatter.format(value.asInstanceOf[LocalDate])}'")
                 ()
               case BoolType                                   =>
-                builder.append(value)
+                val b = value.asInstanceOf[Boolean]
+                if (b) {
+                  builder.append('1')
+                } else {
+                  builder.append('0')
+                }
                 ()
               case DayOfWeekType                              =>
                 builder.append(s"'${value}'")
