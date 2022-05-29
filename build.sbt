@@ -1,5 +1,4 @@
 import BuildHelper._
-import InfrastructureHelper._
 import explicitdeps.ExplicitDepsPlugin.autoImport.moduleFilterRemoveValue
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
@@ -28,30 +27,6 @@ val zioVersion                 = "2.0.0-RC6"
 val zioSchemaVersion           = "0.1.9"
 val testcontainersVersion      = "1.17.2"
 val testcontainersScalaVersion = "0.40.7"
-
-lazy val startPostgres = taskKey[Unit]("Start up Postgres")
-startPostgres := startService(Database.Postgres, streams.value)
-
-lazy val stopPostgres = taskKey[Unit]("Shut down Postgres")
-stopPostgres := stopService(Database.Postgres, streams.value)
-
-lazy val startMySQL = taskKey[Unit]("Start up MySQL")
-startMySQL := startService(Database.MySQL, streams.value)
-
-lazy val stopMySQL = taskKey[Unit]("Shut down MySQL")
-stopMySQL := stopService(Database.MySQL, streams.value)
-
-lazy val startMsSQL = taskKey[Unit]("Start up Microsoft SQL Server")
-startMsSQL := startService(Database.MSSQL, streams.value)
-
-lazy val stopMsSQL = taskKey[Unit]("Shut down Microsoft SQL Server")
-stopMsSQL := stopService(Database.MSSQL, streams.value)
-
-lazy val startOracle = taskKey[Unit]("Start up Oracle")
-startOracle := startService(Database.Oracle, streams.value)
-
-lazy val stopOracle = taskKey[Unit]("Shut down Oracle")
-stopOracle := stopService(Database.Oracle, streams.value)
 
 lazy val root = project
   .in(file("."))
