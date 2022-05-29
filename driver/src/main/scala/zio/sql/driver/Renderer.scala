@@ -22,7 +22,7 @@ private[sql] object Renderer {
   def apply(): Renderer = new Renderer(new StringBuilder)
 
   implicit class Extensions(val value: String) {
-    def doubleQuoted: String = s"\"$value\""
+    def doubleQuoted: String = s""""$value""""
     def singleQuoted: String = s"'$value'"
   }
 }
