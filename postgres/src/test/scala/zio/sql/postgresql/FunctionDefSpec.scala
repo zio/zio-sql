@@ -298,10 +298,10 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
       )
     },
     test("localtime with precision") {
-      val precision = 0
+      val precision = 3
       assertZIO(execute(select(LocaltimeWithPrecision(precision))).runHead.some.map(_.toString))(
         matchesRegex(
-          s"([0-9]{2}):[0-9]{2}:[0-9].[0-9]{$precision}"
+          s"\\d{2}:\\d{2}:\\d{2}\\.\\d{$precision}"
         )
       )
     },
