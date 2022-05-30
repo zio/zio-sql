@@ -148,8 +148,7 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
     test("soundex") {
       val query    = select(Soundex("Robert"))
       val expected = "R163"
-      
-      
+
       val testResult = execute(query)
 
       assertZIO(testResult.runHead.some)(equalTo(expected))
