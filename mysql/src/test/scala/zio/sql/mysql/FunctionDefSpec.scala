@@ -121,6 +121,38 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       assertZIO(testResult.runHead.some)(equalTo(expected))
     },
+    test("soundex outputs should not match for non-similar-sounding strings") {
+      val queryForRobert = select(Soundex("Robert"))
+      val queryForTam    = select(Soundex("Tam"))
+
+      val resultForRobert = execute(queryForRobert)
+      val resultForTam    = execute(queryForTam)
+
+      for {
+        robertResult <- resultForRobert.runCollect
+        tamResult    <- resultForTam.runCollect
+      } yield assert(robertResult.head.equals(tamResult.head))(equalTo(false))
+    },
+    test("soundex outputs should match for equivalent strings") {
+      val queryForRobert = select(Soundex("Robert"))
+      val queryForRupert = select(Soundex("Rupert"))
+
+      val resultForRobert = execute(queryForRobert)
+      val resultForRupert = execute(queryForRupert)
+
+      for {
+        robertResult <- resultForRobert.runCollect
+        rupertResult <- resultForRupert.runCollect
+      } yield assert(robertResult.head.equals(rupertResult.head))(equalTo(true))
+    },
+    test("soundex") {
+      val query    = select(Soundex("Robert"))
+      val expected = "R163"
+
+      val testResult = execute(query)
+
+      assertZIO(testResult.runHead.some)(equalTo(expected))
+    },
     test("current_date") {
       val query = select(CurrentDate)
 
