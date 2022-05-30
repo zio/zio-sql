@@ -11,7 +11,7 @@ import scala.language.postfixOps
 import zio.schema.Schema
 import java.time.format.DateTimeFormatter
 
-object PostgresModuleSpec extends PostgresRunnableSpec with DbSchema {
+object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
 
   import AggregationDef._
   import Customers._

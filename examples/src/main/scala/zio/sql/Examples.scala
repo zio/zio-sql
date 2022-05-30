@@ -1,6 +1,9 @@
 package zio.sql
 
+import java.util.UUID
+import java.time._
 import zio.sql.postgresql.PostgresJdbcModule
+import zio.schema.DeriveSchema
 
 object Examples extends App with ShopSchema with PostgresJdbcModule {
   import this.AggregationDef._
@@ -89,4 +92,66 @@ object Examples extends App with ShopSchema with PostgresJdbcModule {
   // SELECT "users"."first_name", "users"."last_name" FROM "users" WHERE true and "users"."first_name" is not null
   val withPropertyOp = select(fName, lName).from(users).where(fName isNotNull)
   println(renderRead(withPropertyOp))
+
+  /*
+  insert tuples
+  INSERT INTO
+    users(uuid, age, date_of_birth, first_name, last_name)
+  VALUES
+    ('60b01fc9-c902-4468-8d49-3c0f989def37', ‘1983-01-05’, 22, 'Ronald', 'Russell')
+   */
+
+  val data         =
+    List(
+      (UUID.randomUUID(), 22, LocalDate.ofYearDay(1990, 1), "Ronald1", "Russel1"),
+      (UUID.randomUUID(), 32, LocalDate.ofYearDay(1980, 1), "Ronald2", "Russel2"),
+      (UUID.randomUUID(), 42, LocalDate.ofYearDay(1970, 1), "Ronald3", "Russel3")
+    )
+  val insertTuples = insertInto(users)(userId, age, dob, fName, lName)
+    .values(data)
+
+  val insertedTupleRows = execute(insertTuples)
+  println(s"$insertedTupleRows rows are inserted!")
+
+  /*
+  insert as case class with schema
+  INSERT INTO
+    users(uuid, age, date_of_birth, first_name, last_name)
+  VALUES
+    ('60b01fc9-c902-4468-8d49-3c0f989def37', ‘1983-01-05’, 22, 'Ronald', 'Russell')
+   */
+
+  final case class User(
+    userId: UUID,
+    age: Int,
+    dateOfBirth: LocalDate,
+    firstName: String,
+    lastName: String
+  )
+  implicit val userSchema = DeriveSchema.gen[User]
+
+  val dataSchema: User = User(UUID.randomUUID(), 22, LocalDate.ofYearDay(1990, 1), "Ronald", "Russel")
+
+  val insertSchema = insertInto(users)(
+    userId,
+    age,
+    dob,
+    fName,
+    lName
+  ).values(dataSchema)
+
+  val insertedSchemaRows = execute(insertSchema)
+  println(s"$insertedSchemaRows rows are inserted!")
+
+  /* SELECT "users"."user_id" FROM "users"
+     UNION
+     SELECT "orders"."usr_id" FROM "orders"
+   */
+  val selectWithUnion = select(userId).from(users).union(select(fkUserId).from(orders))
+
+  /* SELECT "users"."user_id" FROM "users"
+     UNION ALL
+     SELECT "orders"."usr_id" FROM "orders"
+   */
+  val selectWithUnionAll = select(userId).from(users).unionAll(select(fkUserId).from(orders))
 }

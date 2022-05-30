@@ -1,4 +1,4 @@
-package zio.sql.mysql
+package zio.sql.oracle
 
 import zio.sql.Jdbc
 
@@ -6,20 +6,18 @@ trait ShopSchema extends Jdbc { self =>
   import self.ColumnSet._
 
   object Customers {
+
     val customers =
-      (uuid("id") ++ localDate("dob") ++ string("first_name") ++ string("last_name") ++ boolean("verified"))
+      (uuid("id") ++ localDate("dob") ++ string("first_name") ++ string("last_name") ++
+        boolean("verified") ++ zonedDateTime("Created_timestamp"))
         .table("customers")
 
-    val (customerId, dob, fName, lName, verified) = customers.columns
+    val (customerId, dob, fName, lName, verified, createdTimestamp) = customers.columns
   }
-  object Orders    {
+  object Orders        {
+    val orders = (uuid("id") ++ uuid("customer_id") ++ localDate("order_date")).table("orders")
 
-    import ColumnSetAspect._
-
-    val orders = (uuid("id") ++ uuid("customer_id") ++ localDate("order_date") ++
-      localDateTime("deleted_at") @@ nullable).table("orders")
-
-    val (orderId, fkCustomerId, orderDate, deleted_at) = orders.columns
+    val (orderId, fkCustomerId, orderDate) = orders.columns
   }
   object Products      {
     val products =

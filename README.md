@@ -26,15 +26,15 @@ Connection pool | :white_check_mark:
 
 #### Db-specific features:
 
-Feature | PostgreSQL | SQL Server | Oracle | MySQL
-:------------ | :-------------| :-------------| :-------------| :-------------
-Render Read | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
-Render Delete | :heavy_check_mark: | :heavy_check_mark: | | :white_check_mark: | 
-Render Update | :heavy_check_mark: |  | | :white_check_mark: |
-Render Insert | :heavy_check_mark: |  | |
+Feature | PostgreSQL | SQL Server | Oracle             | MySQL
+:------------ | :-------------| :-------------|:-------------------| :-------------
+Render Read   | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+Render Delete | :heavy_check_mark: | :heavy_check_mark: | :white_check_mark: | :white_check_mark: | 
+Render Update | :heavy_check_mark: |                    | :white_check_mark: | :white_check_mark: |
+Render Insert | :heavy_check_mark: |                    |                    | :white_check_mark: |
 Functions     | :heavy_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-Types         | :white_check_mark: | | | :white_check_mark: |
-Operators     | | | |
+Types         | :white_check_mark: |                    |                    | :white_check_mark: |
+Operators     |                    |                    |                    |                    |
 
 ## What is ZIO SQL?
 ZIO SQL lets you write type-safe, type-inferred, and composable SQL queries in ordinary Scala, helping you prevent persistence bugs before they happen, and leverage your IDE to make writing SQL productive, safe, and fun. 
