@@ -2,6 +2,7 @@ package zio.sql.sqlserver
 
 import zio.schema.Schema
 import zio.sql.driver.Renderer
+import zio.sql.driver.Renderer.Extensions
 
 trait SqlServerRenderModule extends SqlServerSqlModule { self =>
 
@@ -153,7 +154,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
               .asInstanceOf[java.time.OffsetDateTime]
               .format(java.time.format.DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss"))
             s"'$x'"
-          case _                       => s"'${value.toString}'"
+          case _                       => value.toString.singleQuoted
         }
         render(lit)
       case Expr.AggregationCall(param, aggregation)                                             =>
