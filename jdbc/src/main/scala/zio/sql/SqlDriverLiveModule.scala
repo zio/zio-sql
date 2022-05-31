@@ -50,13 +50,9 @@ trait SqlDriverLiveModule { self: Jdbc =>
 
     def updateOn(update: Update[_], conn: Connection): IO[Exception, Int] =
       ZIO.attemptBlocking {
-
         val query = renderUpdate(update)
-
         val statement = conn.createStatement()
-
         statement.executeUpdate(query)
-
       }.refineToOrDie[Exception]
 
     def update(update: List[Update[_]]): IO[Exception, List[Int]] =

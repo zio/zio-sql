@@ -23,6 +23,7 @@ trait Jdbc extends zio.sql.Sql with TransactionModule with JdbcInternalModule wi
     def insert[A: Schema](insert: List[Insert[_, A]]): IO[Exception, List[Int]]
   }
   object SqlDriver {
+
     val live: ZLayer[ConnectionPool, Nothing, SqlDriver] =
       ZLayer(ZIO.serviceWith[ConnectionPool](new SqlDriverLive(_)))
   }

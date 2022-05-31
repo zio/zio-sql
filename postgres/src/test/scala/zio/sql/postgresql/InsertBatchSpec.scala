@@ -61,8 +61,8 @@ object InsertBatchSpec extends PostgresRunnableSpec with DbSchema {
       val resultInsert = execute(query)
 
       val insertAssertion = for {
-        r <- resultInsert
-      } yield assert(r)(equalTo(4))
+        result <- resultInsert
+      } yield assert(result)(equalTo(4))
       insertAssertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
   )

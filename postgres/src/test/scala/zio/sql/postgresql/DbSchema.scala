@@ -29,6 +29,7 @@ trait DbSchema extends Jdbc { self =>
       created: String,
       created2: ZonedDateTime
     )
+
     // https://github.com/zio/zio-sql/issues/320 Once Insert is supported, we can remove created_timestamp_string
     val customers =
       (uuid("Id") ++ localDate("Dob") ++ string("First_name") ++ string("Last_name") ++ boolean(
