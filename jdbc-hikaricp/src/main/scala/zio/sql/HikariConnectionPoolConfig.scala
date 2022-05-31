@@ -2,7 +2,6 @@ package zio.sql
 
 import com.zaxxer.hikari.HikariConfig
 
-
 /**
  * Configuration information for the connection pool.
  *
@@ -23,19 +22,24 @@ import com.zaxxer.hikari.HikariConfig
  *                    An in-use connection will never be retired, only when it is idle will it be removed. Should be bigger then 30000
  * @param minimumIdle The property controls the minimum number of idle connections that HikariCP tries to maintain in the pool, including both idle and in-use connections.
  *                    If the idle connections dip below this value, HikariCP will make a best effort to restore them quickly and efficiently.
+ * @param connectionInitSql the SQL to execute on new connections
+ *                    Set the SQL string that will be executed on all new connections when they are
+ *                    created, before they are added to the pool.  If this query fails, it will be
+ *                    treated as a failed connection attempt.
  */
 final case class HikariConnectionPoolConfig(
-                                       url: String,
-                                       userName: String,
-                                       password: String,
-                                       poolSize: Int = 10,
-                                       autoCommit: Boolean = true,
-                                       connectionTimeout: Option[Long] = None,
-                                       idleTimeout: Option[Long] = None,
-                                       initializationFailTimeout: Option[Long] = None,
-                                       maxLifetime: Option[Long] = None,
-                                       minimumIdle: Option[Int] = None
-                                     ) {
+  url: String,
+  userName: String,
+  password: String,
+  poolSize: Int = 10,
+  autoCommit: Boolean = true,
+  connectionTimeout: Option[Long] = None,
+  idleTimeout: Option[Long] = None,
+  initializationFailTimeout: Option[Long] = None,
+  maxLifetime: Option[Long] = None,
+  minimumIdle: Option[Int] = None,
+  connectionInitSql: Option[String] = None
+) {
   private[sql] def toHikariConfig = {
     val hikariConfig = new HikariConfig()
     hikariConfig.setJdbcUrl(this.url)
@@ -48,6 +52,7 @@ final case class HikariConnectionPoolConfig(
     initializationFailTimeout.foreach(hikariConfig.setInitializationFailTimeout)
     maxLifetime.foreach(hikariConfig.setMaxLifetime)
     minimumIdle.foreach(hikariConfig.setMinimumIdle)
+    connectionInitSql.foreach(hikariConfig.setConnectionInitSql)
     hikariConfig
   }
 }
