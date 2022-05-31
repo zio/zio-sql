@@ -71,7 +71,7 @@ object UpdateBatchSpec extends PostgresRunnableSpec with DbSchema {
       insertAssertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
 
       val selectAll = select(ALL).from(customers)
-      val result_         = execute(selectAll.to((Customer.apply _).tupled)).runCollect
+      val result_   = execute(selectAll.to((Customer.apply _).tupled)).runCollect
 
       val assertion_ = for {
         x      <- result_
