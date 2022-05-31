@@ -1,38 +1,5 @@
 package zio.sql
 
-/**
- * Generated with https://github.com/kitlangton/boilerplate
- *
-  val insertInto =
-    bp"""
-      def apply[${bp"F${num(1)}".rep(", ")}, ${bp"B${num(1)}".rep(", ")}](${bp"expr${num(1)}: Expr[F${num(1)}, Source, B${num(1)}]".rep(", ")}) = {
-        val selection = ${bp"expr${num(1)}".rep(" ++ ")}
-
-        type B = ${bp"SelectionSet.Cons[Source, B${num(1)}".rep(", ")}, SelectionSet.Empty${bp"${lit("]").rep("")}"}
-
-        InsertBuilder[${bp"${lit("Features.Union[").rep("", -1)}"}F1, ${bp"F${num(2)}".rep("], ", -1)}], Source, AllColumnIdentities, B, selection.ColsRepr](
-           table,
-           selection
-        )
-      }
-      """
-
- val selectSyntax =
-   bp"""
-      def apply[${bp"F${num(1)}".rep(", ")}, Source, ${bp"B${num(1)}".rep(", ")}](${bp"expr${num(1)}: Expr[F${num(1)}, Source, B${num(1)}]".rep(", ")})(implicit
-          i: Features.IsPartiallyAggregated[${bp"${lit("Features.Union[").rep("", -1)}"}F1, ${bp"F${num(2)}".rep("], ", -1)}]]
-      ): Selector[${bp"${lit("Features.Union[").rep("", -1)}"}F1, ${bp"F${num(2)}".rep("], ", -1)}], Source, ${bp"SelectionSet.Cons[Source, B${num(1)}".rep(", ")}, SelectionSet.Empty${bp"${lit("]").rep("")}"}, i.Unaggregated] = {
-          val selection = ${bp"expr${num(1)}".rep(" ++ ")}
-          Selector[${bp"${lit("Features.Union[").rep("", -1)}"}F1, ${bp"F${num(2)}".rep("], ", -1)}, Source, ${bp"SelectionSet.Cons[Source, B${num(1)}".rep(", ")}, SelectionSet.Empty${bp"${lit("]").rep("")}"}, i.Unaggregated](selection)
-      }"""
-
-  val subselectSyntax =
-    bp"""
-        def apply[${bp"F${num(1)}".rep(", ")}, Source, ${bp"B${num(1)}".rep(", ")}](${bp"expr${num(1)}: Expr[F${num(1)}, Source, B${num(1)}]".rep(", ")}): SubselectBuilder[${bp"${lit("Features.Union[").rep("", -1)}"}F1, ${bp"F${num(2)}".rep("], ", -1)}], Source, ${bp"SelectionSet.Cons[Source, B${num(1)}".rep(", ")}, SelectionSet.Empty${bp"${lit("]").rep("")}"}, ParentTable] = {
-          val selection = ${bp"expr${num(1)}".rep(" ++ ")}
-          SubselectBuilder(selection)
-        }"""
- */
 // format: off
 trait SelectUtilsModule { self: TableModule with ExprModule with InsertModule with SelectModule =>
 

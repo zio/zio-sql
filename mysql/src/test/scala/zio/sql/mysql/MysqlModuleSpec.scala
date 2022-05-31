@@ -1,17 +1,20 @@
 package zio.sql.mysql
 
-import java.time.LocalDate
+import java.time._
+import java.time.format.DateTimeFormatter
 import java.util.UUID
 
-import zio.Cause
+import scala.language.postfixOps
+
+import zio._
+import zio.schema._
 import zio.test._
 import zio.test.Assertion._
-import scala.language.postfixOps
 
 object MysqlModuleSpec extends MysqlRunnableSpec with ShopSchema {
 
-  import this.Customers._
-  import this.Orders._
+  import Customers._
+  import Orders._
 
   override def specLayered = suite("Mysql module")(
     test("Can select from single table") {
@@ -120,6 +123,34 @@ object MysqlModuleSpec extends MysqlRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
+    test("Execute union on select queries") {
+      val query = select(customerId).from(customers).union(select(fkCustomerId).from(orders))
+
+      val expected =
+        Seq(
+          UUID.fromString("60b01fc9-c902-4468-8d49-3c0f989def37"),
+          UUID.fromString("f76c9ace-be07-4bf3-bd4c-4a9c62882e64"),
+          UUID.fromString("784426a5-b90a-4759-afbb-571b7a0ba35e"),
+          UUID.fromString("df8215a2-d5fd-4c6c-9984-801a1b3a2a0b"),
+          UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc")
+        )
+
+      assertZIO(execute(query).runCollect)(hasSameElements(expected))
+    },
+    test("Execute union all on select queries") {
+      val query = select(customerId).from(customers).unionAll(select(fkCustomerId).from(orders))
+
+      val expected =
+        Chunk(
+          UUID.fromString("60b01fc9-c902-4468-8d49-3c0f989def37"),
+          UUID.fromString("f76c9ace-be07-4bf3-bd4c-4a9c62882e64"),
+          UUID.fromString("784426a5-b90a-4759-afbb-571b7a0ba35e"),
+          UUID.fromString("df8215a2-d5fd-4c6c-9984-801a1b3a2a0b"),
+          UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc")
+        )
+
+      assertZIO(execute(query).runCollect)(hasSameElementsDistinct(expected))
+    },
     /*
      * This is a failing test for aggregation function.
      * Uncomment it when aggregation function handling is fixed.
@@ -160,6 +191,78 @@ object MysqlModuleSpec extends MysqlRunnableSpec with ShopSchema {
       } yield assert(r)(hasSameElementsDistinct(expected))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    test("Can insert rows") {
+      final case class CustomerRow(
+        id: UUID,
+        dateOfBirth: LocalDate,
+        firstName: String,
+        lastName: String,
+        verified: Boolean
+      )
+      implicit val customerRowSchema =
+        Schema.CaseClass5[UUID, LocalDate, String, String, Boolean, CustomerRow](
+          Schema.Field("id", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
+          Schema.Field(
+            "dateOfBirth",
+            Schema.primitive[LocalDate](zio.schema.StandardType.LocalDateType(DateTimeFormatter.ISO_DATE))
+          ),
+          Schema.Field("firstName", Schema.primitive[String](zio.schema.StandardType.StringType)),
+          Schema.Field("lastName", Schema.primitive[String](zio.schema.StandardType.StringType)),
+          Schema.Field("verified", Schema.primitive[Boolean](zio.schema.StandardType.BoolType)),
+          CustomerRow.apply,
+          _.id,
+          _.dateOfBirth,
+          _.firstName,
+          _.lastName,
+          _.verified
+        )
+
+      val rows = List(
+        CustomerRow(UUID.randomUUID(), LocalDate.ofYearDay(2001, 8), "Peter", "Parker", true),
+        CustomerRow(UUID.randomUUID(), LocalDate.ofYearDay(1980, 2), "Stephen", "Strange", false)
+      )
+
+      val command = insertInto(customers)(
+        customerId,
+        dob,
+        fName,
+        lName,
+        verified
+      ).values(rows)
+
+      println(renderInsert(command))
+
+      assertZIO(execute(command))(equalTo(2))
+    },
+    test("Can insert tuples") {
+      implicit val optionLocalDateTimeSchema = Schema.option[LocalDateTime]
+
+      val rows = List(
+        (
+          UUID.randomUUID(),
+          UUID.randomUUID(),
+          LocalDate.of(2022, 1, 1),
+          None
+        ),
+        (
+          UUID.randomUUID(),
+          UUID.randomUUID(),
+          LocalDate.of(2022, 1, 5),
+          Some(LocalDateTime.of(2022, 1, 10, 3, 20))
+        )
+      )
+
+      val command = insertInto(orders)(
+        orderId,
+        fkCustomerId,
+        orderDate,
+        deleted_at
+      ).values(rows)
+
+      println(renderInsert(command))
+
+      assertZIO(execute(command))(equalTo(2))
     },
     test("Can update rows") {
       val query = update(customers).set(fName, "Roland").where(fName === "Ronald")
