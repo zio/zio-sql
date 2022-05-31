@@ -1,14 +1,14 @@
 package zio.sql.postgresql
 
+import zio.stream.ZStream
+import zio.test.Assertion._
+import zio.test.TestAspect.{ ignore, timeout }
+import zio.test._
+import zio.{ durationInt, Cause, Chunk }
+
 import java.time._
 import java.time.format.DateTimeFormatter
 import java.util.UUID
-import zio.{ Cause, Chunk }
-import zio.stream.ZStream
-import zio.test.Assertion._
-import zio.test._
-import zio.test.TestAspect.{ ignore, timeout }
-import zio.durationInt
 
 object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
 
@@ -20,13 +20,8 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
   private def collectAndCompare[R, E](
     expected: Seq[String],
     testResult: ZStream[R, E, String]
-  ) = {
-    val assertion = for {
-      r <- testResult.runCollect
-    } yield assert(r.toList)(equalTo(expected))
-
-    assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-  }
+  ) =
+    assertZIO(testResult.runCollect)(equalTo(expected))
 
   private val timestampFormatter = DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss.SSSS").withZone(ZoneId.of("UTC"))
 
@@ -49,7 +44,6 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
       collectAndCompare(expected, testResult)
     },
     test("concat_ws #2 - combine columns") {
-      import Expr._
 
       // note: you can't use customerId here as it is a UUID, hence not a string in our book
       val query = select(ConcatWs3(Customers.fName, Customers.fName, Customers.lName)) from customers
@@ -100,82 +94,31 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
       collectAndCompare(expected, testResult)
     },
     test("isfinite") {
-      val query = select(IsFinite(Instant.now))
-
+      val query             = select(IsFinite(Instant.now))
       val expected: Boolean = true
-
-      val testResult = execute(query)
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertZIO(execute(query).runHead.some)(equalTo(expected))
     },
     suite("String functions")(
       test("CharLength") {
-        val query    = select(Length("hello"))
-        val expected = 5
-
-        val testResult = execute(query)
-
-        val assertion = for {
-          r <- testResult.runCollect
-        } yield assert(r.head)(equalTo(expected))
-
-        assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+        assertZIO(execute(select(Length("hello"))).runHead.some)(equalTo(5))
+      },
+      test("CharLength") {
+        assertZIO(execute(select(Length("hello"))).runHead.some)(equalTo(5))
       },
       test("ltrim") {
-        val query = select(Ltrim("  hello  "))
-
-        val expected = "hello  "
-
-        val testResult = execute(query)
-
-        val assertion = for {
-          r <- testResult.runCollect
-        } yield assert(r.head)(equalTo(expected))
-
-        assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+        assertZIO(execute(select(Ltrim("  hello  "))).runHead.some)(equalTo("hello  "))
       },
       test("rtrim") {
-        val query = select(Rtrim("  hello  "))
-
-        val expected = "  hello"
-
-        val testResult = execute(query)
-
-        val assertion = for {
-          r <- testResult.runCollect
-        } yield assert(r.head)(equalTo(expected))
-
-        assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+        assertZIO(execute(select(Rtrim("  hello  "))).runHead.some)(equalTo("  hello"))
       },
       test("bit_length") {
-        val query = select(BitLength("hello"))
-
-        val expected = 40
-
-        val testResult = execute(query)
-
-        val assertion = for {
-          r <- testResult.runCollect
-        } yield assert(r.head)(equalTo(expected))
-
-        assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+        assertZIO(execute(select(BitLength("hello"))).runHead.some)(equalTo(40))
       },
       test("pi") {
-        val query = select(Pi)
-
-        val expected = 3.141592653589793
-
-        val testResult = execute(query)
-
-        val assertion = for {
-          r <- testResult.runCollect
-        } yield assert(r.head)(equalTo(expected))
-
-        assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+        assertZIO(execute(select(Pi)).runHead.some)(equalTo(3.141592653589793))
+      },
+      test("gen_random_uuid") {
+        assertZIO(execute(select(GenRandomUuid)).runHead.some)(!isNull)
       },
       suite("format function")(
         test("format0") {
@@ -296,325 +239,115 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
       )
     ),
     test("abs") {
-      val query = select(Abs(-3.14159))
-
-      val expected = 3.14159
-
-      val testResult = execute(query)
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertZIO(execute(select(Abs(-3.14159))).runHead.some)(equalTo(3.14159))
     },
     test("log") {
-      val query = select(Log(2.0, 32.0))
-
-      val expected: Double = 5
-
-      val testResult = execute(query)
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertZIO(execute(select(Log(2.0, 32.0))).runHead.some)(equalTo(5.0))
     },
     test("acos") {
-      val query = select(Acos(-1.0))
-
-      val expected = 3.141592653589793
-
-      val testResult = execute(query)
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertZIO(execute(select(Acos(-1.0))).runHead.some)(equalTo(3.141592653589793))
     },
     test("repeat") {
-      val query = select(Repeat("Zio", 3))
-
-      val expected = "ZioZioZio"
-
-      val testResult = execute(query)
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    },
-    test("asin") {
-      val query = select(Asin(0.5))
-
-      val expected = 0.5235987755982989
-
-      val testResult = execute(query)
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    },
-    test("ln") {
-      val query = select(Ln(3.0))
-
-      val expected = 1.0986122886681097
-
-      val testResult = execute(query)
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    },
-    test("atan") {
-      val query = select(Atan(10.0))
-
-      val expected = 1.4711276743037347
-
-      val testResult = execute(query)
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertZIO(execute(select(Repeat("Zio", 3))).runHead.some)(equalTo("ZioZioZio"))
     },
     test("reverse") {
-      val query = select(Reverse("abcd"))
-
-      val expected = "dcba"
-
-      val testResult = execute(query)
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertZIO(execute(select(Reverse("abcd"))).runHead.some)(equalTo("dcba"))
+    },
+    test("asin") {
+      assertZIO(execute(select(Asin(0.5))).runHead.some)(equalTo(0.5235987755982989))
+    },
+    test("ln") {
+      assertZIO(execute(select(Ln(3.0))).runHead.some)(equalTo(1.0986122886681097))
+    },
+    test("atan") {
+      assertZIO(execute(select(Atan(10.0))).runHead.some)(equalTo(1.4711276743037347))
     },
     test("cos") {
-      val query = select(Cos(3.141592653589793))
-
-      val expected = -1.0
-
-      val testResult = execute(query)
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertZIO(execute(select(Cos(3.141592653589793))).runHead.some)(equalTo(-1.0))
     },
     test("exp") {
-      val query = select(Exp(1.0))
-
-      val expected = 2.718281828459045
-
-      val testResult = execute(query)
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertZIO(execute(select(Exp(1.0))).runHead.some)(equalTo(2.718281828459045))
     },
     test("floor") {
-      val query = select(Floor(-3.14159))
-
-      val expected = -4.0
-
-      val testResult = execute(query)
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertZIO(execute(select(Floor(-3.14159))).runHead.some)(equalTo(-4.0))
     },
     test("ceil") {
-      val query = select(Ceil(53.7), Ceil(-53.7))
-
-      val expected = (54.0, -53.0)
-
-      val testResult = execute(query).map(value => (value._1, value._2))
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertZIO(execute(select(Ceil(53.7), Ceil(-53.7))).runHead.some)(equalTo((54.0, -53.0)))
     },
     test("sin") {
-      val query = select(Sin(1.0))
-
-      val expected = 0.8414709848078965
-
-      val testResult = execute(query)
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertZIO(execute(select(Sin(1.0))).runHead.some)(equalTo(0.8414709848078965))
     },
     test("sind") {
-      val query = select(Sind(30.0))
-
-      val expected = 0.5
-
-      val testResult = execute(query)
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertZIO(execute(select(Sind(30.0))).runHead.some)(equalTo(0.5))
     },
     test("split_part") {
-      val query = select(SplitPart("abc~@~def~@~ghi", "~@~", 2))
-
-      val expected = "def"
-
-      val testResult = execute(query)
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertZIO(execute(select(SplitPart("abc~@~def~@~ghi", "~@~", 2))).runHead.some)(equalTo("def"))
     },
     test("timeofday") {
-      val query = select(TimeOfDay())
-
-      val testResult = execute(query)
-
-      val assertion =
-        for {
-          r <- testResult.runCollect
-        } yield assert(r.head)(
-          matchesRegex(
-            "[A-Za-z]{3}\\s[A-Za-z]{3}\\s[0-9]{2}\\s(2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9].[0-9]{6}\\s[0-9]{4}\\s[A-Za-z]{3,4}"
-          )
+      assertZIO(execute(select(TimeOfDay())).runHead.some)(
+        matchesRegex(
+          "[A-Za-z]{3}\\s[A-Za-z]{3}\\s[0-9]{2}\\s(2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9].[0-9]{6}\\s[0-9]{4}\\s[A-Za-z]{3,4}"
         )
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      )
     },
     test("localtime") {
-      val query = select(Localtime)
-
-      val testResult = execute(query)
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head.toString)(Assertion.matchesRegex("([0-9]{2}):[0-9]{2}:[0-9]{2}\\.[0-9]{6}"))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertZIO(execute(select(Localtime)).runHead.some.map(_.toString))(
+        matchesRegex(
+          "([0-9]{2}):[0-9]{2}:[0-9]{2}\\.[0-9]{6}"
+        )
+      )
     },
     test("localtime with precision") {
-      val precision = 0
-      val query     = select(LocaltimeWithPrecision(precision))
-
-      val testResult = execute(query)
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head.toString)(Assertion.matchesRegex(s"([0-9]{2}):[0-9]{2}:[0-9].[0-9]{$precision}"))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      val precision = 3
+      assertZIO(execute(select(LocaltimeWithPrecision(precision))).runHead.some.map(_.toString))(
+        matchesRegex(
+          s"\\d{2}:\\d{2}:\\d{2}\\.\\d{$precision}"
+        )
+      )
     },
     test("localtimestamp") {
-      val query = select(Localtimestamp)
-
-      val testResult = execute(query)
-
-      val assertion =
-        for {
-          r <- testResult.runCollect
-        } yield assert(timestampFormatter.format(r.head))(
-          Assertion.matchesRegex("[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{4}")
+      assertZIO(execute(select(Localtimestamp)).runHead.some.map(timestampFormatter.format _))(
+        matchesRegex(
+          "[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{4}"
         )
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      )
     },
     test("localtimestamp with precision") {
-      val precision = 2
-
-      val query = select(LocaltimestampWithPrecision(precision))
-
-      val testResult = execute(query)
-
-      val assertion =
-        for {
-          r <- testResult.runCollect
-        } yield assert(timestampFormatter.format(r.head))(
-          Assertion.matchesRegex(s"[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{2}00")
+      assertZIO(execute(select(LocaltimestampWithPrecision(2))).runHead.some.map(timestampFormatter.format _))(
+        matchesRegex(
+          "[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{2}00"
         )
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      )
     },
     test("now") {
-      val query = select(Now())
-
-      val testResult = execute(query)
-
-      val assertion =
-        for {
-          r <- testResult.runCollect
-        } yield assert(timestampFormatter.format(r.head))(
-          Assertion.matchesRegex("[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{4}")
+      assertZIO(execute(select(Now())).runHead.some.map(timestampFormatter.format _))(
+        matchesRegex(
+          "[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{4}"
         )
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      )
     },
     test("statement_timestamp") {
-      val query = select(StatementTimestamp())
-
-      val testResult = execute(query)
-
-      val assertion =
-        for {
-          r <- testResult.runCollect
-        } yield assert(timestampFormatter.format(r.head))(
-          Assertion.matchesRegex("[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{4}")
+      assertZIO(execute(select(StatementTimestamp())).runHead.some.map(timestampFormatter.format _))(
+        matchesRegex(
+          "[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{4}"
         )
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      )
     },
     test("transaction_timestamp") {
-      val query = select(TransactionTimestamp())
-
-      val testResult = execute(query)
-
-      val assertion =
-        for {
-          r <- testResult.runCollect
-        } yield assert(timestampFormatter.format(r.head))(
-          Assertion.matchesRegex("[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{4}")
+      assertZIO(execute(select(TransactionTimestamp())).runHead.some.map(timestampFormatter.format _))(
+        matchesRegex(
+          "[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{4}"
         )
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      )
     },
     test("current_time") {
-      val query = select(CurrentTime)
-
-      val testResult = execute(query)
-
-      val assertion =
-        for {
-          r <- testResult.runCollect
-        } yield assert(DateTimeFormatter.ofPattern("HH:mm:ss").format(r.head))(
-          matchesRegex(
-            "(2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]"
-          )
+      assertZIO(
+        execute(select(TransactionTimestamp())).runHead.some.map(DateTimeFormatter.ofPattern("HH:mm:ss").format(_))
+      )(
+        matchesRegex(
+          "(2[0-3]|[01][0-9]):[0-5][0-9]:[0-5][0-9]"
         )
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      )
     },
     test("md5") {
       val query = select(Md5("hello, world!"))
@@ -1352,8 +1085,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
 
       // imports for Left and Right are necessary to make the typeCheck macro expansion compile
       // TODO: clean this up when https://github.com/zio/zio/issues/4927 is resolved
-      import scala.util.Right
-      import scala.util.Left
+      import scala.util.{ Left, Right }
       val dummyUsage = zio.ZIO.succeed((Left(()), Right(())))
 
       val result = typeCheck("execute((select(CharLength(Customers.fName))).to[Int, Int](identity))")

@@ -1,8 +1,8 @@
 package zio.sql
 
-import zio.sql.sqlserver.SqlServerJdbcModule
+import zio.sql.postgresql.PostgresJdbcModule
 
-object GroupByExamples extends App with ShopSchema with SqlServerJdbcModule {
+object GroupByExamples extends App with ShopSchema with PostgresJdbcModule {
   import AggregationDef._
   import ColumnSet._
 
