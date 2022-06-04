@@ -9,6 +9,12 @@ import zio.schema.Schema
 trait SqlDriverLiveModule { self: Jdbc =>
   private[sql] trait SqlDriverCore {
 
+    def deleteOnBatch(delete: List[Delete[_]], conn: Connection): IO[Exception, List[Int]]
+
+    def updateOnBatch(update: List[Update[_]], conn: Connection): IO[Exception, List[Int]]
+
+    def insertOnBatch[A: Schema](insert: List[Insert[_, A]], conn: Connection): IO[Exception, List[Int]]
+
     def deleteOn(delete: Delete[_], conn: Connection): IO[Exception, Int]
 
     def updateOn(update: Update[_], conn: Connection): IO[Exception, Int]
@@ -22,6 +28,9 @@ trait SqlDriverLiveModule { self: Jdbc =>
     def delete(delete: Delete[_]): IO[Exception, Int] =
       ZIO.scoped(pool.connection.flatMap(deleteOn(delete, _)))
 
+    def delete(delete: List[Delete[_]]): IO[Exception, List[Int]] =
+      ZIO.scoped(pool.connection.flatMap(deleteOnBatch(delete, _)))
+
     def deleteOn(delete: Delete[_], conn: Connection): IO[Exception, Int] =
       ZIO.attemptBlocking {
         val query     = renderDelete(delete)
@@ -29,18 +38,31 @@ trait SqlDriverLiveModule { self: Jdbc =>
         statement.executeUpdate(query)
       }.refineToOrDie[Exception]
 
+    def deleteOnBatch(delete: List[Delete[_]], conn: Connection): IO[Exception, List[Int]] =
+      ZIO.attemptBlocking {
+        val statement = conn.createStatement()
+        delete.map(delete_ => statement.addBatch(renderDelete(delete_)))
+        statement.executeBatch().toList
+      }.refineToOrDie[Exception]
+
     def update(update: Update[_]): IO[Exception, Int] =
       ZIO.scoped(pool.connection.flatMap(updateOn(update, _)))
 
     def updateOn(update: Update[_], conn: Connection): IO[Exception, Int] =
       ZIO.attemptBlocking {
-
-        val query = renderUpdate(update)
-
+        val query     = renderUpdate(update)
         val statement = conn.createStatement()
-
         statement.executeUpdate(query)
+      }.refineToOrDie[Exception]
 
+    def update(update: List[Update[_]]): IO[Exception, List[Int]] =
+      ZIO.scoped(pool.connection.flatMap(updateOnBatch(update, _)))
+
+    def updateOnBatch(update: List[Update[_]], conn: Connection): IO[Exception, List[Int]] =
+      ZIO.attemptBlocking {
+        val statement = conn.createStatement()
+        update.map(update_ => statement.addBatch(renderUpdate(update_)))
+        statement.executeBatch().toList
       }.refineToOrDie[Exception]
 
     def read[A](read: Read[A]): Stream[Exception, A] =
@@ -93,8 +115,18 @@ trait SqlDriverLiveModule { self: Jdbc =>
         statement.executeUpdate(query)
       }.refineToOrDie[Exception]
 
+    override def insertOnBatch[A: Schema](insert: List[Insert[_, A]], conn: Connection): IO[Exception, List[Int]] =
+      ZIO.attemptBlocking {
+        val statement = conn.createStatement()
+        insert.map(insert_ => statement.addBatch(renderInsert(insert_)))
+        statement.executeBatch().toList
+      }.refineToOrDie[Exception]
+
     override def insert[A: Schema](insert: Insert[_, A]): IO[Exception, Int] =
       ZIO.scoped(pool.connection.flatMap(insertOn(insert, _)))
+
+    def insert[A: Schema](insert: List[Insert[_, A]]): IO[Exception, List[Int]] =
+      ZIO.scoped(pool.connection.flatMap(insertOnBatch(insert, _)))
 
     override def transact[R, A](tx: ZTransaction[R, Exception, A]): ZIO[R, Throwable, A] =
       ZIO.scoped[R] {
