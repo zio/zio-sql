@@ -344,7 +344,7 @@ trait OracleRenderModule extends OracleSqlModule { self =>
                 builder.append(s"'${value}'")
                 ()
               case StandardType.LocalDateTimeType(formatter)  =>
-                builder.append(s"'${formatter.format(value.asInstanceOf[LocalDateTime])}'")
+                builder.append(s"DATE '${formatter.format(value.asInstanceOf[LocalDateTime])}'")
                 ()
               case UnitType                                   =>
                 builder.append("null") // None is encoded as Schema[Unit].transform(_ => None, _ => ())
