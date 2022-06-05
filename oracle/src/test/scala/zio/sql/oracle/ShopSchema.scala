@@ -5,9 +5,11 @@ import zio.sql.Jdbc
 trait ShopSchema extends Jdbc { self =>
   import self.ColumnSet._
 
-  object Customers     {
+  object Customers {
+
     val customers =
-      (uuid("id") ++ localDate("dob") ++ string("first_name") ++ string("last_name") ++ boolean("verified"))
+      (uuid("id") ++ localDate("dob") ++ string("first_name") ++ string("last_name") ++
+        boolean("verified"))
         .table("customers")
 
     val (customerId, dob, fName, lName, verified) = customers.columns

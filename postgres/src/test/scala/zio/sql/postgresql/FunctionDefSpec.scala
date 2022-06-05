@@ -30,15 +30,9 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
       import Expr._
 
       // note: a plain number (3) would and should not compile
-      val query = select(ConcatWs4("+", "1", "2", "3")) from customers
+      val query = select(ConcatWs4("+", "1", "2", "3"))
 
-      val expected = Seq( // note: one for each row
-        "1+2+3",
-        "1+2+3",
-        "1+2+3",
-        "1+2+3",
-        "1+2+3"
-      )
+      val expected = Seq("1+2+3")
 
       val testResult = execute(query)
       collectAndCompare(expected, testResult)
@@ -124,15 +118,9 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
         test("format0") {
           import Expr._
 
-          val query = select(Format0("Person")) from customers
+          val query = select(Format0("Person"))
 
-          val expected = Seq(
-            "Person",
-            "Person",
-            "Person",
-            "Person",
-            "Person"
-          )
+          val expected = Seq("Person")
 
           val testResult = execute(query)
           collectAndCompare(expected, testResult)
@@ -298,10 +286,10 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
       )
     },
     test("localtime with precision") {
-      val precision = 0
+      val precision = 3
       assertZIO(execute(select(LocaltimeWithPrecision(precision))).runHead.some.map(_.toString))(
         matchesRegex(
-          s"([0-9]{2}):[0-9]{2}:[0-9].[0-9]{$precision}"
+          s"\\d{2}:\\d{2}:\\d{2}\\.\\d{$precision}"
         )
       )
     },
@@ -356,11 +344,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
 
       val testResult = execute(query)
 
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertZIO(testResult.runHead.some)(equalTo(expected))
     },
     suite("parseIdent")(
       test("parseIdent removes quoting of individual identifiers") {
@@ -373,26 +357,18 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
             string2 <- someString
           } yield s""""${string1}".${string2}"""
 
-        val assertion = check(genTestString) { (testString) =>
+        check(genTestString) { (testString) =>
           val query      = select(ParseIdent(testString))
           val testResult = execute(query)
 
-          for {
-            r <- testResult.runCollect
-          } yield assert(r.head)(not(containsString("'")) && not(containsString("\"")))
-
+          assertZIO(testResult.runHead.some)(not(containsString("'")) && not(containsString("\"")))
         }
-        assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
       },
       test("parseIdent fails with invalid identifier") {
         val query      = select(ParseIdent("\'\"SomeSchema\".someTable.\'"))
         val testResult = execute(query)
 
-        val assertion = for {
-          r <- testResult.runCollect.exit
-        } yield assert(r)(fails(anything))
-
-        assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+        assertZIO(testResult.runCollect.exit)(fails(anything))
       }
     ) @@ ignore,
     test("sqrt") {
@@ -402,11 +378,7 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
 
       val testResult = execute(query)
 
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertZIO(testResult.runHead.some)(equalTo(expected))
     },
     test("chr") {
       val query = select(Chr(65))
@@ -876,16 +848,12 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("setseed") {
-      val query = select(SetSeed(0.12), Random(), Random()) from customers
+      val query = select(SetSeed(0.12), Random(), Random())
 
       val randomTupleForSeed = (0.019967750719779076, 0.8378369929936333)
       val testResult         = execute(query).map { case (_, b, c) => (b, c) }
 
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.take(2))(equalTo(Chunk(randomTupleForSeed, randomTupleForSeed)))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertZIO(testResult.runHead.some)(equalTo(randomTupleForSeed))
     },
     test("Can concat strings with concat function") {
 

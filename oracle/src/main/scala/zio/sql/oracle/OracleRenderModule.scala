@@ -3,14 +3,18 @@ package zio.sql.oracle
 import zio.schema.Schema
 import zio.schema.DynamicValue
 import zio.schema.StandardType
-import java.time.Instant
-import java.time.LocalDateTime
-import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
-import java.time.ZonedDateTime
+import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.OffsetTime
-import java.time.LocalDate
+import java.time.ZonedDateTime
+import zio.sql.driver.Renderer
+import zio.sql.driver.Renderer.Extensions
+
+import scala.collection.mutable
+import java.time.OffsetDateTime
 
 trait OracleRenderModule extends OracleSqlModule { self =>
 
@@ -32,8 +36,13 @@ trait OracleRenderModule extends OracleSqlModule { self =>
     builder.toString()
   }
 
-  override def renderUpdate(update: self.Update[_]): String = ???
+  override def renderUpdate(update: self.Update[_]): String = {
+    implicit val render: Renderer = Renderer()
+    OracleRender.renderUpdateImpl(update)
+    render.toString
+  }
 
+  // TODO: to consider the refactoring and using the implicit `Renderer`, see `renderExpr` in `PostgresRenderModule`
   private def buildExpr[A, B](expr: self.Expr[_, A, B], builder: StringBuilder): Unit = expr match {
     case Expr.Subselect(subselect)                                                            =>
       builder.append(" (")
@@ -63,16 +72,20 @@ trait OracleRenderModule extends OracleSqlModule { self =>
     case Expr.Relational(left, right, op)                                                     =>
       buildExpr(left, builder)
       builder.append(" ").append(op.symbol).append(" ")
-      buildExpr(right, builder)
+      right.asInstanceOf[Expr[_, A, B]] match {
+        case Expr.Literal(true)  => val _ = builder.append("1")
+        case Expr.Literal(false) => val _ = builder.append("0")
+        case otherValue          => buildExpr(otherValue, builder)
+      }
     case Expr.In(value, set)                                                                  =>
       buildExpr(value, builder)
       buildReadString(set, builder)
     case Expr.Literal(true)                                                                   =>
-      val _ = builder.append("1")
+      val _ = builder.append("1 = 1")
     case Expr.Literal(false)                                                                  =>
-      val _ = builder.append("0")
+      val _ = builder.append("0 = 1")
     case Expr.Literal(value)                                                                  =>
-      val _ = builder.append(value.toString) // todo fix escaping
+      val _ = builder.append(value.toString.singleQuoted)
     case Expr.AggregationCall(param, aggregation)                                             =>
       builder.append(aggregation.name.name)
       builder.append("(")
@@ -532,7 +545,7 @@ trait OracleRenderModule extends OracleSqlModule { self =>
         val _ = builder.append(" ")
     }
 
-  private def buildDeleteString(delete: Delete[_], builder: StringBuilder) = {
+  private def buildDeleteString(delete: Delete[_], builder: mutable.StringBuilder): Unit = {
     builder.append("DELETE FROM ")
     buildTable(delete.table, builder)
     delete.whereExpr match {
@@ -543,4 +556,42 @@ trait OracleRenderModule extends OracleSqlModule { self =>
     }
   }
 
+  private[oracle] object OracleRender {
+
+    def renderUpdateImpl(update: Update[_])(implicit render: Renderer): Unit =
+      update match {
+        case Update(table, set, whereExpr) =>
+          render("UPDATE ")
+          buildTable(table, render.builder)
+          render(" SET ")
+          renderSet(set)
+          render(" WHERE ")
+          buildExpr(whereExpr, render.builder)
+      }
+
+    def renderSet(set: List[Set[_, _]])(implicit render: Renderer): Unit =
+      set match {
+        case head :: tail =>
+          renderSetLhs(head.lhs)
+          render(" = ")
+          buildExpr(head.rhs, render.builder)
+          tail.foreach { setEq =>
+            render(", ")
+            renderSetLhs(setEq.lhs)
+            render(" = ")
+            buildExpr(setEq.rhs, render.builder)
+          }
+        case Nil          => // TODO restrict Update to not allow empty set
+      }
+
+    private[zio] def renderSetLhs[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit =
+      expr match {
+        case Expr.Source(table, column) =>
+          (table, column.name) match {
+            case (tableName, Some(columnName)) => val _ = render(tableName, ".", columnName)
+            case _                             => ()
+          }
+        case _                          => ()
+      }
+  }
 }

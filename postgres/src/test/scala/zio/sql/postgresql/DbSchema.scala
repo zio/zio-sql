@@ -2,6 +2,9 @@ package zio.sql.postgresql
 
 import zio.sql.Jdbc
 
+import java.time.{ LocalDate, ZonedDateTime }
+import java.util.UUID
+
 trait DbSchema extends Jdbc { self =>
   import self.ColumnSet._
 
@@ -17,6 +20,16 @@ trait DbSchema extends Jdbc { self =>
   }
 
   object Customers     {
+    case class Customer(
+      id: UUID,
+      fname: String,
+      lname: String,
+      verified: Boolean,
+      dateOfBirth: LocalDate,
+      created: String,
+      created2: ZonedDateTime
+    )
+
     // https://github.com/zio/zio-sql/issues/320 Once Insert is supported, we can remove created_timestamp_string
     val customers =
       (uuid("Id") ++ localDate("Dob") ++ string("First_name") ++ string("Last_name") ++ boolean(
@@ -26,6 +39,8 @@ trait DbSchema extends Jdbc { self =>
 
     val (customerId, dob, fName, lName, verified, createdString, createdTimestamp) =
       customers.columns
+
+    val ALL = customerId ++ fName ++ lName ++ verified ++ dob ++ createdString ++ createdTimestamp
   }
   object Orders        {
     val orders = (uuid("id") ++ uuid("customer_id") ++ localDate("order_date")).table("orders")
