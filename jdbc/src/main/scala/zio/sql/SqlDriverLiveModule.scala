@@ -126,18 +126,9 @@ trait SqlDriverLiveModule { self: Jdbc =>
     override def insert[A: Schema](insert: Insert[_, A]): IO[Exception, Int] =
       ZIO.scoped(pool.connection.flatMap(insertOn(insert, _)))
 
-<<<<<<< HEAD
     def insert[A: Schema](insert: List[Insert[_, A]]): IO[Exception, List[Int]] =
       ZIO.scoped(pool.connection.flatMap(insertOnBatch(insert, _)))
 
-    override def transact[R, A](tx: ZTransaction[R, Exception, A]): ZIO[R, Throwable, A] =
-      ZIO.scoped[R] {
-        for {
-          connection <- pool.connection
-          _          <- ZIO.attemptBlocking(connection.setAutoCommit(false)).refineToOrDie[Exception]
-          a          <- tx.run(Txn(connection, self))
-        } yield a
-=======
     override def transaction: ZLayer[Any, Exception, SqlTransaction] =
       ZLayer.scoped {
         for {
@@ -160,7 +151,6 @@ trait SqlDriverLiveModule { self: Jdbc =>
             insertOn(insert, connection)
 
         }
->>>>>>> ca2e4fd (Add SqlTransaction type)
       }
   }
 }
