@@ -341,7 +341,9 @@ trait OracleRenderModule extends OracleSqlModule { self =>
                 ()
               case StandardType.InstantType(formatter)        =>
                 builder.append(
-                  s"TO_TIMESTAMP_TZ('${formatter.format(value.asInstanceOf[Instant])}', 'SYYYY-MM-DD\"T\"HH24:MI:SS.FF9TZH:TZM')"
+                  s"""TO_TIMESTAMP_TZ('${formatter.format(
+                      value.asInstanceOf[Instant]
+                    )}', 'SYYYY-MM-DD"T"HH24:MI:SS.FF9TZH:TZM')"""
                 )
                 ()
               case CharType                                   =>
@@ -351,7 +353,7 @@ trait OracleRenderModule extends OracleSqlModule { self =>
                 builder.append(value)
                 ()
               case BinaryType                                 =>
-                val chunk = value.asInstanceOf[Chunk[Byte]]
+                val chunk = value.asInstanceOf[Chunk[Object]]
                 builder.append("'")
                 for (b <- chunk)
                   builder.append(String.format("%02x", b))
@@ -359,7 +361,9 @@ trait OracleRenderModule extends OracleSqlModule { self =>
                 ()
               case StandardType.LocalDateTimeType(formatter)  =>
                 builder.append(
-                  s"TO_TIMESTAMP('${formatter.format(value.asInstanceOf[LocalDateTime])}', 'SYYYY-MM-DD\"T\"HH24:MI:SS.FF9')"
+                  s"""TO_TIMESTAMP('${formatter.format(
+                      value.asInstanceOf[LocalDateTime]
+                    )}', 'SYYYY-MM-DD"T"HH24:MI:SS.FF9')"""
                 )
                 ()
               case StandardType.YearMonthType                 =>
@@ -371,12 +375,16 @@ trait OracleRenderModule extends OracleSqlModule { self =>
                 ()
               case StandardType.OffsetDateTimeType(formatter) =>
                 builder.append(
-                  s"TO_TIMESTAMP_TZ('${formatter.format(value.asInstanceOf[OffsetDateTime])}', 'SYYYY-MM-DD\"T\"HH24:MI:SS.FF9TZH:TZM')"
+                  s"""TO_TIMESTAMP_TZ('${formatter.format(
+                      value.asInstanceOf[OffsetDateTime]
+                    )}', 'SYYYY-MM-DD"T"HH24:MI:SS.FF9TZH:TZM')"""
                 )
                 ()
               case StandardType.ZonedDateTimeType(formatter)  =>
                 builder.append(
-                  s"TO_TIMESTAMP_TZ('${formatter.format(value.asInstanceOf[ZonedDateTime])}', 'SYYYY-MM-DD\"T\"HH24:MI:SS.FF9 TZR')"
+                  s"""TO_TIMESTAMP_TZ('${formatter.format(
+                      value.asInstanceOf[ZonedDateTime]
+                    )}', 'SYYYY-MM-DD"T"HH24:MI:SS.FF9 TZR')"""
                 )
                 ()
               case UUIDType                                   =>
