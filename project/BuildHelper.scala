@@ -162,6 +162,7 @@ object BuildHelper {
           compilerPlugin(("com.github.ghik" % "silencer-plugin"      % SilencerVersion).cross(CrossVersion.full))
         )
     },
+    resolvers += Resolver.sonatypeRepo("snapshots"),
     Test / parallelExecution := true,
     incOptions ~= (_.withLogRecompileOnMacro(false)),
     autoAPIMappings          := true,
