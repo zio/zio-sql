@@ -26,7 +26,8 @@ addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck"
 val zioVersion                 = "2.0.0-RC6"
 val zioSchemaVersion           = "0.1.9"
 val testcontainersVersion      = "1.17.2"
-val testcontainersScalaVersion = "0.40.7"
+val testcontainersScalaVersion = "0.40.8"
+val logbackVersion             = "1.2.11"
 
 lazy val root = project
   .in(file("."))
@@ -143,7 +144,8 @@ lazy val mysql = project
       "org.testcontainers" % "jdbc"                       % testcontainersVersion      % Test,
       "org.testcontainers" % "mysql"                      % testcontainersVersion      % Test,
       "mysql"              % "mysql-connector-java"       % "8.0.29"                   % Test,
-      "com.dimafeng"      %% "testcontainers-scala-mysql" % testcontainersScalaVersion % Test
+      "com.dimafeng"      %% "testcontainers-scala-mysql" % testcontainersScalaVersion % Test,
+      "ch.qos.logback"     % "logback-classic"            % logbackVersion             % Test
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
@@ -161,7 +163,8 @@ lazy val oracle = project
       "org.testcontainers"       % "oracle-xe"                      % testcontainersVersion      % Test,
       "org.testcontainers"       % "jdbc"                           % testcontainersVersion      % Test,
       "com.oracle.database.jdbc" % "ojdbc8"                         % "21.5.0.0"                 % Test,
-      "com.dimafeng"            %% "testcontainers-scala-oracle-xe" % testcontainersScalaVersion % Test
+      "com.dimafeng"            %% "testcontainers-scala-oracle-xe" % testcontainersScalaVersion % Test,
+      "ch.qos.logback"           % "logback-classic"                % logbackVersion             % Test
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
@@ -179,7 +182,8 @@ lazy val postgres = project
       "org.testcontainers" % "postgresql"                      % testcontainersVersion      % Test,
       "org.testcontainers" % "jdbc"                            % testcontainersVersion      % Test,
       "org.postgresql"     % "postgresql"                      % "42.3.6"                   % Compile,
-      "com.dimafeng"      %% "testcontainers-scala-postgresql" % testcontainersScalaVersion % Test
+      "com.dimafeng"      %% "testcontainers-scala-postgresql" % testcontainersScalaVersion % Test,
+      "ch.qos.logback"     % "logback-classic"                 % logbackVersion             % Test
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
@@ -197,7 +201,8 @@ lazy val sqlserver = project
       "org.testcontainers"      % "mssqlserver"                      % testcontainersVersion      % Test,
       "org.testcontainers"      % "jdbc"                             % testcontainersVersion      % Test,
       "com.microsoft.sqlserver" % "mssql-jdbc"                       % "9.4.0.jre8"               % Test,
-      "com.dimafeng"           %% "testcontainers-scala-mssqlserver" % testcontainersScalaVersion % Test
+      "com.dimafeng"           %% "testcontainers-scala-mssqlserver" % testcontainersScalaVersion % Test,
+      "ch.qos.logback"          % "logback-classic"                  % logbackVersion             % Test
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
