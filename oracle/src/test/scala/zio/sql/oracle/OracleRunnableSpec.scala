@@ -1,34 +1,17 @@
 package zio.sql.oracle
 
-import zio.ZLayer
-import zio.sql.{ ConnectionPoolConfig, JdbcRunnableSpec }
-import zio.test.{ Spec, TestEnvironment }
-
-import java.util.Properties
+import com.dimafeng.testcontainers.{ JdbcDatabaseContainer, OracleContainer, SingleContainer }
+import org.testcontainers.utility.DockerImageName
+import zio.sql.JdbcRunnableSpec
 
 trait OracleRunnableSpec extends JdbcRunnableSpec with OracleJdbcModule {
 
-  private def connProperties(user: String, password: String): Properties = {
-    val props = new Properties
-    props.setProperty("user", user)
-    props.setProperty("password", password)
-    props
-  }
-
-  val poolConfigLayer = ZLayer.scoped {
-    TestContainer
-      .oracle()
-      .map(container =>
-        ConnectionPoolConfig(
-          url = container.jdbcUrl,
-          properties = connProperties(container.username, container.password)
-        )
-      )
-  }
-
-  override def spec: Spec[TestEnvironment, Any] =
-    specLayered.provideCustomShared(jdbcLayer)
-
-  def specLayered: Spec[JdbcEnvironment, Object]
+  override protected def getContainer: SingleContainer[_] with JdbcDatabaseContainer =
+    new OracleContainer(
+      dockerImageName = DockerImageName.parse("gvenzl/oracle-xe")
+    ).configure { container =>
+      container.withInitScript("shop_schema.sql")
+      ()
+    }
 
 }
