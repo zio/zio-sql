@@ -49,7 +49,13 @@ trait MysqlRenderModule extends MysqlSqlModule { self =>
     def renderDeleteImpl(delete: Delete[_])(implicit render: Renderer) = {
       render("DELETE FROM ")
       renderTable(delete.table)
-      renderWhereExpr(delete.whereExpr)
+      delete.whereExpr match {
+        case Expr.Literal(true) => ()
+        case _                  =>
+          render(" WHERE ")
+          renderExpr(delete.whereExpr)
+      }
+      // renderWhereExpr(delete.whereExpr)
     }
 
     def renderUpdateImpl(update: Update[_])(implicit render: Renderer) =
@@ -59,7 +65,9 @@ trait MysqlRenderModule extends MysqlSqlModule { self =>
           renderTable(table)
           render(" SET ")
           renderSet(set)
-          renderWhereExpr(whereExpr)
+          render(" WHERE ")
+          renderExpr(whereExpr)
+        // renderWhereExpr(whereExpr)
       }
 
     def renderReadImpl(read: self.Read[_])(implicit render: Renderer): Unit =
@@ -83,7 +91,13 @@ trait MysqlRenderModule extends MysqlSqlModule { self =>
             render(" FROM ")
             renderTable(t)
           }
-          renderWhereExpr(whereExpr)
+          whereExpr match {
+            case Expr.Literal(true) => ()
+            case _                  =>
+              render(" WHERE ")
+              renderExpr(whereExpr)
+          }
+          // renderWhereExpr(whereExpr)
           groupByExprs match {
             case Read.ExprSet.ExprCons(_, _) =>
               render(" GROUP BY ")
@@ -523,15 +537,15 @@ trait MysqlRenderModule extends MysqlSqlModule { self =>
     * Drops the initial Litaral(true) present at the start of every WHERE expressions by default 
     * and proceeds to the rest of Expr's.
     */
-    private def renderWhereExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
-      case Expr.Literal(true)   => ()
-      case Expr.Binary(_, b, _) =>
-        render(" WHERE ")
-        renderExpr(b)
-      case _                    =>
-        render(" WHERE ")
-        renderExpr(expr)
-    }
+    // private def renderWhereExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
+    //   case Expr.Literal(true)   => ()
+    //   case Expr.Binary(_, b, _) =>
+    //     render(" WHERE ")
+    //     renderExpr(b)
+    //   case _                    =>
+    //     render(" WHERE ")
+    //     renderExpr(expr)
+    // }
   }
 
 }
