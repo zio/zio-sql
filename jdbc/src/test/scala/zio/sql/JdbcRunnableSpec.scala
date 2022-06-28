@@ -64,7 +64,7 @@ trait JdbcRunnableSpec extends ZIOSpecDefault with Jdbc {
       def map[A, B](f: A => B): Gen[R, A] => Gen[R, B]                   = _.map(f)
       def both[A, B](fa: => Gen[R, A], fb: => Gen[R, B]): Gen[R, (A, B)] = fa.zip(fb)
     }
-    
+
   private[this] def testContainer: ZIO[Scope, Throwable, SingleContainer[_] with JdbcDatabaseContainer] =
     ZIO.acquireRelease {
       ZIO.attemptBlocking {
