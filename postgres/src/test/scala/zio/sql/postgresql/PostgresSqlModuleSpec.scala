@@ -641,7 +641,7 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
         .values((UUID.randomUUID(), "Charles", "Dent", Some(LocalDate.of(2022, 1, 31))))
 
       val insertNone = insertInto(persons)(personId, fName, lName, dob)
-        .values((UUID.randomUUID(), "Martin", "Harvey", None))
+        .values((UUID.randomUUID(), "Martin", "Harvey", Option.empty[LocalDate]))
 
       val insertNone2 = insertInto(persons)(personId, fName, lName, dob)
         .values(personValue)
