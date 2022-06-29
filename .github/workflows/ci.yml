@@ -1,5 +1,9 @@
 name: CI
 
+env:
+  JDK_JAVA_OPTIONS: -XX:+PrintCommandLineFlags -XX:+UseG1GC -Xmx4g -Xms4g
+  JVM_OPTS: -XX:+PrintCommandLineFlags -XX:+UseG1GC -Xmx4g -Xms4g
+
 on:
   pull_request:
   push:
