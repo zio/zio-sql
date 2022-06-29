@@ -5,6 +5,7 @@ import java.sql._
 import zio._
 import zio.stream.{ Stream, ZStream }
 import zio.schema.Schema
+import zio.IO
 
 trait SqlDriverLiveModule { self: Jdbc =>
   private[sql] trait SqlDriverCore {
@@ -128,13 +129,28 @@ trait SqlDriverLiveModule { self: Jdbc =>
     def insert[A: Schema](insert: List[Insert[_, A]]): IO[Exception, List[Int]] =
       ZIO.scoped(pool.connection.flatMap(insertOnBatch(insert, _)))
 
-    override def transact[R, A](tx: ZTransaction[R, Exception, A]): ZIO[R, Throwable, A] =
-      ZIO.scoped[R] {
+    override def transaction: ZLayer[Any, Exception, SqlTransaction] =
+      ZLayer.scoped {
         for {
           connection <- pool.connection
           _          <- ZIO.attemptBlocking(connection.setAutoCommit(false)).refineToOrDie[Exception]
-          a          <- tx.run(Txn(connection, self))
-        } yield a
+          _          <- ZIO.addFinalizerExit(c =>
+                          ZIO.attempt(if (c.isSuccess) connection.commit() else connection.rollback()).ignore
+                        )
+        } yield new SqlTransaction {
+          def delete(delete: Delete[_]): IO[Exception, Int] =
+            deleteOn(delete, connection)
+
+          def update(update: Update[_]): IO[Exception, Int] =
+            updateOn(update, connection)
+
+          def read[A](read: Read[A]): Stream[Exception, A] =
+            readOn(read, connection)
+
+          def insert[A: Schema](insert: Insert[_, A]): IO[Exception, Int] =
+            insertOn(insert, connection)
+
+        }
       }
   }
 }
