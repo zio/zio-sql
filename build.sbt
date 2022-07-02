@@ -1,5 +1,4 @@
 import BuildHelper._
-import InfrastructureHelper._
 import explicitdeps.ExplicitDepsPlugin.autoImport.moduleFilterRemoveValue
 import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
@@ -24,34 +23,11 @@ addCommandAlias("fmtOnce", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("fmt", "fmtOnce;fmtOnce")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
-val zioVersion                 = "2.0.0-RC6"
-val zioSchemaVersion           = "0.1.9"
+val zioVersion                 = "2.0.0"
+val zioSchemaVersion           = "0.2.0"
 val testcontainersVersion      = "1.17.2"
-val testcontainersScalaVersion = "0.40.7"
-
-lazy val startPostgres = taskKey[Unit]("Start up Postgres")
-startPostgres := startService(Database.Postgres, streams.value)
-
-lazy val stopPostgres = taskKey[Unit]("Shut down Postgres")
-stopPostgres := stopService(Database.Postgres, streams.value)
-
-lazy val startMySQL = taskKey[Unit]("Start up MySQL")
-startMySQL := startService(Database.MySQL, streams.value)
-
-lazy val stopMySQL = taskKey[Unit]("Shut down MySQL")
-stopMySQL := stopService(Database.MySQL, streams.value)
-
-lazy val startMsSQL = taskKey[Unit]("Start up Microsoft SQL Server")
-startMsSQL := startService(Database.MSSQL, streams.value)
-
-lazy val stopMsSQL = taskKey[Unit]("Shut down Microsoft SQL Server")
-stopMsSQL := stopService(Database.MSSQL, streams.value)
-
-lazy val startOracle = taskKey[Unit]("Start up Oracle")
-startOracle := startService(Database.Oracle, streams.value)
-
-lazy val stopOracle = taskKey[Unit]("Shut down Oracle")
-stopOracle := stopService(Database.Oracle, streams.value)
+val testcontainersScalaVersion = "0.40.8"
+val logbackVersion             = "1.2.11"
 
 lazy val root = project
   .in(file("."))
@@ -168,7 +144,8 @@ lazy val mysql = project
       "org.testcontainers" % "jdbc"                       % testcontainersVersion      % Test,
       "org.testcontainers" % "mysql"                      % testcontainersVersion      % Test,
       "mysql"              % "mysql-connector-java"       % "8.0.29"                   % Test,
-      "com.dimafeng"      %% "testcontainers-scala-mysql" % testcontainersScalaVersion % Test
+      "com.dimafeng"      %% "testcontainers-scala-mysql" % testcontainersScalaVersion % Test,
+      "ch.qos.logback"     % "logback-classic"            % logbackVersion             % Test
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
@@ -186,7 +163,8 @@ lazy val oracle = project
       "org.testcontainers"       % "oracle-xe"                      % testcontainersVersion      % Test,
       "org.testcontainers"       % "jdbc"                           % testcontainersVersion      % Test,
       "com.oracle.database.jdbc" % "ojdbc8"                         % "21.5.0.0"                 % Test,
-      "com.dimafeng"            %% "testcontainers-scala-oracle-xe" % testcontainersScalaVersion % Test
+      "com.dimafeng"            %% "testcontainers-scala-oracle-xe" % testcontainersScalaVersion % Test,
+      "ch.qos.logback"           % "logback-classic"                % logbackVersion             % Test
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
@@ -204,7 +182,8 @@ lazy val postgres = project
       "org.testcontainers" % "postgresql"                      % testcontainersVersion      % Test,
       "org.testcontainers" % "jdbc"                            % testcontainersVersion      % Test,
       "org.postgresql"     % "postgresql"                      % "42.3.6"                   % Compile,
-      "com.dimafeng"      %% "testcontainers-scala-postgresql" % testcontainersScalaVersion % Test
+      "com.dimafeng"      %% "testcontainers-scala-postgresql" % testcontainersScalaVersion % Test,
+      "ch.qos.logback"     % "logback-classic"                 % logbackVersion             % Test
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
@@ -222,7 +201,8 @@ lazy val sqlserver = project
       "org.testcontainers"      % "mssqlserver"                      % testcontainersVersion      % Test,
       "org.testcontainers"      % "jdbc"                             % testcontainersVersion      % Test,
       "com.microsoft.sqlserver" % "mssql-jdbc"                       % "9.4.0.jre8"               % Test,
-      "com.dimafeng"           %% "testcontainers-scala-mssqlserver" % testcontainersScalaVersion % Test
+      "com.dimafeng"           %% "testcontainers-scala-mssqlserver" % testcontainersScalaVersion % Test,
+      "ch.qos.logback"          % "logback-classic"                  % logbackVersion             % Test
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))

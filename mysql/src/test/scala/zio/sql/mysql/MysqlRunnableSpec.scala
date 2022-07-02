@@ -1,29 +1,17 @@
 package zio.sql.mysql
 
-import java.util.Properties
-import zio.sql.{ ConnectionPoolConfig, JdbcRunnableSpec }
-import zio.test._
-import zio.ZLayer
+import com.dimafeng.testcontainers.{ JdbcDatabaseContainer, MySQLContainer, SingleContainer }
+import org.testcontainers.utility.DockerImageName
+import zio.sql.JdbcRunnableSpec
 
 trait MysqlRunnableSpec extends JdbcRunnableSpec with MysqlJdbcModule {
 
-  private def connProperties(user: String, password: String): Properties = {
-    val props = new Properties
-    props.setProperty("user", user)
-    props.setProperty("password", password)
-    props
-  }
-
-  val poolConfigLayer: ZLayer[Any, Throwable, ConnectionPoolConfig] =
-    ZLayer.scoped {
-      TestContainer
-        .mysql()
-        .map(a => ConnectionPoolConfig(a.jdbcUrl, connProperties(a.username, a.password)))
+  override protected def getContainer: SingleContainer[_] with JdbcDatabaseContainer =
+    new MySQLContainer(
+      mysqlImageVersion = Option("mysql").map(DockerImageName.parse)
+    ).configure { a =>
+      a.withInitScript("shop_schema.sql")
+      ()
     }
-
-  override def spec: Spec[TestEnvironment, Any] =
-    specLayered.provideCustomLayerShared(jdbcLayer)
-
-  def specLayered: Spec[JdbcEnvironment, Object]
 
 }

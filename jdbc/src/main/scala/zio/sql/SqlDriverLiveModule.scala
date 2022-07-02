@@ -5,9 +5,16 @@ import java.sql._
 import zio._
 import zio.stream.{ Stream, ZStream }
 import zio.schema.Schema
+import zio.IO
 
 trait SqlDriverLiveModule { self: Jdbc =>
   private[sql] trait SqlDriverCore {
+
+    def deleteOnBatch(delete: List[Delete[_]], conn: Connection): IO[Exception, List[Int]]
+
+    def updateOnBatch(update: List[Update[_]], conn: Connection): IO[Exception, List[Int]]
+
+    def insertOnBatch[A: Schema](insert: List[Insert[_, A]], conn: Connection): IO[Exception, List[Int]]
 
     def deleteOn(delete: Delete[_], conn: Connection): IO[Exception, Int]
 
@@ -22,6 +29,9 @@ trait SqlDriverLiveModule { self: Jdbc =>
     def delete(delete: Delete[_]): IO[Exception, Int] =
       ZIO.scoped(pool.connection.flatMap(deleteOn(delete, _)))
 
+    def delete(delete: List[Delete[_]]): IO[Exception, List[Int]] =
+      ZIO.scoped(pool.connection.flatMap(deleteOnBatch(delete, _)))
+
     def deleteOn(delete: Delete[_], conn: Connection): IO[Exception, Int] =
       ZIO.attemptBlocking {
         val query     = renderDelete(delete)
@@ -29,18 +39,31 @@ trait SqlDriverLiveModule { self: Jdbc =>
         statement.executeUpdate(query)
       }.refineToOrDie[Exception]
 
+    def deleteOnBatch(delete: List[Delete[_]], conn: Connection): IO[Exception, List[Int]] =
+      ZIO.attemptBlocking {
+        val statement = conn.createStatement()
+        delete.map(delete_ => statement.addBatch(renderDelete(delete_)))
+        statement.executeBatch().toList
+      }.refineToOrDie[Exception]
+
     def update(update: Update[_]): IO[Exception, Int] =
       ZIO.scoped(pool.connection.flatMap(updateOn(update, _)))
 
     def updateOn(update: Update[_], conn: Connection): IO[Exception, Int] =
       ZIO.attemptBlocking {
-
-        val query = renderUpdate(update)
-
+        val query     = renderUpdate(update)
         val statement = conn.createStatement()
-
         statement.executeUpdate(query)
+      }.refineToOrDie[Exception]
 
+    def update(update: List[Update[_]]): IO[Exception, List[Int]] =
+      ZIO.scoped(pool.connection.flatMap(updateOnBatch(update, _)))
+
+    def updateOnBatch(update: List[Update[_]], conn: Connection): IO[Exception, List[Int]] =
+      ZIO.attemptBlocking {
+        val statement = conn.createStatement()
+        update.map(update_ => statement.addBatch(renderUpdate(update_)))
+        statement.executeBatch().toList
       }.refineToOrDie[Exception]
 
     def read[A](read: Read[A]): Stream[Exception, A] =
@@ -93,16 +116,41 @@ trait SqlDriverLiveModule { self: Jdbc =>
         statement.executeUpdate(query)
       }.refineToOrDie[Exception]
 
+    override def insertOnBatch[A: Schema](insert: List[Insert[_, A]], conn: Connection): IO[Exception, List[Int]] =
+      ZIO.attemptBlocking {
+        val statement = conn.createStatement()
+        insert.map(insert_ => statement.addBatch(renderInsert(insert_)))
+        statement.executeBatch().toList
+      }.refineToOrDie[Exception]
+
     override def insert[A: Schema](insert: Insert[_, A]): IO[Exception, Int] =
       ZIO.scoped(pool.connection.flatMap(insertOn(insert, _)))
 
-    override def transact[R, A](tx: ZTransaction[R, Exception, A]): ZIO[R, Throwable, A] =
-      ZIO.scoped[R] {
+    def insert[A: Schema](insert: List[Insert[_, A]]): IO[Exception, List[Int]] =
+      ZIO.scoped(pool.connection.flatMap(insertOnBatch(insert, _)))
+
+    override def transaction: ZLayer[Any, Exception, SqlTransaction] =
+      ZLayer.scoped {
         for {
           connection <- pool.connection
           _          <- ZIO.attemptBlocking(connection.setAutoCommit(false)).refineToOrDie[Exception]
-          a          <- tx.run(Txn(connection, self))
-        } yield a
+          _          <- ZIO.addFinalizerExit(c =>
+                          ZIO.attempt(if (c.isSuccess) connection.commit() else connection.rollback()).ignore
+                        )
+        } yield new SqlTransaction {
+          def delete(delete: Delete[_]): IO[Exception, Int] =
+            deleteOn(delete, connection)
+
+          def update(update: Update[_]): IO[Exception, Int] =
+            updateOn(update, connection)
+
+          def read[A](read: Read[A]): Stream[Exception, A] =
+            readOn(read, connection)
+
+          def insert[A: Schema](insert: Insert[_, A]): IO[Exception, Int] =
+            insertOn(insert, connection)
+
+        }
       }
   }
 }
