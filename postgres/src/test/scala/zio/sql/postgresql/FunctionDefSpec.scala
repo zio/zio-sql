@@ -1058,6 +1058,34 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
 
       val result = typeCheck("execute((select(CharLength(Customers.fName))).to[Int, Int](identity))")
       assertZIO(dummyUsage *> result)(isLeft)
+    },
+    test("date-trunc woth hour") {
+      val someInstant = Instant.parse("1997-05-07T10:15:30.00Z")
+      val query       = select(DateTrunc("hour", someInstant))
+      val testResult  = execute(query)
+
+      val assertion =
+        for {
+          r <- testResult.runCollect
+        } yield assert(timestampFormatter.format(r.head))(
+          Assertion.matchesRegex("[0-9]{4}-[0-9]{2}-[0-9]{2} 10:00:00.0000")
+        )
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    test("date-trunc with minute") {
+      val someInstant = Instant.parse("1997-05-07T10:15:30.00Z")
+      val query       = select(DateTrunc("minute", someInstant))
+      val testResult  = execute(query)
+
+      val assertion =
+        for {
+          r <- testResult.runCollect
+        } yield assert(timestampFormatter.format(r.head))(
+          Assertion.matchesRegex("[0-9]{4}-[0-9]{2}-[0-9]{2} 10:15:00.0000")
+        )
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
   ) @@ timeout(5.minutes)
 }

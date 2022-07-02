@@ -1,18 +1,16 @@
 package zio.sql.oracle
 
-import zio.sql.Jdbc
-
-trait ShopSchema extends Jdbc { self =>
+trait ShopSchema extends OracleSqlModule { self =>
   import self.ColumnSet._
 
   object Customers {
 
     val customers =
       (uuid("id") ++ localDate("dob") ++ string("first_name") ++ string("last_name") ++
-        boolean("verified") ++ zonedDateTime("Created_timestamp"))
+        boolean("verified"))
         .table("customers")
 
-    val (customerId, dob, fName, lName, verified, createdTimestamp) = customers.columns
+    val (customerId, dob, fName, lName, verified) = customers.columns
   }
   object Orders        {
     val orders = (uuid("id") ++ uuid("customer_id") ++ localDate("order_date")).table("orders")
@@ -40,5 +38,56 @@ trait ShopSchema extends Jdbc { self =>
         ) // todo fix #3 quantity should be int, unit price should be bigDecimal, numeric operators only support double ATM.
 
     val (fkOrderId, fkProductId, quantity, unitPrice) = orderDetails.columns
+  }
+
+  object AllTypes {
+    val allTypes =
+      (uuid("id") ++
+        byteArray("bytearray") ++
+        bigDecimal("bigdecimal") ++
+        boolean("boolean_") ++
+        char("char_") ++
+        double("double_") ++
+        float("float_") ++
+        instant("instant") ++
+        int("int_") ++
+        (int("optional_int") @@ ColumnSetAspect.nullable) ++
+        localDate("localdate") ++
+        localDateTime("localdatetime") ++
+        localTime("localtime") ++
+        long("long_") ++
+        offsetDateTime("offsetdatetime") ++
+        offsetTime("offsettime") ++
+        short("short") ++
+        string("string") ++
+        uuid("uuid") ++
+        zonedDateTime("zoneddatetime") ++
+        yearMonth("yearmonth") ++
+        duration("duration")).table("all_types")
+
+    val (
+      id,
+      bytearrayCol,
+      bigdecimalCol,
+      booleanCol,
+      charCol,
+      doubleCol,
+      floatCol,
+      instantCol,
+      intCol,
+      optionalIntCol,
+      localdateCol,
+      localdatetimeCol,
+      localtimeCol,
+      longCol,
+      offsetdatetimeCol,
+      offsettimeCol,
+      shortCol,
+      stringCol,
+      uuidCol,
+      zonedDatetimeCol,
+      yearMonthCol,
+      durationCol
+    ) = allTypes.columns
   }
 }
