@@ -97,6 +97,9 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
     test("Can select with property unary operator") {
       customerSelectJoseAssertion(verified isNotTrue)
     },
+    test("Can select with property binary operator with Boolean") {
+      customerSelectJoseAssertion(verified === false)
+    },
     test("Can select with property binary operator with UUID") {
       customerSelectJoseAssertion(customerId === UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc"))
     },
@@ -117,6 +120,9 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
     },
     test("Can select with property binary operator with Instant") {
       customerSelectJoseAssertion(dob === Instant.parse("1987-03-23T00:00:00Z"))
+    },
+    test("Can select with mutltiple binary operators") {
+      customerSelectJoseAssertion(verified === false && fName === "Jose" && lName === "Wiggins")
     },
     test("Can select from single table with limit, offset and order by") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)

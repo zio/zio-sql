@@ -4,12 +4,13 @@ import java.time._
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
-import scala.language.postfixOps
-
 import zio._
 import zio.schema._
 import zio.test._
 import zio.test.Assertion._
+import zio.test.TestAspect._
+
+import scala.language.postfixOps
 
 object MysqlModuleSpec extends MysqlRunnableSpec with ShopSchema {
 
@@ -270,6 +271,6 @@ object MysqlModuleSpec extends MysqlRunnableSpec with ShopSchema {
       println(renderUpdate(query))
       assertZIO(execute(query))(equalTo(1))
     }
-  )
+  ) @@ sequential
 
 }
