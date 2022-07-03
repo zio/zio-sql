@@ -47,7 +47,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
       renderInsertValues(insert.values)
     }
 
-    def renderInsertValues[A](col: Seq[A])(implicit render: Renderer, schema: Schema[A]): Unit =
+    private def renderInsertValues[A](col: Seq[A])(implicit render: Renderer, schema: Schema[A]): Unit =
       // TODO any performance penalty because of toList ?
       col.toList match {
         case head :: Nil  =>
@@ -62,7 +62,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
         case Nil          => ()
       }
 
-    def renderInserValue[Z](z: Z)(implicit render: Renderer, schema: Schema[Z]): Unit =
+    private def renderInserValue[Z](z: Z)(implicit render: Renderer, schema: Schema[Z]): Unit =
       schema.toDynamic(z) match {
         case DynamicValue.Record(listMap) =>
           listMap.values.toList match {
@@ -76,7 +76,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
         case value                        => renderDynamicValue(value)
       }
 
-    def renderDynamicValues(dynValues: List[DynamicValue])(implicit render: Renderer): Unit =
+    private def renderDynamicValues(dynValues: List[DynamicValue])(implicit render: Renderer): Unit =
       dynValues match {
         case head :: Nil  => renderDynamicValue(head)
         case head :: tail =>
@@ -87,7 +87,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
       }
 
     // TODO render each type according to their specifics & test it
-    def renderDynamicValue(dynValue: DynamicValue)(implicit render: Renderer): Unit =
+    private def renderDynamicValue(dynValue: DynamicValue)(implicit render: Renderer): Unit =
       dynValue match {
         case DynamicValue.Primitive(value, typeTag) =>
           // need to do this since StandardType is invariant in A
@@ -143,7 +143,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
         case _                                      => ()
       }
 
-    def renderColumnNames(sources: SelectionSet[_])(implicit render: Renderer): Unit =
+    private def renderColumnNames(sources: SelectionSet[_])(implicit render: Renderer): Unit =
       sources match {
         case SelectionSet.Empty                       => () // table is a collection of at least ONE column
         case SelectionSet.Cons(columnSelection, tail) =>
@@ -161,12 +161,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
     def renderDeleteImpl(delete: Delete[_])(implicit render: Renderer) = {
       render("DELETE FROM ")
       renderTable(delete.table)
-      delete.whereExpr match {
-        case Expr.Literal(true) => ()
-        case _                  =>
-          render(" WHERE ")
-          renderExpr(delete.whereExpr)
-      }
+      renderWhereExpr(delete.whereExpr)
     }
 
     def renderUpdateImpl(update: Update[_])(implicit render: Renderer) =
@@ -176,11 +171,10 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
           renderTable(table)
           render(" SET ")
           renderSet(set)
-          render(" WHERE ")
-          renderExpr(whereExpr)
+          renderWhereExpr(whereExpr)
       }
 
-    def renderSet(set: List[Set[_, _]])(implicit render: Renderer): Unit =
+    private def renderSet(set: List[Set[_, _]])(implicit render: Renderer): Unit =
       set match {
         case head :: tail =>
           renderSetLhs(head.lhs)
@@ -394,12 +388,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
             render(" FROM ")
             renderTable(t)
           }
-          whereExpr match {
-            case Expr.Literal(true) => ()
-            case _                  =>
-              render(" WHERE ")
-              renderExpr(whereExpr)
-          }
+          renderWhereExpr(whereExpr)
           groupByExprs match {
             case Read.ExprSet.ExprCons(_, _) =>
               render(" GROUP BY ")
@@ -438,7 +427,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
           render(" (", values.mkString(","), ") ") // todo fix needs escaping
       }
 
-    def renderExprList(expr: Read.ExprSet[_])(implicit render: Renderer): Unit =
+    private def renderExprList(expr: Read.ExprSet[_])(implicit render: Renderer): Unit =
       expr match {
         case Read.ExprSet.ExprCons(head, tail) =>
           renderExpr(head)
@@ -451,7 +440,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
         case Read.ExprSet.NoExpr               => ()
       }
 
-    def renderOrderingList(expr: List[Ordering[Expr[_, _, _]]])(implicit render: Renderer): Unit =
+    private def renderOrderingList(expr: List[Ordering[Expr[_, _, _]]])(implicit render: Renderer): Unit =
       expr match {
         case head :: tail =>
           head match {
@@ -469,7 +458,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
         case Nil          => ()
       }
 
-    def renderSelection[A](selectionSet: SelectionSet[A])(implicit render: Renderer): Unit =
+    private def renderSelection[A](selectionSet: SelectionSet[A])(implicit render: Renderer): Unit =
       selectionSet match {
         case cons0 @ SelectionSet.Cons(_, _) =>
           object Dummy {
@@ -487,7 +476,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
         case SelectionSet.Empty              => ()
       }
 
-    def renderColumnSelection[A, B](columnSelection: ColumnSelection[A, B])(implicit render: Renderer): Unit =
+    private def renderColumnSelection[A, B](columnSelection: ColumnSelection[A, B])(implicit render: Renderer): Unit =
       columnSelection match {
         case ColumnSelection.Constant(value, name) =>
           render(value) // todo fix escaping
@@ -507,7 +496,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
           }
       }
 
-    def renderTable(table: Table)(implicit render: Renderer): Unit =
+    private def renderTable(table: Table)(implicit render: Renderer): Unit =
       table match {
         case Table.DialectSpecificTable(tableExtension) =>
           tableExtension match {
@@ -538,5 +527,19 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
           renderExpr(on)
           render(" ")
       }
+
+    /**
+    * Drops the initial Litaral(true) present at the start of every WHERE expressions by default 
+    * and proceeds to the rest of Expr's.
+    */
+    private def renderWhereExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
+      case Expr.Literal(true)   => ()
+      case Expr.Binary(_, b, _) =>
+        render(" WHERE ")
+        renderExpr(b)
+      case _                    =>
+        render(" WHERE ")
+        renderExpr(expr)
+    }
   }
 }
