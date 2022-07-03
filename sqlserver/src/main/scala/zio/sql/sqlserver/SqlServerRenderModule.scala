@@ -60,12 +60,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
             render(" FROM ")
             buildTable(t)
           }
-          whereExpr match {
-            case Expr.Literal(true) => ()
-            case _                  =>
-              render(" WHERE ")
-              buildExpr(whereExpr)
-          }
+          buildWhereExpr(whereExpr)
           groupByExprs match {
             case Read.ExprSet.ExprCons(_, _) =>
               render(" GROUP BT ")
@@ -96,7 +91,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
           render(" (", values.mkString(","), ") ") // todo fix needs escaping
       }
 
-    def buildExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
+    private def buildExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
       case Expr.Subselect(subselect)                                                            =>
         render(" (")
         render(renderRead(subselect))
@@ -126,7 +121,11 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
       case Expr.Relational(left, right, op)                                                     =>
         buildExpr(left)
         render(" ", op.symbol, " ")
-        buildExpr(right)
+        right.asInstanceOf[Expr[_, A, B]] match {
+          case Expr.Literal(true)  => val _ = render("1")
+          case Expr.Literal(false) => val _ = render("0")
+          case otherValue          => buildExpr(otherValue)
+        }
       case Expr.In(value, set)                                                                  =>
         buildExpr(value)
         renderReadImpl(set)
@@ -247,7 +246,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
         render(")")
     }
 
-    def buildExprList(expr: Read.ExprSet[_])(implicit render: Renderer): Unit                   =
+    private def buildExprList(expr: Read.ExprSet[_])(implicit render: Renderer): Unit =
       expr match {
         case Read.ExprSet.ExprCons(head, tail) =>
           buildExpr(head)
@@ -259,7 +258,8 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
           }
         case Read.ExprSet.NoExpr               => ()
       }
-    def buildOrderingList(expr: List[Ordering[Expr[_, _, _]]])(implicit render: Renderer): Unit =
+
+    private def buildOrderingList(expr: List[Ordering[Expr[_, _, _]]])(implicit render: Renderer): Unit =
       expr match {
         case head :: tail =>
           head match {
@@ -277,7 +277,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
         case Nil          => ()
       }
 
-    def buildSelection(selectionSet: SelectionSet[_])(implicit render: Renderer): Unit =
+    private def buildSelection(selectionSet: SelectionSet[_])(implicit render: Renderer): Unit =
       selectionSet match {
         case cons0 @ SelectionSet.Cons(_, _) =>
           object Dummy {
@@ -295,7 +295,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
         case SelectionSet.Empty              => ()
       }
 
-    def buildColumnSelection[A, B](columnSelection: ColumnSelection[A, B])(implicit render: Renderer): Unit =
+    private def buildColumnSelection[A, B](columnSelection: ColumnSelection[A, B])(implicit render: Renderer): Unit =
       columnSelection match {
         case ColumnSelection.Constant(value, name) =>
           render(value.toString()) // todo fix escaping
@@ -317,7 +317,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
           }
       }
 
-    def buildTable(table: Table)(implicit render: Renderer): Unit =
+    private def buildTable(table: Table)(implicit render: Renderer): Unit =
       table match {
 
         case Table.DerivedTable(read, name) =>
@@ -356,15 +356,24 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
           render(" ")
       }
 
+    /**
+      * Drops the initial Litaral(true) present at the start of every WHERE expressions by default 
+      * and proceeds to the rest of Expr's.
+      */
+    private def buildWhereExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
+      case Expr.Literal(true)   => ()
+      case Expr.Binary(_, b, _) =>
+        render(" WHERE ")
+        buildExpr(b)
+      case _                    =>
+        render(" WHERE ")
+        buildExpr(expr)
+    }
+
     def renderDeleteImpl(delete: Delete[_])(implicit render: Renderer) = {
       render("DELETE FROM ")
       buildTable(delete.table)
-      delete.whereExpr match {
-        case Expr.Literal(true) => ()
-        case _                  =>
-          render(" WHERE ")
-          buildExpr(delete.whereExpr)
-      }
+      buildWhereExpr(delete.whereExpr)
     }
 
     // TODO https://github.com/zio/zio-sql/issues/160
