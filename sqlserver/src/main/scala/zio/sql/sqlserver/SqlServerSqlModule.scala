@@ -1,6 +1,10 @@
 package zio.sql.sqlserver
 
+import zio.schema.Schema
 import zio.sql.Sql
+
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 trait SqlServerSqlModule extends Sql { self =>
 
@@ -88,5 +92,8 @@ trait SqlServerSqlModule extends Sql { self =>
       val Avg = AggregationDef[BigDecimal, Int](FunctionName("avg"))
     }
   }
+
+  implicit val localDateSchema =
+    Schema.primitive[LocalDate](zio.schema.StandardType.LocalDateType(DateTimeFormatter.ISO_LOCAL_DATE))
 
 }
