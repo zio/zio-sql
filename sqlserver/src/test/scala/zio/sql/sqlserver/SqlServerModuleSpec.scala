@@ -521,6 +521,11 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
+    test("Can update rows") {
+      val query = update(customers).set(fName, "Roland").where(fName === "Ronald")
+
+      assertZIO(execute(query))(equalTo(1))
+    },
     test("Can delete from single table with a condition") {
       val query = deleteFrom(customers).where(verified.isNotTrue)
 
