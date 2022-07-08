@@ -537,11 +537,11 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
     },
     test("Can insert rows") {
       final case class CustomerRow(
-                                    id: UUID,
-                                    firstName: String,
-                                    lastName: String,
-                                    verified: Boolean,
-                                    dateOfBirth: LocalDate
+        id: UUID,
+        firstName: String,
+        lastName: String,
+        verified: Boolean,
+        dateOfBirth: LocalDate
       )
       implicit val customerRowSchema =
         Schema.CaseClass5[UUID, String, String, Boolean, LocalDate, CustomerRow](

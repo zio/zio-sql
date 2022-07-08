@@ -6,7 +6,7 @@ import zio.sql.driver.Renderer
 import zio.sql.driver.Renderer.Extensions
 
 import java.time.format.DateTimeFormatter
-import java.time.{Instant, LocalDate, LocalDateTime, LocalTime, OffsetDateTime, OffsetTime, ZonedDateTime}
+import java.time.{ Instant, LocalDate, LocalDateTime, LocalTime, OffsetDateTime, OffsetTime, ZonedDateTime }
 
 trait SqlServerRenderModule extends SqlServerSqlModule { self =>
 
@@ -415,7 +415,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
             case Nil          => ()
           }
         case value                        => buildDynamicValue(value)
-    }
+      }
 
     private def buildDynamicValues(dynValues: List[DynamicValue])(implicit render: Renderer): Unit =
       dynValues match {
