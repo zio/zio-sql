@@ -37,8 +37,34 @@ create table order_details
     unit_price Number(15,2) not null
 );
 
-insert all 
-	into customers (id, first_name, last_name, verified, dob) values ('60b01fc9-c902-4468-8d49-3c0f989def37', 'Ronald', 'Russell', 1, TO_DATE('1983-01-05','YYYY-MM-DD'))   
+create table all_types
+(
+    id varchar(36) not null primary key,
+    bytearray blob,
+    bigdecimal number not null,
+    boolean_ number(1) not null,
+    char_ varchar(4) not null,
+    double_ number not null,
+    float_ float not null,
+    instant timestamp with time zone not null,
+    int_ integer not null,
+    optional_int integer,
+    localdate date not null,
+    localdatetime timestamp not null,
+    localtime interval day to second not null,
+    long_ integer not null,
+    offsetdatetime timestamp with time zone not null,
+    offsettime timestamp with time zone not null,
+    short integer not null,
+    string clob not null,
+    uuid varchar(36) not null,
+    zoneddatetime timestamp with time zone not null,
+    yearmonth interval year(4) to month not null,
+    duration interval day(9) to second(9) not null
+);
+
+insert all
+	into customers (id, first_name, last_name, verified, dob) values ('60b01fc9-c902-4468-8d49-3c0f989def37', 'Ronald', 'Russell', 1, TO_DATE('1983-01-05','YYYY-MM-DD'))
 	into customers (id, first_name, last_name, verified, dob) values ('f76c9ace-be07-4bf3-bd4c-4a9c62882e64', 'Terrence', 'Noel', 1, TO_DATE('1999-11-02','YYYY-MM-DD'))
 	into customers (id, first_name, last_name, verified, dob) values ('784426a5-b90a-4759-afbb-571b7a0ba35e', 'Mila', 'Paterso', 1, TO_DATE('1990-11-16','YYYY-MM-DD'))
 	into customers (id, first_name, last_name, verified, dob) values ('df8215a2-d5fd-4c6c-9984-801a1b3a2a0b', 'Alana', 'Murray', 1, TO_DATE('1995-11-12','YYYY-MM-DD'))
@@ -106,7 +132,7 @@ insert all
 	    ('04912093-cc2e-46ac-b64c-1bd7bb7758c3', '60b01fc9-c902-4468-8d49-3c0f989def37', TO_DATE('2019-03-25', 'YYYY-MM-DD'))
 	into orders
 	    (id, customer_id, order_date)
-	values   
+	values
 	    ('a243fa42-817a-44ec-8b67-22193d212d82', '60b01fc9-c902-4468-8d49-3c0f989def37', TO_DATE('2018-06-04', 'YYYY-MM-DD'))
 	into orders
 	    (id, customer_id, order_date)

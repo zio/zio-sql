@@ -2,6 +2,7 @@ package zio.sql.postgresql
 
 import zio.Cause
 import zio.test.Assertion._
+import zio.test.TestAspect._
 import zio.test._
 
 import java.time.{ LocalDate, ZonedDateTime }
@@ -70,25 +71,24 @@ object DeleteBatchSpec extends PostgresRunnableSpec with DbSchema {
 
       val allCustomer  = List(c1, c2, c3, c4)
       val data         = allCustomer.map(Customer.unapply(_).get)
-      val query        = insertInto(customers)(ALL).values(data)
-      val resultInsert = execute(query)
+      val insertStmt   = insertInto(customers)(ALL).values(data)
+      val insertResult = execute(insertStmt)
 
-      val insertAssertion = for {
-        r <- resultInsert
-      } yield assert(r)(equalTo(4))
-      insertAssertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      val selectStmt   = select(ALL).from(customers)
+      val selectResult = execute(selectStmt.to((Customer.apply _).tupled)).runCollect
 
-      val selectAll = select(ALL).from(customers)
-      val result_   = execute(selectAll.to((Customer.apply _).tupled)).runCollect
+      val expected = 8 // 4 customers are in the db alredy and we insert additional 4 in this test
 
-      val assertion_ = for {
-        x      <- result_
-        updated = x.toList.map(delete_)
-        result <- executeBatchDelete(updated).map(l => l.fold(0)((a, b) => a + b))
-      } yield assert(result)(equalTo(4))
-      assertion_.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      val assertion = for {
+        _         <- insertResult
+        customers <- selectResult
+        deletes    = customers.toList.map(delete_)
+        result    <- executeBatchDelete(deletes).map(l => l.fold(0)((a, b) => a + b))
+      } yield assert(result)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
 
     }
-  )
+  ) @@ sequential
 
 }

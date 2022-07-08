@@ -4,6 +4,9 @@ import com.dimafeng.testcontainers.JdbcDatabaseContainer
 import zio.test.TestEnvironment
 import zio.{ Scope, ZIO, ZLayer }
 import zio.test.ZIOSpecDefault
+import zio.prelude.AssociativeBoth
+import zio.test.Gen
+import zio.prelude.Covariant
 import com.dimafeng.testcontainers.SingleContainer
 import java.util.Properties
 import zio.test.Spec
@@ -54,6 +57,13 @@ trait JdbcRunnableSpec extends ZIOSpecDefault with Jdbc {
       ConnectionPool.live.orDie,
       SqlDriver.live
     )
+
+  protected implicit def genInstances[R]
+    : AssociativeBoth[({ type T[A] = Gen[R, A] })#T] with Covariant[({ type T[+A] = Gen[R, A] })#T] =
+    new AssociativeBoth[({ type T[A] = Gen[R, A] })#T] with Covariant[({ type T[+A] = Gen[R, A] })#T] {
+      def map[A, B](f: A => B): Gen[R, A] => Gen[R, B]                   = _.map(f)
+      def both[A, B](fa: => Gen[R, A], fb: => Gen[R, B]): Gen[R, (A, B)] = fa.zip(fb)
+    }
 
   private[this] def testContainer: ZIO[Scope, Throwable, SingleContainer[_] with JdbcDatabaseContainer] =
     ZIO.acquireRelease {
