@@ -1,11 +1,13 @@
 package zio.sql.sqlserver
 
 import zio._
+import zio.schema._
 import zio.test.Assertion._
 import zio.test.TestAspect.sequential
 import zio.test._
 
 import java.time._
+import java.time.format.DateTimeFormatter
 import java.util.UUID
 import scala.language.postfixOps
 
@@ -532,6 +534,70 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
       val result = execute(query)
 
       assertZIO(result)(equalTo(1))
+    },
+    test("Can insert rows") {
+      final case class CustomerRow(
+        id: UUID,
+        firstName: String,
+        lastName: String,
+        verified: Boolean,
+        dateOfBirth: LocalDate
+      )
+      implicit val customerRowSchema =
+        Schema.CaseClass5[UUID, String, String, Boolean, LocalDate, CustomerRow](
+          Schema.Field("id", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
+          Schema.Field("firstName", Schema.primitive[String](zio.schema.StandardType.StringType)),
+          Schema.Field("lastName", Schema.primitive[String](zio.schema.StandardType.StringType)),
+          Schema.Field("verified", Schema.primitive[Boolean](zio.schema.StandardType.BoolType)),
+          Schema.Field(
+            "dateOfBirth",
+            Schema.primitive[LocalDate](zio.schema.StandardType.LocalDateType(DateTimeFormatter.ISO_DATE))
+          ),
+          CustomerRow.apply,
+          _.id,
+          _.firstName,
+          _.lastName,
+          _.verified,
+          _.dateOfBirth
+        )
+
+      val rows = List(
+        CustomerRow(UUID.randomUUID(), "Peter", "Parker", true, LocalDate.ofYearDay(2001, 8)),
+        CustomerRow(UUID.randomUUID(), "Stephen", "Strange", false, LocalDate.ofYearDay(1980, 2))
+      )
+
+      val command = insertInto(customers)(
+        customerId,
+        fName,
+        lName,
+        verified,
+        dob
+      ).values(rows)
+
+      assertZIO(execute(command))(equalTo(2))
+    },
+    test("Can insert tuples") {
+
+      val rows = List(
+        (
+          UUID.randomUUID(),
+          UUID.randomUUID(),
+          LocalDate.of(2022, 1, 1)
+        ),
+        (
+          UUID.randomUUID(),
+          UUID.randomUUID(),
+          LocalDate.of(2022, 1, 5)
+        )
+      )
+
+      val command = insertInto(orders)(
+        orderId,
+        fkCustomerId,
+        orderDate
+      ).values(rows)
+
+      assertZIO(execute(command))(equalTo(2))
     }
   ) @@ sequential
 
