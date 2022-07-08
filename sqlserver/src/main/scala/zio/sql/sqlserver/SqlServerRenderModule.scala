@@ -490,16 +490,36 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
         case _                                      => ()
       }
 
+    private def buildSet(set: List[Set[_, _]])(implicit render: Renderer): Unit =
+      set match {
+        case head :: tail =>
+          buildExpr(head.lhs)
+          render(" = ")
+          buildExpr(head.rhs)
+          tail.foreach { setEq =>
+            render(", ")
+            buildExpr(setEq.lhs)
+            render(" = ")
+            buildExpr(setEq.rhs)
+          }
+        case Nil          => // TODO restrict Update to not allow empty set
+      }
+
     def renderDeleteImpl(delete: Delete[_])(implicit render: Renderer) = {
       render("DELETE FROM ")
       buildTable(delete.table)
       buildWhereExpr(delete.whereExpr)
     }
 
-    // TODO https://github.com/zio/zio-sql/issues/160
-    def renderUpdateImpl(update: Update[_])(implicit render: Renderer) = {
-      ???
-    }
+    def renderUpdateImpl(update: Update[_])(implicit render: Renderer) =
+      update match {
+        case Update(table, set, whereExpr) =>
+          render("UPDATE ")
+          buildTable(table)
+          render(" SET ")
+          buildSet(set)
+          buildWhereExpr(whereExpr)
+      }
 
     def renderInsertImpl[A](insert: Insert[_, A])(implicit render: Renderer, schema: Schema[A]) = {
       render("INSERT INTO ")
