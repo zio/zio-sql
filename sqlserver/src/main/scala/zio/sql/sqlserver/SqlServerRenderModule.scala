@@ -67,7 +67,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
           buildWhereExpr(whereExpr)
           groupByExprs match {
             case Read.ExprSet.ExprCons(_, _) =>
-              render(" GROUP BT ")
+              render(" GROUP BY ")
               buildExprList(groupByExprs)
 
               havingExpr match {
