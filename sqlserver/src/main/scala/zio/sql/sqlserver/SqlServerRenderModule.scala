@@ -471,7 +471,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
                   render(s"'${fmtDateTimeOffset.format(value.asInstanceOf[OffsetDateTime])}'")
                 case StandardType.ZonedDateTimeType(_)         =>
                   render(s"'${fmtDateTimeOffset.format(value.asInstanceOf[ZonedDateTime])}'")
-                case BigIntegerType                            => render(s"'${value}'")
+                case BigIntegerType                            => render(value)
                 case UUIDType                                  => render(s"'${value}'")
                 case StandardType.ZoneOffsetType               => render(s"'${value}'")
                 case ShortType                                 => render(value)
