@@ -1,12 +1,13 @@
 package zio.sql.sqlserver
 
+import zio.Chunk
 import zio.schema.StandardType._
 import zio.schema._
 import zio.sql.driver.Renderer
 import zio.sql.driver.Renderer.Extensions
 
-import java.time.format.DateTimeFormatter
-import java.time.{ Instant, LocalDate, LocalDateTime, LocalTime, OffsetDateTime, OffsetTime, ZonedDateTime }
+import java.time.format.{ DateTimeFormatter, DateTimeFormatterBuilder }
+import java.time._
 
 trait SqlServerRenderModule extends SqlServerSqlModule { self =>
 
@@ -35,6 +36,17 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
   }
 
   object SqlServerRenderer {
+
+    private val fmtDateTimeOffset = new DateTimeFormatterBuilder().parseCaseInsensitive
+      .append(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+      .appendOffset("+HH:MM", "Z")
+      .toFormatter()
+
+    private val fmtTimeOffset = new DateTimeFormatterBuilder()
+      .parseCaseInsensitive()
+      .append(DateTimeFormatter.ISO_LOCAL_TIME)
+      .appendOffset("+HH:MM", "Z")
+      .toFormatter()
 
     private[zio] def renderReadImpl(read: self.Read[_])(implicit render: Renderer): Unit =
       read match {
@@ -435,49 +447,54 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
           StandardType.fromString(typeTag.tag) match {
             case Some(v) =>
               v match {
-                case BigDecimalType                             =>
+                case BigDecimalType                            =>
                   render(value)
-                case StandardType.InstantType(formatter)        =>
+                case StandardType.InstantType(formatter)       =>
                   render(s"'${formatter.format(value.asInstanceOf[Instant])}'")
-                case CharType                                   => render(s"'${value}'")
-                case IntType                                    => render(value)
-                case StandardType.MonthDayType                  => render(s"'${value}'")
-                case BinaryType                                 => render(s"'${value}'")
-                case StandardType.MonthType                     => render(s"'${value}'")
-                case StandardType.LocalDateTimeType(formatter)  =>
+                case CharType                                  => render(s"'${value}'")
+                case IntType                                   => render(value)
+                case StandardType.MonthDayType                 => render(s"'${value}'")
+                case BinaryType                                =>
+                  val chunk = value.asInstanceOf[Chunk[Object]]
+                  render("CONVERT(VARBINARY(MAX),'")
+                  for (b <- chunk)
+                    render(String.format("%02x", b))
+                  render("', 2)")
+                case StandardType.MonthType                    => render(s"'${value}'")
+                case StandardType.LocalDateTimeType(formatter) =>
                   render(s"'${formatter.format(value.asInstanceOf[LocalDateTime])}'")
-                case UnitType                                   => render("null") // None is encoded as Schema[Unit].transform(_ => None, _ => ())
-                case StandardType.YearMonthType                 => render(s"'${value}'")
-                case DoubleType                                 => render(value)
-                case StandardType.YearType                      => render(s"'${value}'")
-                case StandardType.OffsetDateTimeType(formatter) =>
-                  render(s"'${formatter.format(value.asInstanceOf[OffsetDateTime])}'")
-                case StandardType.ZonedDateTimeType(_)          =>
-                  render(s"'${DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(value.asInstanceOf[ZonedDateTime])}'")
-                case BigIntegerType                             => render(s"'${value}'")
-                case UUIDType                                   => render(s"'${value}'")
-                case StandardType.ZoneOffsetType                => render(s"'${value}'")
-                case ShortType                                  => render(value)
-                case StandardType.LocalTimeType(formatter)      =>
-                  render(s"'${formatter.format(value.asInstanceOf[LocalTime])}'")
-                case StandardType.OffsetTimeType(formatter)     =>
-                  render(s"'${formatter.format(value.asInstanceOf[OffsetTime])}'")
-                case LongType                                   => render(value)
-                case StringType                                 => render(s"'${value}'")
-                case StandardType.PeriodType                    => render(s"'${value}'")
-                case StandardType.ZoneIdType                    => render(s"'${value}'")
-                case StandardType.LocalDateType(formatter)      =>
-                  render(s"'${formatter.format(value.asInstanceOf[LocalDate])}'")
-                case BoolType                                   =>
+                case UnitType                                  => render("null") // None is encoded as Schema[Unit].transform(_ => None, _ => ())
+                case StandardType.YearMonthType                => render(s"'${value}'")
+                case DoubleType                                => render(value)
+                case StandardType.YearType                     => render(s"'${value}'")
+                case StandardType.OffsetDateTimeType(_)        =>
+                  render(s"'${fmtDateTimeOffset.format(value.asInstanceOf[OffsetDateTime])}'")
+                case StandardType.ZonedDateTimeType(_)         =>
+                  render(s"'${fmtDateTimeOffset.format(value.asInstanceOf[ZonedDateTime])}'")
+                case BigIntegerType                            => render(s"'${value}'")
+                case UUIDType                                  => render(s"'${value}'")
+                case StandardType.ZoneOffsetType               => render(s"'${value}'")
+                case ShortType                                 => render(value)
+                case StandardType.LocalTimeType(_)             =>
+                  render(s"'${DateTimeFormatter.ISO_LOCAL_TIME.format(value.asInstanceOf[LocalTime])}'")
+                case StandardType.OffsetTimeType(_)            =>
+                  render(s"'${fmtTimeOffset.format(value.asInstanceOf[OffsetTime])}'")
+                case LongType                                  => render(value)
+                case StringType                                => render(s"'${value}'")
+                case StandardType.PeriodType                   => render(s"'${value}'")
+                case StandardType.ZoneIdType                   => render(s"'${value}'")
+                case StandardType.LocalDateType(_)             =>
+                  render(s"'${DateTimeFormatter.ISO_LOCAL_DATE.format(value.asInstanceOf[LocalDate])}'")
+                case BoolType                                  =>
                   val b = value.asInstanceOf[Boolean]
                   if (b) {
                     render('1')
                   } else {
                     render('0')
                   }
-                case DayOfWeekType                              => render(s"'${value}'")
-                case FloatType                                  => render(value)
-                case StandardType.DurationType                  => render(s"'${value}'")
+                case DayOfWeekType                             => render(s"'${value}'")
+                case FloatType                                 => render(value)
+                case StandardType.DurationType                 => render(s"'${value}'")
               }
             case None    => ()
           }

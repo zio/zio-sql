@@ -37,6 +37,28 @@ create table order_details
     unit_price money not null
 );
 
+create table all_types(
+    id varchar(36) not null primary key,
+    bytearray varbinary(100) not null,
+    bigdecimal decimal(28) not null,
+    boolean_ bit not null,
+    char_ varchar(4) not null,
+    double_ float not null,
+    float_ real not null,
+    instant datetimeoffset not null,
+    int_ int not null,
+    optional_int int,
+    localdate date not null,
+    localdatetime datetime2(4) not null,
+    localtime time not null,
+    long_ bigint not null,
+    offsetdatetime datetimeoffset(4) not null,
+    offsettime datetimeoffset not null,
+    short smallint not null,
+    string varchar(max) not null,
+    uuid varchar(36) not null,
+    zoneddatetime datetimeoffset not null
+);
 
 insert into customers
     (id, first_name, last_name, verified, dob)

@@ -1,9 +1,10 @@
 package zio.sql.sqlserver
 
 import zio._
+import zio.prelude._
 import zio.schema._
 import zio.test.Assertion._
-import zio.test.TestAspect.sequential
+import zio.test.TestAspect.{ retries, samples, sequential, shrinks }
 import zio.test._
 
 import java.time._
@@ -598,7 +599,97 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
       ).values(rows)
 
       assertZIO(execute(command))(equalTo(2))
-    }
+    },
+    test("Can insert all supported types") {
+      val sqlMinDateTime = LocalDateTime.of(1, 1, 1, 0, 0)
+      val sqlMaxDateTime = LocalDateTime.of(9999, 12, 31, 23, 59)
+
+      val maxOffsetSeconds = 14 * 3600
+      val sqlInstant       = Gen.instant(
+        sqlMinDateTime.toInstant(ZoneOffset.ofTotalSeconds(-maxOffsetSeconds)),
+        sqlMaxDateTime.toInstant(ZoneOffset.ofTotalSeconds(maxOffsetSeconds))
+      )
+
+      val sqlYear = Gen.int(1, 9999).map(Year.of)
+
+      val sqlLocalDate = for {
+        year  <- sqlYear
+        month <- Gen.int(1, 12)
+        maxLen = if (!year.isLeap && month == 2) 28 else Month.of(month).maxLength
+        day   <- Gen.int(1, maxLen)
+      } yield LocalDate.of(year.getValue, month, day)
+
+      val sqlLocalDateTime = Gen.localDateTime(sqlMinDateTime, sqlMaxDateTime)
+
+      val zoneOffset = Gen
+        .int(-maxOffsetSeconds / 60, maxOffsetSeconds / 60)
+        .map(p => ZoneOffset.ofTotalSeconds(p * 60))
+
+      val sqlZonedDateTime = for {
+        dateTime <- sqlLocalDateTime
+        zOffset  <- zoneOffset
+      } yield ZonedDateTime.of(dateTime, ZoneId.from(zOffset))
+
+      val sqlOffsetTime = for {
+        localTime <- Gen.localTime
+        zOffset   <- zoneOffset
+      } yield OffsetTime.of(localTime, zOffset)
+
+      val sqlOffsetDateTime = for {
+        dateTime <- sqlLocalDateTime
+        zOffset  <- zoneOffset
+      } yield OffsetDateTime.of(dateTime, zOffset)
+
+      val gen = (
+        Gen.uuid,
+        Gen.chunkOfBounded(1, 100)(Gen.byte),
+        Gen.bigDecimal(Long.MinValue, Long.MaxValue),
+        Gen.boolean,
+        Gen.char,
+        Gen.double,
+        Gen.float,
+        sqlInstant,
+        Gen.int,
+        Gen.option(Gen.int),
+        sqlLocalDate,
+        sqlLocalDateTime,
+        Gen.localTime,
+        Gen.long,
+        sqlOffsetDateTime,
+        sqlOffsetTime,
+        Gen.short,
+        Gen.string,
+        Gen.uuid,
+        sqlZonedDateTime
+      ).tupleN
+
+      check(gen) { row =>
+        val insert = insertInto(allTypes)(
+          id,
+          bytearrayCol,
+          bigdecimalCol,
+          booleanCol,
+          charCol,
+          doubleCol,
+          floatCol,
+          instantCol,
+          intCol,
+          optionalIntCol,
+          localdateCol,
+          localdatetimeCol,
+          localtimeCol,
+          longCol,
+          offsetdatetimeCol,
+          offsettimeCol,
+          shortCol,
+          stringCol,
+          uuidCol,
+          zonedDatetimeCol
+        ).values(row)
+
+        assertZIO(execute(insert))(equalTo(1))
+      }
+    } @@ samples(1) @@ retries(0) @@ shrinks(0)
   ) @@ sequential
 
   case class CustomerAndDateRow(firstName: String, lastName: String, orderDate: LocalDate)
