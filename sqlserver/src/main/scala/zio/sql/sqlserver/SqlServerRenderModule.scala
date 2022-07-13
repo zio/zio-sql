@@ -451,7 +451,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
                   render(value)
                 case StandardType.InstantType(formatter)       =>
                   render(s"'${formatter.format(value.asInstanceOf[Instant])}'")
-                case CharType                                  => render(s"'${value}'")
+                case CharType                                  => render(s"N'${value}'")
                 case IntType                                   => render(value)
                 case StandardType.MonthDayType                 => render(s"'${value}'")
                 case BinaryType                                =>
@@ -480,7 +480,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
                 case StandardType.OffsetTimeType(_)            =>
                   render(s"'${fmtTimeOffset.format(value.asInstanceOf[OffsetTime])}'")
                 case LongType                                  => render(value)
-                case StringType                                => render(s"'${value}'")
+                case StringType                                => render(s"N'${value}'")
                 case StandardType.PeriodType                   => render(s"'${value}'")
                 case StandardType.ZoneIdType                   => render(s"'${value}'")
                 case StandardType.LocalDateType(_)             =>

@@ -62,7 +62,9 @@ trait DbSchema extends Jdbc { self =>
         short("short") ++
         string("string") ++
         uuid("uuid") ++
-        zonedDateTime("zoneddatetime")).table("all_types")
+        zonedDateTime("zoneddatetime") ++
+        char("nchar_") ++
+        string("nvarchar_")).table("all_types")
 
     val (
       id,
@@ -84,7 +86,9 @@ trait DbSchema extends Jdbc { self =>
       shortCol,
       stringCol,
       uuidCol,
-      zonedDatetimeCol
+      zonedDatetimeCol,
+      ncharCol,
+      nvarcharCol
     ) = allTypes.columns
   }
 }
