@@ -41,5 +41,54 @@ trait DbSchema extends Jdbc { self =>
       .asTable("derived")
 
     val orderDateDerived = orderDateDerivedTable.columns
+
+    val allTypes =
+      (uuid("id") ++
+        byteArray("bytearray") ++
+        bigDecimal("bigdecimal") ++
+        boolean("boolean_") ++
+        char("char_") ++
+        double("double_") ++
+        float("float_") ++
+        instant("instant") ++
+        int("int_") ++
+        (int("optional_int") @@ ColumnSetAspect.nullable) ++
+        localDate("localdate") ++
+        localDateTime("localdatetime") ++
+        localTime("localtime") ++
+        long("long_") ++
+        offsetDateTime("offsetdatetime") ++
+        offsetTime("offsettime") ++
+        short("short") ++
+        string("string") ++
+        uuid("uuid") ++
+        zonedDateTime("zoneddatetime") ++
+        char("nchar_") ++
+        string("nvarchar_")).table("all_types")
+
+    val (
+      id,
+      bytearrayCol,
+      bigdecimalCol,
+      booleanCol,
+      charCol,
+      doubleCol,
+      floatCol,
+      instantCol,
+      intCol,
+      optionalIntCol,
+      localdateCol,
+      localdatetimeCol,
+      localtimeCol,
+      longCol,
+      offsetdatetimeCol,
+      offsettimeCol,
+      shortCol,
+      stringCol,
+      uuidCol,
+      zonedDatetimeCol,
+      ncharCol,
+      nvarcharCol
+    ) = allTypes.columns
   }
 }
