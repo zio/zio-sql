@@ -30,8 +30,8 @@ Feature | PostgreSQL | SQL Server | Oracle             | MySQL
 :------------ | :-------------| :-------------|:-------------------| :-------------
 Render Read   | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 Render Delete | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | 
-Render Update | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
-Render Insert | :heavy_check_mark: |                    | :heavy_check_mark: | :heavy_check_mark: |
+Render Update | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
+Render Insert | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 Functions     | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |
 Types         | :white_check_mark: |                    |                    | :white_check_mark: |
 Operators     |                    |                    |                    |                    |
