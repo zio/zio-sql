@@ -3,11 +3,12 @@ package zio.sql.sqlserver
 import zio._
 import zio.schema._
 import zio.test.Assertion._
-import zio.test.TestAspect.sequential
+import zio.test.TestAspect.{ retries, samples, sequential, shrinks }
 import zio.test._
 
 import java.time._
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 import scala.language.postfixOps
 
@@ -598,8 +599,224 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
       ).values(rows)
 
       assertZIO(execute(command))(equalTo(2))
-    }
+    },
+    test("Can insert all supported types") {
+      import AllTypesHelper._
+      import zio.prelude._
+
+      val sqlMinDateTime = LocalDateTime.of(1, 1, 1, 0, 0)
+      val sqlMaxDateTime = LocalDateTime.of(9999, 12, 31, 23, 59)
+
+      val maxOffsetSeconds = 14 * 3600
+      val sqlInstant       = Gen.instant(
+        sqlMinDateTime.toInstant(ZoneOffset.ofTotalSeconds(-maxOffsetSeconds)),
+        sqlMaxDateTime.toInstant(ZoneOffset.ofTotalSeconds(maxOffsetSeconds))
+      )
+
+      val sqlYear = Gen.int(1, 9999).map(Year.of)
+
+      val sqlLocalDate = for {
+        year  <- sqlYear
+        month <- Gen.int(1, 12)
+        maxLen = if (!year.isLeap && month == 2) 28 else Month.of(month).maxLength
+        day   <- Gen.int(1, maxLen)
+      } yield LocalDate.of(year.getValue, month, day)
+
+      val sqlLocalDateTime = Gen.localDateTime(sqlMinDateTime, sqlMaxDateTime)
+
+      val zoneOffset = Gen
+        .int(-maxOffsetSeconds / 60, maxOffsetSeconds / 60)
+        .map(p => ZoneOffset.ofTotalSeconds(p * 60))
+
+      val sqlZonedDateTime = for {
+        dateTime <- sqlLocalDateTime
+        zOffset  <- zoneOffset
+      } yield ZonedDateTime.of(dateTime, ZoneId.from(zOffset))
+
+      val sqlOffsetTime = for {
+        localTime <- Gen.localTime
+        zOffset   <- zoneOffset
+      } yield OffsetTime.of(localTime, zOffset)
+
+      val sqlOffsetDateTime = for {
+        dateTime <- sqlLocalDateTime
+        zOffset  <- zoneOffset
+      } yield OffsetDateTime.of(dateTime, zOffset)
+
+      val gen = (
+        Gen.uuid,
+        Gen.chunkOfBounded(1, 100)(Gen.byte),
+        Gen.bigDecimal(Long.MinValue, Long.MaxValue),
+        Gen.boolean,
+        Gen.asciiChar,
+        Gen.double,
+        Gen.float,
+        sqlInstant,
+        Gen.int,
+        Gen.option(Gen.int),
+        sqlLocalDate,
+        sqlLocalDateTime,
+        Gen.localTime,
+        Gen.long,
+        sqlOffsetDateTime,
+        sqlOffsetTime,
+        Gen.short,
+        Gen.stringBounded(2, 30)(Gen.asciiChar),
+        Gen.uuid,
+        sqlZonedDateTime,
+        Gen.char,
+        Gen.stringBounded(2, 30)(Gen.char)
+      ).tupleN
+
+      case class RowDates(
+        localDate: LocalDate,
+        localDateTime: LocalDateTime,
+        localTime: LocalTime,
+        offsetDateTime: Instant,
+        offsetTime: OffsetTime,
+        zonedDateTime: Instant
+      )
+      case class RowBasic(
+        id: UUID,
+        bigDecimal: BigDecimal,
+        boolean: Boolean,
+        char: Char,
+        double: Double,
+        float: Float,
+        int: Int,
+        long: Long,
+        short: Short,
+        string: String,
+        nchar: Char,
+        nvarchar: String,
+        bytearray: Chunk[Byte]
+      )
+
+      check(gen) { row =>
+        val insert = insertInto(allTypes)(
+          id,            // 1
+          bytearrayCol,
+          bigdecimalCol, // 3
+          booleanCol,    // 4
+          charCol,       // 5
+          doubleCol,     // 6
+          floatCol,      // 7
+          instantCol,
+          intCol,        // 9
+          optionalIntCol,
+          localdateCol,  // 11
+          localdatetimeCol,
+          localtimeCol,
+          longCol,       // 14
+          offsetdatetimeCol,
+          offsettimeCol,
+          shortCol,      // 17
+          stringCol,     // 18
+          uuidCol,
+          zonedDatetimeCol,
+          ncharCol,      // 21
+          nvarcharCol    // 22
+        ).values(row)
+
+        val query = select(
+          id,
+          bigdecimalCol,
+          booleanCol,
+          charCol,
+          doubleCol,
+          floatCol,
+          intCol,
+          longCol,
+          shortCol,
+          stringCol,
+          ncharCol,
+          nvarcharCol,
+          bytearrayCol
+        )
+          .from(allTypes)
+          .where(id === row._1)
+
+        val expectedBasic = RowBasic(
+          row._1,
+          row._3,
+          row._4,
+          row._5,
+          row._6,
+          row._7,
+          row._9,
+          row._14,
+          row._17,
+          row._18,
+          row._21,
+          row._22,
+          row._2
+        )
+        val assertionB    = for {
+          _   <- execute(insert)
+          rb  <- execute(query).runHead.some
+          rowB = RowBasic(rb._1, rb._2, rb._3, rb._4, rb._5, rb._6, rb._7, rb._8, rb._9, rb._10, rb._11, rb._12, rb._13)
+        } yield assert(rowB) {
+          val assertB = assertM(expectedBasic) _
+          assertB("UUID")(_.id) &&
+          assertB("BigDecimal")(_.bigDecimal) &&
+          assertB("Boolean")(_.boolean) &&
+          assertB("Char")(_.char) &&
+          assertB("Double")(_.double) &&
+          assertB("Float")(_.float) &&
+          assertB("Int")(_.int) &&
+          assertB("Long")(_.long) &&
+          assertB("Short")(_.short) &&
+          assertB("String")(_.string) &&
+          assertB("Unicode char")(_.nchar) &&
+          assertB("Unicode string")(_.nvarchar) &&
+          assertB("Chunk[Byte]")(_.bytearray)
+        }
+        assertionB.mapErrorCause(cause => Cause.stackless(cause.untraced))
+
+        val queryDates =
+          select(localdateCol, localdatetimeCol, localtimeCol, offsetdatetimeCol, offsettimeCol, zonedDatetimeCol)
+            .from(allTypes)
+            .where(id === row._1)
+
+        val expectedDates =
+          RowDates(row._11, normLdt(row._12), normLt(row._13), normOdt(row._15), normOt(row._16), normZdt(row._20))
+        val assertionD    = for {
+          _   <- execute(insert)
+          rd  <- execute(queryDates).runHead.some
+          rowD = RowDates(rd._1, normLdt(rd._2), normLt(rd._3), normOdt(rd._4), normOt(rd._5), normZdt(rd._6))
+        } yield assert(rowD) {
+          val assertD = assertM(expectedDates) _
+          assertD("LocalTime")(_.localTime) &&
+          assertD("LocalDate")(_.localDate) &&
+          assertD("LocalDateTime")(_.localDateTime) &&
+          //              assertD("OffsetDateTime")(_.offsetDateTime) &&
+          //              assertD("OffsetTime")(_.offsetTime) &&
+          assertD("zonedDateTime")(_.zonedDateTime)
+        }
+        assertionD.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      }
+    } @@ samples(1) @@ retries(0) @@ shrinks(0)
   ) @@ sequential
+
+  private object AllTypesHelper {
+    def normLt(in: LocalTime): LocalTime =
+      in.truncatedTo(ChronoUnit.MICROS)
+
+    def normLdt(in: LocalDateTime): LocalDateTime =
+      LocalDateTime.of(in.toLocalDate, normLt(in.toLocalTime))
+
+    def normOt(in: OffsetTime): OffsetTime =
+      OffsetTime.of(normLt(in.toLocalTime), in.getOffset)
+
+    def normOdt(in: OffsetDateTime): Instant =
+      OffsetDateTime.of(normLdt(in.toLocalDateTime), in.getOffset).toInstant
+
+    def normZdt(in: ZonedDateTime): Instant =
+      ZonedDateTime.of(normLdt(in.toLocalDateTime), in.getZone).toInstant
+
+    def assertM[B, T](expected: B)(name: String)(extract: B => T): Assertion[B] =
+      assertionRec[B, T](name)(equalTo(extract(expected)))(p => Option(extract(p)))
+  }
 
   case class CustomerAndDateRow(firstName: String, lastName: String, orderDate: LocalDate)
   private val crossOuterApplyExpected = Seq(
