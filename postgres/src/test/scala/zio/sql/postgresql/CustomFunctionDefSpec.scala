@@ -10,10 +10,9 @@ import java.time._
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
-object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
+object CustomFunctionDefSpec extends PostgresRunnableSpec with DbSchema {
 
   import Customers._
-  import FunctionDef.{ CharLength => _, _ }
   import PostgresFunctionDef._
   import PostgresSpecific._
 
@@ -26,67 +25,6 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
   private val timestampFormatter = DateTimeFormatter.ofPattern("uuuu-MM-dd HH:mm:ss.SSSS").withZone(ZoneId.of("UTC"))
 
   override def specLayered = suite("Postgres FunctionDef")(
-    test("concat_ws #1 - combine flat values") {
-      import Expr._
-
-      // note: a plain number (3) would and should not compile
-      val query = select(ConcatWs4("+", "1", "2", "3"))
-
-      val expected = Seq("1+2+3")
-
-      val testResult = execute(query)
-      collectAndCompare(expected, testResult)
-    },
-    test("concat_ws #2 - combine columns") {
-
-      // note: you can't use customerId here as it is a UUID, hence not a string in our book
-      val query = select(ConcatWs3(Customers.fName, Customers.fName, Customers.lName)) from customers
-
-      val expected = Seq(
-        "RonaldRonaldRussell",
-        "TerrenceTerrenceNoel",
-        "MilaMilaPaterso",
-        "AlanaAlanaMurray",
-        "JoseJoseWiggins"
-      )
-
-      val testResult = execute(query)
-      collectAndCompare(expected, testResult)
-    },
-    test("concat_ws #3 - combine columns and flat values") {
-      import Expr._
-
-      val query = select(ConcatWs4(" ", "Person:", Customers.fName, Customers.lName)) from customers
-
-      val expected = Seq(
-        "Person: Ronald Russell",
-        "Person: Terrence Noel",
-        "Person: Mila Paterso",
-        "Person: Alana Murray",
-        "Person: Jose Wiggins"
-      )
-
-      val testResult = execute(query)
-      collectAndCompare(expected, testResult)
-    },
-    test("concat_ws #3 - combine function calls together") {
-      import Expr._
-
-      val query = select(
-        ConcatWs3(" and ", Concat("Name: ", Customers.fName), Concat("Surname: ", Customers.lName))
-      ) from customers
-
-      val expected = Seq(
-        "Name: Ronald and Surname: Russell",
-        "Name: Terrence and Surname: Noel",
-        "Name: Mila and Surname: Paterso",
-        "Name: Alana and Surname: Murray",
-        "Name: Jose and Surname: Wiggins"
-      )
-
-      val testResult = execute(query)
-      collectAndCompare(expected, testResult)
-    },
     test("isfinite") {
       val query             = select(IsFinite(Instant.now))
       val expected: Boolean = true
@@ -98,12 +36,6 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
       },
       test("CharLength") {
         assertZIO(execute(select(Length("hello"))).runHead.some)(equalTo(5))
-      },
-      test("ltrim") {
-        assertZIO(execute(select(Ltrim("  hello  "))).runHead.some)(equalTo("hello  "))
-      },
-      test("rtrim") {
-        assertZIO(execute(select(Rtrim("  hello  "))).runHead.some)(equalTo("  hello"))
       },
       test("bit_length") {
         assertZIO(execute(select(BitLength("hello"))).runHead.some)(equalTo(40))
@@ -226,44 +158,11 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
         }
       )
     ),
-    test("abs") {
-      assertZIO(execute(select(Abs(-3.14159))).runHead.some)(equalTo(3.14159))
-    },
-    test("log") {
-      assertZIO(execute(select(Log(2.0, 32.0))).runHead.some)(equalTo(5.0))
-    },
-    test("acos") {
-      assertZIO(execute(select(Acos(-1.0))).runHead.some)(equalTo(3.141592653589793))
-    },
     test("repeat") {
       assertZIO(execute(select(Repeat("Zio", 3))).runHead.some)(equalTo("ZioZioZio"))
     },
     test("reverse") {
       assertZIO(execute(select(Reverse("abcd"))).runHead.some)(equalTo("dcba"))
-    },
-    test("asin") {
-      assertZIO(execute(select(Asin(0.5))).runHead.some)(equalTo(0.5235987755982989))
-    },
-    test("ln") {
-      assertZIO(execute(select(Ln(3.0))).runHead.some)(equalTo(1.0986122886681097))
-    },
-    test("atan") {
-      assertZIO(execute(select(Atan(10.0))).runHead.some)(equalTo(1.4711276743037347))
-    },
-    test("cos") {
-      assertZIO(execute(select(Cos(3.141592653589793))).runHead.some)(equalTo(-1.0))
-    },
-    test("exp") {
-      assertZIO(execute(select(Exp(1.0))).runHead.some)(equalTo(2.718281828459045))
-    },
-    test("floor") {
-      assertZIO(execute(select(Floor(-3.14159))).runHead.some)(equalTo(-4.0))
-    },
-    test("ceil") {
-      assertZIO(execute(select(Ceil(53.7), Ceil(-53.7))).runHead.some)(equalTo((54.0, -53.0)))
-    },
-    test("sin") {
-      assertZIO(execute(select(Sin(1.0))).runHead.some)(equalTo(0.8414709848078965))
     },
     test("sind") {
       assertZIO(execute(select(Sind(30.0))).runHead.some)(equalTo(0.5))
@@ -371,15 +270,6 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
         assertZIO(testResult.runCollect.exit)(fails(anything))
       }
     ) @@ ignore,
-    test("sqrt") {
-      val query = select(Sqrt(121.0))
-
-      val expected = 11.0
-
-      val testResult = execute(query)
-
-      assertZIO(testResult.runHead.some)(equalTo(expected))
-    },
     test("chr") {
       val query = select(Chr(65))
 
@@ -484,88 +374,10 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    test("round") {
-      val query = select(Round(10.8124, 2))
-
-      val expected = 10.81
-
-      val testResult = execute(query)
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    },
-    test("sign positive") {
-      val query = select(Sign(3.0))
-
-      val expected = 1
-
-      val testResult = execute(query)
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    },
-    test("sign negative") {
-      val query = select(Sign(-3.0))
-
-      val expected = -1
-
-      val testResult = execute(query)
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    },
-    test("sign zero") {
-      val query = select(Sign(0.0))
-
-      val expected = 0
-
-      val testResult = execute(query)
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    },
-    test("power") {
-      val query = select(Power(7.0, 3.0))
-
-      val expected = 343.000000000000000
-
-      val testResult = execute(query)
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    },
     test("length") {
       val query = select(Length("hello"))
 
       val expected = 5
-
-      val testResult = execute(query)
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    },
-    test("mod") {
-      val query = select(Mod(-15.0, -4.0))
-
-      val expected = -3.0
 
       val testResult = execute(query)
 
@@ -667,97 +479,6 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    test("lower") {
-      val query = select(Lower(fName)) from customers limit (1)
-
-      val expected = "ronald"
-
-      val testResult = execute(query)
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    },
-    test("lower with string literal") {
-      val query = select(Lower("LOWER")) from customers limit (1)
-
-      val expected = "lower"
-
-      val testResult = execute(query)
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    },
-    test("octet_length") {
-      val query = select(OctetLength("josé"))
-
-      val expected = 5
-
-      val testResult = execute(query)
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    },
-    test("ascii") {
-      val query = select(Ascii("""x"""))
-
-      val expected = 120
-
-      val testResult = execute(query)
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    },
-    test("upper") {
-      val query = (select(Upper("ronald"))).limit(1)
-
-      val expected = "RONALD"
-
-      val testResult = execute(query)
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    },
-    test("width_bucket") {
-      val query = select(WidthBucket(5.35, 0.024, 10.06, 5))
-
-      val expected = 3
-
-      val testResult = execute(query)
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    },
-    test("tan") {
-      val query = select(Tan(0.7853981634))
-
-      val expected = 1.0000000000051035
-
-      val testResult = execute(query)
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    },
     test("gcd") {
       val query = select(GCD(1071d, 462d))
 
@@ -855,20 +576,6 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
 
       assertZIO(testResult.runHead.some)(equalTo(randomTupleForSeed))
     },
-    test("Can concat strings with concat function") {
-
-      val query = select(Concat(fName, lName) as "fullname") from customers
-
-      val expected = Seq("RonaldRussell", "TerrenceNoel", "MilaPaterso", "AlanaMurray", "JoseWiggins")
-
-      val result = execute(query)
-
-      val assertion = for {
-        r <- result.runCollect
-      } yield assert(r)(hasSameElementsDistinct(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    },
     test("Can calculate character length of a string") {
 
       val query = select(CharLength(fName)) from customers
@@ -906,25 +613,6 @@ object FunctionDefSpec extends PostgresRunnableSpec with DbSchema {
         roundTrip <- roundTripResults.runCollect
       } yield assert(single.head)(equalTo(expected)) &&
         assert(roundTrip)(hasSameElementsDistinct(roundTripExpected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    },
-    test("replace") {
-      val lastNameReplaced = Replace(lName, "ll", "_") as "lastNameReplaced"
-      val computedReplace  = Replace("special ::ąę::", "ąę", "__") as "computedReplace"
-
-      val query = select(lastNameReplaced, computedReplace) from customers
-
-      val expected = ("Russe_", "special ::__::")
-
-      val testResult =
-        execute(query).map { case row =>
-          (row._1, row._2)
-        }
-
-      val assertion = for {
-        r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
