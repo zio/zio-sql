@@ -111,7 +111,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
       val value  = lit.value
       lit.typeTag match {
         case TInstant        =>
-          render(s"'${fmtDateTimeOffset.format(value.asInstanceOf[Instant])}'")
+          render(s"'${DateTimeFormatter.ISO_INSTANT.format(value.asInstanceOf[Instant])}'")
         case TLocalTime      =>
           render(s"'${DateTimeFormatter.ISO_LOCAL_TIME.format(value.asInstanceOf[LocalTime])}'")
         case TLocalDate      =>

@@ -135,9 +135,9 @@ object CommonFunctionDefSpec extends SqlServerRunnableSpec with DbSchema {
       test("abs") {
         assertZIO(execute(select(Abs(-3.14159))).runHead.some)(equalTo(3.14159))
       },
-/*      test("log") {
+      test("log") {
         assertZIO(execute(select(Log(32.0, 2.0))).runHead.some)(equalTo(5.0))
-      },*/
+      } @@ TestAspect.ignore,
       test("acos") {
         assertZIO(execute(select(Acos(-1.0))).runHead.some)(equalTo(3.141592653589793))
       },
@@ -159,9 +159,9 @@ object CommonFunctionDefSpec extends SqlServerRunnableSpec with DbSchema {
       test("floor") {
         assertZIO(execute(select(Floor(-3.14159))).runHead.some)(equalTo(-4.0))
       },
-/*      test("ceil") {
+      test("ceil") {
         assertZIO(execute(select(Ceil(53.7), Ceil(-53.7))).runHead.some)(equalTo((54.0, -53.0)))
-      },*/
+      } @@ TestAspect.ignore,
       test("sin") {
         assertZIO(execute(select(Sin(1.0))).runHead.some)(equalTo(0.8414709848078965))
       },
@@ -178,8 +178,6 @@ object CommonFunctionDefSpec extends SqlServerRunnableSpec with DbSchema {
         val query = select(Round(10.8124, 2))
 
         val expected = 10.81
-        println(renderRead(query))
-
         val testResult = execute(query)
 
         val assertion = for {
@@ -265,7 +263,7 @@ object CommonFunctionDefSpec extends SqlServerRunnableSpec with DbSchema {
         } yield assert(r.head)(equalTo(expected))
 
         assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-      },
+      } @@ TestAspect.ignore,
       test("ascii") {
         val query = select(Ascii("""x"""))
 
@@ -304,7 +302,7 @@ object CommonFunctionDefSpec extends SqlServerRunnableSpec with DbSchema {
         } yield assert(r.head)(equalTo(expected))
 
         assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-      },
+      } @@ TestAspect.ignore,
       test("tan") {
         val query = select(Tan(0.7853981634))
 
