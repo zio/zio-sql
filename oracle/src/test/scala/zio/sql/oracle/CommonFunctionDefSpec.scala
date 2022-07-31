@@ -8,6 +8,7 @@ import zio.test._
 object CommonFunctionDefSpec extends OracleRunnableSpec with ShopSchema {
   import FunctionDef.{ CharLength => _, _ }
   import Customers._
+  import Dual._
 
   private def collectAndCompare[R, E](
     expected: Seq[String],
@@ -83,47 +84,46 @@ object CommonFunctionDefSpec extends OracleRunnableSpec with ShopSchema {
     ),
     suite("Schema independent tests")(
       test("ltrim") {
-        assertZIO(execute(select(Ltrim("  hello  "))).runHead.some)(equalTo("hello  "))
+        assertZIO(execute(select(Ltrim("  hello  ")).from(dual)).runHead.some)(equalTo("hello  "))
       },
       test("rtrim") {
-        assertZIO(execute(select(Rtrim("  hello  "))).runHead.some)(equalTo("  hello"))
+        assertZIO(execute(select(Rtrim("  hello  ")).from(dual)).runHead.some)(equalTo("  hello"))
       },
       test("abs") {
-        assertZIO(execute(select(Abs(-3.14159))).runHead.some)(equalTo(3.14159))
+        assertZIO(execute(select(Abs(-3.14159)).from(dual)).runHead.some)(equalTo(3.14159))
       },
       test("log") {
-        assertZIO(execute(select(Log(2.0, 32.0))).runHead.some)(equalTo(5.0))
+        assertZIO(execute(select(Log(2.0, 32.0)).from(dual)).runHead.some)(equalTo(5.0))
       },
       test("acos") {
-        assertZIO(execute(select(Acos(-1.0))).runHead.some)(equalTo(3.141592653589793))
+        assertZIO(execute(select(Acos(-1.0)).from(dual)).runHead.some)(equalTo(3.141592653589793))
       },
       test("asin") {
-        assertZIO(execute(select(Asin(0.5))).runHead.some)(equalTo(0.5235987755982989))
+        assertZIO(execute(select(Asin(0.5)).from(dual)).runHead.some)(equalTo(0.5235987755982989))
       },
       test("ln") {
-        assertZIO(execute(select(Ln(3.0))).runHead.some)(equalTo(1.0986122886681097))
+        assertZIO(execute(select(Ln(3.0)).from(dual)).runHead.some)(equalTo(1.0986122886681097))
       },
       test("atan") {
-        assertZIO(execute(select(Atan(10.0))).runHead.some)(equalTo(1.4711276743037347))
+        assertZIO(execute(select(Atan(10.0)).from(dual)).runHead.some)(equalTo(1.4711276743037347))
       },
       test("cos") {
-        assertZIO(execute(select(Cos(3.141592653589793))).runHead.some)(equalTo(-1.0))
+        assertZIO(execute(select(Cos(3.141592653589793)).from(dual)).runHead.some)(equalTo(-1.0))
       },
       test("exp") {
-        assertZIO(execute(select(Exp(1.0))).runHead.some)(equalTo(2.718281828459045))
+        assertZIO(execute(select(Exp(1.0)).from(dual)).runHead.some)(equalTo(2.718281828459045))
       },
       test("floor") {
-        assertZIO(execute(select(Floor(-3.14159))).runHead.some)(equalTo(-4.0))
+        assertZIO(execute(select(Floor(-3.14159)).from(dual)).runHead.some)(equalTo(-4.0))
       },
       test("ceil") {
-        assertZIO(execute(select(Ceil(53.7), Ceil(-53.7))).runHead.some)(equalTo((54.0, -53.0)))
+        assertZIO(execute(select(Ceil(53.7), Ceil(-53.7)).from(dual)).runHead.some)(equalTo((54.0, -53.0)))
       },
       test("sin") {
-        assertZIO(execute(select(Sin(1.0))).runHead.some)(equalTo(0.8414709848078965))
+        assertZIO(execute(select(Sin(1.0)).from(dual)).runHead.some)(equalTo(0.8414709848078965))
       },
       test("sqrt") {
-        val query = select(Sqrt(121.0))
-
+        val query = select(Sqrt(121.0)).from(dual)
         val expected = 11.0
 
         val testResult = execute(query)
@@ -131,7 +131,7 @@ object CommonFunctionDefSpec extends OracleRunnableSpec with ShopSchema {
         assertZIO(testResult.runHead.some)(equalTo(expected))
       },
       test("round") {
-        val query = select(Round(10.8124, 2))
+        val query = select(Round(10.8124, 2)).from(dual)
 
         val expected = 10.81
 
@@ -144,7 +144,7 @@ object CommonFunctionDefSpec extends OracleRunnableSpec with ShopSchema {
         assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
       },
       test("sign positive") {
-        val query = select(Sign(3.0))
+        val query = select(Sign(3.0)).from(dual)
 
         val expected = 1
 
@@ -157,7 +157,7 @@ object CommonFunctionDefSpec extends OracleRunnableSpec with ShopSchema {
         assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
       },
       test("sign negative") {
-        val query = select(Sign(-3.0))
+        val query = select(Sign(-3.0)).from(dual)
 
         val expected = -1
 
@@ -170,7 +170,7 @@ object CommonFunctionDefSpec extends OracleRunnableSpec with ShopSchema {
         assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
       },
       test("sign zero") {
-        val query = select(Sign(0.0))
+        val query = select(Sign(0.0)).from(dual)
 
         val expected = 0
 
@@ -183,7 +183,7 @@ object CommonFunctionDefSpec extends OracleRunnableSpec with ShopSchema {
         assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
       },
       test("power") {
-        val query = select(Power(7.0, 3.0))
+        val query = select(Power(7.0, 3.0)).from(dual)
 
         val expected = 343.000000000000000
 
@@ -196,7 +196,7 @@ object CommonFunctionDefSpec extends OracleRunnableSpec with ShopSchema {
         assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
       },
       test("mod") {
-        val query = select(Mod(-15.0, -4.0))
+        val query = select(Mod(-15.0, -4.0)).from(dual)
 
         val expected = -3.0
 
@@ -209,7 +209,7 @@ object CommonFunctionDefSpec extends OracleRunnableSpec with ShopSchema {
         assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
       },
       test("octet_length") {
-        val query = select(OctetLength("josé"))
+        val query = select(OctetLength("josé")).from(dual)
 
         val expected = 5
 
@@ -220,9 +220,9 @@ object CommonFunctionDefSpec extends OracleRunnableSpec with ShopSchema {
         } yield assert(r.head)(equalTo(expected))
 
         assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-      },
+      } @@ TestAspect.ignore,
       test("ascii") {
-        val query = select(Ascii("""x"""))
+        val query = select(Ascii("""x""")).from(dual)
 
         val expected = 120
 
@@ -235,7 +235,7 @@ object CommonFunctionDefSpec extends OracleRunnableSpec with ShopSchema {
         assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
       },
       test("upper") {
-        val query = (select(Upper("ronald"))).limit(1)
+        val query = (select(Upper("ronald")).from(dual)).limit(1)
 
         val expected = "RONALD"
 
@@ -248,7 +248,7 @@ object CommonFunctionDefSpec extends OracleRunnableSpec with ShopSchema {
         assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
       },
       test("width_bucket") {
-        val query = select(WidthBucket(5.35, 0.024, 10.06, 5))
+        val query = select(WidthBucket(5.35, 0.024, 10.06, 5)).from(dual)
 
         val expected = 3
 
@@ -261,7 +261,7 @@ object CommonFunctionDefSpec extends OracleRunnableSpec with ShopSchema {
         assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
       },
       test("tan") {
-        val query = select(Tan(0.7853981634))
+        val query = select(Tan(0.7853981634)).from(dual)
 
         val expected = 1.0000000000051035
 
@@ -274,10 +274,10 @@ object CommonFunctionDefSpec extends OracleRunnableSpec with ShopSchema {
         assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
       },
       test("trim") {
-        assertZIO(execute(select(Trim(" 1234  "))).runHead.some)(equalTo("1234"))
+        assertZIO(execute(select(Trim(" 1234  ")).from(dual)).runHead.some)(equalTo("1234"))
       },
       test("lower") {
-        assertZIO(execute(select(Lower("YES"))).runHead.some)(equalTo("yes"))
+        assertZIO(execute(select(Lower("YES")).from(dual)).runHead.some)(equalTo("yes"))
       }
     )
   )

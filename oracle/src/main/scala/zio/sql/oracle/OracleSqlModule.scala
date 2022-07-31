@@ -45,6 +45,11 @@ trait OracleSqlModule extends Sql { self =>
     val Sind = FunctionDef[Double, Double](FunctionName("sind"))
   }
 
+  object Dual {
+    val dual = (string("dummy")).table("dual")
+    val (dummy) = dual.columns
+  }
+
   implicit val instantSchema =
     Schema.primitive[Instant](zio.schema.StandardType.InstantType(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
 
