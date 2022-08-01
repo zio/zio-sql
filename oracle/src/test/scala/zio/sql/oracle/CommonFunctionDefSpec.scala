@@ -123,7 +123,7 @@ object CommonFunctionDefSpec extends OracleRunnableSpec with ShopSchema {
         assertZIO(execute(select(Sin(1.0)).from(dual)).runHead.some)(equalTo(0.8414709848078965))
       },
       test("sqrt") {
-        val query = select(Sqrt(121.0)).from(dual)
+        val query    = select(Sqrt(121.0)).from(dual)
         val expected = 11.0
 
         val testResult = execute(query)
@@ -220,7 +220,7 @@ object CommonFunctionDefSpec extends OracleRunnableSpec with ShopSchema {
         } yield assert(r.head)(equalTo(expected))
 
         assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-      } @@ TestAspect.ignore,
+      } @@ TestAspect.ignore @@ TestAspect.tag("lengthb"),
       test("ascii") {
         val query = select(Ascii("""x""")).from(dual)
 

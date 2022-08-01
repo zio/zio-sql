@@ -108,7 +108,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
 
     private def renderLit(lit: self.Expr.Literal[_])(implicit render: Renderer): Unit = {
       import TypeTag._
-      val value  = lit.value
+      val value = lit.value
       lit.typeTag match {
         case TInstant        =>
           render(s"'${DateTimeFormatter.ISO_INSTANT.format(value.asInstanceOf[Instant])}'")

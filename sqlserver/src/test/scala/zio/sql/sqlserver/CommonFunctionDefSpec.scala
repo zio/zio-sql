@@ -6,7 +6,7 @@ import zio.test.Assertion._
 import zio.test._
 
 object CommonFunctionDefSpec extends SqlServerRunnableSpec with DbSchema {
-  import FunctionDef.{CharLength => _, _}
+  import FunctionDef.{ CharLength => _, _ }
   import DbSchema._
 
   private def collectAndCompare[R, E](
@@ -15,7 +15,7 @@ object CommonFunctionDefSpec extends SqlServerRunnableSpec with DbSchema {
   ) =
     assertZIO(testResult.runCollect)(hasSameElementsDistinct(expected))
 
-  override def specLayered = suite("Postgres Common FunctionDef")(
+  override def specLayered = suite("SqlServer Common FunctionDef")(
     suite("Schema dependent tests")(
       test("concat_ws #2 - combine columns") {
 
@@ -137,16 +137,16 @@ object CommonFunctionDefSpec extends SqlServerRunnableSpec with DbSchema {
       },
       test("log") {
         assertZIO(execute(select(Log(32.0, 2.0))).runHead.some)(equalTo(5.0))
-      } @@ TestAspect.ignore,
+      } @@ TestAspect.tag("different order of params"),
       test("acos") {
         assertZIO(execute(select(Acos(-1.0))).runHead.some)(equalTo(3.141592653589793))
       },
       test("asin") {
         assertZIO(execute(select(Asin(0.5))).runHead.some)(equalTo(0.5235987755982989))
       },
-/*      test("ln") {
+      test("ln") {
         assertZIO(execute(select(Ln(3.0))).runHead.some)(equalTo(1.0986122886681097))
-      },*/
+      } @@ TestAspect.ignore @@ TestAspect.tag("log with one param"),
       test("atan") {
         assertZIO(execute(select(Atan(10.0))).runHead.some)(equalTo(1.4711276743037347))
       },
@@ -161,7 +161,7 @@ object CommonFunctionDefSpec extends SqlServerRunnableSpec with DbSchema {
       },
       test("ceil") {
         assertZIO(execute(select(Ceil(53.7), Ceil(-53.7))).runHead.some)(equalTo((54.0, -53.0)))
-      } @@ TestAspect.ignore,
+      } @@ TestAspect.ignore @@ TestAspect.tag("cailing"),
       test("sin") {
         assertZIO(execute(select(Sin(1.0))).runHead.some)(equalTo(0.8414709848078965))
       },
@@ -177,7 +177,7 @@ object CommonFunctionDefSpec extends SqlServerRunnableSpec with DbSchema {
       test("round") {
         val query = select(Round(10.8124, 2))
 
-        val expected = 10.81
+        val expected   = 10.81
         val testResult = execute(query)
 
         val assertion = for {
@@ -238,7 +238,7 @@ object CommonFunctionDefSpec extends SqlServerRunnableSpec with DbSchema {
 
         assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
       },
-/*      test("mod") {
+      test("mod") {
         val query = select(Mod(-15.0, -4.0))
 
         val expected = -3.0
@@ -250,7 +250,7 @@ object CommonFunctionDefSpec extends SqlServerRunnableSpec with DbSchema {
         } yield assert(r.head)(equalTo(expected))
 
         assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-      },*/
+      } @@ TestAspect.ignore @@ TestAspect.tag("to use % instead"),
       test("octet_length") {
         val query = select(OctetLength("josé"))
 
@@ -263,7 +263,7 @@ object CommonFunctionDefSpec extends SqlServerRunnableSpec with DbSchema {
         } yield assert(r.head)(equalTo(expected))
 
         assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-      } @@ TestAspect.ignore,
+      } @@ TestAspect.ignore @@ TestAspect.tag("datalength"),
       test("ascii") {
         val query = select(Ascii("""x"""))
 

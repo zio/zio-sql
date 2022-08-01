@@ -46,7 +46,7 @@ trait OracleSqlModule extends Sql { self =>
   }
 
   object Dual {
-    val dual = (string("dummy")).table("dual")
+    val dual    = (string("dummy")).table("dual")
     val (dummy) = dual.columns
   }
 
