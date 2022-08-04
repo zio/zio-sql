@@ -25,8 +25,8 @@ addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck"
 
 val zioVersion                 = "2.0.0"
 val zioSchemaVersion           = "0.2.0"
-val testcontainersVersion      = "1.17.2"
-val testcontainersScalaVersion = "0.40.8"
+val testcontainersVersion      = "1.17.3"
+val testcontainersScalaVersion = "0.40.10"
 val logbackVersion             = "1.2.11"
 
 lazy val root = project
