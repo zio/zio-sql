@@ -4,7 +4,6 @@ import zio.Chunk
 import zio.schema.StandardType._
 import zio.schema._
 import zio.sql.driver.Renderer
-import zio.sql.driver.Renderer.Extensions
 
 import java.time.format.{ DateTimeFormatter, DateTimeFormatterBuilder }
 import java.time._
@@ -107,6 +106,49 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
           render(" (", values.mkString(","), ") ") // todo fix needs escaping
       }
 
+    private def renderLit(lit: self.Expr.Literal[_])(implicit render: Renderer): Unit = {
+      import TypeTag._
+      val value = lit.value
+      lit.typeTag match {
+        case TInstant        =>
+          render(s"'${DateTimeFormatter.ISO_INSTANT.format(value.asInstanceOf[Instant])}'")
+        case TLocalTime      =>
+          render(s"'${DateTimeFormatter.ISO_LOCAL_TIME.format(value.asInstanceOf[LocalTime])}'")
+        case TLocalDate      =>
+          render(s"'${DateTimeFormatter.ISO_LOCAL_DATE.format(value.asInstanceOf[LocalDate])}'")
+        case TLocalDateTime  =>
+          render(s"'${DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(value.asInstanceOf[LocalDateTime])}'")
+        case TZonedDateTime  =>
+          render(s"'${fmtDateTimeOffset.format(value.asInstanceOf[ZonedDateTime])}'")
+        case TOffsetTime     =>
+          render(s"'${fmtTimeOffset.format(value.asInstanceOf[OffsetTime])}'")
+        case TOffsetDateTime =>
+          render(s"'${fmtDateTimeOffset.format(value.asInstanceOf[OffsetDateTime])}'")
+
+        case TBoolean =>
+          val b = value.asInstanceOf[Boolean]
+          if (b) {
+            render('1')
+          } else {
+            render('0')
+          }
+        case TUUID    => render(s"'$value'")
+
+        case TBigDecimal => render(value)
+        case TByte       => render(value)
+        case TDouble     => render(value)
+        case TFloat      => render(value)
+        case TInt        => render(value)
+        case TLong       => render(value)
+        case TShort      => render(value)
+
+        case TChar   => render(s"N'$value'")
+        case TString => render(s"N'$value'")
+
+        case _ => render(s"'$value'")
+      }
+    }
+
     private def buildExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
       case Expr.Subselect(subselect)                                                            =>
         render(" (")
@@ -145,33 +187,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
       case Expr.In(value, set)                                                                  =>
         buildExpr(value)
         renderReadImpl(set)
-      case literal @ Expr.Literal(value)                                                        =>
-        val lit = literal.typeTag match {
-          case TypeTag.TBoolean        =>
-            // MSSQL server variant of true/false
-            if (value.asInstanceOf[Boolean]) {
-              "0 = 0"
-            } else {
-              "0 = 1"
-            }
-          case TypeTag.TLocalDateTime  =>
-            val x = value
-              .asInstanceOf[java.time.LocalDateTime]
-              .format(java.time.format.DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss"))
-            s"'$x'"
-          case TypeTag.TZonedDateTime  =>
-            val x = value
-              .asInstanceOf[java.time.ZonedDateTime]
-              .format(java.time.format.DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss"))
-            s"'$x'"
-          case TypeTag.TOffsetDateTime =>
-            val x = value
-              .asInstanceOf[java.time.OffsetDateTime]
-              .format(java.time.format.DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss"))
-            s"'$x'"
-          case _                       => value.toString.singleQuoted
-        }
-        render(lit)
+      case literal: Expr.Literal[_]                                                             => renderLit(literal)
       case Expr.AggregationCall(param, aggregation)                                             =>
         render(aggregation.name.name)
         render("(")

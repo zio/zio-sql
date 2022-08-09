@@ -412,7 +412,6 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     val Ascii       = FunctionDef[String, Int](FunctionName("ascii"))
     val CharLength  = FunctionDef[String, Int](FunctionName("character_length"))
     val Concat      = FunctionDef[(String, String), String](FunctionName("concat")) // todo varargs
-    val ConcatWs2   = FunctionDef[(String, String), String](FunctionName("concat_ws"))
     val ConcatWs3   = FunctionDef[(String, String, String), String](FunctionName("concat_ws"))
     val ConcatWs4   = FunctionDef[(String, String, String, String), String](FunctionName("concat_ws"))
     val Lower       = FunctionDef[String, String](FunctionName("lower"))

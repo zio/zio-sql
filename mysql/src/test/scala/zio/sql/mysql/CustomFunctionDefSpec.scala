@@ -6,56 +6,12 @@ import zio.test.Assertion._
 import java.time.{ LocalDate, LocalTime, ZoneId }
 import java.time.format.DateTimeFormatter
 
-object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
+object CustomFunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
   import Customers._
-  import FunctionDef._
   import MysqlFunctionDef._
 
   override def specLayered = suite("MySQL FunctionDef")(
-    test("lower") {
-      val query = select(Lower(fName)) from customers limit (1)
-
-      val expected = "ronald"
-
-      val testResult = execute(query)
-
-      assertZIO(testResult.runHead.some)(equalTo(expected))
-    },
-    // FIXME: lower with string literal should not refer to a column name
-    // See: https://www.w3schools.com/sql/trymysql.asp?filename=trysql_func_mysql_lower
-    // Uncomment the following test when fixed
-    //    test("lower with string literal") {
-    //      val query = select(Lower("LOWER")) from customers limit(1)
-    //
-    //      val expected = "lower"
-    //
-    //      val testResult = execute(query.to[String, String](identity))
-    //
-    //      val assertion = for {
-    //        r <- testResult.runCollect
-    //      } yield assert(r.head)(equalTo(expected))
-    //
-    //      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    //    },
-    test("sin") {
-      val query = select(Sin(1.0))
-
-      val expected = 0.8414709848078965
-
-      val testResult = execute(query)
-
-      assertZIO(testResult.runHead.some)(equalTo(expected))
-    },
-    test("abs") {
-      val query = select(Abs(-32.0))
-
-      val expected = 32.0
-
-      val testResult = execute(query)
-
-      assertZIO(testResult.runHead.some)(equalTo(expected))
-    },
     test("crc32") {
       val query = select(Crc32("MySQL")) from customers
 
