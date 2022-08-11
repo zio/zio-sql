@@ -3,6 +3,7 @@ package zio.sql.oracle
 import zio.schema.Schema
 import zio.schema.DynamicValue
 import zio.schema.StandardType
+
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -10,12 +11,14 @@ import java.time.LocalTime
 import java.time.OffsetTime
 import java.time.ZonedDateTime
 import zio.sql.driver.Renderer
-import zio.sql.driver.Renderer.Extensions
 import zio.Chunk
+
 import scala.collection.mutable
 import java.time.OffsetDateTime
 import java.time.YearMonth
 import java.time.Duration
+import java.time.format.{ DateTimeFormatter, DateTimeFormatterBuilder }
+import java.time.temporal.ChronoField._
 
 trait OracleRenderModule extends OracleSqlModule { self =>
 
@@ -41,6 +44,105 @@ trait OracleRenderModule extends OracleSqlModule { self =>
     implicit val render: Renderer = Renderer()
     OracleRender.renderUpdateImpl(update)
     render.toString
+  }
+
+  private object DateTimeFormats {
+    val fmtTime = new DateTimeFormatterBuilder()
+      .appendValue(HOUR_OF_DAY, 2)
+      .appendLiteral(':')
+      .appendValue(MINUTE_OF_HOUR, 2)
+      .appendLiteral(':')
+      .appendValue(SECOND_OF_MINUTE, 2)
+      .appendFraction(NANO_OF_SECOND, 9, 9, true)
+      .appendOffset("+HH:MM", "Z")
+      .toFormatter()
+
+    val fmtTimeOffset = new DateTimeFormatterBuilder()
+      .append(fmtTime)
+      .appendFraction(NANO_OF_SECOND, 9, 9, true)
+      .toFormatter()
+
+    val fmtDateTime = new DateTimeFormatterBuilder().parseCaseInsensitive
+      .append(DateTimeFormatter.ISO_LOCAL_DATE)
+      .appendLiteral('T')
+      .append(fmtTime)
+      .toFormatter()
+
+    val fmtDateTimeOffset = new DateTimeFormatterBuilder().parseCaseInsensitive
+      .append(fmtDateTime)
+      .appendOffset("+HH:MM", "Z")
+      .toFormatter()
+  }
+
+  private def buildLit(lit: self.Expr.Literal[_])(builder: StringBuilder): Unit = {
+    import TypeTag._
+    val value = lit.value
+    lit.typeTag match {
+      case TInstant        =>
+        val _ = builder.append(s"""TO_TIMESTAMP_TZ('${DateTimeFormats.fmtDateTimeOffset.format(
+            value.asInstanceOf[Instant]
+          )}', 'SYYYY-MM-DD"T"HH24:MI:SS.FF9TZH:TZM')""")
+      case TLocalTime      =>
+        val localTime = value.asInstanceOf[LocalTime]
+        val _         = builder.append(
+          s"INTERVAL '${localTime.getHour}:${localTime.getMinute}:${localTime.getSecond}.${localTime.getNano}' HOUR TO SECOND(9)"
+        )
+      case TLocalDate      =>
+        val _ = builder.append(
+          s"TO_DATE('${DateTimeFormatter.ISO_LOCAL_DATE.format(value.asInstanceOf[LocalDate])}', 'SYYYY-MM-DD')"
+        )
+      case TLocalDateTime  =>
+        val _ = builder.append(s"""TO_TIMESTAMP('${DateTimeFormats.fmtDateTime.format(
+            value.asInstanceOf[LocalDateTime]
+          )}', 'SYYYY-MM-DD"T"HH24:MI:SS.FF9')""")
+      case TZonedDateTime  =>
+        val _ = builder.append(s"""TO_TIMESTAMP_TZ('${DateTimeFormats.fmtDateTimeOffset.format(
+            value.asInstanceOf[ZonedDateTime]
+          )}', 'SYYYY-MM-DD"T"HH24:MI:SS.FF9TZH:TZM')""")
+      case TOffsetTime     =>
+        val _ = builder.append(
+          s"TO_TIMESTAMP_TZ('${DateTimeFormats.fmtTimeOffset.format(value.asInstanceOf[OffsetTime])}', 'HH24:MI:SS.FF9TZH:TZM')"
+        )
+      case TOffsetDateTime =>
+        val _ = builder.append(
+          s"""TO_TIMESTAMP_TZ('${DateTimeFormats.fmtDateTimeOffset.format(
+              value.asInstanceOf[OffsetDateTime]
+            )}', 'SYYYY-MM-DD"T"HH24:MI:SS.FF9TZH:TZM')"""
+        )
+
+      case TBoolean =>
+        val b = value.asInstanceOf[Boolean]
+        if (b) {
+          val _ = builder.append('1')
+        } else {
+          val _ = builder.append('0')
+        }
+      case TUUID    =>
+        val _ = builder.append(s"'$value'")
+
+      case TBigDecimal =>
+        val _ = builder.append(value)
+      case TByte       =>
+        val _ = builder.append(value)
+      case TDouble     =>
+        val _ = builder.append(value)
+      case TFloat      =>
+        val _ = builder.append(value)
+      case TInt        =>
+        val _ = builder.append(value)
+      case TLong       =>
+        val _ = builder.append(value)
+      case TShort      =>
+        val _ = builder.append(value)
+
+      case TChar   =>
+        val _ = builder.append(s"N'$value'")
+      case TString =>
+        val _ = builder.append(s"N'$value'")
+
+      case _ =>
+        val _ = builder.append(s"'$value'")
+    }
   }
 
   // TODO: to consider the refactoring and using the implicit `Renderer`, see `renderExpr` in `PostgresRenderModule`
@@ -85,8 +187,8 @@ trait OracleRenderModule extends OracleSqlModule { self =>
       val _ = builder.append("1 = 1")
     case Expr.Literal(false)                                                                  =>
       val _ = builder.append("0 = 1")
-    case Expr.Literal(value)                                                                  =>
-      val _ = builder.append(value.toString.singleQuoted)
+    case literal: Expr.Literal[_]                                                             =>
+      val _ = buildLit(literal)(builder)
     case Expr.AggregationCall(param, aggregation)                                             =>
       builder.append(aggregation.name.name)
       builder.append("(")
@@ -178,7 +280,7 @@ trait OracleRenderModule extends OracleSqlModule { self =>
   }
 
   /**
-    * Drops the initial Litaral(true) present at the start of every WHERE expressions by default 
+    * Drops the initial Litaral(true) present at the start of every WHERE expressions by default
     * and proceeds to the rest of Expr's.
     */
   private def buildWhereExpr[A, B](expr: self.Expr[_, A, B], builder: mutable.StringBuilder): Unit = expr match {

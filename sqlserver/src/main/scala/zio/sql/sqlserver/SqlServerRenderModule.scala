@@ -1,8 +1,12 @@
 package zio.sql.sqlserver
 
-import zio.schema.Schema
+import zio.Chunk
+import zio.schema.StandardType._
+import zio.schema._
 import zio.sql.driver.Renderer
-import zio.sql.driver.Renderer.Extensions
+
+import java.time.format.{ DateTimeFormatter, DateTimeFormatterBuilder }
+import java.time._
 
 trait SqlServerRenderModule extends SqlServerSqlModule { self =>
 
@@ -31,6 +35,17 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
   }
 
   object SqlServerRenderer {
+
+    private val fmtDateTimeOffset = new DateTimeFormatterBuilder().parseCaseInsensitive
+      .append(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+      .appendOffset("+HH:MM", "Z")
+      .toFormatter()
+
+    private val fmtTimeOffset = new DateTimeFormatterBuilder()
+      .parseCaseInsensitive()
+      .append(DateTimeFormatter.ISO_LOCAL_TIME)
+      .appendOffset("+HH:MM", "Z")
+      .toFormatter()
 
     private[zio] def renderReadImpl(read: self.Read[_])(implicit render: Renderer): Unit =
       read match {
@@ -63,7 +78,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
           buildWhereExpr(whereExpr)
           groupByExprs match {
             case Read.ExprSet.ExprCons(_, _) =>
-              render(" GROUP BT ")
+              render(" GROUP BY ")
               buildExprList(groupByExprs)
 
               havingExpr match {
@@ -90,6 +105,49 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
         case Read.Literal(values) =>
           render(" (", values.mkString(","), ") ") // todo fix needs escaping
       }
+
+    private def renderLit(lit: self.Expr.Literal[_])(implicit render: Renderer): Unit = {
+      import TypeTag._
+      val value = lit.value
+      lit.typeTag match {
+        case TInstant        =>
+          render(s"'${DateTimeFormatter.ISO_INSTANT.format(value.asInstanceOf[Instant])}'")
+        case TLocalTime      =>
+          render(s"'${DateTimeFormatter.ISO_LOCAL_TIME.format(value.asInstanceOf[LocalTime])}'")
+        case TLocalDate      =>
+          render(s"'${DateTimeFormatter.ISO_LOCAL_DATE.format(value.asInstanceOf[LocalDate])}'")
+        case TLocalDateTime  =>
+          render(s"'${DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(value.asInstanceOf[LocalDateTime])}'")
+        case TZonedDateTime  =>
+          render(s"'${fmtDateTimeOffset.format(value.asInstanceOf[ZonedDateTime])}'")
+        case TOffsetTime     =>
+          render(s"'${fmtTimeOffset.format(value.asInstanceOf[OffsetTime])}'")
+        case TOffsetDateTime =>
+          render(s"'${fmtDateTimeOffset.format(value.asInstanceOf[OffsetDateTime])}'")
+
+        case TBoolean =>
+          val b = value.asInstanceOf[Boolean]
+          if (b) {
+            render('1')
+          } else {
+            render('0')
+          }
+        case TUUID    => render(s"'$value'")
+
+        case TBigDecimal => render(value)
+        case TByte       => render(value)
+        case TDouble     => render(value)
+        case TFloat      => render(value)
+        case TInt        => render(value)
+        case TLong       => render(value)
+        case TShort      => render(value)
+
+        case TChar   => render(s"N'$value'")
+        case TString => render(s"N'$value'")
+
+        case _ => render(s"'$value'")
+      }
+    }
 
     private def buildExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
       case Expr.Subselect(subselect)                                                            =>
@@ -129,33 +187,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
       case Expr.In(value, set)                                                                  =>
         buildExpr(value)
         renderReadImpl(set)
-      case literal @ Expr.Literal(value)                                                        =>
-        val lit = literal.typeTag match {
-          case TypeTag.TBoolean        =>
-            // MSSQL server variant of true/false
-            if (value.asInstanceOf[Boolean]) {
-              "0 = 0"
-            } else {
-              "0 = 1"
-            }
-          case TypeTag.TLocalDateTime  =>
-            val x = value
-              .asInstanceOf[java.time.LocalDateTime]
-              .format(java.time.format.DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss"))
-            s"'$x'"
-          case TypeTag.TZonedDateTime  =>
-            val x = value
-              .asInstanceOf[java.time.ZonedDateTime]
-              .format(java.time.format.DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss"))
-            s"'$x'"
-          case TypeTag.TOffsetDateTime =>
-            val x = value
-              .asInstanceOf[java.time.OffsetDateTime]
-              .format(java.time.format.DateTimeFormatter.ofPattern("YYYY-MM-dd HH:mm:ss"))
-            s"'$x'"
-          case _                       => value.toString.singleQuoted
-        }
-        render(lit)
+      case literal: Expr.Literal[_]                                                             => renderLit(literal)
       case Expr.AggregationCall(param, aggregation)                                             =>
         render(aggregation.name.name)
         render("(")
@@ -370,18 +402,167 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
         buildExpr(expr)
     }
 
+    private def buildColumnNames(sources: SelectionSet[_])(implicit render: Renderer): Unit =
+      sources match {
+        case SelectionSet.Empty                       => ()
+        case SelectionSet.Cons(columnSelection, tail) =>
+          val _ = columnSelection.name.map { name =>
+            render(name)
+          }
+          tail.asInstanceOf[SelectionSet[_]] match {
+            case SelectionSet.Empty             => ()
+            case next @ SelectionSet.Cons(_, _) =>
+              render(", ")
+              buildColumnNames(next.asInstanceOf[SelectionSet[_]])(render)
+          }
+      }
+
+    private def buildInsertValues[A](col: Seq[A])(implicit render: Renderer, schema: Schema[A]): Unit =
+      col.toList match {
+        case head :: Nil  =>
+          render("(")
+          buildInsertValue(head)
+          render(");")
+        case head :: next =>
+          render("(")
+          buildInsertValue(head)(render, schema)
+          render(" ),")
+          buildInsertValues(next)
+        case Nil          => ()
+      }
+
+    private def buildInsertValue[Z](z: Z)(implicit render: Renderer, schema: Schema[Z]): Unit =
+      schema.toDynamic(z) match {
+        case DynamicValue.Record(listMap) =>
+          listMap.values.toList match {
+            case head :: Nil  => buildDynamicValue(head)
+            case head :: next =>
+              buildDynamicValue(head)
+              render(", ")
+              buildDynamicValues(next)
+            case Nil          => ()
+          }
+        case value                        => buildDynamicValue(value)
+      }
+
+    private def buildDynamicValues(dynValues: List[DynamicValue])(implicit render: Renderer): Unit =
+      dynValues match {
+        case head :: Nil  => buildDynamicValue(head)
+        case head :: tail =>
+          buildDynamicValue(head)
+          render(", ")
+          buildDynamicValues(tail)
+        case Nil          => ()
+      }
+
+    // TODO render each type according to their specifics & test it
+    private def buildDynamicValue(dynValue: DynamicValue)(implicit render: Renderer): Unit =
+      dynValue match {
+        case DynamicValue.Primitive(value, typeTag) =>
+          // need to do this since StandardType is invariant in A
+          StandardType.fromString(typeTag.tag) match {
+            case Some(v) =>
+              v match {
+                case BigDecimalType                            =>
+                  render(value)
+                case StandardType.InstantType(formatter)       =>
+                  render(s"'${formatter.format(value.asInstanceOf[Instant])}'")
+                case CharType                                  => render(s"N'${value}'")
+                case IntType                                   => render(value)
+                case StandardType.MonthDayType                 => render(s"'${value}'")
+                case BinaryType                                =>
+                  val chunk = value.asInstanceOf[Chunk[Object]]
+                  render("CONVERT(VARBINARY(MAX),'")
+                  for (b <- chunk)
+                    render(String.format("%02x", b))
+                  render("', 2)")
+                case StandardType.MonthType                    => render(s"'${value}'")
+                case StandardType.LocalDateTimeType(formatter) =>
+                  render(s"'${formatter.format(value.asInstanceOf[LocalDateTime])}'")
+                case UnitType                                  => render("null") // None is encoded as Schema[Unit].transform(_ => None, _ => ())
+                case StandardType.YearMonthType                => render(s"'${value}'")
+                case DoubleType                                => render(value)
+                case StandardType.YearType                     => render(s"'${value}'")
+                case StandardType.OffsetDateTimeType(_)        =>
+                  render(s"'${fmtDateTimeOffset.format(value.asInstanceOf[OffsetDateTime])}'")
+                case StandardType.ZonedDateTimeType(_)         =>
+                  render(s"'${fmtDateTimeOffset.format(value.asInstanceOf[ZonedDateTime])}'")
+                case BigIntegerType                            => render(value)
+                case UUIDType                                  => render(s"'${value}'")
+                case StandardType.ZoneOffsetType               => render(s"'${value}'")
+                case ShortType                                 => render(value)
+                case StandardType.LocalTimeType(_)             =>
+                  render(s"'${DateTimeFormatter.ISO_LOCAL_TIME.format(value.asInstanceOf[LocalTime])}'")
+                case StandardType.OffsetTimeType(_)            =>
+                  render(s"'${fmtTimeOffset.format(value.asInstanceOf[OffsetTime])}'")
+                case LongType                                  => render(value)
+                case StringType                                => render(s"N'${value}'")
+                case StandardType.PeriodType                   => render(s"'${value}'")
+                case StandardType.ZoneIdType                   => render(s"'${value}'")
+                case StandardType.LocalDateType(_)             =>
+                  render(s"'${DateTimeFormatter.ISO_LOCAL_DATE.format(value.asInstanceOf[LocalDate])}'")
+                case BoolType                                  =>
+                  val b = value.asInstanceOf[Boolean]
+                  if (b) {
+                    render('1')
+                  } else {
+                    render('0')
+                  }
+                case DayOfWeekType                             => render(s"'${value}'")
+                case FloatType                                 => render(value)
+                case StandardType.DurationType                 => render(s"'${value}'")
+              }
+            case None    => ()
+          }
+        case DynamicValue.Tuple(left, right)        =>
+          buildDynamicValue(left)
+          render(", ")
+          buildDynamicValue(right)
+        case DynamicValue.SomeValue(value)          => buildDynamicValue(value)
+        case DynamicValue.NoneValue                 => render("null")
+        case _                                      => ()
+      }
+
+    private def buildSet(set: List[Set[_, _]])(implicit render: Renderer): Unit =
+      set match {
+        case head :: tail =>
+          buildExpr(head.lhs)
+          render(" = ")
+          buildExpr(head.rhs)
+          tail.foreach { setEq =>
+            render(", ")
+            buildExpr(setEq.lhs)
+            render(" = ")
+            buildExpr(setEq.rhs)
+          }
+        case Nil          => // TODO restrict Update to not allow empty set
+      }
+
     def renderDeleteImpl(delete: Delete[_])(implicit render: Renderer) = {
       render("DELETE FROM ")
       buildTable(delete.table)
       buildWhereExpr(delete.whereExpr)
     }
 
-    // TODO https://github.com/zio/zio-sql/issues/160
     def renderUpdateImpl(update: Update[_])(implicit render: Renderer) =
-      ???
+      update match {
+        case Update(table, set, whereExpr) =>
+          render("UPDATE ")
+          buildTable(table)
+          render(" SET ")
+          buildSet(set)
+          buildWhereExpr(whereExpr)
+      }
 
-    // TODO https://github.com/zio/zio-sql/issues/160
-    def renderInsertImpl[A](insert: Insert[_, A])(implicit render: Renderer, schema: Schema[A]) =
-      ???
+    def renderInsertImpl[A](insert: Insert[_, A])(implicit render: Renderer, schema: Schema[A]) = {
+      render("INSERT INTO ")
+      buildTable(insert.table)
+
+      render(" (")
+      buildColumnNames(insert.sources)
+      render(") VALUES ")
+
+      buildInsertValues(insert.values)
+    }
   }
 }
