@@ -49,6 +49,14 @@ object ConnectionPoolSpec extends ZIOSpecDefault {
           _       <- promise.complete(ZIO.unit)
           _       <- ZIO.scoped(cp.connection)
         } yield assert("")(Assertion.anything)
-      } @@ timeout(10.seconds) @@ withLiveClock
+      } @@ timeout(10.seconds) @@ withLiveClock +
+
+        test("Invalid or closed fibers should be reacquired") {
+          for {
+            cp   <- ZIO.service[ConnectionPool]
+            _    <- ZIO.replicateZIO(poolSize)(ZIO.scoped(cp.connection.map(_.close)))
+            conn <- ZIO.scoped(cp.connection)
+          } yield assert(conn.isValid(10))(Assertion.isTrue)
+        }
     ) @@ sequential
 }
