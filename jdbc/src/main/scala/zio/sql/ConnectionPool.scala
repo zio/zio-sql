@@ -132,15 +132,25 @@ final case class ConnectionPoolLive(
 
   private def release(connection: ResettableConnection): UIO[Any] =
     ZIO.uninterruptible {
-      tryRelease(connection).commit.flatMap {
-        case Some(handle) =>
-          handle.interrupted.get.tap { interrupted =>
-            ZSTM.when(!interrupted)(handle.promise.succeed(connection))
-          }.commit.flatMap { interrupted =>
-            ZIO.when(interrupted)(release(connection))
+      ZIO
+        .whenZIO(connection.isValid.map(!_)) {
+          ZIO.attempt(connection.connection.close).zipParRight(addFreshConnection).orDie
+        }
+        .flatMap { opt =>
+          val conn = opt match {
+            case Some(c) => c
+            case None    => connection
           }
-        case None         => ZIO.unit
-      }
+          tryRelease(conn).commit.flatMap {
+            case Some(handle) =>
+              handle.interrupted.get.tap { interrupted =>
+                ZSTM.when(!interrupted)(handle.promise.succeed(conn))
+              }.commit.flatMap { interrupted =>
+                ZIO.when(interrupted)(release(conn))
+              }
+            case None         => ZIO.unit
+          }
+        }
     }
 
   private def tryRelease(
@@ -171,5 +181,14 @@ final case class ConnectionPoolLive(
 }
 
 private[sql] final class ResettableConnection(val connection: Connection, resetter: Connection => Unit) {
-  def reset: UIO[Any] = ZIO.succeed(resetter(connection))
+  def reset: UIO[Any]       = ZIO.succeed(resetter(connection))
+  def isValid: UIO[Boolean] =
+    ZIO
+      .when(!connection.isClosed) {
+        ZIO.succeed(connection.prepareStatement("SELECT 1"))
+      }
+      .map {
+        case Some(stmt) => stmt != null
+        case None       => false
+      }
 }
