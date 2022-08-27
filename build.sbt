@@ -45,7 +45,8 @@ lazy val root = project
     mysql,
     oracle,
     postgres,
-    sqlserver
+    sqlserver,
+    jdbc_hikaricp
   )
 
 lazy val core = crossProject(JSPlatform, JVMPlatform)
@@ -130,6 +131,23 @@ lazy val jdbc = project
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
   .dependsOn(core.jvm)
+
+lazy val jdbc_hikaricp = project
+  .in(file("jdbc-hikaricp"))
+  .settings(stdSettings("zio-sql-jdbc-hickaricp"))
+  .settings(buildInfoSettings("zio.sql.jdbc-hickaricp"))
+  .settings(
+    libraryDependencies ++= Seq(
+      "com.zaxxer"         % "HikariCP"                   % "5.0.1",
+      "dev.zio"           %% "zio-test"                   % zioVersion                 % Test,
+      "dev.zio"           %% "zio-test-sbt"               % zioVersion                 % Test,
+      "org.testcontainers" % "mysql"                      % testcontainersVersion      % Test,
+      "mysql"              % "mysql-connector-java"       % "8.0.29"                   % Test,
+      "com.dimafeng"      %% "testcontainers-scala-mysql" % testcontainersScalaVersion % Test
+    )
+  )
+  .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
+  .dependsOn(jdbc)
 
 lazy val mysql = project
   .in(file("mysql"))
