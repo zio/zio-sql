@@ -24,6 +24,7 @@ import zio.schema.StandardType.StringType
 import zio.schema.StandardType.BoolType
 import zio.schema.StandardType.DayOfWeekType
 import zio.schema.StandardType.FloatType
+import zio.schema.StandardType.ByteType
 
 trait PostgresModule extends Jdbc { self =>
   import TypeTag._
@@ -39,29 +40,7 @@ trait PostgresModule extends Jdbc { self =>
       import scala.language.implicitConversions
 
       private[PostgresModule] sealed case class LateraLTable[A, B](left: Table.Aux[A], right: Table.Aux[B])
-          extends PostgresSpecificTable[A with B] { self =>
-
-        override type ColumnHead = left.ColumnHead
-
-        override type HeadIdentity0 = left.HeadIdentity0
-        override type ColumnTail    =
-          left.columnSet.tail.Append[ColumnSet.Cons[right.ColumnHead, right.ColumnTail, right.HeadIdentity0]]
-
-        override val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail, HeadIdentity0] =
-          left.columnSet ++ right.columnSet
-
-        override val columnToExpr: ColumnToExpr[A with B] = new ColumnToExpr[A with B] {
-          def toExpr[C](column: Column[C]): Expr[Features.Source[column.Identity, A with B], A with B, C] =
-            if (left.columnSet.contains(column))
-              left.columnToExpr
-                .toExpr(column)
-                .asInstanceOf[Expr[Features.Source[column.Identity, A with B], A with B, C]]
-            else
-              right.columnToExpr
-                .toExpr(column)
-                .asInstanceOf[Expr[Features.Source[column.Identity, A with B], A with B, C]]
-        }
-      }
+          extends PostgresSpecificTable[A with B]
 
       implicit def tableSourceToSelectedBuilder[A](
         table: Table.Aux[A]
@@ -71,11 +50,11 @@ trait PostgresModule extends Jdbc { self =>
       sealed case class LateralTableBuilder[A](left: Table.Aux[A]) {
         self =>
 
-        final def lateral[Out](
-          right: Table.DerivedTable[Out, Read[Out]]
-        ): Table.DialectSpecificTable[A with right.TableType] = {
+        final def lateral[Reprs, Out, B](
+          right: Table.DerivedTable[Reprs, Out, Read.WithReprs[Out, Reprs], B]
+        ): Table.DialectSpecificTable[A with B] = {
 
-          val tableExtension = LateraLTable[A, right.TableType](
+          val tableExtension = LateraLTable[A, B](
             left,
             right
           )
@@ -252,11 +231,17 @@ trait PostgresModule extends Jdbc { self =>
     }
   }
 
+  // Schemas for Postgres specific time formats
   implicit val localDateSchema =
     Schema.primitive[LocalDate](zio.schema.StandardType.LocalDateType(DateTimeFormatter.ISO_DATE))
-
   implicit val zonedDateTimeShema =
     Schema.primitive[ZonedDateTime](zio.schema.StandardType.ZonedDateTimeType(DateTimeFormatter.ISO_ZONED_DATE_TIME))
+  implicit val offsetDateTimeSchema =
+    Schema.primitive[OffsetDateTime](StandardType.OffsetDateTimeType(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
+  implicit val instantSchema : Schema[Instant] = 
+		Schema.primitive(StandardType.InstantType(DateTimeFormatter.ISO_INSTANT))
+	implicit val localDateTimeSchema : Schema[LocalDateTime] = 
+		Schema.primitive(StandardType.LocalDateTimeType(DateTimeFormatter.ISO_INSTANT))
 
   object PostgresFunctionDef {
     import PostgresSpecific._
@@ -379,7 +364,7 @@ trait PostgresModule extends Jdbc { self =>
 
     def renderInserValue[Z](z: Z)(implicit render: Renderer, schema: Schema[Z]): Unit =
       schema.toDynamic(z) match {
-        case DynamicValue.Record(listMap) =>
+        case DynamicValue.Record(_, listMap) =>
           listMap.values.toList match {
             case head :: Nil  => renderDynamicValue(head)
             case head :: next =>
@@ -409,6 +394,7 @@ trait PostgresModule extends Jdbc { self =>
           StandardType.fromString(typeTag.tag) match {
             case Some(v) =>
               v match {
+                case ByteType => ()
                 case BigDecimalType                             =>
                   render(value)
                 case StandardType.InstantType(formatter)        =>

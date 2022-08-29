@@ -53,6 +53,14 @@ trait JdbcInternalModule { self: Jdbc =>
         else {
           Right(BigDecimal.javaBigDecimal2bigDecimal(result).asInstanceOf[A])
         }
+      // TODO unify both
+      case TScalaBigDecimal    => 
+        val result = resultSet.getBigDecimal(columnIndex)
+        if (result == null)
+          Right(null.asInstanceOf[A])
+        else {
+          Right(BigDecimal.javaBigDecimal2bigDecimal(result).asInstanceOf[A])
+        }
       case TBoolean            => tryDecode[Boolean](Option(resultSet.getBoolean(columnIndex)))
       case TByte               => tryDecode[Byte](Option(resultSet.getByte(columnIndex)))
       case TByteArray          =>

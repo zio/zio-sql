@@ -20,7 +20,8 @@ trait TypeTagModule { self: SelectModule =>
 
   object TypeTag {
     sealed trait NotNull[+A]                                                      extends TypeTag[A]
-    implicit case object TBigDecimal                                              extends NotNull[BigDecimal]
+    implicit case object TBigDecimal                                              extends NotNull[java.math.BigDecimal]
+    implicit case object TScalaBigDecimal                                         extends NotNull[BigDecimal]
     implicit case object TBoolean                                                 extends NotNull[Boolean]
     implicit case object TByte                                                    extends NotNull[Byte]
     implicit case object TByteArray                                               extends NotNull[Chunk[Byte]]
@@ -39,7 +40,9 @@ trait TypeTagModule { self: SelectModule =>
     implicit case object TString                                                  extends NotNull[String]
     implicit case object TUUID                                                    extends NotNull[UUID]
     implicit case object TZonedDateTime                                           extends NotNull[ZonedDateTime]
-    sealed case class TDialectSpecific[+A](typeTagExtension: TypeTagExtension[A]) extends NotNull[A]
+    
+    //TODO how to handle dialect specific in tablelike macro ?
+    sealed case class TDialectSpecific[+A](typeTagExtension: TypeTagExtension[A]) extends NotNull[A] 
     sealed case class Nullable[A: NotNull]()                                      extends TypeTag[Option[A]] {
       def typeTag: TypeTag[A] = implicitly[TypeTag[A]]
     }
@@ -79,6 +82,6 @@ trait TypeTagModule { self: SelectModule =>
     implicit case object TLongIsNumeric          extends AbstractIsNumeric[Long]
     implicit case object TFloatIsNumeric         extends AbstractIsNumeric[Float]
     implicit case object TDoubleIsNumeric        extends AbstractIsNumeric[Double]
-    implicit case object TBigDecimalIsNumeric    extends AbstractIsNumeric[BigDecimal]
+    implicit case object TBigDecimalIsNumeric    extends AbstractIsNumeric[java.math.BigDecimal]
   }
 }

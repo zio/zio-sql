@@ -1,18 +1,17 @@
 package zio.sql.sqlserver
 
-import zio._
 import zio.test.Assertion._
 import zio.test.TestAspect.sequential
 import zio.test._
-
 import java.time._
 import java.util.UUID
 import scala.language.postfixOps
+import zio.schema.DeriveSchema
 
-object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
+object SqlServerModuleSpec extends SqlServerRunnableSpec {
 
   import AggregationDef._
-  import DbSchema._
+  import CustomerSchema._
 
   private def customerSelectJoseAssertion[F: Features.IsNotAggregated](
     condition: Expr[F, customers.TableType, Boolean]
@@ -37,11 +36,9 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
       Customer(row._1, row._2, row._3, row._4, row._5)
     }
 
-    val assertion = for {
+    for {
       r <- testResult.runCollect
     } yield assert(r)(hasSameElementsDistinct(expected))
-
-    assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
   }
 
   override def specLayered = suite("MSSQL Server module")(
@@ -88,11 +85,9 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
         Customer(row._1, row._2, row._3, row._4)
       }
 
-      val assertion = for {
+      for {
         r <- testResult.runCollect
       } yield assert(r)(hasSameElementsDistinct(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("Can select with property unary operator") {
       customerSelectJoseAssertion(verified isNotTrue)
@@ -137,11 +132,9 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
         Customer(row._1, row._2, row._3, row._4)
       }
 
-      val assertion = for {
+      for {
         r <- testResult.runCollect
       } yield assert(r)(hasSameElementsDistinct(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("Can count rows") {
       val query = select(Count(customerId)).from(customers)
@@ -156,6 +149,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
     },
     test("correlated subqueries in selections - counts orders for each customer") {
 
+      import OrderSchema._
       /**
        * select first_name, last_name, (
        *    select count(orders.id) from orders
@@ -183,14 +177,15 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
         Row(row._1, row._2, row._3)
       }
 
-      val assertion = for {
+      for {
         r <- result.runCollect
       } yield assert(r)(hasSameElementsDistinct(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("subquery in where clause") {
       import SqlServerSpecific.SqlServerFunctionDef._
+      import DerivedTableSchema._
+      import ProductSchema._
+      
 
       /**
        * select order_id, product_id, unit_price from order_details
@@ -243,14 +238,13 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
         Row(id, productId, price)
       }
 
-      val assertion = for {
+      for {
         r <- result.runCollect
       } yield assert(r)(hasSameElementsDistinct(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("correlated subquery in where clause - return orders where price was above average for particular product") {
       import SqlServerSpecific.SqlServerFunctionDef._
+      import DerivedTableSchema._
 
       /**
        *  select derived.order_id, derived.product_id, derived.unit_price from order_details derived
@@ -326,13 +320,12 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
         Row(row._1, row._2, row._3)
       }
 
-      val assertion = for {
+      for {
         r <- result.runCollect
       } yield assert(r)(hasSameElementsDistinct(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("cross apply - top 1 order_date") {
+      import DerivedTableSchema._
 
       /**
        *  select customers.id, customers.first_name, customers.last_name, derived.order_date
@@ -371,13 +364,12 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
         Row(row._1, row._2, row._3, row._4)
       }
 
-      val assertion = for {
+      for {
         r <- result.runCollect
       } yield assert(r)(hasSameElementsDistinct(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("cross apply with subselect") {
+      import OrderSchema._
 
       /**
        * select customers.first_name, customers.last_name, ooo.order_date
@@ -390,9 +382,12 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
        */
       import SqlServerSpecific.SqlServerTable._
       val subquery =
-        subselect[customers.TableType](orderDate, orderId).from(orders).where(customerId === fkCustomerId).asTable("ooo")
+        subselect[customers.TableType](orderDate, orderId)
+          .from(orders)
+          .where(customerId === fkCustomerId)
+          .asTable("ooo")
 
-      val (orderDateDerived, _ ) = subquery.columns
+      val (orderDateDerived, _) = subquery.columns
 
       val query = select(fName, lName, orderDateDerived).from(customers.crossApply(subquery))
 
@@ -400,14 +395,14 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
         CustomerAndDateRow(row._1, row._2, row._3)
       }
 
-      val assertion = for {
+      for {
         r <- result.runCollect
       } yield assert(r)(hasSameElementsDistinct(crossOuterApplyExpected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("cross apply with subquery") {
       import SqlServerSpecific.SqlServerTable._
+      import  OrderSchema._
+
       val subquery =
         customers.subselect(orderDate).from(orders).where(customerId === fkCustomerId).asTable("ooo")
 
@@ -419,14 +414,14 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
         CustomerAndDateRow(row._1, row._2, row._3)
       }
 
-      val assertion = for {
+      for {
         r <- result.runCollect
       } yield assert(r)(hasSameElementsDistinct(crossOuterApplyExpected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("outer apply") {
       import SqlServerSpecific.SqlServerTable._
+      import  OrderSchema._
+
       val subquery =
         subselect[customers.TableType](orderDate).from(orders).where(customerId === fkCustomerId).asTable("ooo")
 
@@ -438,11 +433,9 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
         CustomerAndDateRow(row._1, row._2, row._3)
       }
 
-      val assertion = for {
+      for {
         r <- result.runCollect
       } yield assert(r)(hasSameElementsDistinct(crossOuterApplyExpected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("handle isTrue to 1 bit type") {
 
@@ -453,9 +446,9 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
           .from(customers)
           .where(verified.isTrue)
 
-      val result = execute(query).runHead.some
-
-      assertM(result)(equalTo(4L))
+      for {
+        result <- execute(query).runHead.some
+      } yield assertTrue(result == 4L)
     },
     test("handle isNotTrue to 0 bit type") {
       import AggregationDef._
@@ -465,11 +458,12 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
           .from(customers)
           .where(verified.isNotTrue)
 
-      val result = execute(query).runHead.some
-
-      assertM(result)(equalTo(1L))
+      for {
+        result <- execute(query).runHead.some
+      } yield assertTrue(result == 1L)
     },
     test("Can select from joined tables (inner join)") {
+      import OrderSchema._
       val query = select(fName, lName, orderDate).from(customers.join(orders).on(fkCustomerId === customerId))
 
       case class Row(firstName: String, lastName: String, orderDate: LocalDate)
@@ -506,18 +500,16 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
         Row(row._1, row._2, row._3)
       }
 
-      val assertion = for {
+      for {
         r <- result.runCollect
       } yield assert(r)(hasSameElementsDistinct(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("Can delete from single table with a condition") {
       val query = deleteFrom(customers).where(verified.isNotTrue)
 
-      val result = execute(query)
-
-      assertM(result)(equalTo(1))
+      for {
+        result <- execute(query)
+      } yield assertTrue(result == 1)
     }
   ) @@ sequential
 
@@ -549,4 +541,65 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
     CustomerAndDateRow("Terrence", "Noel", LocalDate.parse("2019-05-14")),
     CustomerAndDateRow("Mila", "Paterso", LocalDate.parse("2020-04-30"))
   )
+
+  object CustomerSchema {
+    case class Customers(id: UUID, firstName: String, lastName: String, verified: Boolean, dob: LocalDate)
+
+    implicit val customerSchema = DeriveSchema.gen[Customers]
+
+    val customers = defineTable[Customers]
+
+    val (customerId, fName, lName, verified, dob) =
+      customers.columns
+  }
+
+  object OrderSchema {
+    case class Orders(id: UUID, customerId: UUID, orderDate: LocalDate)
+
+    implicit val orderSchema = DeriveSchema.gen[Orders]
+
+    val orders = defineTable[Orders]
+
+    val (orderId, fkCustomerId, orderDate) = orders.columns
+  }
+
+  object ProductSchema {
+    case class ProductPrices(productId: UUID, effective: OffsetDateTime, price: BigDecimal)
+
+    implicit val productPricesSchema = DeriveSchema.gen[ProductPrices]
+
+    val productPrices = defineTable[ProductPrices]
+
+    val (fkProductId, effective, price) = productPrices.columns
+  }
+
+  object DerivedTableSchema {
+    import CustomerSchema._
+    import OrderSchema._
+
+    // order details
+    case class OrderDetails(orderId: UUID, productId: UUID, quantity: Int, unitPrice: BigDecimal)
+
+    implicit val orderDetailsSchema = DeriveSchema.gen[OrderDetails]
+
+    val orderDetails = defineTable[OrderDetails]
+
+    val (orderDetailsId, productId, quantity, unitPrice) = orderDetails.columns
+
+    // derived
+
+    val orderDetailsDerived = select(orderDetailsId, productId, unitPrice).from(orderDetails).asTable("derived")
+
+    val (derivedOrderId, derivedProductId, derivedUnitPrice) = orderDetailsDerived.columns
+
+    val orderDateDerivedTable = customers
+      .subselect(orderDate)
+      .from(orders)
+      .limit(1)
+      .where(customerId === fkCustomerId)
+      .orderBy(Ordering.Desc(orderDate))
+      .asTable("derived")
+
+    val orderDateDerived = orderDateDerivedTable.columns
+  }
 }

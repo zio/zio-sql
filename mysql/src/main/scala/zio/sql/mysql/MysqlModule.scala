@@ -2,10 +2,13 @@ package zio.sql.mysql
 
 import zio.Chunk
 import zio.sql.{ Jdbc, Renderer }
-
+import zio.schema._
 import java.sql.ResultSet
 import java.time.Year
 import zio.schema.Schema
+import java.time.format.DateTimeFormatter
+import java.time.OffsetDateTime
+import java.time.LocalDate
 
 trait MysqlModule extends Jdbc { self =>
 
@@ -27,6 +30,9 @@ trait MysqlModule extends Jdbc { self =>
 
     }
   }
+
+  implicit val localDateSchema = Schema.primitive[LocalDate](StandardType.LocalDateType(DateTimeFormatter.ISO_LOCAL_DATE))
+  implicit val offsetDateTimeSchema = Schema.primitive[OffsetDateTime](StandardType.OffsetDateTimeType(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
 
   object MysqlFunctionDef {
     val Crc32     = FunctionDef[String, Long](FunctionName("crc32"))

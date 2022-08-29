@@ -1,12 +1,29 @@
 package zio.sql.postgresql
 
-import zio.Cause
-import zio.test.Assertion._
 import zio.test._
+import java.util.UUID
+import java.time.LocalDate
+import java.time.ZonedDateTime
+import zio.schema.DeriveSchema
 
-object DeleteSpec extends PostgresRunnableSpec with DbSchema {
+object DeleteSpec extends PostgresRunnableSpec {
 
-  import Customers._
+  case class Customers(
+    id: UUID,
+    dob: LocalDate,
+    firstName: String,
+    lastName: String,
+    verified: Boolean,
+    createdTimestampString: String,
+    createdTimestamp: ZonedDateTime
+  )
+
+  implicit val custommerSchema = DeriveSchema.gen[Customers]
+
+  val customers = defineTable[Customers]
+
+  val (customerId, dob, fName, lName, verified, createdString, createdTimestamp) =
+    customers.columns
 
   override def specLayered = suite("Postgres module delete")(
     test("Can delete from single table with a condition") {
@@ -14,11 +31,9 @@ object DeleteSpec extends PostgresRunnableSpec with DbSchema {
 
       val result = execute(query)
 
-      val assertion = for {
+      for {
         r <- result
-      } yield assert(r)(equalTo(1))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      } yield assertTrue(r == 1)
     }
   )
 }

@@ -3,15 +3,28 @@ package zio.sql.mysql
 import java.time.LocalDate
 import java.util.UUID
 
-import zio.Cause
 import zio.test._
 import zio.test.Assertion._
 import scala.language.postfixOps
+import zio.schema.DeriveSchema
 
-object MysqlModuleSpec extends MysqlRunnableSpec with ShopSchema {
+object MysqlModuleSpec extends MysqlRunnableSpec {
 
-  import this.Customers._
-  import this.Orders._
+  case class Customers(id: UUID, dob: LocalDate, first_name: String, last_name: String, verified: Boolean)
+
+  implicit val customerSchema = DeriveSchema.gen[Customers]
+
+  val customers = defineTable[Customers]
+
+  val (customerId, dob, fName, lName, verified) = customers.columns
+
+  case class Orders(id: UUID, customer_id: UUID, order_date: LocalDate)
+
+  implicit val orderSchema = DeriveSchema.gen[Orders]
+
+  val orders = defineTable[Orders]
+
+  val (orderId, fkCustomerId, orderDate) = orders.columns
 
   override def specLayered = suite("Mysql module")(
     test("Can select from single table") {
@@ -59,18 +72,14 @@ object MysqlModuleSpec extends MysqlRunnableSpec with ShopSchema {
         Customer(row._1, row._2, row._3, row._4)
       }
 
-      val assertion = for {
+      for {
         r <- testResult.runCollect
       } yield assert(r)(hasSameElementsDistinct(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("Can select with property operator") {
       case class Customer(id: UUID, fname: String, lname: String, verified: Boolean, dateOfBirth: LocalDate)
 
       val query = select(customerId, fName, lName, verified, dob) from customers where (verified isNotTrue)
-
-      println(renderRead(query))
 
       val expected =
         Seq(
@@ -87,11 +96,9 @@ object MysqlModuleSpec extends MysqlRunnableSpec with ShopSchema {
         Customer(row._1, row._2, row._3, row._4, row._5)
       }
 
-      val assertion = for {
+      for {
         r <- testResult.runCollect
       } yield assert(r)(hasSameElementsDistinct(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("Can select from single table with limit, offset and order by") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
@@ -114,33 +121,24 @@ object MysqlModuleSpec extends MysqlRunnableSpec with ShopSchema {
         Customer(row._1, row._2, row._3, row._4)
       }
 
-      val assertion = for {
+      for {
         r <- testResult.runCollect
       } yield assert(r)(hasSameElementsDistinct(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
-    /*
-     * This is a failing test for aggregation function.
-     * Uncomment it when aggregation function handling is fixed.
-     */
-    // test("Can count rows") {
-    //   val query = select { Count(userId) } from users
+    test("Can count rows") {
+      import AggregationDef._
+      val query = select(Count(customerId)) from customers
 
-    //   val expected = 5L
-
-    //   val result = new ExecuteBuilder(query).to[Long, Long](identity).provideCustomLayer(executorLayer)
-
-    //   for {
-    //     r <- result.runCollect
-    //   } yield assert(r.head)(equalTo(expected))
-    // },
+      for {
+        r <- execute(query).runCollect
+      } yield assertTrue(r.head == 5L)
+    },
     test("Can select from joined tables (inner join)") {
-      val query = select(fName, lName, orderDate) from (customers join orders).on(
-        fkCustomerId === customerId
-      ) where (verified isNotTrue)
+      val (customerId1, _, fName1, lName1, _) = customers.columns
 
-      println(renderRead(query))
+      val query = select(fName1, lName1, orderDate) from (customers join orders).on(
+        fkCustomerId === customerId1
+      ) where (verified isNotTrue)
 
       case class Row(firstName: String, lastName: String, orderDate: LocalDate)
 
@@ -155,18 +153,16 @@ object MysqlModuleSpec extends MysqlRunnableSpec with ShopSchema {
         Row(row._1, row._2, row._3)
       }
 
-      val assertion = for {
+      for {
         r <- result.runCollect
       } yield assert(r)(hasSameElementsDistinct(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("Can update rows") {
       val query = update(customers).set(fName, "Roland").where(fName === "Ronald")
 
-      println(renderUpdate(query))
-      assertM(execute(query))(equalTo(1))
+      for {
+        result <- execute(query)
+      } yield assertTrue(result == 1)
     }
   )
-
 }

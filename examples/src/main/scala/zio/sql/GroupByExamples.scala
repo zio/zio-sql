@@ -1,17 +1,16 @@
 package zio.sql
 
 import zio.sql.sqlserver.SqlServerModule
+import zio.schema.DeriveSchema
 
-object GroupByExamples extends App with ShopSchema with SqlServerModule {
+object GroupByExamples extends App with SqlServerModule {
   import AggregationDef._
-  import ColumnSet._
 
-  val productTable = (
-    string("id") ++
-      string("name") ++
-      int("amount") ++
-      double("price")
-  ).table("product")
+  case class Product(id: Int, name: String, amount: Int, price: Double)
+
+  implicit val productSchema = DeriveSchema.gen[Product]
+
+  val productTable = defineTable[Product]
 
   val (id, name, amount, price) = productTable.columns
 

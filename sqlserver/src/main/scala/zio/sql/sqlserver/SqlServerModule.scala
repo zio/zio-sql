@@ -2,6 +2,10 @@ package zio.sql.sqlserver
 
 import zio.sql.{ Jdbc, Renderer }
 import zio.schema.Schema
+import java.time.LocalDate
+import zio.schema.StandardType
+import java.time.format.DateTimeFormatter
+import java.time.OffsetDateTime
 
 trait SqlServerModule extends Jdbc { self =>
 
@@ -25,29 +29,7 @@ trait SqlServerModule extends Jdbc { self =>
         crossType: CrossType,
         left: Table.Aux[A],
         right: Table.Aux[B]
-      ) extends SqlServerTable[A with B] { self =>
-
-        override type ColumnHead = left.ColumnHead
-
-        override type HeadIdentity0 = left.HeadIdentity0
-        override type ColumnTail    =
-          left.columnSet.tail.Append[ColumnSet.Cons[right.ColumnHead, right.ColumnTail, right.HeadIdentity0]]
-
-        override val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail, HeadIdentity0] =
-          left.columnSet ++ right.columnSet
-
-        override val columnToExpr: ColumnToExpr[A with B] = new ColumnToExpr[A with B] {
-          def toExpr[C](column: Column[C]): Expr[Features.Source[column.Identity, A with B], A with B, C] =
-            if (left.columnSet.contains(column))
-              left.columnToExpr
-                .toExpr(column)
-                .asInstanceOf[Expr[Features.Source[column.Identity, A with B], A with B, C]]
-            else
-              right.columnToExpr
-                .toExpr(column)
-                .asInstanceOf[Expr[Features.Source[column.Identity, A with B], A with B, C]]
-        }
-      }
+      ) extends SqlServerTable[A with B]
 
       implicit def tableSourceToSelectedBuilder[A](
         table: Table.Aux[A]
@@ -57,11 +39,11 @@ trait SqlServerModule extends Jdbc { self =>
       sealed case class CrossOuterApplyTableBuilder[A](left: Table.Aux[A]) {
         self =>
 
-        final def crossApply[Out](
-          right: Table.DerivedTable[Out, Read[Out]]
-        ): Table.DialectSpecificTable[A with right.TableType] = {
+        final def crossApply[Reprs, Out, RightSource](
+          right: Table.DerivedTable[Reprs, Out, Read.WithReprs[Out, Reprs], RightSource]
+        ): Table.DialectSpecificTable[A with RightSource] = {
 
-          val tableExtension = CrossOuterApplyTable[A, right.TableType](
+          val tableExtension = CrossOuterApplyTable[A, RightSource](
             CrossType.CrossApply,
             left,
             right
@@ -70,11 +52,11 @@ trait SqlServerModule extends Jdbc { self =>
           new Table.DialectSpecificTable(tableExtension)
         }
 
-        final def outerApply[Out](
-          right: Table.DerivedTable[Out, Read[Out]]
-        ): Table.DialectSpecificTable[A with right.TableType] = {
+        final def outerApply[Reprs, Out, RightSource](
+          right: Table.DerivedTable[Reprs, Out, Read.WithReprs[Out, Reprs], RightSource]
+        ): Table.DialectSpecificTable[A with RightSource] = {
 
-          val tableExtension = CrossOuterApplyTable[A, right.TableType](
+          val tableExtension = CrossOuterApplyTable[A, RightSource](
             CrossType.OuterApply,
             left,
             right
@@ -89,6 +71,11 @@ trait SqlServerModule extends Jdbc { self =>
       val Avg = AggregationDef[BigDecimal, Int](FunctionName("avg"))
     }
   }
+
+  implicit val localDateSchema      =
+    Schema.primitive[LocalDate](StandardType.LocalDateType(DateTimeFormatter.ISO_LOCAL_DATE))
+  implicit val offsetDateTimeSchema =
+    Schema.primitive[OffsetDateTime](StandardType.OffsetDateTimeType(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
 
   override def renderRead(read: self.Read[_]): String = {
     implicit val render: Renderer = Renderer()

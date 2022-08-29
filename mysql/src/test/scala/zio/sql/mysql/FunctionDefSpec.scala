@@ -2,13 +2,22 @@ package zio.sql.mysql
 
 import zio.Cause
 import zio.test._
-import zio.test.Assertion._
+import java.util.UUID
+import java.time.LocalDate
+import zio.schema.DeriveSchema
 
-object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
+object FunctionDefSpec extends MysqlRunnableSpec {
 
-  import Customers._
   import FunctionDef._
   import MysqlFunctionDef._
+
+  case class Customers(id: UUID, dob: LocalDate, first_name: String, last_name: String, verified: Boolean)
+
+  implicit val customerSchema = DeriveSchema.gen[Customers]
+
+  val customers = defineTable[Customers]
+
+  val (customerId, dob, fName, lName, verified) = customers.columns
 
   override def specLayered = suite("MySQL FunctionDef")(
     test("lower") {
@@ -20,7 +29,7 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       val assertion = for {
         r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
+      } yield assertTrue(r.head == expected)
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
@@ -36,7 +45,7 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
     //
     //      val assertion = for {
     //        r <- testResult.runCollect
-    //      } yield assert(r.head)(equalTo(expected))
+    //      } yield assertTrue(r.head ==expected)
     //
     //      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     //    },
@@ -47,11 +56,9 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       val testResult = execute(query)
 
-      val assertion = for {
+      for {
         r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      } yield assertTrue(r.head == expected)
     },
     test("abs") {
       val query = select(Abs(-32.0))
@@ -60,11 +67,9 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       val testResult = execute(query)
 
-      val assertion = for {
+      for {
         r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      } yield assertTrue(r.head == expected)
     },
     test("crc32") {
       val query = select(Crc32("MySQL")) from customers
@@ -73,11 +78,9 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       val testResult = execute(query)
 
-      val assertion = for {
+      for {
         r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      } yield assertTrue(r.head == expected)
     },
     test("degrees") {
       val query = select(Degrees(Math.PI)) from customers
@@ -86,11 +89,9 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       val testResult = execute(query)
 
-      val assertion = for {
+      for {
         r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      } yield assertTrue(r.head == expected)
     },
     test("log2") {
       val query = select(Log2(8d)) from customers
@@ -99,11 +100,9 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       val testResult = execute(query)
 
-      val assertion = for {
+      for {
         r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      } yield assertTrue(r.head == expected)
     },
     test("log10") {
       val query = select(Log10(1000000d)) from customers
@@ -112,11 +111,9 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       val testResult = execute(query)
 
-      val assertion = for {
+      for {
         r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      } yield assertTrue(r.head == expected)
     },
     test("bit_length") {
       val query = select(BitLength("hello"))
@@ -125,11 +122,9 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       val testResult = execute(query)
 
-      val assertion = for {
+      for {
         r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      } yield assertTrue(r.head == expected)
     },
     test("pi") {
       val query = select(Pi) from customers
@@ -138,11 +133,9 @@ object FunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
 
       val testResult = execute(query)
 
-      val assertion = for {
+      for {
         r <- testResult.runCollect
-      } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      } yield assertTrue(r.head == expected)
     }
   )
 }

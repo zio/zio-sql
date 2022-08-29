@@ -42,9 +42,8 @@ create table order_details
 create table persons
 (
     id uuid not null primary key,
-    first_name varchar not null,
-    last_name varchar,
-    dob date
+    name varchar,
+    birth_date date
 );
 
 -- city, metro_system, metro_line and inserted values are copied from https://github.com/softwaremill/scala-sql-compare
@@ -88,13 +87,13 @@ values
     ('636ae137-5b1a-4c8c-b11f-c47c624d9cdc', 'Jose', 'Wiggins', false, '1987-03-23', '2020-11-21T19:10:25+00:00', '2020-11-21 19:10:25+00');
 
 insert into persons
-    (id, first_name, last_name, dob)
+    (id, name, birth_date)
 values
-    ('60b01fc9-c902-4468-8d49-3c0f989def37', 'Ronald', 'Russell', '1983-01-05'),
-    ('f76c9ace-be07-4bf3-bd4c-4a9c62882e64', 'Terrence', 'Noel', null),
-    ('784426a5-b90a-4759-afbb-571b7a0ba35e', 'Mila', 'Paterso', '1990-11-16'),
-    ('df8215a2-d5fd-4c6c-9984-801a1b3a2a0b', 'Alana', 'Murray', '1995-11-12'),
-    ('636ae137-5b1a-4c8c-b11f-c47c624d9cdc', 'Jose', null,  null);
+    ('60b01fc9-c902-4468-8d49-3c0f989def37', 'Russell', '1983-01-05'),
+    ('f76c9ace-be07-4bf3-bd4c-4a9c62882e64', 'Noel', null),
+    ('784426a5-b90a-4759-afbb-571b7a0ba35e', 'Paterso', '1990-11-16'),
+    ('df8215a2-d5fd-4c6c-9984-801a1b3a2a0b', 'Murray', '1995-11-12'),
+    ('636ae137-5b1a-4c8c-b11f-c47c624d9cdc', null,  null);
 
 insert into products
     (id, name, description, image_url)

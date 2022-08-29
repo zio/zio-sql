@@ -28,7 +28,7 @@ trait Sql
    * SELECT ARBITRARY(age), COUNT(*) FROM person GROUP BY age
    */
   val select: SelectByCommaBuilder = SelectByCommaBuilder()
-
+  
   def subselect[ParentTable]: SubselectPartiallyApplied[ParentTable] = new SubselectPartiallyApplied[ParentTable]
 
   def deleteFrom[T <: Table](table: T): Delete[table.TableType] = Delete(table, true)

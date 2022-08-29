@@ -3,52 +3,50 @@ package zio.sql.mysql
 import java.util.UUID
 
 import zio._
-import zio.test.Assertion._
 import zio.test._
 import zio.test.TestAspect.sequential
+import java.time.LocalDate
+import zio.schema.DeriveSchema
 
-object TransactionSpec extends MysqlRunnableSpec with ShopSchema {
+object TransactionSpec extends MysqlRunnableSpec {
 
-  import Customers._
+  case class Customers(id: UUID, dob: LocalDate, first_name: String, last_name: String, verified: Boolean)
 
-  override def specLayered: Spec[JdbcEnvironment, TestFailure[Object], TestSuccess] = suite("MySQL module")(
+  implicit val customerSchema = DeriveSchema.gen[Customers]
+
+  val customers = defineTable[Customers]
+
+  val (customerId, dob, fName, lName, verified) = customers.columns
+
+  override def specLayered = suite("MySQL module")(
     test("Transaction is returning the last value") {
       val query = select(customerId) from customers
 
-      val result = execute(
-        ZTransaction(query) *> ZTransaction(query)
-      )
-
-      val assertion =
-        result
-          .flatMap(_.runCount)
-          .map(count => assertTrue(count == 5))
-          .orDie
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      for {
+        result <- execute(ZTransaction(query) *> ZTransaction(query))
+        count  <- result.runCount
+      } yield assertTrue(count == 5)
     },
     test("Transaction is failing") {
       val query = select(customerId) from customers
 
-      val result = execute(
-        ZTransaction(query) *> ZTransaction.fail(new Exception("failing")) *> ZTransaction(query)
-      ).mapError(_.getMessage)
-
-      assertM(result.flip)(equalTo("failing")).mapErrorCause(cause => Cause.stackless(cause.untraced))
+      for {
+        result <- execute(ZTransaction(query) *> ZTransaction.fail(new Exception("failing")) *> ZTransaction(query))
+                    .mapError(_.getMessage)
+                    .flip
+      } yield assertTrue(result == "failing")
     },
     test("Transaction failed and didn't deleted rows") {
       val query       = select(customerId) from customers
       val deleteQuery = deleteFrom(customers).where(verified === false)
 
-      val result = (for {
+      for {
         allCustomersCount       <- execute(query).map(identity[UUID](_)).runCount
         _                       <- execute(
                                      ZTransaction(deleteQuery) *> ZTransaction.fail(new Exception("this is error")) *> ZTransaction(query)
                                    ).catchAllCause(_ => ZIO.unit)
         remainingCustomersCount <- execute(query).map(identity[UUID](_)).runCount
-      } yield (allCustomersCount, remainingCustomersCount))
-
-      assertM(result)(equalTo((5L, 5L))).mapErrorCause(cause => Cause.stackless(cause.untraced))
+      } yield assertTrue((allCustomersCount, remainingCustomersCount) == ((5L, 5L)))
     },
     test("Transaction succeeded and deleted rows") {
       val query       = select(customerId) from customers
@@ -56,13 +54,11 @@ object TransactionSpec extends MysqlRunnableSpec with ShopSchema {
 
       val tx = ZTransaction(deleteQuery)
 
-      val result = (for {
+      for {
         allCustomersCount       <- execute(query).map(identity[UUID](_)).runCount
         _                       <- execute(tx)
         remainingCustomersCount <- execute(query).map(identity[UUID](_)).runCount
-      } yield (allCustomersCount, remainingCustomersCount))
-
-      assertM(result)(equalTo((5L, 4L))).mapErrorCause(cause => Cause.stackless(cause.untraced))
+      } yield assertTrue((allCustomersCount, remainingCustomersCount) == ((5L, 4L)))
     }
   ) @@ sequential
 }

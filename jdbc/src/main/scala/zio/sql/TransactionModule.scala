@@ -9,11 +9,11 @@ import zio.schema.Schema
 trait TransactionModule { self: Jdbc =>
   private[sql] sealed case class Txn(connection: Connection, sqlDriverCore: SqlDriverCore)
 
-  sealed case class ZTransaction[-R: ZTag: IsNotIntersection, +E, +A](unwrap: ZIO[(R, Txn), E, A]) { self =>
+  sealed case class ZTransaction[-R: ZTag, +E, +A](unwrap: ZIO[(R, Txn), E, A]) { self =>
     def map[B](f: A => B): ZTransaction[R, E, B] =
       ZTransaction(self.unwrap.map(f))
 
-    def flatMap[R1 <: R: ZTag: IsNotIntersection, E1 >: E, B](
+    def flatMap[R1 <: R: ZTag, E1 >: E, B](
       f: A => ZTransaction[R1, E1, B]
     ): ZTransaction[R1, E1, B] =
       ZTransaction(self.unwrap.flatMap(a => f(a).unwrap))
@@ -25,7 +25,7 @@ trait TransactionModule { self: Jdbc =>
         r <- ZIO.environment[R]
         a <- self.unwrap
                .mapError(ev)
-               .provideService((r.get, txn))
+               .provideEnvironment(ZEnvironment((r.get, txn)))
                .absorb
                .tapBoth(
                  _ =>
@@ -39,10 +39,10 @@ trait TransactionModule { self: Jdbc =>
                )
       } yield a
 
-    def zip[R1 <: R: ZTag: IsNotIntersection, E1 >: E, B](tx: ZTransaction[R1, E1, B]): ZTransaction[R1, E1, (A, B)] =
+    def zip[R1 <: R: ZTag, E1 >: E, B](tx: ZTransaction[R1, E1, B]): ZTransaction[R1, E1, (A, B)] =
       zipWith[R1, E1, B, (A, B)](tx)((_, _))
 
-    def zipWith[R1 <: R: ZTag: IsNotIntersection, E1 >: E, B, C](
+    def zipWith[R1 <: R: ZTag, E1 >: E, B, C](
       tx: ZTransaction[R1, E1, B]
     )(f: (A, B) => C): ZTransaction[R1, E1, C] =
       for {
@@ -50,21 +50,21 @@ trait TransactionModule { self: Jdbc =>
         b <- tx
       } yield f(a, b)
 
-    def *>[R1 <: R: ZTag: IsNotIntersection, E1 >: E, B](tx: ZTransaction[R1, E1, B]): ZTransaction[R1, E1, B] =
+    def *>[R1 <: R: ZTag, E1 >: E, B](tx: ZTransaction[R1, E1, B]): ZTransaction[R1, E1, B] =
       self.flatMap(_ => tx)
 
     // named alias for *>
-    def zipRight[R1 <: R: ZTag: IsNotIntersection, E1 >: E, B](tx: ZTransaction[R1, E1, B]): ZTransaction[R1, E1, B] =
+    def zipRight[R1 <: R: ZTag, E1 >: E, B](tx: ZTransaction[R1, E1, B]): ZTransaction[R1, E1, B] =
       self *> tx
 
-    def <*[R1 <: R: ZTag: IsNotIntersection, E1 >: E, B](tx: ZTransaction[R1, E1, B]): ZTransaction[R1, E1, A] =
+    def <*[R1 <: R: ZTag, E1 >: E, B](tx: ZTransaction[R1, E1, B]): ZTransaction[R1, E1, A] =
       self.flatMap(a => tx.map(_ => a))
 
     // named alias for <*
-    def zipLeft[R1 <: R: ZTag: IsNotIntersection, E1 >: E, B](tx: ZTransaction[R1, E1, B]): ZTransaction[R1, E1, A] =
+    def zipLeft[R1 <: R: ZTag, E1 >: E, B](tx: ZTransaction[R1, E1, B]): ZTransaction[R1, E1, A] =
       self <* tx
 
-    def catchAllCause[R1 <: R: ZTag: IsNotIntersection, E1 >: E, A1 >: A](
+    def catchAllCause[R1 <: R: ZTag, E1 >: E, A1 >: A](
       f: Cause[E1] => ZTransaction[R1, E1, A1]
     ): ZTransaction[R1, E1, A1] =
       ZTransaction(self.unwrap.catchAllCause(cause => f(cause).unwrap))
@@ -79,7 +79,7 @@ trait TransactionModule { self: Jdbc =>
         val stream =
           coreDriver.readOn[A](read, connection)
 
-        ZTransaction.fromEffect(stream.runCollect.map(Stream.fromIterable(_)))
+        ZTransaction.fromEffect(stream.runCollect.map(ZStream.fromIterable(_)))
       }
 
     def apply(update: self.Update[_]): ZTransaction[Any, Exception, Int] =
@@ -103,10 +103,10 @@ trait TransactionModule { self: Jdbc =>
 
     def halt[E](e: => Cause[E]): ZTransaction[Any, E, Nothing] = fromEffect(ZIO.failCause(e))
 
-    def fromEffect[R: ZTag: IsNotIntersection, E, A](zio: ZIO[R, E, A]): ZTransaction[R, E, A] =
+    def fromEffect[R: ZTag, E, A](zio: ZIO[R, E, A]): ZTransaction[R, E, A] =
       ZTransaction(for {
         tuple <- ZIO.service[(R, Txn)]
-        a     <- zio.provideService((tuple._1))
+        a     <- zio.provideEnvironment(ZEnvironment(tuple._1))
       } yield a)
 
     private val txn: ZTransaction[Any, Nothing, Txn] =

@@ -1,44 +1,15 @@
 package zio.sql
 
-/**
- * Generated with https://github.com/kitlangton/boilerplate
- * 
-  val insertInto = 
-    bp"""
-      def apply[${bp"F${num(1)}".rep(", ")}, ${bp"B${num(1)}".rep(", ")}](${bp"expr${num(1)}: Expr[F${num(1)}, Source, B${num(1)}]".rep(", ")}) = {
-        val selection = ${bp"expr${num(1)}".rep(" ++ ")}
 
-        type B = ${bp"SelectionSet.Cons[Source, B${num(1)}".rep(", ")}, SelectionSet.Empty${bp"${lit("]").rep("")}"}
-
-        InsertBuilder[${bp"${lit("Features.Union[").rep("", -1)}"}F1, ${bp"F${num(2)}".rep("], ", -1)}], Source, AllColumnIdentities, B, selection.ColsRepr](
-           table,
-           selection
-        )
-      }
-      """
-
- val selectSyntax = 
-   bp"""
-      def apply[${bp"F${num(1)}".rep(", ")}, Source, ${bp"B${num(1)}".rep(", ")}](${bp"expr${num(1)}: Expr[F${num(1)}, Source, B${num(1)}]".rep(", ")})(implicit
-          i: Features.IsPartiallyAggregated[${bp"${lit("Features.Union[").rep("", -1)}"}F1, ${bp"F${num(2)}".rep("], ", -1)}]]
-      ): Selector[${bp"${lit("Features.Union[").rep("", -1)}"}F1, ${bp"F${num(2)}".rep("], ", -1)}], Source, ${bp"SelectionSet.Cons[Source, B${num(1)}".rep(", ")}, SelectionSet.Empty${bp"${lit("]").rep("")}"}, i.Unaggregated] = {
-          val selection = ${bp"expr${num(1)}".rep(" ++ ")}
-          Selector[${bp"${lit("Features.Union[").rep("", -1)}"}F1, ${bp"F${num(2)}".rep("], ", -1)}, Source, ${bp"SelectionSet.Cons[Source, B${num(1)}".rep(", ")}, SelectionSet.Empty${bp"${lit("]").rep("")}"}, i.Unaggregated](selection)
-      }"""
-
-  val subselectSyntax = 
-    bp"""
-        def apply[${bp"F${num(1)}".rep(", ")}, Source, ${bp"B${num(1)}".rep(", ")}](${bp"expr${num(1)}: Expr[F${num(1)}, Source, B${num(1)}]".rep(", ")}): SubselectBuilder[${bp"${lit("Features.Union[").rep("", -1)}"}F1, ${bp"F${num(2)}".rep("], ", -1)}], Source, ${bp"SelectionSet.Cons[Source, B${num(1)}".rep(", ")}, SelectionSet.Empty${bp"${lit("]").rep("")}"}, ParentTable] = {
-          val selection = ${bp"expr${num(1)}".rep(" ++ ")}
-          SubselectBuilder(selection)
-        }"""
- */ 
 trait SelectUtilsModule { self: TableModule with ExprModule with InsertModule with SelectModule =>
 
   // format: off
   sealed case class InsertIntoBuilder[Source, AllColumnIdentities](
     table: Table.Source.Aux_[Source, AllColumnIdentities]
   ) {
+      def apply[F, B <: SelectionSet[Source]](sources: Selection[F, Source, B]) =
+        InsertBuilder[F, Source, AllColumnIdentities, B, sources.ColsRepr](table, sources)
+      
       def apply[F1, B1](expr1: Expr[F1, Source, B1]) = {
         type B = SelectionSet.Cons[Source, B1, SelectionSet.Empty]
 
@@ -48,11 +19,14 @@ trait SelectUtilsModule { self: TableModule with ExprModule with InsertModule wi
       }
   
       def apply[F1, F2, B1, B2](expr1: Expr[F1, Source, B1], expr2: Expr[F2, Source, B2]) = {
+
+        // Selection[Features.Union[F1,F2], 
+        // Source.SelectionSet.Cons[Source, B1 , SelectionSet.Cons[Source, B2 , SelectionSet.Empty]]]
         val selection = expr1 ++ expr2
 
-        type B = SelectionSet.Cons[Source, B1, SelectionSet.Cons[Source, B2, SelectionSet.Empty]]
+        //type B = SelectionSet.Cons[Source, B1, SelectionSet.Cons[Source, B2, SelectionSet.Empty]]
 
-        InsertBuilder[Features.Union[F1, F2], Source, AllColumnIdentities, B, selection.ColsRepr](
+        InsertBuilder[Features.Union[F1, F2], Source, AllColumnIdentities, SelectionSet.Cons[Source, B1, SelectionSet.Cons[Source, B2, SelectionSet.Empty]], selection.ColsRepr](
            table,
            selection
         )

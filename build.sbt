@@ -24,8 +24,8 @@ addCommandAlias("fmtOnce", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("fmt", "fmtOnce;fmtOnce")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
-val zioVersion                 = "2.0.0-RC5"
-val zioSchemaVersion           = "0.1.9"
+val zioVersion                 = "2.0.1"
+val zioSchemaVersion           = "0.2.1"
 val testcontainersVersion      = "1.16.3"
 val testcontainersScalaVersion = "0.40.5"
 
@@ -69,7 +69,8 @@ lazy val root = project
     mysql,
     oracle,
     postgres,
-    sqlserver
+    sqlserver,
+    macros
   )
 
 lazy val core = crossProject(JSPlatform, JVMPlatform)
@@ -79,12 +80,12 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
   .settings(buildInfoSettings("zio.sql"))
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio" %% "zio"                   % zioVersion,
-      "dev.zio" %% "zio-streams"           % zioVersion,
-      "dev.zio" %% "zio-schema"            % zioSchemaVersion,
-      "dev.zio" %% "zio-schema-derivation" % zioSchemaVersion,
-      "dev.zio" %% "zio-test"              % zioVersion % Test,
-      "dev.zio" %% "zio-test-sbt"          % zioVersion % Test
+      "dev.zio"       %% "zio"                   % zioVersion,
+      "dev.zio"       %% "zio-streams"           % zioVersion,
+      "dev.zio"       %% "zio-schema"            % zioSchemaVersion,
+      "dev.zio"       %% "zio-schema-derivation" % zioSchemaVersion,
+      "dev.zio"       %% "zio-test"              % zioVersion % Test,
+      "dev.zio"       %% "zio-test-sbt"          % zioVersion % Test
     ),
     dependencyOverrides += "dev.zio" %% "zio" % zioVersion,
     resolvers += Resolver.sonatypeRepo("snapshots")
@@ -94,7 +95,16 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
 lazy val coreJS = core.js
   .settings(scalaJSUseMainModuleInitializer := true)
 
-lazy val coreJVM = core.jvm
+lazy val coreJVM = core.jvm.dependsOn(macros)
+
+lazy val macros = project
+  .in(file("macros"))
+  .settings(
+    libraryDependencies ++= Seq(
+      "org.scala-lang" % "scala-reflect" % scalaVersion.value,
+      "dev.zio"       %% "zio"           % zioVersion
+    )
+  )
 
 lazy val docs = project
   .in(file("zio-sql-docs"))
