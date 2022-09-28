@@ -656,7 +656,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
         Gen.option(Gen.int),
         sqlLocalDate,
         sqlLocalDateTime,
-        Gen.localTime,
+        Gen.localTime.map(normLt), // needs to be truncated before saving to the db for predictable outcome
         Gen.long,
         sqlOffsetDateTime,
         sqlOffsetTime,

@@ -12,10 +12,7 @@ object MySqlTestContainer {
       ZIO.attemptBlocking {
         val c = new MySQLContainer(
           mysqlImageVersion = Option(imageName).map(DockerImageName.parse)
-        ).configure { a =>
-          a.withInitScript("test_schema.sql")
-          ()
-        }
+        )
         c.start()
         c
       }
