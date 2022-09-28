@@ -119,7 +119,7 @@ object HikariConnectionPoolSpec extends ZIOSpecDefault {
           )
       } @@ timeout(10.seconds) @@ withLiveClock,
       test("connection init SQL should be configurable") {
-        val initialSql = "SELECT 1 FROM test.test"
+        val initialSql = "SELECT 1"
         (for {
           cp <- ZIO.service[HikariConnectionPool]
         } yield assertTrue(cp.dataSource.getConnectionInitSql == initialSql))
