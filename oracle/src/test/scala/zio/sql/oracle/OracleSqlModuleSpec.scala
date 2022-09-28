@@ -130,13 +130,13 @@ object OracleSqlModuleSpec extends OracleRunnableSpec with ShopSchema {
       assertZIO(execute(command))(equalTo(2))
     },
     test("Can insert all supported types") {
-      val sqlMinDateTime = LocalDateTime.of(-4713, 1, 1, 0, 0)
+      val sqlMinDateTime = LocalDateTime.of(1, 1, 1, 0, 0)
       val sqlMaxDateTime = LocalDateTime.of(9999, 12, 31, 23, 59)
 
       val sqlInstant =
         Gen.instant(sqlMinDateTime.toInstant(ZoneOffset.MIN), sqlMaxDateTime.toInstant(ZoneOffset.MAX))
 
-      val sqlYear = Gen.int(-4713, 9999).filter(_ != 0).map(Year.of)
+      val sqlYear = Gen.int(1, 9999).map(Year.of)
 
       val sqlLocalDate = for {
         year  <- sqlYear
@@ -216,6 +216,7 @@ object OracleSqlModuleSpec extends OracleRunnableSpec with ShopSchema {
           durationCol
         ).values(row)
 
+        // printInsert(insert)
         // TODO: ensure we can read values back correctly
         // val read =
         //   select(

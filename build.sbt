@@ -23,7 +23,7 @@ addCommandAlias("fmtOnce", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("fmt", "fmtOnce;fmtOnce")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
-val zioVersion                 = "2.0.0"
+val zioVersion                 = "2.0.2"
 val zioSchemaVersion           = "0.2.0"
 val testcontainersVersion      = "1.17.3"
 val testcontainersScalaVersion = "0.40.10"
@@ -138,7 +138,7 @@ lazy val jdbc_hikaricp = project
   .settings(buildInfoSettings("zio.sql.jdbc-hickaricp"))
   .settings(
     libraryDependencies ++= Seq(
-      "com.zaxxer"         % "HikariCP"                   % "5.0.1",
+      "com.zaxxer"         % "HikariCP"                   % "4.0.3", // 5.x doesn't support Java 1.8
       "dev.zio"           %% "zio-test"                   % zioVersion                 % Test,
       "dev.zio"           %% "zio-test-sbt"               % zioVersion                 % Test,
       "org.testcontainers" % "mysql"                      % testcontainersVersion      % Test,
