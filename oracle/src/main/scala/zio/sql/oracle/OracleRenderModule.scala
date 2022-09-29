@@ -427,7 +427,7 @@ trait OracleRenderModule extends OracleSqlModule { self =>
 
   def renderInsertValue[Z](z: Z, builder: StringBuilder)(implicit schema: Schema[Z]): Unit =
     schema.toDynamic(z) match {
-      case DynamicValue.Record(listMap) =>
+      case DynamicValue.Record(_, listMap) =>
         listMap.values.toList match {
           case head :: Nil  => renderDynamicValue(head, builder)
           case head :: next =>
@@ -436,7 +436,7 @@ trait OracleRenderModule extends OracleSqlModule { self =>
             renderDynamicValues(next, builder)
           case Nil          => ()
         }
-      case value                        => renderDynamicValue(value, builder)
+      case value                           => renderDynamicValue(value, builder)
     }
 
   def renderDynamicValue(dynValue: DynamicValue, builder: StringBuilder): Unit =

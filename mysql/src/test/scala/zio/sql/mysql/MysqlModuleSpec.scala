@@ -203,6 +203,7 @@ object MysqlModuleSpec extends MysqlRunnableSpec with ShopSchema {
       )
       implicit val customerRowSchema =
         Schema.CaseClass5[UUID, LocalDate, String, String, Boolean, CustomerRow](
+          TypeId.parse("zio.sql.mysql.CustomerRow"),
           Schema.Field("id", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
           Schema.Field(
             "dateOfBirth",

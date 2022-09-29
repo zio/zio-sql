@@ -546,6 +546,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec with DbSchema {
       )
       implicit val customerRowSchema =
         Schema.CaseClass5[UUID, String, String, Boolean, LocalDate, CustomerRow](
+          TypeId.parse("zio.sql.sqlserver.CustomerRow"),
           Schema.Field("id", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
           Schema.Field("firstName", Schema.primitive[String](zio.schema.StandardType.StringType)),
           Schema.Field("lastName", Schema.primitive[String](zio.schema.StandardType.StringType)),

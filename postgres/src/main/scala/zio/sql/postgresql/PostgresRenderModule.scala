@@ -64,7 +64,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
 
     private def renderInserValue[Z](z: Z)(implicit render: Renderer, schema: Schema[Z]): Unit =
       schema.toDynamic(z) match {
-        case DynamicValue.Record(listMap) =>
+        case DynamicValue.Record(_, listMap) =>
           listMap.values.toList match {
             case head :: Nil  => renderDynamicValue(head)
             case head :: next =>
@@ -73,7 +73,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
               renderDynamicValues(next)
             case Nil          => ()
           }
-        case value                        => renderDynamicValue(value)
+        case value                           => renderDynamicValue(value)
       }
 
     private def renderDynamicValues(dynValues: List[DynamicValue])(implicit render: Renderer): Unit =
@@ -98,6 +98,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
                   render(value)
                 case StandardType.InstantType(formatter)        =>
                   render(s"'${formatter.format(value.asInstanceOf[Instant])}'")
+                case ByteType                                   => render(s"'${value}'")
                 case CharType                                   => render(s"'${value}'")
                 case IntType                                    => render(value)
                 case StandardType.MonthDayType                  => render(s"'${value}'")
