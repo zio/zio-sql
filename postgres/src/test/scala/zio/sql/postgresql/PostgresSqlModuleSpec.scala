@@ -8,7 +8,7 @@ import zio.test._
 import java.time._
 import java.util.UUID
 import scala.language.postfixOps
-import zio.schema.Schema
+import zio.schema.{ Schema, TypeId }
 import java.time.format.DateTimeFormatter
 
 object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
@@ -424,6 +424,7 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
 
       implicit val customerRowSchema =
         Schema.CaseClass7[UUID, String, String, Boolean, LocalDate, String, ZonedDateTime, CustomerRow](
+          TypeId.parse("zio.sql.postgres.CustomerRow"),
           Schema.Field("id", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
           Schema.Field("firstName", Schema.primitive[String](zio.schema.StandardType.StringType)),
           Schema.Field("lastName", Schema.primitive[String](zio.schema.StandardType.StringType)),
@@ -480,6 +481,7 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
       final case class InputOrders(uuid: UUID, customerId: UUID, localDate: LocalDate)
 
       implicit val inputOrdersSchema = Schema.CaseClass3[UUID, UUID, LocalDate, InputOrders](
+        TypeId.parse("zio.sql.postgres.InputOrders"),
         Schema.Field("uuid", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
         Schema.Field("customerId", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
         Schema.Field(
@@ -532,6 +534,7 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
           .transform(bigDec => new BigDecimal(bigDec, java.math.MathContext.DECIMAL128), _.bigDecimal)
 
       implicit val orderDetailsRowSchema = Schema.CaseClass4[UUID, UUID, Int, BigDecimal, OrderDetailsRow](
+        TypeId.parse("zio.sql.postgres.OrderDetailsRow"),
         Schema.Field("orderId", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
         Schema.Field("productId", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
         Schema.Field("quantity", Schema.primitive[Int](zio.schema.StandardType.IntType)),
@@ -624,6 +627,7 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
       )
 
       implicit val personSchema = Schema.CaseClass4[UUID, String, String, Option[LocalDate], Person](
+        TypeId.parse("zio.sql.postgres.Person"),
         Schema.Field("id", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
         Schema.Field("firstName", Schema.primitive[String](zio.schema.StandardType.StringType)),
         Schema.Field("lastName", Schema.primitive[String](zio.schema.StandardType.StringType)),

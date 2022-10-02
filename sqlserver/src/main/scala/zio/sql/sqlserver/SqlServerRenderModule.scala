@@ -433,7 +433,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
 
     private def buildInsertValue[Z](z: Z)(implicit render: Renderer, schema: Schema[Z]): Unit =
       schema.toDynamic(z) match {
-        case DynamicValue.Record(listMap) =>
+        case DynamicValue.Record(_, listMap) =>
           listMap.values.toList match {
             case head :: Nil  => buildDynamicValue(head)
             case head :: next =>
@@ -442,7 +442,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
               buildDynamicValues(next)
             case Nil          => ()
           }
-        case value                        => buildDynamicValue(value)
+        case value                           => buildDynamicValue(value)
       }
 
     private def buildDynamicValues(dynValues: List[DynamicValue])(implicit render: Renderer): Unit =
@@ -467,6 +467,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
                   render(value)
                 case StandardType.InstantType(formatter)       =>
                   render(s"'${formatter.format(value.asInstanceOf[Instant])}'")
+                case ByteType                                  => render(s"${value}")
                 case CharType                                  => render(s"N'${value}'")
                 case IntType                                   => render(value)
                 case StandardType.MonthDayType                 => render(s"'${value}'")
@@ -474,7 +475,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
                   val chunk = value.asInstanceOf[Chunk[Object]]
                   render("CONVERT(VARBINARY(MAX),'")
                   for (b <- chunk)
-                    render(String.format("%02x", b))
+                    render("%02x".format(b))
                   render("', 2)")
                 case StandardType.MonthType                    => render(s"'${value}'")
                 case StandardType.LocalDateTimeType(formatter) =>
@@ -520,6 +521,11 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
           buildDynamicValue(right)
         case DynamicValue.SomeValue(value)          => buildDynamicValue(value)
         case DynamicValue.NoneValue                 => render("null")
+        case DynamicValue.Sequence(chunk)           =>
+          render("CONVERT(VARBINARY(MAX),'")
+          for (DynamicValue.Primitive(v, _) <- chunk)
+            render("%02x".format(v))
+          render("', 2)")
         case _                                      => ()
       }
 

@@ -51,10 +51,11 @@ trait JdbcRunnableSpec extends ZIOSpecDefault with Jdbc {
         )
     }
 
+  val connectionPool: ZLayer[Any, Throwable, ConnectionPool] = poolConfigLayer >>> ConnectionPool.live
+
   private[this] final lazy val jdbcLayer: ZLayer[Any, Any, SqlDriver] =
     ZLayer.make[SqlDriver](
-      poolConfigLayer.orDie,
-      ConnectionPool.live.orDie,
+      connectionPool.orDie,
       SqlDriver.live
     )
 
@@ -65,7 +66,7 @@ trait JdbcRunnableSpec extends ZIOSpecDefault with Jdbc {
       def both[A, B](fa: => Gen[R, A], fb: => Gen[R, B]): Gen[R, (A, B)] = fa.zip(fb)
     }
 
-  private[this] def testContainer: ZIO[Scope, Throwable, SingleContainer[_] with JdbcDatabaseContainer] =
+  val testContainer: ZIO[Scope, Throwable, SingleContainer[_] with JdbcDatabaseContainer] =
     ZIO.acquireRelease {
       ZIO.attemptBlocking {
         val c = getContainer
