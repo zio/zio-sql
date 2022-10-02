@@ -7,7 +7,7 @@ import zio.test._
 import scala.language.postfixOps
 import java.util.UUID
 import java.time.format.DateTimeFormatter
-import zio.schema.Schema
+import zio.schema.{ Schema, TypeId }
 import zio.prelude._
 import java.time.{ LocalDate, LocalDateTime, Month, Year, YearMonth, ZoneOffset, ZonedDateTime }
 
@@ -75,6 +75,7 @@ object OracleSqlModuleSpec extends OracleRunnableSpec with ShopSchema {
       )
       implicit val customerRowSchema =
         Schema.CaseClass5[UUID, LocalDate, String, String, Boolean, CustomerRow](
+          TypeId.parse("zio.sql.oracle.CustomerRow"),
           Schema.Field("id", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
           Schema.Field(
             "dateOfBirth",
