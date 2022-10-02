@@ -23,8 +23,8 @@ addCommandAlias("fmtOnce", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("fmt", "fmtOnce;fmtOnce")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
-val zioVersion                 = "2.0.0"
-val zioSchemaVersion           = "0.2.0"
+val zioVersion                 = "2.0.2"
+val zioSchemaVersion           = "0.2.1"
 val testcontainersVersion      = "1.17.3"
 val testcontainersScalaVersion = "0.40.10"
 val logbackVersion             = "1.2.11"
@@ -45,7 +45,8 @@ lazy val root = project
     mysql,
     oracle,
     postgres,
-    sqlserver
+    sqlserver,
+    jdbc_hikaricp
   )
 
 lazy val core = crossProject(JSPlatform, JVMPlatform)
@@ -117,7 +118,7 @@ lazy val jdbc = project
     libraryDependencies ++= Seq(
       "dev.zio"       %% "zio-test"                        % zioVersion                 % Test,
       "dev.zio"       %% "zio-test-sbt"                    % zioVersion                 % Test,
-      "org.postgresql" % "postgresql"                      % "42.4.1"                   % Test,
+      "org.postgresql" % "postgresql"                      % "42.4.2"                   % Test,
       "com.dimafeng"  %% "testcontainers-scala-postgresql" % testcontainersScalaVersion % Test
     )
   )
@@ -130,6 +131,23 @@ lazy val jdbc = project
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
   .dependsOn(core.jvm)
+
+lazy val jdbc_hikaricp = project
+  .in(file("jdbc-hikaricp"))
+  .settings(stdSettings("zio-sql-jdbc-hickaricp"))
+  .settings(buildInfoSettings("zio.sql.jdbc-hickaricp"))
+  .settings(
+    libraryDependencies ++= Seq(
+      "com.zaxxer"         % "HikariCP"                   % "4.0.3", // 5.x doesn't support Java 1.8
+      "dev.zio"           %% "zio-test"                   % zioVersion                 % Test,
+      "dev.zio"           %% "zio-test-sbt"               % zioVersion                 % Test,
+      "org.testcontainers" % "mysql"                      % testcontainersVersion      % Test,
+      "mysql"              % "mysql-connector-java"       % "8.0.29"                   % Test,
+      "com.dimafeng"      %% "testcontainers-scala-mysql" % testcontainersScalaVersion % Test
+    )
+  )
+  .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
+  .dependsOn(jdbc)
 
 lazy val mysql = project
   .in(file("mysql"))
@@ -162,7 +180,7 @@ lazy val oracle = project
       "org.testcontainers"       % "database-commons"               % testcontainersVersion      % Test,
       "org.testcontainers"       % "oracle-xe"                      % testcontainersVersion      % Test,
       "org.testcontainers"       % "jdbc"                           % testcontainersVersion      % Test,
-      "com.oracle.database.jdbc" % "ojdbc8"                         % "21.6.0.0.1"               % Test,
+      "com.oracle.database.jdbc" % "ojdbc8"                         % "21.7.0.0"                 % Test,
       "com.dimafeng"            %% "testcontainers-scala-oracle-xe" % testcontainersScalaVersion % Test,
       "ch.qos.logback"           % "logback-classic"                % logbackVersion             % Test
     )
@@ -181,7 +199,7 @@ lazy val postgres = project
       "org.testcontainers" % "database-commons"                % testcontainersVersion      % Test,
       "org.testcontainers" % "postgresql"                      % testcontainersVersion      % Test,
       "org.testcontainers" % "jdbc"                            % testcontainersVersion      % Test,
-      "org.postgresql"     % "postgresql"                      % "42.4.1"                   % Compile,
+      "org.postgresql"     % "postgresql"                      % "42.4.2"                   % Compile,
       "com.dimafeng"      %% "testcontainers-scala-postgresql" % testcontainersScalaVersion % Test,
       "ch.qos.logback"     % "logback-classic"                 % logbackVersion             % Test
     )
