@@ -467,8 +467,8 @@ trait OracleRenderModule extends OracleSqlModule { self =>
                 val chunk = value.asInstanceOf[Chunk[Object]]
                 builder.append("'")
                 for (b <- chunk)
-                  builder.append(String.format("%02x", b))
-                builder.append(s"'")
+                  builder.append("%02x".format(b))
+                builder.append("'")
                 ()
               case StandardType.LocalDateTimeType(formatter)  =>
                 builder.append(
@@ -557,6 +557,11 @@ trait OracleRenderModule extends OracleSqlModule { self =>
       case DynamicValue.NoneValue                 =>
         builder.append("null")
         ()
+      case DynamicValue.Sequence(chunk)           =>
+        builder.append("'")
+        for (DynamicValue.Primitive(v, _) <- chunk)
+          builder.append("%02x".format(v))
+        val _ = builder.append("'")
       case _                                      => ()
     }
 

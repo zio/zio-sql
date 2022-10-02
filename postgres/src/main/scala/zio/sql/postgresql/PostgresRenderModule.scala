@@ -202,7 +202,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
           }
         case TByteArray           =>
           render(
-            lit.value.asInstanceOf[Chunk[Byte]].map("""\%03o""" format _).mkString("E\'", "", "\'")
+            lit.value.asInstanceOf[Chunk[Byte]].map("""\%03o""".format(_)).mkString("E\'", "", "\'")
           ) // todo fix `cast` infers correctly but map doesn't work for some reason
         case tt @ TChar           =>
           render("'", tt.cast(lit.value), "'") // todo is this the same as a string? fix escaping

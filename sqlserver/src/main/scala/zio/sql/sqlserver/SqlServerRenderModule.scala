@@ -475,7 +475,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
                   val chunk = value.asInstanceOf[Chunk[Object]]
                   render("CONVERT(VARBINARY(MAX),'")
                   for (b <- chunk)
-                    render(String.format("%02x", b))
+                    render("%02x".format(b))
                   render("', 2)")
                 case StandardType.MonthType                    => render(s"'${value}'")
                 case StandardType.LocalDateTimeType(formatter) =>
@@ -521,6 +521,11 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
           buildDynamicValue(right)
         case DynamicValue.SomeValue(value)          => buildDynamicValue(value)
         case DynamicValue.NoneValue                 => render("null")
+        case DynamicValue.Sequence(chunk)           =>
+          render("CONVERT(VARBINARY(MAX),'")
+          for (DynamicValue.Primitive(v, _) <- chunk)
+            render("%02x".format(v))
+          render("', 2)")
         case _                                      => ()
       }
 
