@@ -12,6 +12,7 @@ trait FeaturesModule {
     type Source[ColumnName, TableType]
     type Literal
     type Function0
+    type StoredProc0
     type Derived
 
     sealed trait IsNotAggregated[A]

@@ -7,4 +7,5 @@ trait NewtypesModule {
   type TableName  = String
 
   sealed case class FunctionName(name: String)
+  sealed case class StoredProcName(name: String)
 }
