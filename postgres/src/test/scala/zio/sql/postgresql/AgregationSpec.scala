@@ -10,7 +10,8 @@ object AgregationSpec extends PostgresRunnableSpec with DbSchema {
   import AggregationDef._
   import OrderDetails._
 
-  override def specLayered = suite("Postgres module with aggregate function SumInt, SumDec and avgDec ")(
+  override def specLayered =
+    suite("Postgres module with aggregate function SumInt, SumDec and avgDec ")(
     test("Can aggregate  colums   SumInt(Int column)  and SumDec(BigDdecimal colum)") {
 
       val query =  select((SumDec(unitPrice) as "totalAmount")
