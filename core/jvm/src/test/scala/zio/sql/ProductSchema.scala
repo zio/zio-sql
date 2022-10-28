@@ -12,7 +12,6 @@ object ProductSchema {
   }
   import sql.ColumnSet._
   import sql._
-  import AggregationDef._
 
   val productTable = (
     string("id") ++
@@ -20,14 +19,10 @@ object ProductSchema {
       string("name") ++
       int("base_amount") ++
       int("final_amount") ++
-      double("vat_amount") ++
-      bigDecimal("total_amount") ++
       boolean("deleted")
-    ).table("product")
+  ).table("product")
 
-  val (id, lastUpdated, name, baseAmount, finalAmount, vatAmount, totalAmount, deleted) = productTable.columns
+  val (id, lastUpdated, name, baseAmount, finalAmount, deleted) = productTable.columns
+
   val selectAll = select(id, lastUpdated, baseAmount, deleted) from productTable
-  val agSelect = select(id,  (SumInt(baseAmount) as "sumBaseAmount"), (Sum(vatAmount) as "sumVatAmount")
-    , (Avg(vatAmount) as "avgVatAmount"), (SumDec(totalAmount) as "sumTotalAmount")
-    , (AvgDec(totalAmount)  as "avgTotalAmount")) from productTable groupBy(id)
 }
