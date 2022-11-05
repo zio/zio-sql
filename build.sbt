@@ -138,7 +138,7 @@ lazy val jdbc_hikaricp = project
   .settings(buildInfoSettings("zio.sql.jdbc-hickaricp"))
   .settings(
     libraryDependencies ++= Seq(
-      "com.zaxxer"         % "HikariCP"                   % "4.0.3", // 5.x doesn't support Java 1.8
+      "com.zaxxer"         % "HikariCP"                   % "5.0.1", // 5.x doesn't support Java 1.8
       "dev.zio"           %% "zio-test"                   % zioVersion                 % Test,
       "dev.zio"           %% "zio-test-sbt"               % zioVersion                 % Test,
       "org.testcontainers" % "mysql"                      % testcontainersVersion      % Test,
