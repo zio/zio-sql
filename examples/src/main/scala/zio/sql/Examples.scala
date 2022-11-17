@@ -15,6 +15,7 @@ object Examples extends App with ShopSchema with PostgresJdbcModule {
   // SELECT "users"."first_name", "users"."last_name" FROM "users"
   val basicSelect =
     select(fName, lName).from(users)
+
   println(renderRead(basicSelect))
 
   // SELECT "users"."age" + 2, concat_ws("users"."first_name",' ',"users"."last_name"), abs(-42.0) FROM "users" ORDER BY "users"."age" DESC LIMIT 10 OFFSET 20

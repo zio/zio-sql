@@ -7,6 +7,12 @@ create table customers
     dob date not null
 );
 
+create table persons
+(
+    name varchar(255) not null primary key,
+    age int not null
+);
+
 create table orders
 (
     id varchar(36) not null primary key,

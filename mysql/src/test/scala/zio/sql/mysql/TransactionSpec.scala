@@ -26,6 +26,15 @@ object TransactionSpec extends MysqlRunnableSpec with ShopSchema {
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
+    test("Transaction is failing") {
+      val query = select(customerId) from customers
+
+      for {
+        result <- execute(ZTransaction(query) *> ZTransaction.fail(new Exception("failing")) *> ZTransaction(query))
+          .mapError(_.getMessage)
+          .flip
+      } yield assertTrue(result == "failing")
+    },
     test("Transaction failed and didn't deleted rows") {
       val query       = select(customerId) from customers
       val deleteQuery = deleteFrom(customers).where(verified === false)

@@ -24,7 +24,7 @@ addCommandAlias("fmt", "fmtOnce;fmtOnce")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
 val zioVersion                 = "2.0.2"
-val zioSchemaVersion           = "0.2.1"
+val zioSchemaVersion           = "0.2.1+29-8bb2101a-SNAPSHOT"
 val testcontainersVersion      = "1.17.3"
 val testcontainersScalaVersion = "0.40.10"
 val logbackVersion             = "1.2.11"
@@ -46,7 +46,8 @@ lazy val root = project
     oracle,
     postgres,
     sqlserver,
-    jdbc_hikaricp
+    jdbc_hikaricp,
+    macros
   )
 
 lazy val core = crossProject(JSPlatform, JVMPlatform)
@@ -71,7 +72,16 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
 lazy val coreJS = core.js
   .settings(scalaJSUseMainModuleInitializer := true)
 
-lazy val coreJVM = core.jvm
+lazy val coreJVM = core.jvm.dependsOn(macros)
+
+lazy val macros = project
+  .in(file("macros"))
+  .settings(
+    libraryDependencies ++= Seq(
+      "org.scala-lang" % "scala-reflect" % scalaVersion.value,
+      "dev.zio"       %% "zio"           % zioVersion
+    )
+  )
 
 lazy val docs = project
   .in(file("zio-sql-docs"))

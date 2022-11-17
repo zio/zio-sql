@@ -63,11 +63,9 @@ object MysqlModuleSpec extends MysqlRunnableSpec with ShopSchema {
         Customer(row._1, row._2, row._3, row._4)
       }
 
-      val assertion = for {
+      for {
         r <- testResult.runCollect
       } yield assert(r)(hasSameElementsDistinct(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("Can select with property operator") {
       case class Customer(id: UUID, fname: String, lname: String, verified: Boolean, dateOfBirth: LocalDate)
@@ -91,11 +89,9 @@ object MysqlModuleSpec extends MysqlRunnableSpec with ShopSchema {
         Customer(row._1, row._2, row._3, row._4, row._5)
       }
 
-      val assertion = for {
+      for {
         r <- testResult.runCollect
       } yield assert(r)(hasSameElementsDistinct(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("Can select from single table with limit, offset and order by") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
@@ -118,11 +114,9 @@ object MysqlModuleSpec extends MysqlRunnableSpec with ShopSchema {
         Customer(row._1, row._2, row._3, row._4)
       }
 
-      val assertion = for {
+      for {
         r <- testResult.runCollect
       } yield assert(r)(hasSameElementsDistinct(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("Execute union on select queries") {
       val query = select(customerId).from(customers).union(select(fkCustomerId).from(orders))
@@ -156,17 +150,14 @@ object MysqlModuleSpec extends MysqlRunnableSpec with ShopSchema {
      * This is a failing test for aggregation function.
      * Uncomment it when aggregation function handling is fixed.
      */
-    // test("Can count rows") {
-    //   val query = select { Count(userId) } from users
+    test("Can count rows") {
+      import AggregationDef._
+      val query = select(Count(customerId)) from customers
 
-    //   val expected = 5L
-
-    //   val result = new ExecuteBuilder(query).to[Long, Long](identity).provideCustomLayer(executorLayer)
-
-    //   for {
-    //     r <- result.runCollect
-    //   } yield assert(r.head)(equalTo(expected))
-    // },
+      for {
+        r <- execute(query).runCollect
+      } yield assertTrue(r.head == 5L)
+    },
     test("Can select from joined tables (inner join)") {
       val query = select(fName, lName, orderDate) from (customers join orders).on(
         fkCustomerId === customerId
@@ -187,11 +178,9 @@ object MysqlModuleSpec extends MysqlRunnableSpec with ShopSchema {
         Row(row._1, row._2, row._3)
       }
 
-      val assertion = for {
+      for {
         r <- result.runCollect
       } yield assert(r)(hasSameElementsDistinct(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("Can insert rows") {
       final case class CustomerRow(

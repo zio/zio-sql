@@ -521,7 +521,7 @@ trait MysqlRenderModule extends MysqlSqlModule { self =>
       }
 
     /**
-    * Drops the initial Litaral(true) present at the start of every WHERE expressions by default 
+    * Drops the initial Litaral(true) present at the start of every WHERE expressions by default
     * and proceeds to the rest of Expr's.
     */
     private def renderWhereExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {

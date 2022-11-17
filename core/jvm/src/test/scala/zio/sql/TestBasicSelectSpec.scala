@@ -2,20 +2,26 @@ package zio.sql
 
 import zio.test._
 import zio.test.Assertion._
-import zio.schema.Schema
+import zio.schema._
 import zio.test.ZIOSpecDefault
+import zio.schema.DeriveSchema
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 object TestBasicSelect {
   val userSql = new Sql { self =>
-    import self.ColumnSet._
-
     override def renderDelete(delete: self.Delete[_]): String               = ???
     override def renderRead(read: self.Read[_]): String                     = ???
     override def renderUpdate(update: self.Update[_]): String               = ???
     override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = ???
 
-    val userTable =
-      (string("user_id") ++ localDate("dob") ++ string("first_name") ++ string("last_name")).table("users")
+    case class Users(user_id: String, dob: LocalDate, first_name: String, last_name: String)
+
+    implicit val localDateSchema =
+      Schema.primitive[LocalDate](StandardType.LocalDateType(DateTimeFormatter.ISO_LOCAL_DATE))
+    implicit val userSchema      = DeriveSchema.gen[Users]
+
+    val userTable = defineTable[Users]
 
     val (userId, dob, fName, lName) = userTable.columns
 
