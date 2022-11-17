@@ -3,7 +3,7 @@ package zio.sql
 import zio.schema.DeriveSchema
 import zio.sql.postgresql.PostgresJdbcModule
 
-object GroupByExamples extends App with ShopSchema with PostgresJdbcModule {
+object GroupByExamples extends App with PostgresJdbcModule {
   import AggregationDef._
 
   case class Product(id: Int, name: String, amount: Int, price: Double)

@@ -1,12 +1,10 @@
 package zio.sql.sqlserver
 
 import zio._
-import zio.schema._
 import zio.test.Assertion._
 import zio.test.TestAspect.{ retries, samples, sequential, shrinks }
 import zio.test._
 import java.time._
-import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 import scala.language.postfixOps
@@ -17,6 +15,16 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
 
   import AggregationDef._
   import CustomerSchema._
+
+  final case class CustomerRow(
+    id: UUID,
+    firstName: String,
+    lastName: String,
+    verified: Boolean,
+    dateOfBirth: LocalDate
+  )
+
+  implicit val customerRow = DeriveSchema.gen[CustomerRow]
 
   private def customerSelectJoseAssertion[F: Features.IsNotAggregated](
     condition: Expr[F, customers.TableType, Boolean]
@@ -195,7 +203,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
     },
     test("subquery in where clause") {
       import SqlServerSpecific.SqlServerFunctionDef._
-      import DerivedTableSchema._
+      import OrderDetails._
       import ProductSchema._
 
       /**
@@ -356,6 +364,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
     test("correlated subquery in where clause - return orders where price was above average for particular product") {
       import SqlServerSpecific.SqlServerFunctionDef._
       import DerivedTableSchema._
+      import OrderDetails._
 
       /**
        *  select derived.order_id, derived.product_id, derived.unit_price from order_details derived
@@ -628,31 +637,6 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
       } yield assertTrue(result == 1)
     },
     test("Can insert rows") {
-      final case class CustomerRow(
-        id: UUID,
-        firstName: String,
-        lastName: String,
-        verified: Boolean,
-        dateOfBirth: LocalDate
-      )
-      implicit val customerRowSchema =
-        Schema.CaseClass5[UUID, String, String, Boolean, LocalDate, CustomerRow](
-          TypeId.parse("zio.sql.sqlserver.CustomerRow"),
-          Schema.Field("id", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
-          Schema.Field("firstName", Schema.primitive[String](zio.schema.StandardType.StringType)),
-          Schema.Field("lastName", Schema.primitive[String](zio.schema.StandardType.StringType)),
-          Schema.Field("verified", Schema.primitive[Boolean](zio.schema.StandardType.BoolType)),
-          Schema.Field(
-            "dateOfBirth",
-            Schema.primitive[LocalDate](zio.schema.StandardType.LocalDateType(DateTimeFormatter.ISO_DATE))
-          ),
-          CustomerRow.apply,
-          _.id,
-          _.firstName,
-          _.lastName,
-          _.verified,
-          _.dateOfBirth
-        )
 
       val rows = List(
         CustomerRow(UUID.randomUUID(), "Peter", "Parker", true, LocalDate.ofYearDay(2001, 8)),
@@ -670,6 +654,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
       assertZIO(execute(command))(equalTo(2))
     },
     test("Can insert tuples") {
+      import OrderSchema._
 
       val rows = List(
         (
@@ -694,6 +679,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
     },
     test("Can insert all supported types") {
       import AllTypesHelper._
+      import AllTypes._
       import zio.prelude._
 
       val sqlMinDateTime = LocalDateTime.of(1, 1, 1, 0, 0)
@@ -735,12 +721,16 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
         zOffset  <- zoneOffset
       } yield OffsetDateTime.of(dateTime, zOffset)
 
+      val javaBigDecimalGen = for {
+        bd <- Gen.bigDecimal(Long.MinValue, Long.MaxValue)
+      } yield bd.bigDecimal
+
       val gen = (
         Gen.uuid,
-        Gen.chunkOfBounded(1, 100)(Gen.byte),
-        Gen.bigDecimal(Long.MinValue, Long.MaxValue),
+        Gen.chunkOf(Gen.byte),
+        javaBigDecimalGen,
         Gen.boolean,
-        Gen.asciiChar,
+        Gen.char,
         Gen.double,
         Gen.float,
         sqlInstant,
@@ -748,16 +738,14 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
         Gen.option(Gen.int),
         sqlLocalDate,
         sqlLocalDateTime,
-        Gen.localTime.map(normLt), // needs to be truncated before saving to the db for predictable outcome
+        Gen.localTime,
         Gen.long,
         sqlOffsetDateTime,
         sqlOffsetTime,
         Gen.short,
-        Gen.stringBounded(2, 30)(Gen.asciiChar),
+        Gen.string,
         Gen.uuid,
-        sqlZonedDateTime,
-        Gen.char,
-        Gen.stringBounded(2, 30)(Gen.char)
+        sqlZonedDateTime
       ).tupleN
 
       case class RowDates(
@@ -779,35 +767,31 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
         long: Long,
         short: Short,
         string: String,
-        nchar: Char,
-        nvarchar: String,
         bytearray: Chunk[Byte]
       )
 
       check(gen) { row =>
         val insert = insertInto(allTypes)(
-          id,            // 1
+          id,
           bytearrayCol,
-          bigdecimalCol, // 3
-          booleanCol,    // 4
-          charCol,       // 5
-          doubleCol,     // 6
-          floatCol,      // 7
+          bigdecimalCol,
+          booleanCol,
+          charCol,
+          doubleCol,
+          floatCol,
           instantCol,
-          intCol,        // 9
+          intCol,
           optionalIntCol,
-          localdateCol,  // 11
+          localdateCol,
           localdatetimeCol,
           localtimeCol,
-          longCol,       // 14
+          longCol,
           offsetdatetimeCol,
           offsettimeCol,
-          shortCol,      // 17
-          stringCol,     // 18
+          shortCol,
+          stringCol,
           uuidCol,
-          zonedDatetimeCol,
-          ncharCol,      // 21
-          nvarcharCol    // 22
+          zonedDatetimeCol
         ).values(row)
 
         val query = select(
@@ -821,8 +805,6 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
           longCol,
           shortCol,
           stringCol,
-          ncharCol,
-          nvarcharCol,
           bytearrayCol
         )
           .from(allTypes)
@@ -839,14 +821,12 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
           row._14,
           row._17,
           row._18,
-          row._21,
-          row._22,
           row._2
         )
         val assertionB    = for {
           _   <- execute(insert)
           rb  <- execute(query).runHead.some
-          rowB = RowBasic(rb._1, rb._2, rb._3, rb._4, rb._5, rb._6, rb._7, rb._8, rb._9, rb._10, rb._11, rb._12, rb._13)
+          rowB = RowBasic(rb._1, rb._2, rb._3, rb._4, rb._5, rb._6, rb._7, rb._8, rb._9, rb._10, rb._11)
         } yield assert(rowB) {
           val assertB = assertM(expectedBasic) _
           assertB("UUID")(_.id) &&
@@ -859,8 +839,6 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
           assertB("Long")(_.long) &&
           assertB("Short")(_.short) &&
           assertB("String")(_.string) &&
-          assertB("Unicode char")(_.nchar) &&
-          assertB("Unicode string")(_.nvarchar) &&
           assertB("Chunk[Byte]")(_.bytearray)
         }
         assertionB.mapErrorCause(cause => Cause.stackless(cause.untraced))
@@ -970,11 +948,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
     val (fkProductId, effective, price) = productPrices.columns
   }
 
-  object DerivedTableSchema {
-    import CustomerSchema._
-    import OrderSchema._
-
-    // order details
+  object OrderDetails {
     case class OrderDetails(orderId: UUID, productId: UUID, quantity: Int, unitPrice: BigDecimal)
 
     implicit val orderDetailsSchema = DeriveSchema.gen[OrderDetails]
@@ -982,8 +956,12 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
     val orderDetails = defineTable[OrderDetails]
 
     val (orderDetailsId, productId, quantity, unitPrice) = orderDetails.columns
+  }
 
-    // derived
+  object DerivedTableSchema {
+    import CustomerSchema._
+    import OrderSchema._
+    import OrderDetails._
 
     val orderDetailsDerived = select(orderDetailsId, productId, unitPrice).from(orderDetails).asTable("derived")
 
@@ -998,5 +976,57 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
       .asTable("derived")
 
     val orderDateDerived = orderDateDerivedTable.columns
+  }
+
+  object AllTypes {
+    case class AllType(
+      id: UUID,
+      bytearray: Chunk[Byte],
+      bigdecimal: java.math.BigDecimal,
+      boolean_ : Boolean,
+      char_ : Char,
+      double_ : Double,
+      float: Float,
+      instant: Instant,
+      int_ : Int,
+      optional_int: Option[Int],
+      localdate: LocalDate,
+      localdatetime: LocalDateTime,
+      localtime: LocalTime,
+      long_ : Long,
+      offsetdatetime: OffsetDateTime,
+      offsettime: OffsetTime,
+      short: Short,
+      string: String,
+      uuid: UUID,
+      zoneddatetime: ZonedDateTime
+    )
+
+    implicit val alTypesSchema = DeriveSchema.gen[AllType]
+
+    val allTypes = defineTableSmart[AllType]
+
+    val (
+      id,
+      bytearrayCol,
+      bigdecimalCol,
+      booleanCol,
+      charCol,
+      doubleCol,
+      floatCol,
+      instantCol,
+      intCol,
+      optionalIntCol,
+      localdateCol,
+      localdatetimeCol,
+      localtimeCol,
+      longCol,
+      offsetdatetimeCol,
+      offsettimeCol,
+      shortCol,
+      stringCol,
+      uuidCol,
+      zonedDatetimeCol
+    ) = allTypes.columns
   }
 }

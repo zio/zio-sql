@@ -12,7 +12,7 @@ import java.util.UUID
 
 object CustomFunctionDefSpec extends PostgresRunnableSpec with DbSchema {
 
-  import Customers._
+  import CustomerSchema._
   import PostgresFunctionDef._
   import PostgresSpecific._
 
@@ -60,7 +60,7 @@ object CustomFunctionDefSpec extends PostgresRunnableSpec with DbSchema {
         test("format1") {
           import Expr._
 
-          val query = select(Format1("Person: %s", Customers.fName)) from customers
+          val query = select(Format1("Person: %s", fName)) from customers
 
           val expected = Seq(
             "Person: Ronald",
@@ -76,7 +76,7 @@ object CustomFunctionDefSpec extends PostgresRunnableSpec with DbSchema {
         test("format2") {
           import Expr._
 
-          val query = select(Format2("Person: %s %s", Customers.fName, Customers.lName)) from customers
+          val query = select(Format2("Person: %s %s", fName, lName)) from customers
 
           val expected = Seq(
             "Person: Ronald Russell",
@@ -93,7 +93,7 @@ object CustomFunctionDefSpec extends PostgresRunnableSpec with DbSchema {
           import Expr._
 
           val query = select(
-            Format3("Person: %s %s with double quoted %I ", Customers.fName, Customers.lName, "identi fier")
+            Format3("Person: %s %s with double quoted %I ", fName, lName, "identi fier")
           ) from customers
 
           val expected = Seq(
@@ -113,8 +113,8 @@ object CustomFunctionDefSpec extends PostgresRunnableSpec with DbSchema {
           val query = select(
             Format4(
               "Person: %s %s with null-literal %L and non-null-literal %L ",
-              Customers.fName,
-              Customers.lName,
+              fName,
+              lName,
               "FIXME: NULL",
               "literal"
             )
@@ -137,10 +137,10 @@ object CustomFunctionDefSpec extends PostgresRunnableSpec with DbSchema {
           val query = select(
             Format5(
               "Person: %s %s with more arguments than placeholders: %I %L ",
-              Customers.fName,
-              Customers.lName,
+              fName,
+              lName,
               "identifier",
-              Reverse(Customers.fName),
+              Reverse(fName),
               "unused"
             )
           ) from customers
@@ -369,8 +369,6 @@ object CustomFunctionDefSpec extends PostgresRunnableSpec with DbSchema {
       for {
         r <- testResult.runCollect
       } yield assert(r.head)(equalTo(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("translate") {
       val query = select(Translate("12345", "143", "ax"))
@@ -451,8 +449,6 @@ object CustomFunctionDefSpec extends PostgresRunnableSpec with DbSchema {
       for {
         r <- testResult.runCollect
       } yield assert(r)(hasSameElementsDistinct(expected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("gcd") {
       val query = select(GCD(1071d, 462d))
@@ -572,8 +568,6 @@ object CustomFunctionDefSpec extends PostgresRunnableSpec with DbSchema {
         roundTrip <- roundTripResults.runCollect
       } yield assert(single.head)(equalTo(expected)) &&
         assert(roundTrip)(hasSameElementsDistinct(roundTripExpected))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("lpad") {
       def runTest(s: String, pad: String) = {
@@ -697,7 +691,7 @@ object CustomFunctionDefSpec extends PostgresRunnableSpec with DbSchema {
       import scala.util.{ Left, Right }
       val dummyUsage = zio.ZIO.succeed((Left(()), Right(())))
 
-      val result = typeCheck("execute((select(CharLength(Customers.fName))).to[Int, Int](identity))")
+      val result = typeCheck("execute((select(CharLength(fName))).to[Int, Int](identity))")
       assertZIO(dummyUsage *> result)(isLeft)
     },
     test("date-trunc woth hour") {

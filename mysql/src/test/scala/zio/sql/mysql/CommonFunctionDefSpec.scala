@@ -4,10 +4,21 @@ import zio.Cause
 import zio.stream.ZStream
 import zio.test.Assertion._
 import zio.test._
+import zio.sql.Jdbc
+import java.util.UUID
+import java.time.LocalDate
+import zio.schema._
 
-object CommonFunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
+object CommonFunctionDefSpec extends MysqlRunnableSpec with Jdbc {
   import FunctionDef.{ CharLength => _, _ }
-  import Customers._
+  
+  case class Customers(id: UUID, dob: LocalDate, first_name: String, last_name: String, verified: Boolean)
+
+  implicit val customerSchema = DeriveSchema.gen[Customers]
+
+  val customers = defineTable[Customers]
+
+  val (customerId, dob, fName, lName, verified) = customers.columns
 
   private def collectAndCompare[R, E](
     expected: Seq[String],
@@ -20,7 +31,7 @@ object CommonFunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
       test("concat_ws #2 - combine columns") {
 
         // note: you can't use customerId here as it is a UUID, hence not a string in our book
-        val query = select(ConcatWs3(Customers.fName, Customers.fName, Customers.lName)) from customers
+        val query = select(ConcatWs3(fName, fName, lName)) from customers
 
         val expected = Seq(
           "RonaldRonaldRussell",
@@ -35,7 +46,7 @@ object CommonFunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
       },
       test("concat_ws #3 - combine columns and flat values") {
 
-        val query = select(ConcatWs4(" ", "Person:", Customers.fName, Customers.lName)) from customers
+        val query = select(ConcatWs4(" ", "Person:", fName, lName)) from customers
 
         val expected = Seq(
           "Person: Ronald Russell",
@@ -51,7 +62,7 @@ object CommonFunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
       test("concat_ws #3 - combine function calls together") {
 
         val query = select(
-          ConcatWs3(" and ", Concat("Name: ", Customers.fName), Concat("Surname: ", Customers.lName))
+          ConcatWs3(" and ", Concat("Name: ", fName), Concat("Surname: ", lName))
         ) from customers
 
         val expected = Seq(

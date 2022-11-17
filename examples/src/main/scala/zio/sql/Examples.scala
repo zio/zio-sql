@@ -5,7 +5,7 @@ import java.time._
 import zio.sql.postgresql.PostgresJdbcModule
 import zio.schema.DeriveSchema
 
-object Examples extends App with ShopSchema with PostgresJdbcModule {
+object Examples extends App with PostgresJdbcModule {
   import this.AggregationDef._
   import this.FunctionDef._
   import this.OrderDetails._
@@ -155,4 +155,36 @@ object Examples extends App with ShopSchema with PostgresJdbcModule {
      SELECT "orders"."usr_id" FROM "orders"
    */
   val selectWithUnionAll = select(userId).from(users).unionAll(select(fkUserId).from(orders))
+
+  object Users {
+
+    case class Users(id: UUID, age: Int, dob: LocalDate, firstName: String, lastName: String)
+
+    implicit val userSchema = DeriveSchema.gen[Users]
+
+    val users = defineTable[Users]
+
+    val (userId, age, dob, fName, lName) = users.columns
+  }
+
+  object Orders {
+
+    case class Orders(id: java.util.UUID, userId: java.util.UUID, orderDate: LocalDate)
+
+    implicit val orderSchema = DeriveSchema.gen[Orders]
+
+    val orders = defineTable[Orders]
+
+    val (orderId, fkUserId, orderDate) = orders.columns
+  }
+
+  object OrderDetails {
+    case class OrderDetail(orderId: Int, productId: Int, quantity: Double, unitPrice: Double)
+
+    implicit val orderDetailSchema = DeriveSchema.gen[OrderDetail]
+
+    val orderDetails = defineTable[OrderDetail]
+
+    val (fkOrderId, fkProductId, quantity, unitPrice) = orderDetails.columns
+  }
 }

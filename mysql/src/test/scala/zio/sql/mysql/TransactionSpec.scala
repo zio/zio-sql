@@ -3,13 +3,22 @@ package zio.sql.mysql
 import java.util.UUID
 
 import zio._
+import zio.schema._
 import zio.test.Assertion._
 import zio.test._
 import zio.test.TestAspect.sequential
+import java.time.LocalDate
+import zio.sql.Jdbc
 
-object TransactionSpec extends MysqlRunnableSpec with ShopSchema {
+object TransactionSpec extends MysqlRunnableSpec with Jdbc {
 
-  import Customers._
+  case class Customers(id: UUID, dob: LocalDate, first_name: String, last_name: String, verified: Boolean)
+
+  implicit val customerSchema = DeriveSchema.gen[Customers]
+
+  val customers = defineTable[Customers]
+
+  val (customerId, dob, fName, lName, verified) = customers.columns
 
   override def specLayered = suite("MySQL module")(
     test("Transaction is returning the last value") {
@@ -25,15 +34,6 @@ object TransactionSpec extends MysqlRunnableSpec with ShopSchema {
           .orDie
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    },
-    test("Transaction is failing") {
-      val query = select(customerId) from customers
-
-      for {
-        result <- execute(ZTransaction(query) *> ZTransaction.fail(new Exception("failing")) *> ZTransaction(query))
-          .mapError(_.getMessage)
-          .flip
-      } yield assertTrue(result == "failing")
     },
     test("Transaction failed and didn't deleted rows") {
       val query       = select(customerId) from customers

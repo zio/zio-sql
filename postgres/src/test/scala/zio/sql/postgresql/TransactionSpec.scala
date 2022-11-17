@@ -9,7 +9,7 @@ object TransactionSpec extends PostgresRunnableSpec with DbSchema {
 
   override val autoCommit = false
 
-  import Customers._
+  import CustomerSchema._
 
   override def specLayered = suite("Postgres module")(
     test("Transaction is returning the last value") {
@@ -22,15 +22,6 @@ object TransactionSpec extends PostgresRunnableSpec with DbSchema {
       val assertion = assertZIO(result)(equalTo(5L)).orDie
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-    },
-    test("Transaction is failing") {
-      val query = select(customerId) from customers
-
-      for {
-        result <- execute(ZTransaction(query) *> ZTransaction.fail(new Exception("failing")) *> ZTransaction(query))
-          .mapError(_.getMessage)
-          .flip
-      } yield assertTrue(result == "failing")
     },
     test("Transaction failed and didn't delete rows") {
       val query       = select(customerId) from customers

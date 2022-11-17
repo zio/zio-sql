@@ -10,41 +10,6 @@ import zio.sql.driver.Renderer
 
 trait PostgresRenderModule extends PostgresSqlModule { self =>
 
-  override type TypeTagExtension[+A] = PostgresSpecific.PostgresTypeTag[A]
-
-  override type TableExtension[A] = PostgresSpecific.PostgresSpecificTable[A]
-
-  object PostgresSpecific {
-    sealed trait PostgresSpecificTable[A] extends Table.TableEx[A]
-
-    object PostgresSpecificTable {
-      import scala.language.implicitConversions
-
-      private[PostgresModule] sealed case class LateraLTable[A, B](left: Table.Aux[A], right: Table.Aux[B])
-        extends PostgresSpecificTable[A with B]
-
-      implicit def tableSourceToSelectedBuilder[A](
-                                                    table: Table.Aux[A]
-                                                  ): LateralTableBuilder[A] =
-        new LateralTableBuilder(table)
-
-      sealed case class LateralTableBuilder[A](left: Table.Aux[A]) {
-        self =>
-
-        final def lateral[Reprs, Out, B](
-                                          right: Table.DerivedTable[Reprs, Out, Read.WithReprs[Out, Reprs], B]
-                                        ): Table.DialectSpecificTable[A with B] = {
-
-          val tableExtension = LateraLTable[A, B](
-            left,
-            right
-          )
-
-          new Table.DialectSpecificTable(tableExtension)
-        }
-      }
-    }
-
   override def renderRead(read: self.Read[_]): String = {
     implicit val render: Renderer = Renderer()
     PostgresRenderer.renderReadImpl(read)
@@ -129,7 +94,6 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
           StandardType.fromString(typeTag.tag) match {
             case Some(v) =>
               v match {
-                case ByteType                                   => ()
                 case BigDecimalType                             =>
                   render(value)
                 case StandardType.InstantType(formatter)        =>

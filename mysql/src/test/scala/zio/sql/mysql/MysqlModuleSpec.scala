@@ -12,10 +12,23 @@ import zio.test.TestAspect._
 
 import scala.language.postfixOps
 
-object MysqlModuleSpec extends MysqlRunnableSpec with ShopSchema {
+object MysqlModuleSpec extends MysqlRunnableSpec {
 
-  import Customers._
-  import Orders._
+  case class Customers(id: UUID, dob: LocalDate, first_name: String, last_name: String, verified: Boolean)
+
+  implicit val customerSchema = DeriveSchema.gen[Customers]
+
+  val customers = defineTable[Customers]
+
+  val (customerId, dob, fName, lName, verified) = customers.columns
+
+  case class Orders(id: UUID, customer_id: UUID, order_date: LocalDate, deleted_at: Option[LocalDateTime])
+
+  implicit val orderSchema = DeriveSchema.gen[Orders]
+
+  val orders = defineTable[Orders]
+
+  val (orderId, fkCustomerId, orderDate, deletedAt) = orders.columns
 
   override def specLayered = suite("Mysql module")(
     test("Can select from single table") {
@@ -193,20 +206,16 @@ object MysqlModuleSpec extends MysqlRunnableSpec with ShopSchema {
       implicit val customerRowSchema =
         Schema.CaseClass5[UUID, LocalDate, String, String, Boolean, CustomerRow](
           TypeId.parse("zio.sql.mysql.CustomerRow"),
-          Schema.Field("id", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
+          Schema.Field("id", Schema.primitive[UUID](zio.schema.StandardType.UUIDType), get0 = _.id, set0 = (r, a) => r.copy(id = a)),
           Schema.Field(
             "dateOfBirth",
-            Schema.primitive[LocalDate](zio.schema.StandardType.LocalDateType(DateTimeFormatter.ISO_DATE))
+            Schema.primitive[LocalDate](zio.schema.StandardType.LocalDateType(DateTimeFormatter.ISO_DATE)),
+            get0 = _.dateOfBirth, set0 = (r, a) => r.copy(dateOfBirth = a)
           ),
-          Schema.Field("firstName", Schema.primitive[String](zio.schema.StandardType.StringType)),
-          Schema.Field("lastName", Schema.primitive[String](zio.schema.StandardType.StringType)),
-          Schema.Field("verified", Schema.primitive[Boolean](zio.schema.StandardType.BoolType)),
+          Schema.Field("firstName", Schema.primitive[String](zio.schema.StandardType.StringType), get0 = _.firstName, set0 = (r, a) => r.copy(firstName = a)),
+          Schema.Field("lastName", Schema.primitive[String](zio.schema.StandardType.StringType), get0 = _.lastName, set0 = (r, a) => r.copy(lastName = a)),
+          Schema.Field("verified", Schema.primitive[Boolean](zio.schema.StandardType.BoolType), get0 = _.verified, set0 = (r, a) => r.copy(verified = a)),
           CustomerRow.apply,
-          _.id,
-          _.dateOfBirth,
-          _.firstName,
-          _.lastName,
-          _.verified
         )
 
       val rows = List(
@@ -248,7 +257,7 @@ object MysqlModuleSpec extends MysqlRunnableSpec with ShopSchema {
         orderId,
         fkCustomerId,
         orderDate,
-        deleted_at
+        deletedAt
       ).values(rows)
 
       println(renderInsert(command))

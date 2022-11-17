@@ -16,8 +16,6 @@ import java.time.OffsetTime
 import java.time.OffsetDateTime
 
 trait OracleSqlModule extends Sql { self =>
-  import ColumnSet._
-
   override type TypeTagExtension[+A] = OracleTypeTag[A]
 
   trait OracleTypeTag[+A] extends Tag[A] with Decodable[A]
@@ -45,11 +43,6 @@ trait OracleSqlModule extends Sql { self =>
     val Sind = FunctionDef[Double, Double](FunctionName("sind"))
   }
 
-  object Dual {
-    val dual    = (string("dummy")).table("dual")
-    val (dummy) = dual.columns
-  }
-
   implicit val instantSchema =
     Schema.primitive[Instant](zio.schema.StandardType.InstantType(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
 
@@ -70,8 +63,4 @@ trait OracleSqlModule extends Sql { self =>
 
   implicit val zonedDatetimeSchema =
     Schema.primitive[ZonedDateTime](zio.schema.StandardType.ZonedDateTimeType(DateTimeFormatter.ISO_ZONED_DATE_TIME))
-
-  def yearMonth(name: String): Singleton[YearMonth, name.type] = singleton[YearMonth, name.type](name)
-
-  def duration(name: String): Singleton[Duration, name.type] = singleton[Duration, name.type](name)
 }

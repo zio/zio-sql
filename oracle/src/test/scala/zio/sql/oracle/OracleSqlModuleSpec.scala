@@ -6,16 +6,23 @@ import zio.test._
 
 import scala.language.postfixOps
 import java.util.UUID
-import java.time.format.DateTimeFormatter
-import zio.schema.{ Schema, TypeId }
 import zio.prelude._
-import java.time.{ LocalDate, LocalDateTime, Month, Year, YearMonth, ZoneOffset, ZonedDateTime }
+import java.time._
+import zio.schema.DeriveSchema
 
 object OracleSqlModuleSpec extends OracleRunnableSpec with ShopSchema {
 
   import Customers._
   import Orders._
   import AllTypes._
+
+  final case class CustomerRow(
+        id: UUID,
+        dateOfBirth: LocalDate,
+        firstName: String,
+        lastName: String,
+        verified: Boolean)
+  implicit val customerRowSchema = DeriveSchema.gen[CustomerRow]
 
   override def specLayered: Spec[SqlDriver with TestConfig with Sized, Exception] = suite("Oracle module")(
     test("Can update selected rows") {
@@ -66,31 +73,7 @@ object OracleSqlModuleSpec extends OracleRunnableSpec with ShopSchema {
       assertZIO(result)(equalTo(expected))
     },
     test("Can insert rows") {
-      final case class CustomerRow(
-        id: UUID,
-        dateOfBirth: LocalDate,
-        firstName: String,
-        lastName: String,
-        verified: Boolean
-      )
-      implicit val customerRowSchema =
-        Schema.CaseClass5[UUID, LocalDate, String, String, Boolean, CustomerRow](
-          TypeId.parse("zio.sql.oracle.CustomerRow"),
-          Schema.Field("id", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
-          Schema.Field(
-            "dateOfBirth",
-            Schema.primitive[LocalDate](zio.schema.StandardType.LocalDateType(DateTimeFormatter.ISO_DATE))
-          ),
-          Schema.Field("firstName", Schema.primitive[String](zio.schema.StandardType.StringType)),
-          Schema.Field("lastName", Schema.primitive[String](zio.schema.StandardType.StringType)),
-          Schema.Field("verified", Schema.primitive[Boolean](zio.schema.StandardType.BoolType)),
-          CustomerRow.apply,
-          _.id,
-          _.dateOfBirth,
-          _.firstName,
-          _.lastName,
-          _.verified
-        )
+
 
       val rows = List(
         CustomerRow(UUID.randomUUID(), LocalDate.ofYearDay(2001, 8), "Peter", "Parker", true),
@@ -146,11 +129,6 @@ object OracleSqlModuleSpec extends OracleRunnableSpec with ShopSchema {
         day   <- Gen.int(1, maxLen)
       } yield LocalDate.of(year.getValue, month, day)
 
-      val sqlYearMonth = for {
-        year  <- sqlYear
-        month <- Gen.int(1, 12)
-      } yield YearMonth.of(year.getValue(), month)
-
       val sqlLocalDateTime =
         Gen.localDateTime(sqlMinDateTime, sqlMaxDateTime)
 
@@ -167,10 +145,15 @@ object OracleSqlModuleSpec extends OracleRunnableSpec with ShopSchema {
           .offsetDateTime(sqlMinDateTime.atOffset(ZoneOffset.MIN), sqlMaxDateTime.atOffset(ZoneOffset.MAX))
           .filter(_.getOffset.getTotalSeconds % 60 == 0)
 
+      val javaBigDecimalGen = 
+        for {
+          bd <- Gen.bigDecimal(Long.MinValue, Long.MaxValue)
+        } yield bd.bigDecimal
+
       val gen = (
         Gen.uuid,
         Gen.chunkOf(Gen.byte),
-        Gen.bigDecimal(Long.MinValue, Long.MaxValue),
+        javaBigDecimalGen,
         Gen.boolean,
         Gen.char,
         Gen.double,
@@ -187,10 +170,9 @@ object OracleSqlModuleSpec extends OracleRunnableSpec with ShopSchema {
         Gen.short,
         Gen.string,
         Gen.uuid,
-        sqlZonedDateTime,
-        sqlYearMonth,
-        Gen.finiteDuration
+        sqlZonedDateTime
       ).tupleN
+
       check(gen) { row =>
         val insert = insertInto(allTypes)(
           id,
@@ -212,9 +194,7 @@ object OracleSqlModuleSpec extends OracleRunnableSpec with ShopSchema {
           shortCol,
           stringCol,
           uuidCol,
-          zonedDatetimeCol,
-          yearMonthCol,
-          durationCol
+          zonedDatetimeCol
         ).values(row)
 
         // printInsert(insert)

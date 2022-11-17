@@ -2,14 +2,23 @@ package zio.sql.mysql
 
 import zio.test._
 import zio.test.Assertion._
-
+import zio.schema._
 import java.time.{ LocalDate, LocalTime, ZoneId }
 import java.time.format.DateTimeFormatter
+import zio.sql.Jdbc
+import java.util.UUID
 
-object CustomFunctionDefSpec extends MysqlRunnableSpec with ShopSchema {
+object CustomFunctionDefSpec extends MysqlRunnableSpec with Jdbc {
 
-  import Customers._
   import MysqlFunctionDef._
+
+  case class Customers(id: UUID, dob: LocalDate, first_name: String, last_name: String, verified: Boolean)
+
+  implicit val customerSchema = DeriveSchema.gen[Customers]
+
+  val customers = defineTable[Customers]
+
+  val (customerId, dob, fName, lName, verified) = customers.columns
 
   override def specLayered = suite("MySQL FunctionDef")(
     test("crc32") {

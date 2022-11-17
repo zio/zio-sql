@@ -4,11 +4,16 @@ import zio.Cause
 import zio.stream.ZStream
 import zio.test.Assertion._
 import zio.test._
+import zio.schema.DeriveSchema
 
 object CommonFunctionDefSpec extends OracleRunnableSpec with ShopSchema {
   import FunctionDef.{ CharLength => _, _ }
   import Customers._
-  import Dual._
+  
+  case class Dual(dummy: String)
+  implicit val dummySchema = DeriveSchema.gen[Dual]
+  val dual = defineTable[Dual]
+  val dommy = dual.columns
 
   private def collectAndCompare[R, E](
     expected: Seq[String],

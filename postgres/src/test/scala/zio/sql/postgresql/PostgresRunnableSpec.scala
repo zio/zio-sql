@@ -6,28 +6,12 @@ import zio.sql.JdbcRunnableSpec
 
 trait PostgresRunnableSpec extends JdbcRunnableSpec with PostgresJdbcModule {
 
-  private def connProperties(user: String, password: String): Properties = {
-    val props = new Properties
-    props.setProperty("user", user)
-    props.setProperty("password", password)
-    props
-  }
-
-  val poolConfigLayer = ZLayer.scoped {
-    TestContainer
-      .postgres()
-      .map(a =>
-        ConnectionPoolConfig(
-          url = a.jdbcUrl,
-          properties = connProperties(a.username, a.password),
-          autoCommit = autoCommit
-        )
-      )
-  }
-
-  override def spec: Spec[TestEnvironment, TestFailure[Any], TestSuccess] =
-    specLayered.provideCustomShared(jdbcLayer)
-
-  def specLayered: Spec[JdbcEnvironment, TestFailure[Object], TestSuccess]
+  override protected def getContainer: SingleContainer[_] with JdbcDatabaseContainer =
+    new PostgreSQLContainer(
+      dockerImageNameOverride = Option("postgres:alpine").map(DockerImageName.parse)
+    ).configure { a =>
+      a.withInitScript("db_schema.sql")
+      ()
+    }
 
 }
