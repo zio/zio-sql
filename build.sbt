@@ -25,7 +25,7 @@ addCommandAlias("fmt", "fmtOnce;fmtOnce")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
 val zioVersion                 = "2.0.1"
-val zioSchemaVersion           = "0.2.1"
+val zioSchemaVersion           = "0.2.1+29-8bb2101a-SNAPSHOT"
 val testcontainersVersion      = "1.16.3"
 val testcontainersScalaVersion = "0.40.5"
 
@@ -80,12 +80,12 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
   .settings(buildInfoSettings("zio.sql"))
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio"       %% "zio"                   % zioVersion,
-      "dev.zio"       %% "zio-streams"           % zioVersion,
-      "dev.zio"       %% "zio-schema"            % zioSchemaVersion,
-      "dev.zio"       %% "zio-schema-derivation" % zioSchemaVersion,
-      "dev.zio"       %% "zio-test"              % zioVersion % Test,
-      "dev.zio"       %% "zio-test-sbt"          % zioVersion % Test
+      "dev.zio" %% "zio"                   % zioVersion,
+      "dev.zio" %% "zio-streams"           % zioVersion,
+      "dev.zio" %% "zio-schema"            % zioSchemaVersion,
+      "dev.zio" %% "zio-schema-derivation" % zioSchemaVersion,
+      "dev.zio" %% "zio-test"              % zioVersion % Test,
+      "dev.zio" %% "zio-test-sbt"          % zioVersion % Test
     ),
     dependencyOverrides += "dev.zio" %% "zio" % zioVersion,
     resolvers += Resolver.sonatypeRepo("snapshots")

@@ -17,9 +17,17 @@ object ProductSchema {
 
   import sql._
 
-  case class Product(id: String, last_updated: LocalDate, name: String, base_amount: Int, final_amount: Int, deleted: Boolean)
+  case class Product(
+    id: String,
+    last_updated: LocalDate,
+    name: String,
+    base_amount: Int,
+    final_amount: Int,
+    deleted: Boolean
+  )
 
-  implicit val localDateSchema = Schema.primitive[LocalDate](StandardType.LocalDateType(DateTimeFormatter.ISO_LOCAL_DATE))
+  implicit val localDateSchema =
+    Schema.primitive[LocalDate](StandardType.LocalDateType(DateTimeFormatter.ISO_LOCAL_DATE))
 
   implicit val productsSchema = DeriveSchema.gen[Product]
 

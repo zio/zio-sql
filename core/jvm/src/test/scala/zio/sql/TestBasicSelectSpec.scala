@@ -10,16 +10,16 @@ import java.time.format.DateTimeFormatter
 
 object TestBasicSelect {
   val userSql = new Sql { self =>
-
     override def renderDelete(delete: self.Delete[_]): String               = ???
     override def renderRead(read: self.Read[_]): String                     = ???
     override def renderUpdate(update: self.Update[_]): String               = ???
     override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = ???
 
     case class Users(user_id: String, dob: LocalDate, first_name: String, last_name: String)
-    
-    implicit val localDateSchema = Schema.primitive[LocalDate](StandardType.LocalDateType(DateTimeFormatter.ISO_LOCAL_DATE))
-    implicit val userSchema = DeriveSchema.gen[Users]
+
+    implicit val localDateSchema =
+      Schema.primitive[LocalDate](StandardType.LocalDateType(DateTimeFormatter.ISO_LOCAL_DATE))
+    implicit val userSchema      = DeriveSchema.gen[Users]
 
     val userTable = defineTable[Users]
 
@@ -30,8 +30,9 @@ object TestBasicSelect {
 
     // fName and lName already have column names, shouldn't have to do this
     val basicSelectWithAliases = (select(
-      (fName as "first_name"), (lName as "last_name")
-     ) from userTable)
+      (fName as "first_name"),
+      (lName as "last_name")
+    ) from userTable)
   }
 }
 

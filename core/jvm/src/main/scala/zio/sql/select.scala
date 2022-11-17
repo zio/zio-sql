@@ -158,7 +158,9 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
     def map[Out2](f: Out => Out2): Read.Aux[ResultType, Out2] =
       Read.Mapped(self, f)
 
-    def asTable(name: TableName): Table.DerivedTable[ColumnsOut, Out, Read[Out]{type ColumnsOut = self.ColumnsOut}, TableSource]
+    def asTable(
+      name: TableName
+    ): Table.DerivedTable[ColumnsOut, Out, Read[Out] { type ColumnsOut = self.ColumnsOut }, TableSource]
 
     def to[Target](f: Out => Target): Read[Target] =
       self.map { resultType =>
@@ -214,8 +216,16 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
       override type ColumnsOut = read.ColumnsOut
       override def columns(name: TableName): ColumnsOut = read.columns(name)
 
-      override def asTable(name: TableName): Table.DerivedTable[read.ColumnsOut, Out2, Mapped[Repr, Out, Out2]{ type ColumnsOut = self.ColumnsOut }, read.TableSource] =
-        Table.DerivedTable[self.ColumnsOut, Out2, Mapped[Repr, Out, Out2] { type ColumnsOut = self.ColumnsOut }, read.TableSource](
+      override def asTable(name: TableName): Table.DerivedTable[read.ColumnsOut, Out2, Mapped[
+        Repr,
+        Out,
+        Out2
+      ] { type ColumnsOut = self.ColumnsOut }, read.TableSource] =
+        Table.DerivedTable[self.ColumnsOut, Out2, Mapped[
+          Repr,
+          Out,
+          Out2
+        ] { type ColumnsOut = self.ColumnsOut }, read.TableSource](
           self,
           name
         )
@@ -324,7 +334,14 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
 
       override def asTable(
         name: TableName
-      ): Table.DerivedTable[selection.ColumnsOut[Source], Repr, Subselect[F, Repr, Source, Subsource, Head, Tail]{ type ColumnsOut = self.ColumnsOut }, Source] =
+      ): Table.DerivedTable[selection.ColumnsOut[Source], Repr, Subselect[
+        F,
+        Repr,
+        Source,
+        Subsource,
+        Head,
+        Tail
+      ] { type ColumnsOut = self.ColumnsOut }, Source] =
         Table.DerivedTable[self.ColumnsOut, Repr, Subselect[
           F,
           Repr,
@@ -369,8 +386,15 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
 
       override def columns(name: TableName): ColumnsOut = left.columns(name)
 
-      override def asTable(name: TableName): Table.DerivedTable[left.ColumnsOut, Out, Union[Repr, Out]{ type ColumnsOut = self.ColumnsOut }, left.TableSource] =
-        Table.DerivedTable[self.ColumnsOut, Out, Union[Repr, Out] { type ColumnsOut = self.ColumnsOut }, left.TableSource](self, name)
+      override def asTable(name: TableName): Table.DerivedTable[left.ColumnsOut, Out, Union[
+        Repr,
+        Out
+      ] { type ColumnsOut = self.ColumnsOut }, left.TableSource] =
+        Table
+          .DerivedTable[self.ColumnsOut, Out, Union[Repr, Out] { type ColumnsOut = self.ColumnsOut }, left.TableSource](
+            self,
+            name
+          )
     }
 
     // TODO add name to literal selection - e.g. select '1' as one
@@ -390,8 +414,12 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
 
       override def asTable(
         name: TableName
-      ): Table.DerivedTable[Expr[Features.Source[ColumnIdentity, Any], Any, B], B, Literal[B]{ type ColumnsOut = self.ColumnsOut }, Any] =
-        Table.DerivedTable[Expr[Features.Source[ColumnIdentity, Any], Any, B], B, Literal[B]{ type ColumnsOut = self.ColumnsOut }, Any](self, name)
+      ): Table.DerivedTable[Expr[Features.Source[ColumnIdentity, Any], Any, B], B, Literal[
+        B
+      ] { type ColumnsOut = self.ColumnsOut }, Any] =
+        Table.DerivedTable[Expr[Features.Source[ColumnIdentity, Any], Any, B], B, Literal[
+          B
+        ] { type ColumnsOut = self.ColumnsOut }, Any](self, name)
     }
 
     def lit[B: TypeTag](values: B*): Read[B] = Literal(values.toSeq)

@@ -23,47 +23,34 @@ object Example1 extends Sql {
 
   sealed trait DayOfWeek
   object DayOfWeek {
-    case object Monday extends DayOfWeek
+    case object Monday  extends DayOfWeek
     case object Tuesday extends DayOfWeek
   }
 
   implicit val dayOfWeekSchema: Schema.Record[DayOfWeek] = ???
 
-  val personTable = defineTable[Person]
+  val personTable  = defineTable[Person]
   val personTable2 = defineTable[Person]
 
-  //val personTable4 = defineTable[DayOfWeek]
+  case class Address(street: String)
 
-  val (name, age) = personTable.columns
+  implicit val addSchema = DeriveSchema.gen[Address]
+
+  val address  = defineTable[Address]
+  val (street) = address.columns
+
+  val (name, age)   = personTable.columns
   val (name2, age2) = personTable2.columns
 
-  // InsertBuilder[
-  //   Features.Union[
-  //     Features.Source[personSchema.field1.label.type,Person],
-  //     Features.Source[personSchema.field2.label.type,Person]],
-  //     Person,
-  //     (personSchema.field1.label.type, personSchema.field2.label.type),
-  //     SelectionSet.Cons[Person,String,
-  //       SelectionSet.Cons[Person,Int,SelectionSet.Empty]],
-  //     (String, (Int, Unit))]
-  val xe = insertInto(personTable)(name, age)
-  val xeee = insertInto(personTable)(name, age).values(("Jaro", 31))
-  //val xeeee = insertInto(personTable)(age, name).values(("Jaro", 31))
+  val x = (name === 3) ++ age
 
   final case class OpPerson(id: java.util.UUID, name: Option[String])
-
-  final case class BigDecWrapper(s: BigDecimal, j: java.math.BigDecimal)
-  implicit val bigDecWrapper = DeriveSchema.gen[BigDecWrapper]
-
-  val bigDecTable = defineTable[BigDecWrapper]
-  val (jbd, sbd) = bigDecTable.columns
 
   implicit val opPersonSchema = DeriveSchema.gen[OpPerson]
 
   val opPersonTable = defineTable[OpPerson]
 
   val (id, nameOp) = opPersonTable.columns
-  
 
   import FunctionDef._
   import AggregationDef._

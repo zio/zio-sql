@@ -12,64 +12,12 @@ import zio.schema.Schema
 import java.time.format.DateTimeFormatter
 import zio.schema.TypeId
 import zio.schema.DeriveSchema
+import java.math.BigDecimal
 
 object PostgresModuleSpec extends PostgresRunnableSpec {
 
   import AggregationDef._
-
-  // Customers table schema
-  case class Customers(
-    id: UUID,
-    dob: LocalDate,
-    firstName: String,
-    lastName: String,
-    verified: Boolean,
-    createdTimestampString: String,
-    createdTimestamp: ZonedDateTime
-  )
-
-  implicit val custommerSchema = DeriveSchema.gen[Customers]
-
-  val customers = defineTable[Customers]
-
-  val (customerId, dob, fName, lName, verified, createdString, createdTimestamp) =
-    customers.columns
-
-  // Orders table schema
-  case class Orders(id: UUID, customerId: UUID, orderDate: LocalDate)
-
-  implicit val orderSchema = DeriveSchema.gen[Orders]
-
-  val orders = defineTable[Orders]
-
-  val (orderId, fkCustomerId, orderDate) = orders.columns
-
-  // Products table schema
-  case class Products(id: UUID, name: String, description: String, imageUrl: String)
-
-  implicit val productSchema = DeriveSchema.gen[Products]
-
-  val products = defineTable[Products]
-
-  val (productId, productName, description, imageURL) = products.columns
-
-  // OrderDetails table schema
-  case class OrderDetails(orderId: UUID, productId: UUID, quantity: Int, unitPrice: BigDecimal)
-
-  implicit val orderDetailsSchema = DeriveSchema.gen[OrderDetails]
-
-  val orderDetails = defineTable[OrderDetails]
-
-  val (orderDetailsOrderId, orderDetailsProductId, quantity, unitPrice) = orderDetails.columns
-
-  // Persons table schema
-  case class Persons(id: UUID, name: Option[String], birthDate: Option[LocalDate])
-
-  implicit val personsSchema = DeriveSchema.gen[Persons]
-
-  val persons = defineTable[Persons]
-
-  val (personsId, personsName, birthDate) = persons.columns
+  import CustomerSchema._
 
   private def customerSelectJoseAssertion[F: Features.IsNotAggregated](
     condition: Expr[F, customers.TableType, Boolean]
@@ -240,6 +188,8 @@ object PostgresModuleSpec extends PostgresRunnableSpec {
       } yield assert(r.head)(equalTo(expected))
     },
     test("Can select from joined tables (inner join)") {
+      import OrdersSchema._
+
       val query = select(fName, lName, orderDate).from(customers.join(orders).on(fkCustomerId === customerId))
 
       case class Row(firstName: String, lastName: String, orderDate: LocalDate)
@@ -320,6 +270,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec {
       } yield assert(r)(hasSameElementsDistinct(expected))
     },
     test("can do correlated subqueries in selections - counts orders for each customer") {
+      import OrdersSchema._
 
       /**
        * select first_name, last_name, (
@@ -395,6 +346,8 @@ object PostgresModuleSpec extends PostgresRunnableSpec {
       } yield assertTrue(r == 4)
     },
     test("group by can be called on non aggregated collumn") {
+      import OrdersSchema._
+
       val expected = List(
         "636ae137-5b1a-4c8c-b11f-c47c624d9cdc",
         "60b01fc9-c902-4468-8d49-3c0f989def37",
@@ -412,6 +365,8 @@ object PostgresModuleSpec extends PostgresRunnableSpec {
       } yield assertTrue(actual == expected)
     },
     test("group by have to be called on column from selection") {
+      import OrdersSchema._
+
       val expected = List(6, 5, 5, 5, 4)
 
       val query = select(fkCustomerId, Count(orderId))
@@ -424,69 +379,77 @@ object PostgresModuleSpec extends PostgresRunnableSpec {
       } yield assertTrue(actual == expected)
     },
     test("insert - 1 rows into customers") {
-      // TODO following should work after changes in zio schema. We can input data in whatever order we want
-      // final case class CustomerRow(
-      //   id: UUID,
-      //   firstName: String,
-      //   lastName: String,
-      //   verified: Boolean,
-      //   dateOfBirth: LocalDate,
-      //   cretedTimestampString: String,
-      //   createdTimestamp: ZonedDateTime
-      // )
-
-      // val data =
-      //   CustomerRow(UUID.randomUUID(), "Jaro", "Regec", true, LocalDate.ofYearDay(1990, 1), created.toString, created)
-
-      // val query = insertInto(customers)(
-      //   customerId,
-      //   fName,
-      //   lName,
-      //   verified,
-      //   dob,
-      //   createdString,
-      //   createdTimestamp
-      // ).values(data)
-
-      // implicit val customerRowSchema =
-      //   Schema.CaseClass7[UUID, String, String, Boolean, LocalDate, String, ZonedDateTime, CustomerRow](
-      //     TypeId.parse("zio.sql.postgresql.PostgresModuleSpec.CustomerRow"),
-      //     Schema.Field("id", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
-      //     Schema.Field("firstName", Schema.primitive[String](zio.schema.StandardType.StringType)),
-      //     Schema.Field("lastName", Schema.primitive[String](zio.schema.StandardType.StringType)),
-      //     Schema.Field("verified", Schema.primitive[Boolean](zio.schema.StandardType.BoolType)),
-      //     Schema.Field(
-      //       "localDate",
-      //       Schema.primitive[LocalDate](zio.schema.StandardType.LocalDateType(DateTimeFormatter.ISO_DATE))
-      //     ),
-      //     Schema.Field("cretedTimestampString", Schema.primitive[String](zio.schema.StandardType.StringType)),
-      //     Schema.Field(
-      //       "createdTimestamp",
-      //       Schema.primitive[ZonedDateTime](
-      //         zio.schema.StandardType.ZonedDateTimeType(DateTimeFormatter.ISO_ZONED_DATE_TIME)
-      //       )
-      //     ),
-      //     CustomerRow.apply,
-      //     _.id,
-      //     _.firstName,
-      //     _.lastName,
-      //     _.verified,
-      //     _.dateOfBirth,
-      //     _.cretedTimestampString,
-      //     _.createdTimestamp
-      //   )
+      final case class CustomerRow(
+        id: UUID,
+        firstName: String,
+        lastName: String,
+        verified: Boolean,
+        dateOfBirth: LocalDate,
+        cretedTimestampString: String,
+        createdTimestamp: ZonedDateTime
+      )
 
       val created = ZonedDateTime.now()
 
       val data =
-        Customers(UUID.randomUUID(), LocalDate.ofYearDay(1990, 1), "Jaro", "Regec", true, created.toString, created)
+        CustomerRow(UUID.randomUUID(), "Jaro", "Regec", true, LocalDate.ofYearDay(1990, 1), created.toString, created)
+
+      implicit val customerRowSchema =
+        Schema.CaseClass7[UUID, String, String, Boolean, LocalDate, String, ZonedDateTime, CustomerRow](
+          TypeId.parse("zio.sql.postgresql.PostgresModuleSpec.CustomerRow"),
+          Schema.Field(
+            "id",
+            Schema.primitive[UUID](zio.schema.StandardType.UUIDType),
+            get0 = _.id,
+            set0 = (r, a) => r.copy(id = a)
+          ),
+          Schema.Field(
+            "firstName",
+            Schema.primitive[String](zio.schema.StandardType.StringType),
+            get0 = _.firstName,
+            set0 = (r, a) => r.copy(firstName = a)
+          ),
+          Schema.Field(
+            "lastName",
+            Schema.primitive[String](zio.schema.StandardType.StringType),
+            get0 = _.lastName,
+            set0 = (r, a) => r.copy(lastName = a)
+          ),
+          Schema.Field(
+            "verified",
+            Schema.primitive[Boolean](zio.schema.StandardType.BoolType),
+            get0 = _.verified,
+            set0 = (r, a) => r.copy(verified = a)
+          ),
+          Schema.Field(
+            "dateOfBirth",
+            Schema.primitive[LocalDate](zio.schema.StandardType.LocalDateType(DateTimeFormatter.ISO_DATE)),
+            get0 = _.dateOfBirth,
+            set0 = (r, a) => r.copy(dateOfBirth = a)
+          ),
+          Schema.Field(
+            "cretedTimestampString",
+            Schema.primitive[String](zio.schema.StandardType.StringType),
+            get0 = _.cretedTimestampString,
+            set0 = (r, a) => r.copy(cretedTimestampString = a)
+          ),
+          Schema.Field(
+            "createdTimestamp",
+            Schema.primitive[ZonedDateTime](
+              zio.schema.StandardType.ZonedDateTimeType(DateTimeFormatter.ISO_ZONED_DATE_TIME)
+            ),
+            get0 = _.createdTimestamp,
+            set0 = (r, a) => r.copy(createdTimestamp = a)
+          ),
+          CustomerRow.apply
+        )
 
       val query = insertInto(customers)(
         customerId,
-        dob,
         fName,
         lName,
         verified,
+        dob,
         createdString,
         createdTimestamp
       ).values(data)
@@ -494,35 +457,22 @@ object PostgresModuleSpec extends PostgresRunnableSpec {
       for {
         result <- execute(query)
       } yield assertTrue(result == 1)
+
     },
     test("insert - insert 10 rows into orders") {
-      final case class InputOrders(uuid: UUID, customerId: UUID, localDate: LocalDate)
-
-      implicit val inputOrdersSchema = Schema.CaseClass3[UUID, UUID, LocalDate, InputOrders](
-        TypeId.parse("zio.sql.postgresql.PostgresModuleSpec.InputOrders"),
-        Schema.Field("uuid", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
-        Schema.Field("customerId", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
-        Schema.Field(
-          "localDate",
-          Schema.primitive[LocalDate](zio.schema.StandardType.LocalDateType(DateTimeFormatter.ISO_DATE))
-        ),
-        InputOrders.apply,
-        _.uuid,
-        _.customerId,
-        _.localDate
-      )
+      import OrdersSchema._
 
       val data = List(
-        InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
-        InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
-        InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
-        InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
-        InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
-        InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
-        InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
-        InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
-        InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
-        InputOrders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now())
+        Orders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
+        Orders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
+        Orders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
+        Orders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
+        Orders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
+        Orders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
+        Orders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
+        Orders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
+        Orders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now()),
+        Orders(UUID.randomUUID(), UUID.randomUUID(), LocalDate.now())
       )
 
       val query = insertInto(orders)(orderId, fkCustomerId, orderDate)
@@ -533,24 +483,50 @@ object PostgresModuleSpec extends PostgresRunnableSpec {
       } yield assertTrue(result == 10)
     },
     test("insert - 4 rows into orderDetails") {
+      import OrderDetailsSchema._
+
       case class OrderDetailsRow(orderId: UUID, productId: UUID, quantity: Int, unitPrice: BigDecimal)
 
-      implicit val bigDecimalSchema: Schema[BigDecimal] =
-        Schema[java.math.BigDecimal]
-          .transform(bigDec => new BigDecimal(bigDec, java.math.MathContext.DECIMAL128), _.bigDecimal)
-
-      implicit val orderDetailsRowSchema = Schema.CaseClass4[UUID, UUID, Int, BigDecimal, OrderDetailsRow](
-        TypeId.parse("zio.sql.postgresql.PostgresModuleSpec.OrderDetailsRow"),
-        Schema.Field("orderId", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
-        Schema.Field("productId", Schema.primitive[UUID](zio.schema.StandardType.UUIDType)),
-        Schema.Field("quantity", Schema.primitive[Int](zio.schema.StandardType.IntType)),
-        Schema.Field("unitPrice", bigDecimalSchema),
-        OrderDetailsRow.apply,
-        _.orderId,
-        _.productId,
-        _.quantity,
-        _.unitPrice
-      )
+      implicit val orderDetailsRowSchema = Schema
+        .CaseClass4[UUID, UUID, Int, BigDecimal, OrderDetailsRow](
+          TypeId.parse("zio.sql.postgresql.PostgresModuleSpec.OrderDetailsRow"),
+          Schema.Field(
+            "orderId",
+            Schema.primitive[UUID](zio.schema.StandardType.UUIDType),
+            get0 = _.orderId,
+            set0 = (r, a) => r.copy(orderId = a)
+          ),
+          Schema.Field(
+            "productId",
+            Schema.primitive[UUID](zio.schema.StandardType.UUIDType),
+            get0 = _.productId,
+            set0 = (r, a) => r.copy(productId = a)
+          ),
+          Schema.Field(
+            "quantity",
+            Schema.primitive[Int](zio.schema.StandardType.IntType),
+            get0 = _.quantity,
+            set0 = (r, a) => r.copy(quantity = a)
+          ),
+          Schema.Field(
+            "unitPrice",
+            Schema.primitive[BigDecimal](zio.schema.StandardType.BigDecimalType),
+            get0 = _.unitPrice,
+            set0 = (r, a) => r.copy(unitPrice = a)
+          ),
+          OrderDetailsRow.apply
+        )
+        .asInstanceOf[Schema.CaseClass4.WithFields[
+          "orderId",
+          "productId",
+          "quantity",
+          "unitPrice",
+          UUID,
+          UUID,
+          Int,
+          BigDecimal,
+          OrderDetailsRow
+        ]]
 
       val rows = List(
         OrderDetailsRow(UUID.randomUUID(), UUID.randomUUID(), 4, BigDecimal.valueOf(11.00)),
@@ -567,6 +543,8 @@ object PostgresModuleSpec extends PostgresRunnableSpec {
       } yield assertTrue(result == 4)
     },
     test("insert into orderDetails with tuples") {
+      import OrderDetailsSchema._
+
       val query = insertInto(orderDetails)(orderDetailsOrderId, orderDetailsProductId, quantity, unitPrice)
         .values((UUID.randomUUID(), UUID.randomUUID(), 4, BigDecimal.valueOf(11.00)))
 
@@ -575,6 +553,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec {
       } yield assertTrue(result == 1)
     },
     test("insert into customers with tuples") {
+      import CustomerSchema._
 
       /**
        * insert into customers
@@ -586,10 +565,16 @@ object PostgresModuleSpec extends PostgresRunnableSpec {
       val created = ZonedDateTime.now()
 
       val row =
-        ((UUID.randomUUID(), LocalDate.ofYearDay(1990, 1), "Jaro", "Regec", true,  created.toString, created))
+        ((UUID.randomUUID(), LocalDate.ofYearDay(1990, 1), "Jaro", "Regec", true, created.toString, created))
 
       val query = insertInto(customers)(
-        customerId, dob, fName, lName, verified, createdString, createdTimestamp
+        customerId,
+        dob,
+        fName,
+        lName,
+        verified,
+        createdString,
+        createdTimestamp
       ).values(row)
 
       for {
@@ -597,6 +582,8 @@ object PostgresModuleSpec extends PostgresRunnableSpec {
       } yield assertTrue(result == 1)
     },
     test("insert into products") {
+      import ProductSchema._
+
       val tupleData = List(
         (UUID.randomUUID(), "product 1", "product desription", "image url"),
         (UUID.randomUUID(), "product 2", "product desription", "image url"),
@@ -611,25 +598,24 @@ object PostgresModuleSpec extends PostgresRunnableSpec {
       } yield assertTrue(result == 4)
     },
     test("insert and query nullable field") {
+      import PersonsSchema._
 
       val expected = List(
-          (Some("Russell"), Some(LocalDate.of(1983, 1, 5))),
-          (Some("Noel"), None),
-          (Some("Paterso"), Some(LocalDate.of(1990, 11, 16))),
-          (Some("Murray"), Some(LocalDate.of(1995, 11, 12))),
-          (None, None),
-          (Some("Harvey"), Some(LocalDate.of(2022, 1, 31))),
-          (Some("Dent"), None),
-          (Some("Charles"), None)
+        (Some("Russell"), Some(LocalDate.of(1983, 1, 5))),
+        (Some("Noel"), None),
+        (Some("Paterso"), Some(LocalDate.of(1990, 11, 16))),
+        (Some("Murray"), Some(LocalDate.of(1995, 11, 12))),
+        (None, None),
+        (Some("Harvey"), Some(LocalDate.of(2022, 1, 31))),
+        (Some("Dent"), None),
+        (Some("Charles"), None)
       )
 
       val insertSome = insertInto(persons)(personsId, personsName, birthDate)
-        .values((UUID.randomUUID(), Some("Harvey"), Some(LocalDate.of(2022, 1, 31))))
+        .values((UUID.randomUUID(), Option.apply("Harvey"), Option.apply(LocalDate.of(2022, 1, 31))))
 
-      val data = (UUID.randomUUID(), Some("Dent"), None)
-
-      val insertNone = insertInto(persons)(personsId, personsName, birthDate)
-        .values(data)
+      val insertNone =
+        insertInto(persons)(personsId, personsName, birthDate).values((UUID.randomUUID(), Some("Dent"), None))
 
       val insertNone2 = insertInto(persons)(personsId, personsName, birthDate)
         .values(Persons(UUID.randomUUID(), Some("Charles"), None))
@@ -677,13 +663,29 @@ object PostgresModuleSpec extends PostgresRunnableSpec {
         result <- execute(complexQuery).runCollect
       } yield assertTrue(result == expected)
 
+    },
+    test("update rows") {
+      case class Person(personName: String)
+      implicit val personsSchema = Schema
+        .CaseClass1[String, Person](
+          TypeId.Structural,
+          Schema.Field(
+            "personName",
+            Schema.primitive[String],
+            get0 = _.personName,
+            set0 = (r, a) => r.copy(personName = a)
+          ),
+          n => Person.apply(n),
+          Chunk.empty[Any]
+        )
+        .asInstanceOf[Schema.CaseClass1.WithFields["personName", String, Person]]
+      val persons                = defineTable[Person]
+
+      val personName = persons.columns
+      for {
+        result <- execute(update(persons).set(personName, "Charlie").where(personName === "Murray"))
+      } yield assertTrue(result == 2)
     }
-    // TODO may work fine once we have typetags solved
-    // test("update rows") {
-    //   for {
-    //      result <- execute(update(persons).set(personsName, "Charlie").where(personsName === "Murray"))
-    //   } yield assertTrue(result == 2)
-    // }
   ) @@ sequential
 
   object Cities {
@@ -710,6 +712,7 @@ object PostgresModuleSpec extends PostgresRunnableSpec {
   }
 
   object DerivedTables {
+    import OrdersSchema._
     val orderDateDerivedTable = customers
       .subselect(orderDate)
       .from(orders)
@@ -719,5 +722,64 @@ object PostgresModuleSpec extends PostgresRunnableSpec {
       .asTable("derived")
 
     val orderDateDerived = orderDateDerivedTable.columns
+  }
+
+  object CustomerSchema {
+    case class Customers(
+      id: UUID,
+      dob: LocalDate,
+      firstName: String,
+      lastName: String,
+      verified: Boolean,
+      createdTimestampString: String,
+      createdTimestamp: ZonedDateTime
+    )
+
+    implicit val custommerSchema = DeriveSchema.gen[Customers]
+
+    val customers = defineTable[Customers]
+
+    val (customerId, dob, fName, lName, verified, createdString, createdTimestamp) =
+      customers.columns
+  }
+
+  object OrdersSchema {
+    case class Orders(id: UUID, customerId: UUID, orderDate: LocalDate)
+
+    implicit val orderSchema = DeriveSchema.gen[Orders]
+
+    val orders = defineTable[Orders]
+
+    val (orderId, fkCustomerId, orderDate) = orders.columns
+  }
+
+  object ProductSchema {
+    case class Products(id: UUID, name: String, description: String, imageUrl: String)
+
+    implicit val productSchema = DeriveSchema.gen[Products]
+
+    val products = defineTable[Products]
+
+    val (productId, productName, description, imageURL) = products.columns
+  }
+
+  object OrderDetailsSchema {
+    case class OrderDetails(orderId: UUID, productId: UUID, quantity: Int, unitPrice: BigDecimal)
+
+    implicit val orderDetailsSchema = DeriveSchema.gen[OrderDetails]
+
+    val orderDetails = defineTable[OrderDetails]
+
+    val (orderDetailsOrderId, orderDetailsProductId, quantity, unitPrice) = orderDetails.columns
+  }
+
+  object PersonsSchema {
+    case class Persons(id: UUID, name: Option[String], birthDate: Option[LocalDate])
+
+    implicit val personsSchema = DeriveSchema.gen[Persons]
+
+    val persons = defineTable[Persons]
+
+    val (personsId, personsName, birthDate) = persons.columns
   }
 }

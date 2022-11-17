@@ -3,80 +3,81 @@ package zio.sql
 import zio.schema._
 import zio.sql.macros.TableSchema
 import scala.annotation.StaticAnnotation
+import scala.collection.immutable
 
 object TableAnnotation {
-
   case class name(name: String) extends StaticAnnotation
 }
 
 trait TableModule { self: ExprModule with SelectModule with UtilsModule with SelectUtilsModule =>
 
-  // naming conventions -> OrderOrigin => order_origins -> this one  
-  def defineTableSmart[Z](implicit schema: Schema.Record[Z], tableLike: TableSchema[Z]): Table.Source.WithColumnsOut[
-    schema.Accessors[exprAccessorBuilder.Lens, exprAccessorBuilder.Prism, exprAccessorBuilder.Traversal],
-    Z,
-    schema.Accessors[
-      allColumnIdentitiesBuilder.Lens,
-      allColumnIdentitiesBuilder.Prism,
-      allColumnIdentitiesBuilder.Traversal
-    ]
-  ] = {
-    val tableNameValid = raw"[A-Za-z_][A-Za-z0-9_]*".r
+  type Lens[F, S, A] = Expr[Features.Source[F, S], S, A]
 
-    val tableName = schema.annotations
-      .collectFirst { case TableAnnotation.name(name) => name } match {
-      case Some(name) if tableNameValid.pattern.matcher(name).matches() => name
-      case _                                          => {
-        // TODO properly pluralize recordSchema.id.name
-        schema.id.name
-      }
+  type Prism[F, S, A] = Unit
+
+  type Traversal[S, A] = Unit
+
+  /**
+    * Creates a table descripton from the Schema of T. 
+    * Table name is taken either from @name annotation or schema id type and pluralized.
+    */
+  def defineTableSmart[T](implicit
+    schema: Schema.Record[T],
+    tableLike: TableSchema[T]
+  ): Table.Source.WithTableDetails[schema.FieldNames, T, schema.Accessors[Lens, Prism, Traversal]] = {
+    val tableName = extractAnnotationName(schema) match {
+      case Some(name) => name
+      case None       =>
+        pluralize(
+          convertToSnakeCase(schema.id.name)
+            .split("_")
+            .toList
+        )
     }
 
     defineTable(tableName)
   }
 
-  def defineTable[Z](implicit schema: Schema.Record[Z], tableLike: TableSchema[Z]): Table.Source.WithColumnsOut[
-    schema.Accessors[exprAccessorBuilder.Lens, exprAccessorBuilder.Prism, exprAccessorBuilder.Traversal],
-    Z,
-    schema.Accessors[
-      allColumnIdentitiesBuilder.Lens,
-      allColumnIdentitiesBuilder.Prism,
-      allColumnIdentitiesBuilder.Traversal
-    ]
-  ] = defineTable(schema.id.name)
+  /**
+    * Creates a table descripton from the Schema of T. 
+    * Table name is taken either from @name annotation or schema id type.
+    */
+  def defineTable[T](implicit
+    schema: Schema.Record[T],
+    tableLike: TableSchema[T]
+  ): Table.Source.WithTableDetails[schema.FieldNames, T, schema.Accessors[Lens, Prism, Traversal]] = {
+    val tableName = extractAnnotationName(schema) match {
+      case Some(name) => name
+      case None       => convertToSnakeCase(schema.id.name)
+    }
 
-  def defineTable[Z](
+    defineTable(tableName)
+  }
+
+  /**
+    * Creates a table descripton from the Schema of T. 
+    * Table name is explicitely provided.
+    */
+  def defineTable[T](
     tableName: String
-  )(implicit schema: Schema.Record[Z], tableLike: TableSchema[Z]): Table.Source.WithColumnsOut[
-    schema.Accessors[exprAccessorBuilder.Lens, exprAccessorBuilder.Prism, exprAccessorBuilder.Traversal],
-    Z,
-    schema.Accessors[
-      allColumnIdentitiesBuilder.Lens,
-      allColumnIdentitiesBuilder.Prism,
-      allColumnIdentitiesBuilder.Traversal
-    ]
-  ] =
+  )(implicit
+    schema: Schema.Record[T],
+    tableLike: TableSchema[T]
+  ): Table.Source.WithTableDetails[schema.FieldNames, T, schema.Accessors[Lens, Prism, Traversal]] =
     new Table.Source {
 
-      override type AllColumnIdentities =
-        schema.Accessors[
-          allColumnIdentitiesBuilder.Lens,
-          allColumnIdentitiesBuilder.Prism,
-          allColumnIdentitiesBuilder.Traversal
-        ]
+      val exprAccessorBuilder = new ExprAccessorBuilder(tableName)
 
-      override type TableType = Z
+      override type AllColumnIdentities = schema.FieldNames
+
+      override type TableType = T
 
       override type ColumnsOut =
         schema.Accessors[exprAccessorBuilder.Lens, exprAccessorBuilder.Prism, exprAccessorBuilder.Traversal]
 
-      // type Intersection[A, B] = A with B
-      // in zio schema makeAccessorsWith[Intersection]()
-      // def makeAccessorsWith[F[_, _]]
-      // TODO we need to do this becouse order of insert does not matter
       override val columns: ColumnsOut = schema.makeAccessors(exprAccessorBuilder)
 
-      override val name: TableName = convertToSnakeCase(tableName).toLowerCase()
+      override val name: TableName = tableName.toLowerCase()
     }
 
   private def convertToSnakeCase(name: String): String = {
@@ -89,40 +90,39 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule with Sel
     }
   }
 
-  val allColumnIdentitiesBuilder = new AccessorBuilder {
-    override type Lens[F, S, A] = F
+  private def pluralize(names: List[String]): String =
+    names match {
+      case Nil                   => ""
+      case head :: immutable.Nil => Pluralize.pluralize(head)
+      case head :: next          => head + "_" + pluralize(next)
+    }
 
-    override type Prism[F, S, A] = Unit
+  private def extractAnnotationName[T](schema: Schema.Record[T]): Option[String] =
+    schema.annotations.collectFirst { case TableAnnotation.name(name) => name } match {
+      case Some(name) if raw"[A-Za-z_][A-Za-z0-9_]*".r.pattern.matcher(name).matches() => Some(name)
+      case _                                                                           => None
+    }
 
-    override type Traversal[S, A] = Unit
+  class ExprAccessorBuilder(name: TableName) extends AccessorBuilder {
 
-    def makeLens[F, S, A](product: Schema.Record[S], term: Schema.Field[A]): Lens[F, S, A] =
-      convertToSnakeCase(term.label).asInstanceOf[F]
-
-    def makePrism[F, S, A](sum: Schema.Enum[S], term: Schema.Case[A, S]): Prism[F, S, A] = ()
-
-    def makeTraversal[S, A](collection: Schema.Collection[S, A], element: Schema[A]): Traversal[S, A] = ()
-  }
-
-  val exprAccessorBuilder = new AccessorBuilder {
     override type Lens[F, S, A] = Expr[Features.Source[F, S], S, A]
 
     override type Prism[F, S, A] = Unit
 
     override type Traversal[S, A] = Unit
 
-    def makeLens[F, S, A](product: Schema.Record[S], term: Schema.Field[A]): Lens[F, S, A] = {
+    def makeLens[F, S, A](product: Schema.Record[S], term: Schema.Field[S, A]): Expr[Features.Source[F, S], S, A] = {
       implicit val typeTag = deriveTypeTag(term.schema).get
 
-      val column: Column.Aux[A, F] = Column.Named[A, F](convertToSnakeCase(term.label))
+      val column: Column.Aux[A, F] = Column.Named[A, F](convertToSnakeCase(term.name.toString()))
 
-      // TODO what if user defined its own name ???
-      Expr.Source(convertToSnakeCase(product.id.name).toLowerCase(), column)
+      Expr.Source(name, column)
     }
 
-    def makePrism[F, S, A](sum: Schema.Enum[S], term: Schema.Case[A, S]): Prism[F, S, A] = ()
+    def makePrism[F, S, A](sum: Schema.Enum[S], term: Schema.Case[S, A]): Unit = ()
 
     def makeTraversal[S, A](collection: Schema.Collection[S, A], element: Schema[A]): Traversal[S, A] = ()
+
   }
 
   sealed trait Column[+A] {
@@ -236,12 +236,10 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule with Sel
         type AllColumnIdentities = AllColumnIdentities0
       }
 
-      type WithColumnsOut[ColumnsOut0, A, AllColumnIdentities0] = Table.Source {
-        type TableType = A
-
-        type ColumnsOut = ColumnsOut0
-
+      type WithTableDetails[AllColumnIdentities0, T, ColumnsOut0] = Table.Source {
         type AllColumnIdentities = AllColumnIdentities0
+        type TableType           = T
+        type ColumnsOut          = ColumnsOut0
       }
     }
 
@@ -255,7 +253,8 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule with Sel
       override type TableType = left.TableType with right.TableType
     }
 
-    sealed case class DerivedTable[CO, +Out, +R <: Read.WithReprs[Out, CO], Source](read: R, name: TableName) extends Table {
+    sealed case class DerivedTable[CO, +Out, +R <: Read.WithReprs[Out, CO], Source](read: R, name: TableName)
+        extends Table {
       self =>
       type ColumnsOut = CO
 
@@ -286,7 +285,6 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule with Sel
       case StandardType.FloatType             => Some(TypeTag.TFloat)
       case StandardType.InstantType(_)        => Some(TypeTag.TInstant)
       case StandardType.IntType               => Some(TypeTag.TInt)
-      case StandardType.BigIntegerType        => None
       case StandardType.LocalDateType(_)      => Some(TypeTag.TLocalDate)
       case StandardType.LocalDateTimeType(_)  => Some(TypeTag.TLocalDateTime)
       case StandardType.OffsetTimeType(_)     => Some(TypeTag.TOffsetTime)
@@ -297,7 +295,8 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule with Sel
       case StandardType.StringType            => Some(TypeTag.TString)
       case StandardType.UUIDType              => Some(TypeTag.TUUID)
       case StandardType.ZonedDateTimeType(_)  => Some(TypeTag.TZonedDateTime)
-      // TODO do we need to support any other types in SQL ?
+      // TODO What other types to support ?
+      case StandardType.BigIntegerType        => None
       case StandardType.ZoneOffsetType        => None
       case StandardType.DurationType          => None
       case StandardType.YearType              => None
@@ -311,7 +310,7 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule with Sel
     }
 
   def deriveTypeTag[A](opSchema: Schema.Optional[A]): Option[TypeTag[Option[A]]] =
-    opSchema.codec match {
+    opSchema.schema match {
       case Schema.Primitive(standardType, _) =>
         implicit val notNullTypeTag = deriveTypeTag(standardType).get
 
@@ -319,22 +318,14 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule with Sel
       case _                                 => None
     }
 
-  // make zio schema  TypeTag of A available out of Schmea[A]
   def deriveTypeTag[A](fieldSchema: Schema[A]): Option[TypeTag[A]] =
     fieldSchema match {
       case s: Schema.Optional[_]             => deriveTypeTag(s)
       case s: Schema.Lazy[A]                 => deriveTypeTag(s.schema)
       case Schema.Primitive(standardType, _) => deriveTypeTag(standardType)
-      case _: Schema.Transform[_, _, _]      => {
-        
-        // if (fieldSchema.isInstanceOf[Schema[BigDecimal]]) {
-        //   Some(TypeTag.TScalaBigDecimal.asInstanceOf[TypeTag[A]])
-        // } 
-        // else None
-        // TODO fix
-        Some(TypeTag.TScalaBigDecimal.asInstanceOf[TypeTag[A]])
-      }
-      case _                                 => None
-    }
 
+      // TODO get TypeTag of A available out of Schema[A] and derive typetag from Schema.Transform
+      case s: Schema.Transform[_, _, _] => None
+      case _                            => None
+    }
 }

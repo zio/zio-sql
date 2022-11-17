@@ -232,16 +232,16 @@ trait PostgresModule extends Jdbc { self =>
   }
 
   // Schemas for Postgres specific time formats
-  implicit val localDateSchema =
+  implicit val localDateSchema                            =
     Schema.primitive[LocalDate](zio.schema.StandardType.LocalDateType(DateTimeFormatter.ISO_DATE))
-  implicit val zonedDateTimeShema =
+  implicit val zonedDateTimeShema                         =
     Schema.primitive[ZonedDateTime](zio.schema.StandardType.ZonedDateTimeType(DateTimeFormatter.ISO_ZONED_DATE_TIME))
-  implicit val offsetDateTimeSchema =
+  implicit val offsetDateTimeSchema                       =
     Schema.primitive[OffsetDateTime](StandardType.OffsetDateTimeType(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
-  implicit val instantSchema : Schema[Instant] = 
-		Schema.primitive(StandardType.InstantType(DateTimeFormatter.ISO_INSTANT))
-	implicit val localDateTimeSchema : Schema[LocalDateTime] = 
-		Schema.primitive(StandardType.LocalDateTimeType(DateTimeFormatter.ISO_INSTANT))
+  implicit val instantSchema: Schema[Instant]             =
+    Schema.primitive(StandardType.InstantType(DateTimeFormatter.ISO_INSTANT))
+  implicit val localDateTimeSchema: Schema[LocalDateTime] =
+    Schema.primitive(StandardType.LocalDateTimeType(DateTimeFormatter.ISO_INSTANT))
 
   object PostgresFunctionDef {
     import PostgresSpecific._
@@ -373,7 +373,7 @@ trait PostgresModule extends Jdbc { self =>
               renderDynamicValues(next)
             case Nil          => ()
           }
-        case value                        => renderDynamicValue(value)
+        case value                           => renderDynamicValue(value)
       }
 
     def renderDynamicValues(dynValues: List[DynamicValue])(implicit render: Renderer): Unit =
@@ -394,7 +394,7 @@ trait PostgresModule extends Jdbc { self =>
           StandardType.fromString(typeTag.tag) match {
             case Some(v) =>
               v match {
-                case ByteType => ()
+                case ByteType                                   => ()
                 case BigDecimalType                             =>
                   render(value)
                 case StandardType.InstantType(formatter)        =>

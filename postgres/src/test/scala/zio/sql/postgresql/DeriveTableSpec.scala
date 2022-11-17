@@ -11,36 +11,35 @@ import java.time._
 //TODO remove
 object DeriveTableSpec extends PostgresRunnableSpec {
 
-    //====
+  // ====
 
-    case class Customers(
-      id: UUID,
-      dob: LocalDate,
-      firstName: String,
-      lastName: String,
-      verified: Boolean,
-      createdTimestampString: String,
-      createdTimestamp: ZonedDateTime
-    )
+  case class Customers(
+    id: UUID,
+    dob: LocalDate,
+    firstName: String,
+    lastName: String,
+    verified: Boolean,
+    createdTimestampString: String,
+    createdTimestamp: ZonedDateTime
+  )
 
-    implicit val custommerSchema = DeriveSchema.gen[Customers]
+  implicit val custommerSchema = DeriveSchema.gen[Customers]
 
-    val customers = defineTable[Customers]
+  val customers = defineTable[Customers]
 
-    val (customerId, dob, fName, lName, verified, createdString, createdTimestamp) =
-      customers.columns
+  val (customerId, dob, fName, lName, verified, createdString, createdTimestamp) =
+    customers.columns
 
-    //===  
+  // ===
 
-    case class Orders(id: UUID, customerId: UUID, orderDate: LocalDate)
+  case class Orders(id: UUID, customerId: UUID, orderDate: LocalDate)
 
-    implicit val orderSchema = DeriveSchema.gen[Orders]
+  implicit val orderSchema = DeriveSchema.gen[Orders]
 
-    val orders = defineTable[Orders]
+  val orders = defineTable[Orders]
 
-    // orderDate: Expr[Features.Source[orderSchema.field3.label.type,Orders],Orders,LocalDate]
-    val (orderId, fkCustomerId, orderDate) = orders.columns
-
+  // orderDate: Expr[Features.Source[orderSchema.field3.label.type,Orders],Orders,LocalDate]
+  val (orderId, fkCustomerId, orderDate) = orders.columns
 
   object DerivedTables {
 
@@ -52,18 +51,18 @@ object DeriveTableSpec extends PostgresRunnableSpec {
       .orderBy(Ordering.Desc(orderDate))
       .asTable("derived")
 
-    implicitly[orderDateDerivedTable.TableType =:= Customers with Orders]  
+    implicitly[orderDateDerivedTable.TableType =:= Customers with Orders]
 
-    //  
+    //
     val orderDateDerived = orderDateDerivedTable.columns
   }
 
   def specLayered =
     suite("testing new table derivation")(
-    test("Can do lateral join") {
-      import PostgresSpecific.PostgresSpecificTable._
+      test("Can do lateral join") {
+        import PostgresSpecific.PostgresSpecificTable._
 
-      /**
+        /**
        *  select customers.id, customers.first_name, customers.last_name, derived.order_date
        *          from customers,
        *          lateral  (
@@ -73,32 +72,47 @@ object DeriveTableSpec extends PostgresRunnableSpec {
        *              order by orders.order_date desc limit 1 ) derived order by derived.order_date desc
        */
 
-      case class Row(id: UUID, firstName: String, lastName: String, orderDate: LocalDate)
+        case class Row(id: UUID, firstName: String, lastName: String, orderDate: LocalDate)
 
-      val expected = Seq(
-        Row(UUID.fromString("df8215a2-d5fd-4c6c-9984-801a1b3a2a0b"), "Alana", "Murray", LocalDate.parse("2020-05-11")),
-        Row(UUID.fromString("784426a5-b90a-4759-afbb-571b7a0ba35e"), "Mila", "Paterso", LocalDate.parse("2020-04-30")),
-        Row(UUID.fromString("f76c9ace-be07-4bf3-bd4c-4a9c62882e64"), "Terrence", "Noel", LocalDate.parse("2020-04-05")),
-        Row(
-          UUID.fromString("60b01fc9-c902-4468-8d49-3c0f989def37"),
-          "Ronald",
-          "Russell",
-          LocalDate.parse("2020-03-19")
-        ),
-        Row(UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc"), "Jose", "Wiggins", LocalDate.parse("2020-01-15"))
-      )
+        val expected = Seq(
+          Row(
+            UUID.fromString("df8215a2-d5fd-4c6c-9984-801a1b3a2a0b"),
+            "Alana",
+            "Murray",
+            LocalDate.parse("2020-05-11")
+          ),
+          Row(
+            UUID.fromString("784426a5-b90a-4759-afbb-571b7a0ba35e"),
+            "Mila",
+            "Paterso",
+            LocalDate.parse("2020-04-30")
+          ),
+          Row(
+            UUID.fromString("f76c9ace-be07-4bf3-bd4c-4a9c62882e64"),
+            "Terrence",
+            "Noel",
+            LocalDate.parse("2020-04-05")
+          ),
+          Row(
+            UUID.fromString("60b01fc9-c902-4468-8d49-3c0f989def37"),
+            "Ronald",
+            "Russell",
+            LocalDate.parse("2020-03-19")
+          ),
+          Row(UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc"), "Jose", "Wiggins", LocalDate.parse("2020-01-15"))
+        )
 
-      import DerivedTables._
+        import DerivedTables._
 
-      val query =
-        select(customerId, fName, lName, orderDateDerived)
-          .from(customers.lateral(orderDateDerivedTable))
-          .orderBy(Ordering.Desc(orderDateDerived))
+        val query =
+          select(customerId, fName, lName, orderDateDerived)
+            .from(customers.lateral(orderDateDerivedTable))
+            .orderBy(Ordering.Desc(orderDateDerived))
 
-      for {
-        r <- execute(query).map(Row tupled _).runCollect
-      } yield assert(r)(hasSameElementsDistinct(expected))
-    },
+        for {
+          r <- execute(query).map(Row tupled _).runCollect
+        } yield assert(r)(hasSameElementsDistinct(expected))
+      },
       test("join table") {
         val query = select(fName, lName, orderDate).from(customers.join(orders).on(fkCustomerId === customerId))
 

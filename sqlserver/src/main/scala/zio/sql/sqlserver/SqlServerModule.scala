@@ -6,6 +6,7 @@ import java.time.LocalDate
 import zio.schema.StandardType
 import java.time.format.DateTimeFormatter
 import java.time.OffsetDateTime
+import java.math.BigDecimal
 
 trait SqlServerModule extends Jdbc { self =>
 

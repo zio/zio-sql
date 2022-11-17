@@ -54,7 +54,7 @@ trait JdbcInternalModule { self: Jdbc =>
           Right(BigDecimal.javaBigDecimal2bigDecimal(result).asInstanceOf[A])
         }
       // TODO unify both
-      case TScalaBigDecimal    => 
+      case TScalaBigDecimal    =>
         val result = resultSet.getBigDecimal(columnIndex)
         if (result == null)
           Right(null.asInstanceOf[A])

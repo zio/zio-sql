@@ -31,8 +31,10 @@ trait MysqlModule extends Jdbc { self =>
     }
   }
 
-  implicit val localDateSchema = Schema.primitive[LocalDate](StandardType.LocalDateType(DateTimeFormatter.ISO_LOCAL_DATE))
-  implicit val offsetDateTimeSchema = Schema.primitive[OffsetDateTime](StandardType.OffsetDateTimeType(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
+  implicit val localDateSchema      =
+    Schema.primitive[LocalDate](StandardType.LocalDateType(DateTimeFormatter.ISO_LOCAL_DATE))
+  implicit val offsetDateTimeSchema =
+    Schema.primitive[OffsetDateTime](StandardType.OffsetDateTimeType(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
 
   object MysqlFunctionDef {
     val Crc32     = FunctionDef[String, Long](FunctionName("crc32"))

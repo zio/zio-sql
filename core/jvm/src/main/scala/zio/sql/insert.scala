@@ -1,7 +1,6 @@
 package zio.sql
 
 import zio.schema.Schema
-//import zio.sql.macros._
 
 trait InsertModule { self: ExprModule with TableModule with SelectModule with InsertUtilsModule =>
 
@@ -12,14 +11,12 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule with In
 
     def values[Z](values: Seq[Z])(implicit
       schemaCC: Schema[Z],
-      schemaValidity: SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source],
-      //insertLike: InsertLike[F, Z, ColsRepr, AllColumnIdentities, Source]
+      schemaValidity: SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source]
     ): Insert[Source, Z] = Insert(table, sources.value, values)
 
     def values[Z](value: Z)(implicit
       schemaCC: Schema[Z],
-      schemaValidity: SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source],
-    //  insertLike: InsertLike[F, Z, ColsRepr, AllColumnIdentities, Source]
+      schemaValidity: SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source]
     ): Insert[Source, Z] = Insert(table, sources.value, Seq(value))
   }
 
@@ -35,5 +32,5 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule with In
       },
       someA => Right(someA)
     )
-  implicit val none: Schema[None.type] = Schema.singleton(None)
+  implicit val none: Schema[None.type]                                                 = Schema.singleton(None)
 }

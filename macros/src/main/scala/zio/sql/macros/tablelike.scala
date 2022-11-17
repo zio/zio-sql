@@ -5,10 +5,10 @@ import java.time._
 import java.util.UUID
 import zio.Chunk
 
-sealed trait TableSchema[T] 
+sealed trait TableSchema[T]
 
-object TableSchema {  
-  
+object TableSchema {
+
   final case class Compatible[T]() extends TableSchema[T]
 
   implicit def materializeTableSchema[T]: TableSchema[T] = macro materializeTableSchemaImpl[T]
@@ -18,10 +18,10 @@ object TableSchema {
 
     val tpe = weakTypeOf[T]
 
-    val sqlPrimitives = 
+    // TODO support scala.math.BigDecimal
+    val sqlPrimitives =
       Seq(
         typeOf[java.math.BigDecimal],
-        typeOf[BigDecimal],
         typeOf[Boolean],
         typeOf[Byte],
         typeOf[Chunk[Byte]],
@@ -48,12 +48,11 @@ object TableSchema {
       case p: TermSymbol if p.isCaseAccessor && !p.isMethod => p
     }.map(_.typeSignature)
 
-    def isSupportedOption(tpe: Type) : Boolean = {
+    def isSupportedOption(tpe: Type): Boolean =
       tpe match {
         case TypeRef(_, hkt, t) => (hkt == symbolOf[Option[_]]) && sqlPrimitives.contains(t.head)
-        case _ => false
+        case _                  => false
       }
-    }
 
     val uncompatible =
       membrs
@@ -77,5 +76,3 @@ object TableSchema {
     }
   }
 }
-
-
