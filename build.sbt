@@ -38,7 +38,6 @@ lazy val root = project
   .aggregate(
     coreJVM,
     coreJS,
-    docs,
     driver,
     examples,
     jdbc,
