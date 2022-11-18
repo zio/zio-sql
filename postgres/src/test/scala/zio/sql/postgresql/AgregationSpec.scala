@@ -1,10 +1,9 @@
 package zio.sql.postgresql
 
-import zio.Cause
-import zio.test.Assertion._
 import zio.test.TestAspect._
 import zio.test._
-import java.math.BigDecimal
+
+import java.math.{BigDecimal, RoundingMode}
 
 object AgregationSpec extends PostgresRunnableSpec with DbSchema {
 
@@ -20,10 +19,9 @@ object AgregationSpec extends PostgresRunnableSpec with DbSchema {
           .where(orderDetailsProductId === "7368ABF4-AED2-421F-B426-1725DE756895")
 
         val result    = execute(query).runCollect.map(_.toList).head
-        val assertion = for {
+        for {
           r <- result
-        } yield assert(r._1)(equalTo(BigDecimal.valueOf(215.99))) && assert(r._2)(equalTo(40))
-        assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+        } yield assertTrue(r._1 == BigDecimal.valueOf(215.99)) && assertTrue(r._2 == 40)
       },
       test("Can aggregate  colums  of typ  money () AvgDec(BigDdecimal colum)") {
         val query = select((AvgDec(unitPrice) as "AverageAmount"))
@@ -31,10 +29,9 @@ object AgregationSpec extends PostgresRunnableSpec with DbSchema {
           .where(orderDetailsProductId === "7368ABF4-AED2-421F-B426-1725DE756895")
 
         val result    = execute(query).runCollect.map(_.toList).head
-        val assertion = for {
+        for {
           r <- result
-        } yield assert(r)(equalTo(BigDecimal.valueOf(10.7995)))
-        assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+        } yield assertTrue(r.setScale(4, RoundingMode.CEILING) == BigDecimal.valueOf(10.7995))
       }
     ) @@ sequential
 

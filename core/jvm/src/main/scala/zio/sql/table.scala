@@ -320,9 +320,14 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule with Sel
 
   def deriveTypeTag[A](fieldSchema: Schema[A]): Option[TypeTag[A]] =
     fieldSchema match {
-      case s: Schema.Optional[_]             => deriveTypeTag(s)
-      case s: Schema.Lazy[A]                 => deriveTypeTag(s.schema)
-      case Schema.Primitive(standardType, _) => deriveTypeTag(standardType)
+      case s: Schema.Optional[_]                      => deriveTypeTag(s)
+      case s: Schema.Lazy[A]                          => deriveTypeTag(s.schema)
+      case Schema.Primitive(standardType, _)          => deriveTypeTag(standardType)
+      case Schema.Sequence(elementSchema, _, _, _, _) => 
+        elementSchema match {
+          case Schema.Primitive(standardType, _) if (standardType == StandardType.ByteType) => Some(TypeTag.TByteArray.asInstanceOf[TypeTag[A]])
+          case _ => None
+        }
 
       // TODO get TypeTag of A available out of Schema[A] and derive typetag from Schema.Transform
       case _: Schema.Transform[_, _, _] => None

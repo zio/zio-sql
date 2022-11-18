@@ -63,9 +63,7 @@ create table all_types(
     short smallint not null,
     string varchar(max) not null,
     uuid varchar(36) not null,
-    zoneddatetime datetimeoffset not null,
-    nchar_ nchar(1) not null,
-    nvarchar_ nvarchar(30) not null
+    zoneddatetime datetimeoffset not null
 );
 
 insert into customers

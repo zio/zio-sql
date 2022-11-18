@@ -114,7 +114,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
                 case StandardType.OffsetDateTimeType =>
                   render(s"'${ISO_OFFSET_DATE_TIME.format(value.asInstanceOf[OffsetDateTime])}'")
                 case StandardType.ZonedDateTimeType  =>
-                  render(s"'${DateTimeFormatter.ISO_ZONED_DATE_TIME.format(value.asInstanceOf[ZonedDateTime])}'")
+                  render(s"'${DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(value.asInstanceOf[ZonedDateTime])}'")
                 case BigIntegerType                  => render(s"'${value}'")
                 case UUIDType                        => render(s"'${value}'")
                 case StandardType.ZoneOffsetType     => render(s"'${value}'")
@@ -128,7 +128,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
                 case StandardType.PeriodType         => render(s"'${value}'")
                 case StandardType.ZoneIdType         => render(s"'${value}'")
                 case StandardType.LocalDateType      =>
-                  render(s"'${ISO_LOCAL_DATE.format(value.asInstanceOf[LocalDate])}'")
+                  render(s"'${ISO_DATE.format(value.asInstanceOf[LocalDate])}'")
                 case BoolType                        => render(value)
                 case DayOfWeekType                   => render(s"'${value}'")
                 case FloatType                       => render(value)

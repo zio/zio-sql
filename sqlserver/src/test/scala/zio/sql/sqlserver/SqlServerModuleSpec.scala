@@ -736,7 +736,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
         Gen.chunkOf(Gen.byte),
         javaBigDecimalGen,
         Gen.boolean,
-        Gen.char,
+        Gen.alphaChar,
         Gen.double,
         Gen.float,
         sqlInstant,
@@ -749,7 +749,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
         sqlOffsetDateTime,
         sqlOffsetTime,
         Gen.short,
-        Gen.string,
+        Gen.alphaNumericString,
         Gen.uuid,
         sqlZonedDateTime
       ).tupleN
@@ -847,7 +847,6 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
           assertB("String")(_.string) &&
           assertB("Chunk[Byte]")(_.bytearray)
         }
-        assertionB.mapErrorCause(cause => Cause.stackless(cause.untraced))
 
         val queryDates =
           select(localdateCol, localdatetimeCol, localtimeCol, offsetdatetimeCol, offsettimeCol, zonedDatetimeCol)
@@ -857,7 +856,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
         val expectedDates =
           RowDates(row._11, normLdt(row._12), normLt(row._13), normOdt(row._15), normOt(row._16), normZdt(row._20))
         val assertionD    = for {
-          _   <- execute(insert)
+          //_   <- execute(insert)
           rd  <- execute(queryDates).runHead.some
           rowD = RowDates(rd._1, normLdt(rd._2), normLt(rd._3), normOdt(rd._4), normOt(rd._5), normZdt(rd._6))
         } yield assert(rowD) {
@@ -869,14 +868,14 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
           //              assertD("OffsetTime")(_.offsetTime) &&
           assertD("zonedDateTime")(_.zonedDateTime)
         }
-        assertionD.mapErrorCause(cause => Cause.stackless(cause.untraced))
+        assertionB && assertionD
       }
     } @@ samples(1) @@ retries(0) @@ shrinks(0)
   ) @@ sequential
 
   private object AllTypesHelper {
     def normLt(in: LocalTime): LocalTime =
-      in.truncatedTo(ChronoUnit.MICROS)
+      in.truncatedTo(ChronoUnit.SECONDS)
 
     def normLdt(in: LocalDateTime): LocalDateTime =
       LocalDateTime.of(in.toLocalDate, normLt(in.toLocalTime))
@@ -992,7 +991,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
       boolean_ : Boolean,
       char_ : Char,
       double_ : Double,
-      float: Float,
+      float_ : Float,
       instant: Instant,
       int_ : Int,
       optional_int: Option[Int],

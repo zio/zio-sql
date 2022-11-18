@@ -4,6 +4,7 @@ import java.util.UUID
 import java.time._
 import zio.Chunk
 import zio.schema.DeriveSchema
+import java.math.BigDecimal
 
 trait ShopSchema extends OracleSqlModule { self =>
 
@@ -32,11 +33,11 @@ trait ShopSchema extends OracleSqlModule { self =>
     case class AllType(
       id: UUID,
       bytearray: Chunk[Byte],
-      bigdecimal: java.math.BigDecimal,
+      bigdecimal: BigDecimal,
       boolean_ : Boolean,
       char_ : Char,
       double_ : Double,
-      float: Float,
+      float_ : Float,
       instant: Instant,
       int_ : Int,
       optional_int: Option[Int],

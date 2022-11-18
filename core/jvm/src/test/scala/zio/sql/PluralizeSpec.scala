@@ -6,7 +6,7 @@ import zio.Scope
 object PluralizeSpec extends ZIOSpecDefault {
 
   def spec: Spec[Environment with TestEnvironment with Scope, Any] =
-    suite("correctly plralize")(
+    suite("correctly pluralize")(
       test("pluralize 1") {
         assertTrue(Pluralize.pluralize("louse") == "lice") &&
         assertTrue(Pluralize.pluralize("accomplice") == "accomplices") &&

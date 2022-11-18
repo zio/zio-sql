@@ -149,7 +149,7 @@ object OracleSqlModuleSpec extends OracleRunnableSpec with ShopSchema {
         Gen.chunkOf(Gen.byte),
         javaBigDecimalGen,
         Gen.boolean,
-        Gen.char,
+        Gen.alphaChar,
         Gen.double,
         Gen.float,
         sqlInstant,
@@ -162,7 +162,7 @@ object OracleSqlModuleSpec extends OracleRunnableSpec with ShopSchema {
         sqlOffsetDateTime,
         sqlOffsetTime,
         Gen.short,
-        Gen.string,
+        Gen.alphaNumericString,
         Gen.uuid,
         sqlZonedDateTime
       ).tupleN
