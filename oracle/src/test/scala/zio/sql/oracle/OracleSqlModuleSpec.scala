@@ -6,7 +6,6 @@ import zio.test._
 
 import scala.language.postfixOps
 import java.util.UUID
-import zio.prelude._
 import java.time._
 import zio.schema.DeriveSchema
 
@@ -14,7 +13,6 @@ object OracleSqlModuleSpec extends OracleRunnableSpec with ShopSchema {
 
   import Customers._
   import Orders._
-  import AllTypes._
 
   final case class CustomerRow(id: UUID, dateOfBirth: LocalDate, firstName: String, lastName: String, verified: Boolean)
   implicit val customerRowSchema = DeriveSchema.gen[CustomerRow]
@@ -106,7 +104,7 @@ object OracleSqlModuleSpec extends OracleRunnableSpec with ShopSchema {
       ).values(rows)
 
       assertZIO(execute(command))(equalTo(2))
-    },
+    }
     // TODO uncomment and fix java.sql.SQLDataException: ORA-01874: time zone hour must be between -15 and 15
     // oracle won't run on m1 machine
     // test("Can insert all supported types") {
