@@ -17,7 +17,7 @@ trait ShopSchema extends OracleSqlModule { self =>
 
     val (customerId, dob, fName, lName, verified) = customers.columns
   }
-  object Orders        {
+  object Orders {
     case class Order(id: UUID, customerId: UUID, orderDate: LocalDate)
 
     implicit val orderSchema = DeriveSchema.gen[Order]
@@ -28,11 +28,29 @@ trait ShopSchema extends OracleSqlModule { self =>
   }
 
   object AllTypes {
-    
-      case class AllType(id: UUID, bytearray: Chunk[Byte], bigdecimal: java.math.BigDecimal, boolean_ : Boolean,
-        char_ : Char, double_ : Double, float: Float, instant: Instant, int_ : Int, optional_int: Option[Int],
-        localdate: LocalDate, localdatetime: LocalDateTime, localtime: LocalTime, long_ : Long, offsetdatetime: OffsetDateTime,  
-        offsettime: OffsetTime, short: Short, string: String, uuid: UUID,  zoneddatetime: ZonedDateTime)
+
+    case class AllType(
+      id: UUID,
+      bytearray: Chunk[Byte],
+      bigdecimal: java.math.BigDecimal,
+      boolean_ : Boolean,
+      char_ : Char,
+      double_ : Double,
+      float: Float,
+      instant: Instant,
+      int_ : Int,
+      optional_int: Option[Int],
+      localdate: LocalDate,
+      localdatetime: LocalDateTime,
+      localtime: LocalTime,
+      long_ : Long,
+      offsetdatetime: OffsetDateTime,
+      offsettime: OffsetTime,
+      short: Short,
+      string: String,
+      uuid: UUID,
+      zoneddatetime: ZonedDateTime
+    )
 
     implicit val alTypesSchema = DeriveSchema.gen[AllType]
 
@@ -58,7 +76,7 @@ trait ShopSchema extends OracleSqlModule { self =>
       shortCol,
       stringCol,
       uuidCol,
-      zonedDatetimeCol,
+      zonedDatetimeCol
     ) = allTypes.columns
   }
 }

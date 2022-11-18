@@ -3,12 +3,10 @@ package zio.sql.postgresql
 import java.sql.ResultSet
 import java.text.DecimalFormat
 import java.time._
-import java.time.format.DateTimeFormatter
 import java.util.{ Calendar, UUID }
 import org.postgresql.util.PGInterval
 import zio.Chunk
 import zio.sql.Sql
-import zio.schema._
 
 trait PostgresSqlModule extends Sql { self =>
   import TypeTag._
@@ -24,19 +22,19 @@ trait PostgresSqlModule extends Sql { self =>
       import scala.language.implicitConversions
 
       sealed case class LateraLTable[A, B](left: Table.Aux[A], right: Table.Aux[B])
-        extends PostgresSpecificTable[A with B]
+          extends PostgresSpecificTable[A with B]
 
       implicit def tableSourceToSelectedBuilder[A](
-                                                    table: Table.Aux[A]
-                                                  ): LateralTableBuilder[A] =
+        table: Table.Aux[A]
+      ): LateralTableBuilder[A] =
         new LateralTableBuilder(table)
 
       sealed case class LateralTableBuilder[A](left: Table.Aux[A]) {
         self =>
 
         final def lateral[Reprs, Out, B](
-                                          right: Table.DerivedTable[Reprs, Out, Read.WithReprs[Out, Reprs], B]
-                                        ): Table.DialectSpecificTable[A with B] = {
+          right: Table.DerivedTable[Reprs, Out, Read.WithReprs[Out, Reprs], B]
+        ): Table.DialectSpecificTable[A with B] = {
 
           val tableExtension = LateraLTable[A, B](
             left,
@@ -215,17 +213,6 @@ trait PostgresSqlModule extends Sql { self =>
     }
   }
 
-  // Schemas for Postgres specific time formats
-  implicit val localDateSchema                            =
-    Schema.primitive[LocalDate](zio.schema.StandardType.LocalDateType(DateTimeFormatter.ISO_DATE))
-  implicit val zonedDateTimeShema                         =
-    Schema.primitive[ZonedDateTime](zio.schema.StandardType.ZonedDateTimeType(DateTimeFormatter.ISO_ZONED_DATE_TIME))
-  implicit val offsetDateTimeSchema                       =
-    Schema.primitive[OffsetDateTime](StandardType.OffsetDateTimeType(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
-  implicit val instantSchema: Schema[Instant]             =
-    Schema.primitive(StandardType.InstantType(DateTimeFormatter.ISO_INSTANT))
-  implicit val localDateTimeSchema: Schema[LocalDateTime] =
-    Schema.primitive(StandardType.LocalDateTimeType(DateTimeFormatter.ISO_INSTANT))
   object PostgresFunctionDef {
     import PostgresSpecific._
 

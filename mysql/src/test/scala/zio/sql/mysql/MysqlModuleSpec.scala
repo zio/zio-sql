@@ -1,7 +1,6 @@
 package zio.sql.mysql
 
 import java.time._
-import java.time.format.DateTimeFormatter
 import java.util.UUID
 
 import zio._
@@ -206,16 +205,37 @@ object MysqlModuleSpec extends MysqlRunnableSpec {
       implicit val customerRowSchema =
         Schema.CaseClass5[UUID, LocalDate, String, String, Boolean, CustomerRow](
           TypeId.parse("zio.sql.mysql.CustomerRow"),
-          Schema.Field("id", Schema.primitive[UUID](zio.schema.StandardType.UUIDType), get0 = _.id, set0 = (r, a) => r.copy(id = a)),
+          Schema.Field(
+            "id",
+            Schema.primitive[UUID](zio.schema.StandardType.UUIDType),
+            get0 = _.id,
+            set0 = (r, a) => r.copy(id = a)
+          ),
           Schema.Field(
             "dateOfBirth",
-            Schema.primitive[LocalDate](zio.schema.StandardType.LocalDateType(DateTimeFormatter.ISO_DATE)),
-            get0 = _.dateOfBirth, set0 = (r, a) => r.copy(dateOfBirth = a)
+            Schema.primitive[LocalDate](zio.schema.StandardType.LocalDateType),
+            get0 = _.dateOfBirth,
+            set0 = (r, a) => r.copy(dateOfBirth = a)
           ),
-          Schema.Field("firstName", Schema.primitive[String](zio.schema.StandardType.StringType), get0 = _.firstName, set0 = (r, a) => r.copy(firstName = a)),
-          Schema.Field("lastName", Schema.primitive[String](zio.schema.StandardType.StringType), get0 = _.lastName, set0 = (r, a) => r.copy(lastName = a)),
-          Schema.Field("verified", Schema.primitive[Boolean](zio.schema.StandardType.BoolType), get0 = _.verified, set0 = (r, a) => r.copy(verified = a)),
-          CustomerRow.apply,
+          Schema.Field(
+            "firstName",
+            Schema.primitive[String](zio.schema.StandardType.StringType),
+            get0 = _.firstName,
+            set0 = (r, a) => r.copy(firstName = a)
+          ),
+          Schema.Field(
+            "lastName",
+            Schema.primitive[String](zio.schema.StandardType.StringType),
+            get0 = _.lastName,
+            set0 = (r, a) => r.copy(lastName = a)
+          ),
+          Schema.Field(
+            "verified",
+            Schema.primitive[Boolean](zio.schema.StandardType.BoolType),
+            get0 = _.verified,
+            set0 = (r, a) => r.copy(verified = a)
+          ),
+          CustomerRow.apply
         )
 
       val rows = List(

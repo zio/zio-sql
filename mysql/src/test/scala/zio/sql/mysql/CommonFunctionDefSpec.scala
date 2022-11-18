@@ -11,7 +11,7 @@ import zio.schema._
 
 object CommonFunctionDefSpec extends MysqlRunnableSpec with Jdbc {
   import FunctionDef.{ CharLength => _, _ }
-  
+
   case class Customers(id: UUID, dob: LocalDate, first_name: String, last_name: String, verified: Boolean)
 
   implicit val customerSchema = DeriveSchema.gen[Customers]

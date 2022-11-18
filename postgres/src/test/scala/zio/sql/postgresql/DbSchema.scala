@@ -17,13 +17,11 @@ trait DbSchema extends PostgresJdbcModule { self =>
     val city                                       = defineTable[City]
     val (cityId, cityName, population, area, link) = city.columns
 
-    
     implicit val metroSystemSchema = DeriveSchema.gen[MetroSystem]
 
     val metroSystem = defineTable[MetroSystem]
 
     val (metroSystemId, cityIdFk, metroSystemName, dailyRidership) = metroSystem.columns
-
 
     implicit val metroLineSchema = DeriveSchema.gen[MetroLine]
 

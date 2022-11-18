@@ -4,12 +4,14 @@ import zio._
 import zio.test.Assertion._
 import zio.test.TestAspect.{ retries, samples, sequential, shrinks }
 import zio.test._
+
 import java.time._
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 import scala.language.postfixOps
 import zio.schema.DeriveSchema
-import java.math.BigDecimal
+
+import java.math.{ BigDecimal, RoundingMode }
 
 object SqlServerModuleSpec extends SqlServerRunnableSpec {
 
@@ -218,11 +220,11 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
           unitPrice > select(Avg(price)).from(productPrices)
         )
 
-      case class Row(orderId: UUID, productId: UUID, unitPrice: scala.math.BigDecimal)
+      case class Row(orderId: UUID, productId: UUID, unitPrice: BigDecimal)
 
       object Row {
         def create(orderId: String, productId: String, unitPrice: BigDecimal): Row =
-          new Row(UUID.fromString(orderId), UUID.fromString(productId), unitPrice)
+          new Row(UUID.fromString(orderId), UUID.fromString(productId), unitPrice.setScale(4, RoundingMode.CEILING))
       }
 
       val expected = Seq(
@@ -383,7 +385,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
 
       object Row {
         def apply(orderId: String, productId: String, unitPrice: BigDecimal): Row =
-          new Row(UUID.fromString(orderId), UUID.fromString(productId), unitPrice)
+          new Row(UUID.fromString(orderId), UUID.fromString(productId), unitPrice.setScale(4, RoundingMode.CEILING))
       }
 
       val expected = Seq(
@@ -436,6 +438,10 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
         Row("0a48ffb0-ec61-4147-af56-fc4dbca8de0a", "f35b0053-855b-4145-abe1-dc62bc1fdb96", BigDecimal.valueOf(6.0))
       )
 
+      val x = ""
+      val _ = x
+
+      // TODO JDBC is mapped to scala.math big decimal ?
       val result = execute(query).map { case row =>
         Row(row._1, row._2, row._3)
       }

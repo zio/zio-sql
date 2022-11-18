@@ -1,10 +1,7 @@
 package zio.sql.sqlserver
 
-import zio.schema.Schema
 import zio.sql.Sql
 import java.math.BigDecimal
-import java.time.{ Instant, LocalDate, LocalDateTime, LocalTime, OffsetDateTime, OffsetTime, ZonedDateTime }
-import java.time.format.DateTimeFormatter
 
 trait SqlServerSqlModule extends Sql { self =>
 
@@ -70,25 +67,4 @@ trait SqlServerSqlModule extends Sql { self =>
       val Avg = AggregationDef[BigDecimal, Int](FunctionName("avg"))
     }
   }
-
-  implicit val localDateSchema =
-    Schema.primitive[LocalDate](zio.schema.StandardType.LocalDateType(DateTimeFormatter.ISO_LOCAL_DATE))
-
-  implicit val instantSchema =
-    Schema.primitive[Instant](zio.schema.StandardType.InstantType(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
-
-  implicit val localTimeSchema =
-    Schema.primitive[LocalTime](zio.schema.StandardType.LocalTimeType(DateTimeFormatter.ISO_LOCAL_TIME))
-
-  implicit val localDateTimeSchema =
-    Schema.primitive[LocalDateTime](zio.schema.StandardType.LocalDateTimeType(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
-
-  implicit val offsetTimeSchema =
-    Schema.primitive[OffsetTime](zio.schema.StandardType.OffsetTimeType(DateTimeFormatter.ISO_OFFSET_TIME))
-
-  implicit val offsetDateTimeSchema =
-    Schema.primitive[OffsetDateTime](zio.schema.StandardType.OffsetDateTimeType(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
-
-  implicit val zonedDatetimeSchema =
-    Schema.primitive[ZonedDateTime](zio.schema.StandardType.ZonedDateTimeType(DateTimeFormatter.ISO_ZONED_DATE_TIME))
 }

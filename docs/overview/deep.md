@@ -7,18 +7,21 @@ title: "Deep dive"
 
 ### Table description
 As usual, in order to use the DSL, first thing we need to do is to create meta-model of our table. Let’s imagine we have a *customers* table in postgres (in case of a different database just extend the appropriate module)
+To describe table, create a simple case class which describes table data. Derive implicit `Schema` for that type and just call `defineTable` with the type parameter of that case class. 
+To extract columns from table call `columns` method on your table, which returns a flat tuple of all columns.
 ```scala
-import zio.sql.postgresql.PostgresModule
+import zio.sql.postgresql.PostgresJdbcModule
 
-trait TableModel extends PostgresModule {
+trait TableModel extends PostgresJdbcModule {
 
-  import ColumnSet._
+  case class Customer(id: UUID, dob: LocalDate, firstName: String, lastName: String, verified: Boolean, createdTimestampString: String, createdTimestamp: ZonedDateTime)
 
-  val customers =
-      (uuid("id") ++ localDate(“date_of_birth”) ++ string("first_name") ++ string("last_name") ++ boolean("verified_customer") ++ zonedDateTime("created"))
-        .table("customers")
+  implicit val custommerSchema = DeriveSchema.gen[Customer]
 
-  val customerId :*: dob :*: fName :*: lName :*: verified :*: created :*: _ = customers.columns
+  val customers = defineTable[Customer]
+
+  val (customerId, dob, fName, lName, verified, createdString, createdTimestamp) =
+    customers.columns
 } 
 ```
 Then, to use zio-sql ’s inserts, just mix in `TableModel` trait from above, to your repository. 

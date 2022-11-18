@@ -16,12 +16,7 @@ object OracleSqlModuleSpec extends OracleRunnableSpec with ShopSchema {
   import Orders._
   import AllTypes._
 
-  final case class CustomerRow(
-        id: UUID,
-        dateOfBirth: LocalDate,
-        firstName: String,
-        lastName: String,
-        verified: Boolean)
+  final case class CustomerRow(id: UUID, dateOfBirth: LocalDate, firstName: String, lastName: String, verified: Boolean)
   implicit val customerRowSchema = DeriveSchema.gen[CustomerRow]
 
   override def specLayered: Spec[SqlDriver with TestConfig with Sized, Exception] = suite("Oracle module")(
@@ -73,7 +68,6 @@ object OracleSqlModuleSpec extends OracleRunnableSpec with ShopSchema {
       assertZIO(result)(equalTo(expected))
     },
     test("Can insert rows") {
-
 
       val rows = List(
         CustomerRow(UUID.randomUUID(), LocalDate.ofYearDay(2001, 8), "Peter", "Parker", true),
@@ -145,7 +139,7 @@ object OracleSqlModuleSpec extends OracleRunnableSpec with ShopSchema {
           .offsetDateTime(sqlMinDateTime.atOffset(ZoneOffset.MIN), sqlMaxDateTime.atOffset(ZoneOffset.MAX))
           .filter(_.getOffset.getTotalSeconds % 60 == 0)
 
-      val javaBigDecimalGen = 
+      val javaBigDecimalGen =
         for {
           bd <- Gen.bigDecimal(Long.MinValue, Long.MaxValue)
         } yield bd.bigDecimal

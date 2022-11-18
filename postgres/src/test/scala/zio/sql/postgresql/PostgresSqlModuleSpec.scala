@@ -9,7 +9,6 @@ import java.time._
 import java.util.UUID
 import scala.language.postfixOps
 import zio.schema._
-import java.time.format.DateTimeFormatter
 import zio.schema.TypeId
 import java.math.BigDecimal
 
@@ -422,7 +421,7 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
           ),
           Schema.Field(
             "dateOfBirth",
-            Schema.primitive[LocalDate](zio.schema.StandardType.LocalDateType(DateTimeFormatter.ISO_DATE)),
+            Schema.primitive[LocalDate](zio.schema.StandardType.LocalDateType),
             get0 = _.dateOfBirth,
             set0 = (r, a) => r.copy(dateOfBirth = a)
           ),
@@ -435,7 +434,7 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
           Schema.Field(
             "createdTimestamp",
             Schema.primitive[ZonedDateTime](
-              zio.schema.StandardType.ZonedDateTimeType(DateTimeFormatter.ISO_ZONED_DATE_TIME)
+              zio.schema.StandardType.ZonedDateTimeType
             ),
             get0 = _.createdTimestamp,
             set0 = (r, a) => r.copy(createdTimestamp = a)
@@ -515,17 +514,6 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
           ),
           OrderDetailsRow.apply
         )
-        .asInstanceOf[Schema.CaseClass4.WithFields[
-          "orderId",
-          "productId",
-          "quantity",
-          "unitPrice",
-          UUID,
-          UUID,
-          Int,
-          BigDecimal,
-          OrderDetailsRow
-        ]]
 
       val rows = List(
         OrderDetailsRow(UUID.randomUUID(), UUID.randomUUID(), 4, BigDecimal.valueOf(11.00)),
@@ -664,26 +652,12 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
 
     },
     test("update rows") {
-      case class Person(personName: String)
-      implicit val personsSchema = Schema
-        .CaseClass1[String, Person](
-          TypeId.Structural,
-          Schema.Field(
-            "personName",
-            Schema.primitive[String],
-            get0 = _.personName,
-            set0 = (r, a) => r.copy(personName = a)
-          ),
-          n => Person.apply(n),
-          Chunk.empty[Any]
-        )
-        .asInstanceOf[Schema.CaseClass1.WithFields["personName", String, Person]]
-      val persons                = defineTable[Person]
+      import PersonsSchema._
 
-      val personName = persons.columns
+      // TODO support here also Some and None
       for {
-        result <- execute(update(persons).set(personName, "Charlie").where(personName === "Murray"))
-      } yield assertTrue(result == 2)
+        result <- execute(update(persons).set(personsName, Option("Charlie")).where(personsName === Option("Murray")))
+      } yield assertTrue(result == 1)
     }
   ) @@ sequential
 }

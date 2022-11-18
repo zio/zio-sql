@@ -276,37 +276,37 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule with Sel
 
   def deriveTypeTag[A](standardType: StandardType[A]): Option[TypeTag.NotNull[A]] =
     standardType match {
-      case StandardType.BigDecimalType        => Some(TypeTag.TBigDecimal)
-      case StandardType.BoolType              => Some(TypeTag.TBoolean)
-      case StandardType.ByteType              => Some(TypeTag.TByte)
-      case StandardType.BinaryType            => Some(TypeTag.TByteArray)
-      case StandardType.CharType              => Some(TypeTag.TChar)
-      case StandardType.DoubleType            => Some(TypeTag.TDouble)
-      case StandardType.FloatType             => Some(TypeTag.TFloat)
-      case StandardType.InstantType(_)        => Some(TypeTag.TInstant)
-      case StandardType.IntType               => Some(TypeTag.TInt)
-      case StandardType.LocalDateType(_)      => Some(TypeTag.TLocalDate)
-      case StandardType.LocalDateTimeType(_)  => Some(TypeTag.TLocalDateTime)
-      case StandardType.OffsetTimeType(_)     => Some(TypeTag.TOffsetTime)
-      case StandardType.LocalTimeType(_)      => Some(TypeTag.TLocalTime)
-      case StandardType.LongType              => Some(TypeTag.TLong)
-      case StandardType.OffsetDateTimeType(_) => Some(TypeTag.TOffsetDateTime)
-      case StandardType.ShortType             => Some(TypeTag.TShort)
-      case StandardType.StringType            => Some(TypeTag.TString)
-      case StandardType.UUIDType              => Some(TypeTag.TUUID)
-      case StandardType.ZonedDateTimeType(_)  => Some(TypeTag.TZonedDateTime)
+      case StandardType.BigDecimalType     => Some(TypeTag.TBigDecimal)
+      case StandardType.BoolType           => Some(TypeTag.TBoolean)
+      case StandardType.ByteType           => Some(TypeTag.TByte)
+      case StandardType.BinaryType         => Some(TypeTag.TByteArray)
+      case StandardType.CharType           => Some(TypeTag.TChar)
+      case StandardType.DoubleType         => Some(TypeTag.TDouble)
+      case StandardType.FloatType          => Some(TypeTag.TFloat)
+      case StandardType.InstantType        => Some(TypeTag.TInstant)
+      case StandardType.IntType            => Some(TypeTag.TInt)
+      case StandardType.LocalDateType      => Some(TypeTag.TLocalDate)
+      case StandardType.LocalDateTimeType  => Some(TypeTag.TLocalDateTime)
+      case StandardType.OffsetTimeType     => Some(TypeTag.TOffsetTime)
+      case StandardType.LocalTimeType      => Some(TypeTag.TLocalTime)
+      case StandardType.LongType           => Some(TypeTag.TLong)
+      case StandardType.OffsetDateTimeType => Some(TypeTag.TOffsetDateTime)
+      case StandardType.ShortType          => Some(TypeTag.TShort)
+      case StandardType.StringType         => Some(TypeTag.TString)
+      case StandardType.UUIDType           => Some(TypeTag.TUUID)
+      case StandardType.ZonedDateTimeType  => Some(TypeTag.TZonedDateTime)
       // TODO What other types to support ?
-      case StandardType.BigIntegerType        => None
-      case StandardType.ZoneOffsetType        => None
-      case StandardType.DurationType          => None
-      case StandardType.YearType              => None
-      case StandardType.MonthType             => None
-      case StandardType.MonthDayType          => None
-      case StandardType.ZoneIdType            => None
-      case StandardType.PeriodType            => None
-      case StandardType.YearMonthType         => None
-      case StandardType.DayOfWeekType         => None
-      case StandardType.UnitType              => None
+      case StandardType.BigIntegerType     => None
+      case StandardType.ZoneOffsetType     => None
+      case StandardType.DurationType       => None
+      case StandardType.YearType           => None
+      case StandardType.MonthType          => None
+      case StandardType.MonthDayType       => None
+      case StandardType.ZoneIdType         => None
+      case StandardType.PeriodType         => None
+      case StandardType.YearMonthType      => None
+      case StandardType.DayOfWeekType      => None
+      case StandardType.UnitType           => None
     }
 
   def deriveTypeTag[A](opSchema: Schema.Optional[A]): Option[TypeTag[Option[A]]] =
@@ -325,7 +325,7 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule with Sel
       case Schema.Primitive(standardType, _) => deriveTypeTag(standardType)
 
       // TODO get TypeTag of A available out of Schema[A] and derive typetag from Schema.Transform
-      case s: Schema.Transform[_, _, _] => None
+      case _: Schema.Transform[_, _, _] => None
       case _                            => None
     }
 }

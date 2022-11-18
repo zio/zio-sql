@@ -45,40 +45,48 @@ We will assume this scope in the following examples.
 
 ## Table schema
 
-Table schemas are required to later construct correct and type-safe queries. Table schemas are created from `ColumnSet`s that are composed out of single columns, by calling a method `table` (on the `ColumnSet`).
+In order to construct correct and type-safe queries, we need to describe tables by writing user defined data type - case class in which
+name of the case class represents table name, field names represent column names and field types represent column types.
+
+Values that will represent tables in DSL are then created by calling `defineTable` method which takes case class type parameter.
+In order for `defineTable` to work, user need to provide implicit `Schema` of data type.
 
 ```scala
-import ColumnSet._
+import java.util.UUID
+import zio.sql.postgresql.PostgresJdbcModule
+import java.time._
 
-val products =
-  (uuid("id") ++ string("name") ++ bigDecimal("price")).table("products")
+object Repository extends PostgresJdbcModule {
+  final case class Product(id: UUID, name: String, price: BigDecimal)
+  implicit val productSchema = DeriveSchema.gen[Product]
 
-val orders = 
-  (uuid("id") ++ uuid("product_id") ++ int("quantity") ++ localDate("order_date")).table("orders")
+  val products = defineTableSmart[Product]
+  
+  final case class Order(id: UUID, productId: UUID, quantity: Int, orderDate: LocalDate)
+  implicit val orderSchema = DeriveSchema.gen[Order]
+  
+  val orders = defineTable[Order]
+}
 ```
 
-Column sets are composable - this could be useful when your tables share some common columns.
+`defineTable` method is overloaded with an alternative that takes table name as an input. User can also specify table name using `@name` annotation.
+Alternatively user can use `defineTableSmart` method which will smartly pluralize table name according to english grammar.
+`OrderOrigin` -> `order_origins`
+`Foot` -> `feet`
+`PersonAddress` -> `person_addresses`
+Field names are also converted to lowercase and snake case.
+`productId` -> `product_id` and so on.
 
-```scala
-import ColumnSet._
-
-//common columns
-val auditColumns = zonedDateTime("created_at") ++ zonedDateTime("updated_at")
-
-//products definition
-val productColumns = uuid("id") ++ string("name") ++ bigDecimal("price") ++ auditColumns
-
-val products = productColumns.table("products")
-
-//orders definition
-val orderColumns = uuid("id") ++ uuid("product_id") ++ int("quantity") ++ localDate("order_date") ++ auditColumns
-
-val orders = orderColumns.table("orders")
-```
 
 ## Table schema decomposition
 
-TODO
+Once we have our table definition we need to decompose table into columns which we will use in queries.
+Using the previous example with `Product` and `Order` table
+```scala
+val (id, name, price) = products.columns
+
+val (orderId, productId, quantity) = orders.columns
+```
 
 ## Selects
 

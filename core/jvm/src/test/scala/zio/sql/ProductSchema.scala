@@ -4,7 +4,6 @@ import zio.schema.Schema
 import java.time.LocalDate
 import zio.schema.DeriveSchema
 import zio.schema.StandardType
-import java.time.format.DateTimeFormatter
 
 object ProductSchema {
   val sql = new Sql { self =>
@@ -27,7 +26,7 @@ object ProductSchema {
   )
 
   implicit val localDateSchema =
-    Schema.primitive[LocalDate](StandardType.LocalDateType(DateTimeFormatter.ISO_LOCAL_DATE))
+    Schema.primitive[LocalDate](StandardType.LocalDateType)
 
   implicit val productsSchema = DeriveSchema.gen[Product]
 

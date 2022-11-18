@@ -11,7 +11,7 @@ object Pluralize {
     } else if (noChange(word)) {
       word0
     } else {
-      pluralRules.findLast { case (regex, _) =>
+      findLast(pluralRules) { case (regex, _) =>
         regex.findFirstMatchIn(word).fold(false)(_ => true)
       }.flatMap { case (regex, s) =>
         regex.findFirstMatchIn(word).map(mtch => (regex, s, mtch))
@@ -37,7 +37,12 @@ object Pluralize {
     }
   }
 
-  // TODO test
+  private def findLast[A](la: List[A])(f: A => Boolean): Option[A] =
+    la.foldLeft(Option.empty[A]) { (acc, cur) =>
+      if (f(cur)) Some(cur)
+      else acc
+    }
+
   def isSingular(word: String): Boolean =
     !irregularPlurals.contains(word.toLowerCase) ||
       (singularRules

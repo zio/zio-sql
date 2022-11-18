@@ -6,7 +6,6 @@ import zio.schema._
 import zio.test.ZIOSpecDefault
 import zio.schema.DeriveSchema
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 object TestBasicSelect {
   val userSql = new Sql { self =>
@@ -18,7 +17,7 @@ object TestBasicSelect {
     case class Users(user_id: String, dob: LocalDate, first_name: String, last_name: String)
 
     implicit val localDateSchema =
-      Schema.primitive[LocalDate](StandardType.LocalDateType(DateTimeFormatter.ISO_LOCAL_DATE))
+      Schema.primitive[LocalDate](StandardType.LocalDateType)
     implicit val userSchema      = DeriveSchema.gen[Users]
 
     val userTable = defineTable[Users]
