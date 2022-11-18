@@ -452,7 +452,7 @@ trait OracleRenderModule extends OracleSqlModule { self =>
                 ()
               case StandardType.InstantType        =>
                 builder.append(
-                  s"""TO_TIMESTAMP_TZ('${ISO_OFFSET_DATE_TIME.format(
+                  s"""TO_TIMESTAMP_TZ('${ISO_INSTANT.format(
                       value.asInstanceOf[Instant]
                     )}', 'SYYYY-MM-DD"T"HH24:MI:SS.FF9TZH:TZM')"""
                 )
