@@ -856,7 +856,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
         val expectedDates =
           RowDates(row._11, normLdt(row._12), normLt(row._13), normOdt(row._15), normOt(row._16), normZdt(row._20))
         val assertionD    = for {
-          //_   <- execute(insert)
+          // _   <- execute(insert)
           rd  <- execute(queryDates).runHead.some
           rowD = RowDates(rd._1, normLdt(rd._2), normLt(rd._3), normOdt(rd._4), normOt(rd._5), normZdt(rd._6))
         } yield assert(rowD) {

@@ -1,9 +1,11 @@
 package zio.sql.mysql
 
 import zio.test._
+
 import java.util.UUID
 import java.time.LocalDate
 import zio.schema.DeriveSchema
+import zio.test.TestAspect.sequential
 
 object DeleteSpec extends MysqlRunnableSpec {
 
@@ -30,5 +32,5 @@ object DeleteSpec extends MysqlRunnableSpec {
         r <- execute(query)
       } yield assertTrue(r == 1)
     }
-  )
+  ) @@ sequential
 }

@@ -3,7 +3,7 @@ package zio.sql.postgresql
 import zio.test.TestAspect._
 import zio.test._
 
-import java.math.{BigDecimal, RoundingMode}
+import java.math.{ BigDecimal, RoundingMode }
 
 object AgregationSpec extends PostgresRunnableSpec with DbSchema {
 
@@ -18,7 +18,7 @@ object AgregationSpec extends PostgresRunnableSpec with DbSchema {
           .from(orderDetails)
           .where(orderDetailsProductId === "7368ABF4-AED2-421F-B426-1725DE756895")
 
-        val result    = execute(query).runCollect.map(_.toList).head
+        val result = execute(query).runCollect.map(_.toList).head
         for {
           r <- result
         } yield assertTrue(r._1 == BigDecimal.valueOf(215.99)) && assertTrue(r._2 == 40)
@@ -28,7 +28,7 @@ object AgregationSpec extends PostgresRunnableSpec with DbSchema {
           .from(orderDetails)
           .where(orderDetailsProductId === "7368ABF4-AED2-421F-B426-1725DE756895")
 
-        val result    = execute(query).runCollect.map(_.toList).head
+        val result = execute(query).runCollect.map(_.toList).head
         for {
           r <- result
         } yield assertTrue(r.setScale(4, RoundingMode.CEILING) == BigDecimal.valueOf(10.7995))
