@@ -1,5 +1,5 @@
 ---
-id: deep_dive
+id: deep-dive
 title: "Deep dive"
 ---
 
@@ -260,3 +260,7 @@ val query =
           .from(customers.lateral(derivedTable))
           .orderBy(Ordering.Desc(orderDateDerived))
 ```
+
+## Learning Resources
+
+- [ZIO SQL Example Application](https://github.com/sviezypan/zio-sql-example) by [Jaro Regec](https://github.com/sviezypan)
