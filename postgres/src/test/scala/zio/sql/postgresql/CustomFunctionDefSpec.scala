@@ -525,14 +525,6 @@ object CustomFunctionDefSpec extends PostgresRunnableSpec with DbSchema {
         r <- testResult.runCollect
       } yield assert(r.head)(Assertion.isGreaterThanEqualTo(0d) && Assertion.isLessThanEqualTo(1d))
     },
-    test("setseed") {
-      val query = select(SetSeed(0.12), Random(), Random())
-
-      val randomTupleForSeed = (0.019967750719779076, 0.8378369929936333)
-      val testResult         = execute(query).map { case (_, b, c) => (b, c) }
-
-      assertZIO(testResult.runHead.some)(equalTo(randomTupleForSeed))
-    },
     test("Can calculate character length of a string") {
 
       val query = select(CharLength(fName)) from customers

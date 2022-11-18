@@ -1,25 +1,25 @@
 ---
-id: overview_index
-title: "Quick introduction"
+id: index
+title: "Introduction to ZIO SQL"
+sidebar_label: "ZIO SQL"
 ---
-
-TODO: Some initial statement about ZIO SQL
 
 ## Installation
 
 ZIO SQL is packaged into separate modules for different databases. Depending on which of these (currently supported) systems you're using, you will need to add one of the following dependencies:
+
 ```scala
 //PostgreSQL
-libraryDependencies += "dev.zio" %% "zio-sql-postgres" % zioSqlVersion
+libraryDependencies += "dev.zio" %% "zio-sql-postgres" % "@VERSION@" 
 
 //MySQL
-libraryDependencies += "dev.zio" %% "zio-sql-mysql" % zioSqlVersion
+libraryDependencies += "dev.zio" %% "zio-sql-mysql" % "@VERSION@"
 
 //Oracle
-libraryDependencies += "dev.zio" %% "zio-sql-oracle" % zioSqlVersion
+libraryDependencies += "dev.zio" %% "zio-sql-oracle" % "@VERSION@"
 
 //SQL Server
-libraryDependencies += "dev.zio" %% "zio-sql-sqlserver" % zioSqlVersion
+libraryDependencies += "dev.zio" %% "zio-sql-sqlserver" % "@VERSION@"
 ```
 
 ## Imports and modules
