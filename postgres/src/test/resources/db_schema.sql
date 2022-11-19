@@ -36,7 +36,8 @@ create table order_details
     order_id uuid not null,
     product_id uuid not null,
     quantity integer not null,
-    unit_price money not null
+    unit_price numeric(12,2) not null
+    --unit_price money not null
 );
 
 create table persons
