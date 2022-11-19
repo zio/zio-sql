@@ -5,7 +5,7 @@ import sbtcrossproject.CrossPlugin.autoImport.crossProject
 inThisBuild(
   List(
     organization  := "dev.zio",
-    homepage      := Some(url("https://zio.github.io/zio-sql/")),
+    homepage      := Some(url("https://zio.dev/zio-sql/")),
     licenses      := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
     developers    := List(
       Developer("jdegoes", "John De Goes", "john@degoes.net", url("http://degoes.net"))
@@ -25,8 +25,8 @@ addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck"
 
 val zioVersion                 = "2.0.2"
 val zioSchemaVersion           = "0.2.1"
-val testcontainersVersion      = "1.17.3"
-val testcontainersScalaVersion = "0.40.10"
+val testcontainersVersion      = "1.17.6"
+val testcontainersScalaVersion = "0.40.11"
 val logbackVersion             = "1.2.11"
 
 lazy val root = project
@@ -38,7 +38,6 @@ lazy val root = project
   .aggregate(
     coreJVM,
     coreJS,
-    docs,
     driver,
     examples,
     jdbc,
@@ -82,7 +81,7 @@ lazy val docs = project
     scalacOptions -= "-Xfatal-warnings"
   )
   .dependsOn(postgres)
-  .enablePlugins(MdocPlugin, DocusaurusPlugin)
+  .enablePlugins(WebsitePlugin)
 
 lazy val examples = project
   .in(file("examples"))
