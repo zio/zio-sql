@@ -163,15 +163,17 @@ We want to match details about orders, but we are interested only in those order
 
 This is the meta model that we are working with:
 ```scala
-val productPrices =
-      (uuid("product_id") ++ offsetDateTime("effective") ++ bigDecimal("price")).table("product_prices")
+case class ProductPrices(productId: UUID, effective: OffsetDateTime, price: BigDecimal)
+case class OrderDetails(orderId: UUID, productId: UUID, unitPrice: BigDecimal)
 
-val id :*: effective :*: price :*: _ = productPrices.columns
+implicit val productPricesSchema = DeriveSchema.gen[ProductPrices]
+implicit val orderDetailsSchema = DeriveSchema.gen[OrderDetails]
 
-val orderDetails =
-      (uuid("order_id") ++ uuid("product_id") ++ bigDecimal("unit_price")).table("order_details")
+val productPrices = defineTable[ProductPrices]
+val (fkProductId, effective, price) = productPrices.columns    
 
-val orderDetailsId :*: productId :*: unitPrice :*: _ = orderDetails.columns
+val orderDetails = defineTable[OrderDetails]
+val (orderDetailsId, productId, unitPrice) = orderDetails.columns
 ```
 We can create query very easily. In fact, just type it like a regular sql query and let your IDE auto completion guide you! 
 ```scala
@@ -205,13 +207,17 @@ This would return the count of orders for each customer.
 
 Description of tables:
 ```scala
-val customers = (uuid("id") ++ string("first_name") ++ string("last_name"))).table("customers")
+case class Customers(id: UUID, firstName: String, lastName: String)
+case class Orders(id: UUID, customerId: UUID, orderDate: LocalDate)
 
-val customerId :*: fName :*: lName _ = customers.columns
+implicit val customerSchema = DeriveSchema.gen[Customers]
+implicit val orderSchema = DeriveSchema.gen[Orders]
 
-val orders = (uuid("id") ++ uuid("customer_id") ++ localDate("order_date")).table("orders")
+val customers = defineTable[Customers]
+val (customerId, fName, lName) = customers.columns    
 
-val orderId :*: fkCustomerId :*: orderDate :*: _ = orders.columns
+val orders = defineTable[Orders]
+val (orderId, fkCustomerId, orderDate) = orders.columns
 ```
 ZIO SQL query:
 ```scala
@@ -224,15 +230,7 @@ All of these examples and more can be found and run in zio-sql tests.
 
 ### Correlated subquery in from clause & Derived tables
 Just one last, a little more complex example before we wrap up this section, for which we would use the same *customers* and *orders* tables as before.
-```scala
-val customers = (uuid("id") ++ string("first_name") ++ string("last_name"))).table("customers")
 
-val customerId :*: fName :*: lName _ = customers.columns
-
-val orders = (uuid("id") ++ uuid("customer_id") ++ localDate("order_date")).table("orders")
-
-val orderId :*: fkCustomerId :*: orderDate :*: _ = orders.columns
-```
 Imagine we want to write a query that selects all customers with the date of their last order. If you approach this problem with JOIN, you end up with one row of a customer with the newest order. In fact, this is a good example of correlated subquery inside `from` clause, where subquery needs to access `customer_id` of the outer query. For this type of problems postgres introduced **LATERAL** keyword and MSSQL Server have **CROSS APPLY** and **OUTER APPLY**.
 ```sql
 select customers.id, customers.first_name, customers.last_name, derived.order_date
