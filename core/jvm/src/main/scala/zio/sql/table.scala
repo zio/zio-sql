@@ -1,131 +1,128 @@
 package zio.sql
 
-import zio.Chunk
+import zio.schema._
+import zio.sql.macros.TableSchema
+import scala.annotation.StaticAnnotation
+import scala.collection.immutable
 
-import java.time._
-import java.util.UUID
+object TableAnnotation {
+  case class name(name: String) extends StaticAnnotation
+}
 
 trait TableModule { self: ExprModule with SelectModule with UtilsModule with SelectUtilsModule =>
 
-  sealed trait Singleton0[A] {
-    type SingletonIdentity
+  type Lens[F, S, A] = Expr[Features.Source[F, S], S, A]
+
+  type Prism[F, S, A] = Unit
+
+  type Traversal[S, A] = Unit
+
+  /**
+    * Creates a table descripton from the Schema of T. 
+    * Table name is taken either from @name annotation or schema id type and pluralized.
+    */
+  def defineTableSmart[T](implicit
+    schema: Schema.Record[T],
+    tableLike: TableSchema[T]
+  ): Table.Source.WithTableDetails[schema.FieldNames, T, schema.Accessors[Lens, Prism, Traversal]] = {
+    val tableName = extractAnnotationName(schema) match {
+      case Some(name) => name
+      case None       =>
+        pluralize(
+          convertToSnakeCase(schema.id.name)
+            .split("_")
+            .toList
+        )
+    }
+
+    defineTable(tableName)
   }
 
-  sealed trait ColumnSet {
-    type ColumnsRepr[T]
-    type Append[That <: ColumnSet] <: ColumnSet
-    type AllColumnIdentities
+  /**
+    * Creates a table descripton from the Schema of T. 
+    * Table name is taken either from @name annotation or schema id type.
+    */
+  def defineTable[T](implicit
+    schema: Schema.Record[T],
+    tableLike: TableSchema[T]
+  ): Table.Source.WithTableDetails[schema.FieldNames, T, schema.Accessors[Lens, Prism, Traversal]] = {
+    val tableName = extractAnnotationName(schema) match {
+      case Some(name) => name
+      case None       => convertToSnakeCase(schema.id.name)
+    }
 
-    def ++[That <: ColumnSet](that: That): Append[That]
-
-    def columnsUntyped: List[Column.Untyped]
-
-    // TODO figure out how to make Column equality well defined
-    def contains[A](column: Column[A]): Boolean
-
-    def makeColumns[T](columnToExpr: ColumnToExpr[T]): ColumnsRepr[T]
+    defineTable(tableName)
   }
 
-  object ColumnSet {
+  /**
+    * Creates a table descripton from the Schema of T. 
+    * Table name is explicitely provided.
+    */
+  def defineTable[T](
+    tableName: String
+  )(implicit
+    schema: Schema.Record[T],
+    tableLike: TableSchema[T]
+  ): Table.Source.WithTableDetails[schema.FieldNames, T, schema.Accessors[Lens, Prism, Traversal]] =
+    new Table.Source {
 
-    type Empty                                = Empty.type
-    type :*:[A, B <: ColumnSet, HeadIdentity] = Cons[A, B, HeadIdentity]
-    type Singleton[A, ColumnIdentity]         = Cons[A, Empty, ColumnIdentity]
+      val exprAccessorBuilder = new ExprAccessorBuilder(tableName)
 
-    type ConsAux[A, B <: ColumnSet, ColumnsRepr0[_], HeadIdentity] = ColumnSet.Cons[A, B, HeadIdentity] {
-      type ColumnsRepr[C] = ColumnsRepr0[C]
+      override type AllColumnIdentities = schema.FieldNames
+
+      override type TableType = T
+
+      override type ColumnsOut =
+        schema.Accessors[exprAccessorBuilder.Lens, exprAccessorBuilder.Prism, exprAccessorBuilder.Traversal]
+
+      override val columns: ColumnsOut = schema.makeAccessors(exprAccessorBuilder)
+
+      override val name: TableName = tableName.toLowerCase()
     }
 
-    type Aux[ColumnsRepr0] = ColumnSet {
-      type ColumnsRepr = ColumnsRepr0
+  private def convertToSnakeCase(name: String): String = {
+    val temp = (name.head.toLower.toString + name.tail)
+    temp.indexWhere(_.isUpper) match {
+      case -1 => temp
+      case i  =>
+        val (prefix, suffix) = temp.splitAt(i)
+        prefix + "_" + convertToSnakeCase(suffix)
+    }
+  }
+
+  private def pluralize(names: List[String]): String =
+    names match {
+      case Nil                   => ""
+      case head :: immutable.Nil => Pluralize.pluralize(head)
+      case head :: next          => head + "_" + pluralize(next)
     }
 
-    case object Empty extends ColumnSet {
-      override type ColumnsRepr[T]            = Unit
-      override type Append[That <: ColumnSet] = That
-
-      override type AllColumnIdentities = Any
-
-      override def ++[That <: ColumnSet](that: That): Append[That] = that
-
-      override def columnsUntyped: List[Column.Untyped] = Nil
-
-      override def makeColumns[T](columnToExpr: ColumnToExpr[T]): ColumnsRepr[T] = ()
-
-      override def contains[A](column: Column[A]): Boolean = false
+  private def extractAnnotationName[T](schema: Schema.Record[T]): Option[String] =
+    schema.annotations.collectFirst { case TableAnnotation.name(name) => name } match {
+      case Some(name) if raw"[A-Za-z_][A-Za-z0-9_]*".r.pattern.matcher(name).matches() => Some(name)
+      case _                                                                           => None
     }
 
-    sealed case class Cons[A, B <: ColumnSet, HeadIdentity](head: Column.Aux[A, HeadIdentity], tail: B)
-        extends ColumnSet { self =>
+  class ExprAccessorBuilder(name: TableName) extends AccessorBuilder {
 
-      override type ColumnsRepr[T] = (Expr[Features.Source[HeadIdentity, T], T, A], tail.ColumnsRepr[T])
+    override type Lens[F, S, A] = Expr[Features.Source[F, S], S, A]
 
-      override type Append[That <: ColumnSet] = Cons[A, tail.Append[That], HeadIdentity]
+    override type Prism[F, S, A] = Unit
 
-      override def ++[That <: ColumnSet](that: That): Append[That] = Cons(head, tail ++ that)
+    override type Traversal[S, A] = Unit
 
-      override type AllColumnIdentities = HeadIdentity with tail.AllColumnIdentities
+    def makeLens[F, S, A](product: Schema.Record[S], term: Schema.Field[S, A]): Expr[Features.Source[F, S], S, A] = {
+      implicit val typeTag = deriveTypeTag(term.schema).get
 
-      override def columnsUntyped: List[Column.Untyped] = head :: tail.columnsUntyped
+      val column: Column.Aux[A, F] = Column.Named[A, F](convertToSnakeCase(term.name.toString()))
 
-      def @@[HeadType](
-        columnSetAspect: ColumnSetAspect.Aux[A, HeadType]
-      )(implicit
-        ev: B <:< ColumnSet.Empty,
-        typeTagA: TypeTag.NotNull[A]
-      ): ColumnSet.Cons[HeadType, B, HeadIdentity] {
-        type ColumnsRepr[T]            = (Expr[Features.Source[HeadIdentity, T], T, HeadType], self.tail.ColumnsRepr[T])
-        type Append[That <: ColumnSet] = Cons[HeadType, self.tail.Append[That], HeadIdentity]
-        type AllColumnIdentities       = HeadIdentity with self.tail.AllColumnIdentities
-      } = columnSetAspect.applyCons(self)
-
-      def table(name0: TableName): Table.Aux_[ColumnsRepr, A, B, AllColumnIdentities, HeadIdentity] =
-        new Table.Source {
-          override type ColumnHead = A
-          override type ColumnTail = B
-
-          override type HeadIdentity0 = HeadIdentity
-
-          override type AllColumnIdentities = HeadIdentity with tail.AllColumnIdentities
-
-          override val name: TableName = name0
-
-          override val columnSet: ColumnSet.ConsAux[ColumnHead, ColumnTail, ColumnsRepr, HeadIdentity] = self
-
-          override val columnToExpr: ColumnToExpr[TableType] = new ColumnToExpr[TableType] {
-            def toExpr[A](column: Column[A]): Expr.Source[TableType, A, column.Identity, TableType] =
-              Expr.Source(name0, column)
-          }
-        }
-
-      def makeColumns[T](columnToExpr: ColumnToExpr[T]): ColumnsRepr[T] =
-        (columnToExpr.toExpr(head), tail.makeColumns(columnToExpr))
-
-      override def contains[A](column: Column[A]): Boolean =
-        head == column || tail.contains(column)
+      Expr.Source(name, column)
     }
 
-    def byteArray(name: String): Singleton[Chunk[Byte], name.type]         = singleton[Chunk[Byte], name.type](name)
-    def bigDecimal(name: String): Singleton[BigDecimal, name.type]         = singleton[BigDecimal, name.type](name)
-    def boolean(name: String): Singleton[Boolean, name.type]               = singleton[Boolean, name.type](name)
-    def char(name: String): Singleton[Char, name.type]                     = singleton[Char, name.type](name)
-    def double(name: String): Singleton[Double, name.type]                 = singleton[Double, name.type](name)
-    def float(name: String): Singleton[Float, name.type]                   = singleton[Float, name.type](name)
-    def instant(name: String): Singleton[Instant, name.type]               = singleton[Instant, name.type](name)
-    def int(name: String): Singleton[Int, name.type]                       = singleton[Int, name.type](name)
-    def localDate(name: String): Singleton[LocalDate, name.type]           = singleton[LocalDate, name.type](name)
-    def localDateTime(name: String): Singleton[LocalDateTime, name.type]   = singleton[LocalDateTime, name.type](name)
-    def localTime(name: String): Singleton[LocalTime, name.type]           = singleton[LocalTime, name.type](name)
-    def long(name: String): Singleton[Long, name.type]                     = singleton[Long, name.type](name)
-    def offsetDateTime(name: String): Singleton[OffsetDateTime, name.type] = singleton[OffsetDateTime, name.type](name)
-    def offsetTime(name: String): Singleton[OffsetTime, name.type]         = singleton[OffsetTime, name.type](name)
-    def short(name: String): Singleton[Short, name.type]                   = singleton[Short, name.type](name)
-    def string(name: String): Singleton[String, name.type]                 = singleton[String, name.type](name)
-    def uuid(name: String): Singleton[UUID, name.type]                     = singleton[UUID, name.type](name)
-    def zonedDateTime(name: String): Singleton[ZonedDateTime, name.type]   = singleton[ZonedDateTime, name.type](name)
+    def makePrism[F, S, A](sum: Schema.Enum[S], term: Schema.Case[S, A]): Unit = ()
 
-    def singleton[A: TypeTag, ColumnIdentity](name: String): Singleton[A, ColumnIdentity] =
-      Cons(Column.Named[A, ColumnIdentity](name), Empty)
+    def makeTraversal[S, A](collection: Schema.Collection[S, A], element: Schema[A]): Traversal[S, A] = ()
+
   }
 
   sealed trait Column[+A] {
@@ -178,19 +175,8 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule with Sel
     case object FullOuter  extends JoinType
   }
 
-  trait ColumnToExpr[TableType] {
-    def toExpr[A](column: Column[A]): Expr[Features.Source[column.Identity, TableType], TableType, A]
-  }
-
   sealed trait Table { self =>
     type TableType
-
-    type Cols = ColumnSet.Cons[ColumnHead, ColumnTail, HeadIdentity0]
-
-    type HeadIdentity0
-
-    type ColumnHead
-    type ColumnTail <: ColumnSet
 
     final def fullOuter[That](that: Table.Aux[That]): Table.JoinBuilder[self.TableType, That] =
       new Table.JoinBuilder[self.TableType, That](JoinType.FullOuter, self, that)
@@ -205,13 +191,6 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule with Sel
       new Table.JoinBuilder[self.TableType, That](JoinType.RightOuter, self, that)
 
     final val subselect: SubselectPartiallyApplied[TableType] = new SubselectPartiallyApplied[TableType]
-
-    def columns(implicit i: TrailingUnitNormalizer[columnSet.ColumnsRepr[TableType]]): i.Out =
-      i.apply(columnSet.makeColumns[TableType](columnToExpr))
-
-    val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail, HeadIdentity0]
-
-    val columnToExpr: ColumnToExpr[TableType]
   }
 
   object Table {
@@ -226,13 +205,9 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule with Sel
 
     type Aux[A] = Table { type TableType = A }
 
-    type Aux_[ColumnsRepr[_], A, B <: ColumnSet, AllColumnIdentities0, HeadIdentity] = Table.Source {
-      type ColumnHead          = A
-      type ColumnTail          = B
-      type AllColumnIdentities = AllColumnIdentities0
-
-      type HeadIdentity0 = HeadIdentity
-      val columnSet: ColumnSet.ConsAux[A, B, ColumnsRepr, HeadIdentity]
+    type WithColumnsOut[A, ColumnsOut0] = Table {
+      type TabelType  = A
+      type ColumnsOut = ColumnsOut0
     }
 
     trait Insanity {
@@ -240,10 +215,13 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule with Sel
     }
 
     sealed trait Source extends Table with Insanity {
-
       type AllColumnIdentities
 
       val name: TableName
+
+      type ColumnsOut
+
+      val columns: ColumnsOut
 
       override def ahhhhhhhhhhhhh[A]: A = ??? // don't remove or it'll break
     }
@@ -257,6 +235,12 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule with Sel
         type TableType           = A
         type AllColumnIdentities = AllColumnIdentities0
       }
+
+      type WithTableDetails[AllColumnIdentities0, T, ColumnsOut0] = Table.Source {
+        type AllColumnIdentities = AllColumnIdentities0
+        type TableType           = T
+        type ColumnsOut          = ColumnsOut0
+      }
     }
 
     sealed case class Joined[FF, A, B](
@@ -267,113 +251,87 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule with Sel
     ) extends Table {
 
       override type TableType = left.TableType with right.TableType
-
-      override type HeadIdentity0 = left.HeadIdentity0
-
-      override type ColumnHead = left.ColumnHead
-      override type ColumnTail =
-        left.columnSet.tail.Append[ColumnSet.Cons[right.ColumnHead, right.ColumnTail, right.HeadIdentity0]]
-
-      override val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail, HeadIdentity0] =
-        left.columnSet ++ right.columnSet
-
-      override val columnToExpr: ColumnToExpr[TableType] = new ColumnToExpr[TableType] {
-        def toExpr[C](column: Column[C]): Expr[Features.Source[column.Identity, A with B], A with B, C] =
-          if (left.columnSet.contains(column))
-            left.columnToExpr.toExpr(column).asInstanceOf[Expr[Features.Source[column.Identity, A with B], A with B, C]]
-          else
-            right.columnToExpr
-              .toExpr(column)
-              .asInstanceOf[Expr[Features.Source[column.Identity, A with B], A with B, C]]
-      }
     }
 
-    sealed case class DerivedTable[+Out, +R <: Read[Out]](read: R, name: TableName) extends Table { self =>
+    sealed case class DerivedTable[CO, +Out, +R <: Read.WithReprs[Out, CO], Source](read: R, name: TableName)
+        extends Table {
+      self =>
+      type ColumnsOut = CO
 
-      override type ColumnHead = read.ColumnHead
-      override type ColumnTail = read.ColumnTail
+      override type TableType = Source
 
-      override type HeadIdentity0 = read.HeadIdentity
-
-      override val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail, HeadIdentity0] = read.columnSet
-
-      override val columnToExpr: ColumnToExpr[TableType] = new ColumnToExpr[TableType] {
-        def toExpr[A](column: Column[A]): Expr[Features.Source[column.Identity, TableType], TableType, A] =
-          Expr.Source(name, column)
-      }
+      def columns(implicit normalizer: TrailingUnitNormalizer[CO]): normalizer.Out =
+        normalizer.apply(read.columns(name))
     }
 
     sealed case class DialectSpecificTable[A](tableExtension: TableExtension[A]) extends Table {
 
       override type TableType = A
-
-      override type ColumnHead = tableExtension.ColumnHead
-      override type ColumnTail = tableExtension.ColumnTail
-
-      override type HeadIdentity0 = tableExtension.HeadIdentity0
-
-      override val columnSet: ColumnSet.Cons[ColumnHead, ColumnTail, HeadIdentity0] = tableExtension.columnSet
-
-      override val columnToExpr: ColumnToExpr[TableType] = tableExtension.columnToExpr
     }
 
-    trait TableEx[A] {
-
-      type ColumnHead
-      type ColumnTail <: ColumnSet
-      type HeadIdentity0
-
-      def columnSet: ColumnSet.Cons[ColumnHead, ColumnTail, HeadIdentity0]
-
-      def columnToExpr: ColumnToExpr[A]
-    }
+    trait TableEx[A]
   }
 
   type TableExtension[A] <: Table.TableEx[A]
 
-  trait ColumnSetAspect[A] { self =>
-
-    type HeadType
-
-    def applyCons[B <: ColumnSet, HeadIdentity](
-      columnSet: ColumnSet.Cons[A, B, HeadIdentity]
-    ): ColumnSet.Cons[HeadType, B, HeadIdentity] {
-      type ColumnsRepr[T]            = (Expr[Features.Source[HeadIdentity, T], T, HeadType], columnSet.tail.ColumnsRepr[T])
-      type Append[That <: ColumnSet] = ColumnSet.Cons[HeadType, columnSet.tail.Append[That], HeadIdentity]
-      type AllColumnIdentities       = HeadIdentity with columnSet.tail.AllColumnIdentities
+  def deriveTypeTag[A](standardType: StandardType[A]): Option[TypeTag.NotNull[A]] =
+    standardType match {
+      case StandardType.BigDecimalType     => Some(TypeTag.TBigDecimal)
+      case StandardType.BoolType           => Some(TypeTag.TBoolean)
+      case StandardType.ByteType           => Some(TypeTag.TByte)
+      case StandardType.BinaryType         => Some(TypeTag.TByteArray)
+      case StandardType.CharType           => Some(TypeTag.TChar)
+      case StandardType.DoubleType         => Some(TypeTag.TDouble)
+      case StandardType.FloatType          => Some(TypeTag.TFloat)
+      case StandardType.InstantType        => Some(TypeTag.TInstant)
+      case StandardType.IntType            => Some(TypeTag.TInt)
+      case StandardType.LocalDateType      => Some(TypeTag.TLocalDate)
+      case StandardType.LocalDateTimeType  => Some(TypeTag.TLocalDateTime)
+      case StandardType.OffsetTimeType     => Some(TypeTag.TOffsetTime)
+      case StandardType.LocalTimeType      => Some(TypeTag.TLocalTime)
+      case StandardType.LongType           => Some(TypeTag.TLong)
+      case StandardType.OffsetDateTimeType => Some(TypeTag.TOffsetDateTime)
+      case StandardType.ShortType          => Some(TypeTag.TShort)
+      case StandardType.StringType         => Some(TypeTag.TString)
+      case StandardType.UUIDType           => Some(TypeTag.TUUID)
+      case StandardType.ZonedDateTimeType  => Some(TypeTag.TZonedDateTime)
+      // TODO What other types to support ?
+      case StandardType.BigIntegerType     => None
+      case StandardType.ZoneOffsetType     => None
+      case StandardType.DurationType       => None
+      case StandardType.YearType           => None
+      case StandardType.MonthType          => None
+      case StandardType.MonthDayType       => None
+      case StandardType.ZoneIdType         => None
+      case StandardType.PeriodType         => None
+      case StandardType.YearMonthType      => None
+      case StandardType.DayOfWeekType      => None
+      case StandardType.UnitType           => None
     }
-  }
 
-  object ColumnSetAspect {
+  def deriveTypeTag[A](opSchema: Schema.Optional[A]): Option[TypeTag[Option[A]]] =
+    opSchema.schema match {
+      case Schema.Primitive(standardType, _) =>
+        implicit val notNullTypeTag = deriveTypeTag(standardType).get
 
-    type Aux[A, HeadType0] = ColumnSetAspect[A] {
-      type HeadType = HeadType0
+        Some(TypeTag.option[A])
+      case _                                 => None
     }
 
-    def nullable[A: TypeTag.NotNull]: ColumnSetAspect.Aux[A, Option[A]] = new ColumnSetAspect[A] {
+  def deriveTypeTag[A](fieldSchema: Schema[A]): Option[TypeTag[A]] =
+    fieldSchema match {
+      case s: Schema.Optional[_]                      => deriveTypeTag(s)
+      case s: Schema.Lazy[A]                          => deriveTypeTag(s.schema)
+      case Schema.Primitive(standardType, _)          => deriveTypeTag(standardType)
+      case Schema.Sequence(elementSchema, _, _, _, _) =>
+        elementSchema match {
+          case Schema.Primitive(standardType, _) if (standardType == StandardType.ByteType) =>
+            Some(TypeTag.TByteArray.asInstanceOf[TypeTag[A]])
+          case _                                                                            => None
+        }
 
-      override type HeadType = Option[A]
-
-      def applyCons[B <: ColumnSet, HeadIdentity](
-        columnSet: ColumnSet.Cons[A, B, HeadIdentity]
-      ): ColumnSet.Cons[Option[A], B, HeadIdentity] {
-        type ColumnsRepr[T]            = (Expr[Features.Source[HeadIdentity, T], T, Option[A]], columnSet.tail.ColumnsRepr[T])
-        type Append[That <: ColumnSet] = ColumnSet.Cons[Option[A], columnSet.tail.Append[That], HeadIdentity]
-        type AllColumnIdentities       = HeadIdentity with columnSet.tail.AllColumnIdentities
-      } = {
-        val head = columnSet.head.nullable
-
-        ColumnSet
-          .Cons(head, columnSet.tail)
-          .asInstanceOf[
-            ColumnSet.Cons[Option[A], B, HeadIdentity] {
-              type ColumnsRepr[T]            =
-                (Expr[Features.Source[HeadIdentity, T], T, Option[A]], columnSet.tail.ColumnsRepr[T])
-              type Append[That <: ColumnSet] = ColumnSet.Cons[Option[A], columnSet.tail.Append[That], HeadIdentity]
-              type AllColumnIdentities       = HeadIdentity with columnSet.tail.AllColumnIdentities
-            }
-          ]
-      }
+      // TODO get TypeTag of A available out of Schema[A] and derive typetag from Schema.Transform
+      case _: Schema.Transform[_, _, _]               => None
+      case _                                          => None
     }
-  }
 }

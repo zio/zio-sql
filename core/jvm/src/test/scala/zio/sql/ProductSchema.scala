@@ -1,6 +1,9 @@
 package zio.sql
 
 import zio.schema.Schema
+import java.time.LocalDate
+import zio.schema.DeriveSchema
+import zio.schema.StandardType
 
 object ProductSchema {
   val sql = new Sql { self =>
@@ -10,17 +13,24 @@ object ProductSchema {
 
     override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = ???
   }
-  import sql.ColumnSet._
+
   import sql._
 
-  val productTable = (
-    string("id") ++
-      localDate("last_updated") ++
-      string("name") ++
-      int("base_amount") ++
-      int("final_amount") ++
-      boolean("deleted")
-  ).table("product")
+  case class Product(
+    id: String,
+    last_updated: LocalDate,
+    name: String,
+    base_amount: Int,
+    final_amount: Int,
+    deleted: Boolean
+  )
+
+  implicit val localDateSchema =
+    Schema.primitive[LocalDate](StandardType.LocalDateType)
+
+  implicit val productsSchema = DeriveSchema.gen[Product]
+
+  val productTable = defineTable[Product]
 
   val (id, lastUpdated, name, baseAmount, finalAmount, deleted) = productTable.columns
 

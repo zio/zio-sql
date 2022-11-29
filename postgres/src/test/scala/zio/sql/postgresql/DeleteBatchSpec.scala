@@ -10,7 +10,7 @@ import java.util.UUID
 
 object DeleteBatchSpec extends PostgresRunnableSpec with DbSchema {
 
-  import Customers._
+  import CustomerSchema._
 
   private def delete_(c: Customer): Delete[customers.TableType] =
     deleteFrom(customers).where((verified.isTrue) && (customerId === c.id))
@@ -34,37 +34,37 @@ object DeleteBatchSpec extends PostgresRunnableSpec with DbSchema {
       val id4 = UUID.randomUUID()
       val c1  = Customer(
         id1,
+        LocalDate.now(),
         "fnameCustomer1",
         "lnameCustomer1",
         true,
-        LocalDate.now(),
         LocalDate.now().toString,
         ZonedDateTime.now()
       )
       val c2  = Customer(
         id2,
+        LocalDate.now(),
         "fnameCustomer2",
         "lnameCustomer2",
         true,
-        LocalDate.now(),
         LocalDate.now().toString,
         ZonedDateTime.now()
       )
       val c3  = Customer(
         id3,
+        LocalDate.now(),
         "fnameCustomer3",
         "lnameCustomer3",
         true,
-        LocalDate.now(),
         LocalDate.now().toString,
         ZonedDateTime.now()
       )
       val c4  = Customer(
         id4,
+        LocalDate.now(),
         "fnameCustomer4",
         "lnameCustomer4",
         false,
-        LocalDate.now(),
         LocalDate.now().toString,
         ZonedDateTime.now()
       )

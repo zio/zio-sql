@@ -32,4 +32,5 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule with In
       },
       someA => Right(someA)
     )
+  implicit val none: Schema[None.type]                                                 = Schema.singleton(None)
 }

@@ -13,10 +13,10 @@ import zio.test.Spec
 
 /**
   * Base trait for integration-style tests running on Testcontainers.
-  * Extending classes are expected to provide the container implementation 
+  * Extending classes are expected to provide the container implementation
   * this test suite will work on by implementing {@link getContainer}.
-  * 
-  * Test suite should be implemented in {@link specLayered} and 
+  *
+  * Test suite should be implemented in {@link specLayered} and
   * particular tests can depend on {@link SQLDriver} in the environment.
   */
 trait JdbcRunnableSpec extends ZIOSpecDefault with Jdbc {
