@@ -7,6 +7,7 @@ import zio.Chunk
 import zio.schema._
 import zio.schema.StandardType._
 import zio.sql.driver.Renderer
+import java.time.format.DateTimeFormatter._
 
 trait PostgresRenderModule extends PostgresSqlModule { self =>
 
@@ -94,44 +95,44 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
           StandardType.fromString(typeTag.tag) match {
             case Some(v) =>
               v match {
-                case BigDecimalType                             =>
+                case BigDecimalType                  =>
                   render(value)
-                case StandardType.InstantType(formatter)        =>
-                  render(s"'${formatter.format(value.asInstanceOf[Instant])}'")
-                case ByteType                                   => render(s"'${value}'")
-                case CharType                                   => render(s"'${value}'")
-                case IntType                                    => render(value)
-                case StandardType.MonthDayType                  => render(s"'${value}'")
-                case BinaryType                                 => render(s"'${value}'")
-                case StandardType.MonthType                     => render(s"'${value}'")
-                case StandardType.LocalDateTimeType(formatter)  =>
-                  render(s"'${formatter.format(value.asInstanceOf[LocalDateTime])}'")
-                case UnitType                                   => render("null") // None is encoded as Schema[Unit].transform(_ => None, _ => ())
-                case StandardType.YearMonthType                 => render(s"'${value}'")
-                case DoubleType                                 => render(value)
-                case StandardType.YearType                      => render(s"'${value}'")
-                case StandardType.OffsetDateTimeType(formatter) =>
-                  render(s"'${formatter.format(value.asInstanceOf[OffsetDateTime])}'")
-                case StandardType.ZonedDateTimeType(_)          =>
+                case StandardType.InstantType        =>
+                  render(s"'${ISO_INSTANT.format(value.asInstanceOf[Instant])}'")
+                case ByteType                        => render(s"'${value}'")
+                case CharType                        => render(s"'${value}'")
+                case IntType                         => render(value)
+                case StandardType.MonthDayType       => render(s"'${value}'")
+                case BinaryType                      => render(s"'${value}'")
+                case StandardType.MonthType          => render(s"'${value}'")
+                case StandardType.LocalDateTimeType  =>
+                  render(s"'${ISO_LOCAL_DATE_TIME.format(value.asInstanceOf[LocalDateTime])}'")
+                case UnitType                        => render("null") // None is encoded as Schema[Unit].transform(_ => None, _ => ())
+                case StandardType.YearMonthType      => render(s"'${value}'")
+                case DoubleType                      => render(value)
+                case StandardType.YearType           => render(s"'${value}'")
+                case StandardType.OffsetDateTimeType =>
+                  render(s"'${ISO_OFFSET_DATE_TIME.format(value.asInstanceOf[OffsetDateTime])}'")
+                case StandardType.ZonedDateTimeType  =>
                   render(s"'${DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(value.asInstanceOf[ZonedDateTime])}'")
-                case BigIntegerType                             => render(s"'${value}'")
-                case UUIDType                                   => render(s"'${value}'")
-                case StandardType.ZoneOffsetType                => render(s"'${value}'")
-                case ShortType                                  => render(value)
-                case StandardType.LocalTimeType(formatter)      =>
-                  render(s"'${formatter.format(value.asInstanceOf[LocalTime])}'")
-                case StandardType.OffsetTimeType(formatter)     =>
-                  render(s"'${formatter.format(value.asInstanceOf[OffsetTime])}'")
-                case LongType                                   => render(value)
-                case StringType                                 => render(s"'${value}'")
-                case StandardType.PeriodType                    => render(s"'${value}'")
-                case StandardType.ZoneIdType                    => render(s"'${value}'")
-                case StandardType.LocalDateType(formatter)      =>
-                  render(s"'${formatter.format(value.asInstanceOf[LocalDate])}'")
-                case BoolType                                   => render(value)
-                case DayOfWeekType                              => render(s"'${value}'")
-                case FloatType                                  => render(value)
-                case StandardType.DurationType                  => render(s"'${value}'")
+                case BigIntegerType                  => render(s"'${value}'")
+                case UUIDType                        => render(s"'${value}'")
+                case StandardType.ZoneOffsetType     => render(s"'${value}'")
+                case ShortType                       => render(value)
+                case StandardType.LocalTimeType      =>
+                  render(s"'${DateTimeFormatter.ISO_LOCAL_TIME.format(value.asInstanceOf[LocalTime])}'")
+                case StandardType.OffsetTimeType     =>
+                  render(s"'${DateTimeFormatter.ISO_OFFSET_TIME.format(value.asInstanceOf[OffsetTime])}'")
+                case LongType                        => render(value)
+                case StringType                      => render(s"'${value}'")
+                case StandardType.PeriodType         => render(s"'${value}'")
+                case StandardType.ZoneIdType         => render(s"'${value}'")
+                case StandardType.LocalDateType      =>
+                  render(s"'${ISO_DATE.format(value.asInstanceOf[LocalDate])}'")
+                case BoolType                        => render(value)
+                case DayOfWeekType                   => render(s"'${value}'")
+                case FloatType                       => render(value)
+                case StandardType.DurationType       => render(s"'${value}'")
               }
             case None    => ()
           }
@@ -190,41 +191,43 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
         case Nil          => // TODO restrict Update to not allow empty set
       }
 
-    private[zio] def renderLit[A, B](lit: self.Expr.Literal[_])(implicit render: Renderer): Unit = {
-      import PostgresSpecific.PostgresTypeTag._
+    private[zio] def renderLit[A, B](lit: self.Expr.Literal[_])(implicit render: Renderer): Unit =
+      renderLit(lit.typeTag, lit.value)
+
+    private[zio] def renderLit(typeTag: TypeTag[_], value: Any)(implicit render: Renderer): Unit = {
       import TypeTag._
-      lit.typeTag match {
-        case TDialectSpecific(tt) =>
-          tt match {
-            case tt @ TInterval                         => render(tt.cast(lit.value))
-            case tt @ TTimestampz                       => render(tt.cast(lit.value))
+      import PostgresSpecific.PostgresTypeTag._
+      typeTag match {
+        case TShort                             => render(value)
+        case TFloat                             => render(value)
+        case TBoolean                           => render(value)
+        case tt @ TOffsetDateTime               => render("DATE '", tt.cast(value), "'")
+        case TDouble                            => render(value)
+        case tt @ TChar                         => render("'", tt.cast(value), "'")
+        case tt @ TLocalTime                    => render(tt.cast(value)) // todo still broken
+        case TBigDecimal                        => render(value)
+        case TByte                              => render(value)
+        case tt @ TZonedDateTime                => render("DATE '", tt.cast(value), "'")
+        case TString                            => render("'", value, "'")
+        case TDialectSpecific(typeTagExtension) =>
+          typeTagExtension match {
+            case tt @ TInterval                         => render(tt.cast(value))
+            case tt @ TTimestampz                       => render(tt.cast(value))
             case _: PostgresSpecific.PostgresTypeTag[_] => ???
           }
-        case TByteArray           =>
+        case TByteArray                         =>
           render(
-            lit.value.asInstanceOf[Chunk[Byte]].map("""\%03o""".format(_)).mkString("E\'", "", "\'")
-          ) // todo fix `cast` infers correctly but map doesn't work for some reason
-        case tt @ TChar           =>
-          render("'", tt.cast(lit.value), "'") // todo is this the same as a string? fix escaping
-        case tt @ TInstant        => render("TIMESTAMP '", tt.cast(lit.value), "'")
-        case tt @ TLocalDate      => render("DATE '", tt.cast(lit.value), "'")
-        case tt @ TLocalDateTime  => render("DATE '", tt.cast(lit.value), "'")
-        case tt @ TLocalTime      => render(tt.cast(lit.value)) // todo still broken
-        case tt @ TOffsetDateTime => render("DATE '", tt.cast(lit.value), "'")
-        case tt @ TOffsetTime     => render(tt.cast(lit.value)) // todo still broken
-        case tt @ TUUID           => render("'", tt.cast(lit.value), "'")
-        case tt @ TZonedDateTime  => render("DATE '", tt.cast(lit.value), "'")
-
-        case TByte       => render(lit.value)           // default toString is probably ok
-        case TBigDecimal => render(lit.value)           // default toString is probably ok
-        case TBoolean    => render(lit.value)           // default toString is probably ok
-        case TDouble     => render(lit.value)           // default toString is probably ok
-        case TFloat      => render(lit.value)           // default toString is probably ok
-        case TInt        => render(lit.value)           // default toString is probably ok
-        case TLong       => render(lit.value)           // default toString is probably ok
-        case TShort      => render(lit.value)           // default toString is probably ok
-        case TString     => render("'", lit.value, "'") // todo fix escaping
-        case _           => render(lit.value)           // todo fix add TypeTag.Nullable[_] =>
+            value.asInstanceOf[Chunk[Byte]].map("""\%03o""".format(_)).mkString("E\'", "", "\'")
+          )
+        case tt @ TUUID                         => render("'", tt.cast(value), "'")
+        case tt @ TLocalDate                    => render("DATE '", tt.cast(value), "'")
+        case tt @ TOffsetTime                   => render(tt.cast(value)) // todo still broken
+        case tt @ TInstant                      => render("TIMESTAMP '", tt.cast(value), "'")
+        case TLong                              => render(value)
+        case tt @ TLocalDateTime                => render("DATE '", tt.cast(value), "'")
+        case TInt                               => render(value)
+        case n: Nullable[_]                     =>
+          renderLit(n.typeTag, value.asInstanceOf[Option[_]].get)
       }
     }
 
@@ -530,7 +533,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
       }
 
     /**
-    * Drops the initial Litaral(true) present at the start of every WHERE expressions by default 
+    * Drops the initial Litaral(true) present at the start of every WHERE expressions by default
     * and proceeds to the rest of Expr's.
     */
     private def renderWhereExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {

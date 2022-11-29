@@ -4,7 +4,7 @@ import zio.Chunk
 import zio.schema.StandardType._
 import zio.schema._
 import zio.sql.driver.Renderer
-
+import java.time.format.DateTimeFormatter._
 import java.time.format.{ DateTimeFormatter, DateTimeFormatterBuilder }
 import java.time._
 
@@ -463,55 +463,55 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
           StandardType.fromString(typeTag.tag) match {
             case Some(v) =>
               v match {
-                case BigDecimalType                            =>
+                case BigDecimalType                  =>
                   render(value)
-                case StandardType.InstantType(formatter)       =>
-                  render(s"'${formatter.format(value.asInstanceOf[Instant])}'")
-                case ByteType                                  => render(s"${value}")
-                case CharType                                  => render(s"N'${value}'")
-                case IntType                                   => render(value)
-                case StandardType.MonthDayType                 => render(s"'${value}'")
-                case BinaryType                                =>
+                case StandardType.InstantType        =>
+                  render(s"'${ISO_INSTANT.format(value.asInstanceOf[Instant])}'")
+                case ByteType                        => render(s"${value}")
+                case CharType                        => render(s"N'${value}'")
+                case IntType                         => render(value)
+                case StandardType.MonthDayType       => render(s"'${value}'")
+                case BinaryType                      =>
                   val chunk = value.asInstanceOf[Chunk[Object]]
                   render("CONVERT(VARBINARY(MAX),'")
                   for (b <- chunk)
                     render("%02x".format(b))
                   render("', 2)")
-                case StandardType.MonthType                    => render(s"'${value}'")
-                case StandardType.LocalDateTimeType(formatter) =>
-                  render(s"'${formatter.format(value.asInstanceOf[LocalDateTime])}'")
-                case UnitType                                  => render("null") // None is encoded as Schema[Unit].transform(_ => None, _ => ())
-                case StandardType.YearMonthType                => render(s"'${value}'")
-                case DoubleType                                => render(value)
-                case StandardType.YearType                     => render(s"'${value}'")
-                case StandardType.OffsetDateTimeType(_)        =>
+                case StandardType.MonthType          => render(s"'${value}'")
+                case StandardType.LocalDateTimeType  =>
+                  render(s"'${ISO_LOCAL_DATE_TIME.format(value.asInstanceOf[LocalDateTime])}'")
+                case UnitType                        => render("null") // None is encoded as Schema[Unit].transform(_ => None, _ => ())
+                case StandardType.YearMonthType      => render(s"'${value}'")
+                case DoubleType                      => render(value)
+                case StandardType.YearType           => render(s"'${value}'")
+                case StandardType.OffsetDateTimeType =>
                   render(s"'${fmtDateTimeOffset.format(value.asInstanceOf[OffsetDateTime])}'")
-                case StandardType.ZonedDateTimeType(_)         =>
+                case StandardType.ZonedDateTimeType  =>
                   render(s"'${fmtDateTimeOffset.format(value.asInstanceOf[ZonedDateTime])}'")
-                case BigIntegerType                            => render(value)
-                case UUIDType                                  => render(s"'${value}'")
-                case StandardType.ZoneOffsetType               => render(s"'${value}'")
-                case ShortType                                 => render(value)
-                case StandardType.LocalTimeType(_)             =>
+                case BigIntegerType                  => render(value)
+                case UUIDType                        => render(s"'${value}'")
+                case StandardType.ZoneOffsetType     => render(s"'${value}'")
+                case ShortType                       => render(value)
+                case StandardType.LocalTimeType      =>
                   render(s"'${DateTimeFormatter.ISO_LOCAL_TIME.format(value.asInstanceOf[LocalTime])}'")
-                case StandardType.OffsetTimeType(_)            =>
+                case StandardType.OffsetTimeType     =>
                   render(s"'${fmtTimeOffset.format(value.asInstanceOf[OffsetTime])}'")
-                case LongType                                  => render(value)
-                case StringType                                => render(s"N'${value}'")
-                case StandardType.PeriodType                   => render(s"'${value}'")
-                case StandardType.ZoneIdType                   => render(s"'${value}'")
-                case StandardType.LocalDateType(_)             =>
+                case LongType                        => render(value)
+                case StringType                      => render(s"N'${value}'")
+                case StandardType.PeriodType         => render(s"'${value}'")
+                case StandardType.ZoneIdType         => render(s"'${value}'")
+                case StandardType.LocalDateType      =>
                   render(s"'${DateTimeFormatter.ISO_LOCAL_DATE.format(value.asInstanceOf[LocalDate])}'")
-                case BoolType                                  =>
+                case BoolType                        =>
                   val b = value.asInstanceOf[Boolean]
                   if (b) {
                     render('1')
                   } else {
                     render('0')
                   }
-                case DayOfWeekType                             => render(s"'${value}'")
-                case FloatType                                 => render(value)
-                case StandardType.DurationType                 => render(s"'${value}'")
+                case DayOfWeekType                   => render(s"'${value}'")
+                case FloatType                       => render(value)
+                case StandardType.DurationType       => render(s"'${value}'")
               }
             case None    => ()
           }

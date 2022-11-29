@@ -4,6 +4,7 @@ import com.github.ghik.silencer.silent
 
 import java.time._
 import scala.language.implicitConversions
+import java.math.BigDecimal
 
 trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
   self: SelectModule with TableModule =>

@@ -7,7 +7,7 @@ import zio.Cause
 
 object CommonFunctionDefSpec extends PostgresRunnableSpec with DbSchema {
   import FunctionDef.{ CharLength => _, _ }
-  import Customers._
+  import CustomerSchema._
 
   private def collectAndCompare[R, E](
     expected: Seq[String],
@@ -20,7 +20,7 @@ object CommonFunctionDefSpec extends PostgresRunnableSpec with DbSchema {
       test("concat_ws #2 - combine columns") {
 
         // note: you can't use customerId here as it is a UUID, hence not a string in our book
-        val query = select(ConcatWs3(Customers.fName, Customers.fName, Customers.lName)) from customers
+        val query = select(ConcatWs3(fName, fName, lName)) from customers
 
         val expected = Seq(
           "RonaldRonaldRussell",
@@ -36,7 +36,7 @@ object CommonFunctionDefSpec extends PostgresRunnableSpec with DbSchema {
       test("concat_ws #3 - combine columns and flat values") {
         import Expr._
 
-        val query = select(ConcatWs4(" ", "Person:", Customers.fName, Customers.lName)) from customers
+        val query = select(ConcatWs4(" ", "Person:", fName, lName)) from customers
 
         val expected = Seq(
           "Person: Ronald Russell",
@@ -53,7 +53,7 @@ object CommonFunctionDefSpec extends PostgresRunnableSpec with DbSchema {
         import Expr._
 
         val query = select(
-          ConcatWs3(" and ", Concat("Name: ", Customers.fName), Concat("Surname: ", Customers.lName))
+          ConcatWs3(" and ", Concat("Name: ", fName), Concat("Surname: ", lName))
         ) from customers
 
         val expected = Seq(
