@@ -2,7 +2,6 @@ package zio.sql
 
 import java.sql._
 import java.time.{ OffsetDateTime, OffsetTime, ZoneId, ZoneOffset }
-
 import zio.Chunk
 
 trait JdbcInternalModule { self: Jdbc =>
@@ -51,7 +50,7 @@ trait JdbcInternalModule { self: Jdbc =>
         if (result == null)
           Right(null.asInstanceOf[A])
         else {
-          Right(BigDecimal.javaBigDecimal2bigDecimal(result).asInstanceOf[A])
+          Right(result.asInstanceOf[A])
         }
       case TBoolean            => tryDecode[Boolean](Option(resultSet.getBoolean(columnIndex)))
       case TByte               => tryDecode[Byte](Option(resultSet.getByte(columnIndex)))

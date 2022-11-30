@@ -2,7 +2,7 @@ package zio.sql.mysql
 
 import java.time._
 import java.time.format.DateTimeFormatter
-
+import java.time.format.DateTimeFormatter._
 import zio.Chunk
 import zio.schema._
 import zio.schema.StandardType._
@@ -166,44 +166,44 @@ trait MysqlRenderModule extends MysqlSqlModule { self =>
           StandardType.fromString(typeTag.tag) match {
             case Some(v) =>
               v match {
-                case BigDecimalType                             =>
+                case BigDecimalType                  =>
                   render(value)
-                case StandardType.InstantType(formatter)        =>
-                  render(s"'${formatter.format(value.asInstanceOf[Instant])}'")
-                case ByteType                                   => render(s"'${value}'")
-                case CharType                                   => render(s"'${value}'")
-                case IntType                                    => render(value)
-                case StandardType.MonthDayType                  => render(s"'${value}'")
-                case BinaryType                                 => render(s"'${value}'")
-                case StandardType.MonthType                     => render(s"'${value}'")
-                case StandardType.LocalDateTimeType(formatter)  =>
-                  render(s"'${formatter.format(value.asInstanceOf[LocalDateTime])}'")
-                case UnitType                                   => render("null") // None is encoded as Schema[Unit].transform(_ => None, _ => ())
-                case StandardType.YearMonthType                 => render(s"'${value}'")
-                case DoubleType                                 => render(value)
-                case StandardType.YearType                      => render(s"'${value}'")
-                case StandardType.OffsetDateTimeType(formatter) =>
-                  render(s"'${formatter.format(value.asInstanceOf[OffsetDateTime])}'")
-                case StandardType.ZonedDateTimeType(_)          =>
+                case StandardType.InstantType        =>
+                  render(s"'${ISO_INSTANT.format(value.asInstanceOf[Instant])}'")
+                case ByteType                        => render(s"'${value}'")
+                case CharType                        => render(s"'${value}'")
+                case IntType                         => render(value)
+                case StandardType.MonthDayType       => render(s"'${value}'")
+                case BinaryType                      => render(s"'${value}'")
+                case StandardType.MonthType          => render(s"'${value}'")
+                case StandardType.LocalDateTimeType  =>
+                  render(s"'${ISO_LOCAL_DATE_TIME.format(value.asInstanceOf[LocalDateTime])}'")
+                case UnitType                        => render("null") // None is encoded as Schema[Unit].transform(_ => None, _ => ())
+                case StandardType.YearMonthType      => render(s"'${value}'")
+                case DoubleType                      => render(value)
+                case StandardType.YearType           => render(s"'${value}'")
+                case StandardType.OffsetDateTimeType =>
+                  render(s"'${ISO_OFFSET_DATE_TIME.format(value.asInstanceOf[OffsetDateTime])}'")
+                case StandardType.ZonedDateTimeType  =>
                   render(s"'${DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(value.asInstanceOf[ZonedDateTime])}'")
-                case BigIntegerType                             => render(s"'${value}'")
-                case UUIDType                                   => render(s"'${value}'")
-                case StandardType.ZoneOffsetType                => render(s"'${value}'")
-                case ShortType                                  => render(value)
-                case StandardType.LocalTimeType(formatter)      =>
-                  render(s"'${formatter.format(value.asInstanceOf[LocalTime])}'")
-                case StandardType.OffsetTimeType(formatter)     =>
-                  render(s"'${formatter.format(value.asInstanceOf[OffsetTime])}'")
-                case LongType                                   => render(value)
-                case StringType                                 => render(s"'${value}'")
-                case StandardType.PeriodType                    => render(s"'${value}'")
-                case StandardType.ZoneIdType                    => render(s"'${value}'")
-                case StandardType.LocalDateType(formatter)      =>
-                  render(s"'${formatter.format(value.asInstanceOf[LocalDate])}'")
-                case BoolType                                   => render(value)
-                case DayOfWeekType                              => render(s"'${value}'")
-                case FloatType                                  => render(value)
-                case StandardType.DurationType                  => render(s"'${value}'")
+                case BigIntegerType                  => render(s"'${value}'")
+                case UUIDType                        => render(s"'${value}'")
+                case StandardType.ZoneOffsetType     => render(s"'${value}'")
+                case ShortType                       => render(value)
+                case StandardType.LocalTimeType      =>
+                  render(s"'${ISO_LOCAL_TIME.format(value.asInstanceOf[LocalTime])}'")
+                case StandardType.OffsetTimeType     =>
+                  render(s"'${ISO_OFFSET_TIME.format(value.asInstanceOf[OffsetTime])}'")
+                case LongType                        => render(value)
+                case StringType                      => render(s"'${value}'")
+                case StandardType.PeriodType         => render(s"'${value}'")
+                case StandardType.ZoneIdType         => render(s"'${value}'")
+                case StandardType.LocalDateType      =>
+                  render(s"'${ISO_LOCAL_DATE.format(value.asInstanceOf[LocalDate])}'")
+                case BoolType                        => render(value)
+                case DayOfWeekType                   => render(s"'${value}'")
+                case FloatType                       => render(value)
+                case StandardType.DurationType       => render(s"'${value}'")
               }
             case None    => ()
           }
@@ -521,7 +521,7 @@ trait MysqlRenderModule extends MysqlSqlModule { self =>
       }
 
     /**
-    * Drops the initial Litaral(true) present at the start of every WHERE expressions by default 
+    * Drops the initial Litaral(true) present at the start of every WHERE expressions by default
     * and proceeds to the rest of Expr's.
     */
     private def renderWhereExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {

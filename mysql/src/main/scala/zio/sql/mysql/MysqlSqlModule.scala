@@ -2,10 +2,7 @@ package zio.sql.mysql
 
 import java.time._
 import java.sql.ResultSet
-import java.time.format.DateTimeFormatter
 import java.util.UUID
-
-import zio.schema.Schema
 import zio.sql.Sql
 
 trait MysqlSqlModule extends Sql { self =>
@@ -47,11 +44,4 @@ trait MysqlSqlModule extends Sql { self =>
     val Uuid        = Expr.FunctionCall0[UUID](FunctionDef[Any, UUID](FunctionName("uuid")))
     val Radians     = FunctionDef[Double, Double](FunctionName("radians"))
   }
-
-  implicit val localDateSchema =
-    Schema.primitive[LocalDate](zio.schema.StandardType.LocalDateType(DateTimeFormatter.ISO_DATE))
-
-  implicit val localDateTimeSchema =
-    Schema.primitive[LocalDateTime](zio.schema.StandardType.LocalDateTimeType(DateTimeFormatter.ISO_DATE_TIME))
-
 }

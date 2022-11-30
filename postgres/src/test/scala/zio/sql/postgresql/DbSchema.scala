@@ -1,85 +1,46 @@
 package zio.sql.postgresql
 
-import zio.sql.Jdbc
-
 import java.time.{ LocalDate, ZonedDateTime }
 import java.util.UUID
+import zio.schema.DeriveSchema
+import java.math.BigDecimal
 
-trait DbSchema extends Jdbc { self =>
-  import self.ColumnSet._
+trait DbSchema extends PostgresJdbcModule { self =>
 
-  object Persons {
+  object Cities {
+    case class City(id: Int, name: String, population: Int, area: Float, link: Option[String])
+    case class MetroSystem(id: Int, cityId: Int, name: String, dailyRidership: Int)
+    case class MetroLine(id: Int, systemId: Int, name: String, stationCount: Int, trackType: Int)
 
-    import ColumnSetAspect._
+    implicit val citySchema = DeriveSchema.gen[City]
 
-    val persons =
-      (uuid("id") ++ string("first_name") ++ string("last_name") ++ (localDate("dob") @@ nullable))
-        .table("persons")
+    val city                                       = defineTable[City]
+    val (cityId, cityName, population, area, link) = city.columns
 
-    val (personId, fName, lName, dob) = persons.columns
-  }
+    implicit val metroSystemSchema = DeriveSchema.gen[MetroSystem]
 
-  object Customers     {
-    case class Customer(
-      id: UUID,
-      fname: String,
-      lname: String,
-      verified: Boolean,
-      dateOfBirth: LocalDate,
-      created: String,
-      created2: ZonedDateTime
-    )
+    val metroSystem = defineTable[MetroSystem]
 
-    // https://github.com/zio/zio-sql/issues/320 Once Insert is supported, we can remove created_timestamp_string
-    val customers =
-      (uuid("Id") ++ localDate("Dob") ++ string("First_name") ++ string("Last_name") ++ boolean(
-        "Verified"
-      ) ++ string("Created_timestamp_string") ++ zonedDateTime("Created_timestamp"))
-        .table("Customers")
+    val (metroSystemId, cityIdFk, metroSystemName, dailyRidership) = metroSystem.columns
 
-    val (customerId, dob, fName, lName, verified, createdString, createdTimestamp) =
-      customers.columns
+    implicit val metroLineSchema = DeriveSchema.gen[MetroLine]
 
-    val ALL = customerId ++ fName ++ lName ++ verified ++ dob ++ createdString ++ createdTimestamp
-  }
-  object Orders        {
-    val orders = (uuid("id") ++ uuid("customer_id") ++ localDate("order_date")).table("orders")
+    val metroLine = defineTable[MetroLine]
 
-    val (orderId, fkCustomerId, orderDate) = orders.columns
-  }
-  object Products      {
-    val products =
-      (uuid("id") ++ string("name") ++ string("description") ++ string("image_url")).table("products")
-
-    val (productId, productName, description, imageURL) = products.columns
-  }
-  object ProductPrices {
-    val productPrices =
-      (uuid("product_id") ++ offsetDateTime("effective") ++ bigDecimal("price")).table("product_prices")
-
-    val (fkProductId, effective, price) = productPrices.columns
-  }
-
-  object OrderDetails {
-    val orderDetails =
-      (uuid("order_id") ++ uuid("product_id") ++ int("quantity") ++ bigDecimal("unit_price"))
-        .table(
-          "order_details"
-        )
-
-    val (orderDetailsOrderId, orderDetailsProductId, quantity, unitPrice) = orderDetails.columns
+    val (metroLineId, systemId, metroLineName, stationCount, trackType) = metroLine.columns
   }
 
   object DerivedTables {
-    import OrderDetails._
-    import Customers._
-    import Orders._
+    import OrdersSchema._
+    import CustomerSchema._
+    import OrderDetailsSchema._
 
     val orderDetailsDerived =
       select(orderDetailsOrderId, orderDetailsProductId, unitPrice).from(orderDetails).asTable("derived")
 
     val (derivedOrderId, derivedProductId, derivedUnitPrice) = orderDetailsDerived.columns
-    val orderDateDerivedTable                                = customers
+
+    val orderDateDerivedTable = customers
       .subselect(orderDate)
       .from(orders)
       .limit(1)
@@ -90,24 +51,64 @@ trait DbSchema extends Jdbc { self =>
     val orderDateDerived = orderDateDerivedTable.columns
   }
 
-  object Cities {
-    case class CityId(id: Int)
-    case class City(cityId: CityId, name: String, population: Int, area: Float, link: Option[String])
+  object CustomerSchema {
+    case class Customer(
+      id: UUID,
+      dob: LocalDate,
+      firstName: String,
+      lastName: String,
+      verified: Boolean,
+      createdTimestampString: String,
+      createdTimestamp: ZonedDateTime
+    )
 
-    import ColumnSet._
+    implicit val custommerSchema = DeriveSchema.gen[Customer]
 
-    val city = (int("id") ++ string("name") ++
-      int("population") ++ float("area") ++ string("link")).table("city")
+    val customers = defineTableSmart[Customer]
 
-    val (cityId, cityName, population, area, link) = city.columns
+    val (customerId, dob, fName, lName, verified, createdString, createdTimestamp) =
+      customers.columns
 
-    val metroSystem = (int("id") ++ int("city_id") ++ string("name") ++ int("daily_ridership")).table("metro_system")
+    val ALL = customerId ++ dob ++ fName ++ lName ++ verified ++ createdString ++ createdTimestamp
+  }
 
-    val (metroSystemId, cityIdFk, metroSystemName, dailyRidership) = metroSystem.columns
+  object OrdersSchema {
+    case class Orders(id: UUID, customerId: UUID, orderDate: LocalDate)
 
-    val metroLine =
-      (int("id") ++ int("system_id") ++ string("name") ++ int("station_count") ++ int("track_type")).table("metro_line")
+    implicit val orderSchema = DeriveSchema.gen[Orders]
 
-    val (metroLineId, systemId, metroLineName, stationCount, trackType) = metroLine.columns
+    val orders = defineTableSmart[Orders]
+
+    val (orderId, fkCustomerId, orderDate) = orders.columns
+  }
+
+  object ProductSchema {
+    case class Products(id: UUID, name: String, description: String, imageUrl: String)
+
+    implicit val productSchema = DeriveSchema.gen[Products]
+
+    val products = defineTableSmart[Products]
+
+    val (productId, productName, description, imageURL) = products.columns
+  }
+
+  object OrderDetailsSchema {
+    case class OrderDetails(orderId: UUID, productId: UUID, quantity: Int, unitPrice: BigDecimal)
+
+    implicit val orderDetailsSchema = DeriveSchema.gen[OrderDetails]
+
+    val orderDetails = defineTableSmart[OrderDetails]
+
+    val (orderDetailsOrderId, orderDetailsProductId, quantity, unitPrice) = orderDetails.columns
+  }
+
+  object PersonsSchema {
+    case class Persons(id: UUID, name: Option[String], birthDate: Option[LocalDate])
+
+    implicit val personsSchema = DeriveSchema.gen[Persons]
+
+    val persons = defineTableSmart[Persons]
+
+    val (personsId, personsName, birthDate) = persons.columns
   }
 }
