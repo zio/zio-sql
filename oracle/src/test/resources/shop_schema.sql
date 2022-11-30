@@ -58,9 +58,7 @@ create table all_types
     short integer not null,
     string clob not null,
     uuid varchar(36) not null,
-    zoneddatetime timestamp with time zone not null,
-    yearmonth interval year(4) to month not null,
-    duration interval day(9) to second(9) not null
+    zoneddatetime timestamp with time zone not null
 );
 
 insert all
