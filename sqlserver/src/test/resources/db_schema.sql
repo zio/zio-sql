@@ -7,6 +7,12 @@ create table customers
     dob date not null
 );
 
+create table persons
+(
+    name varchar(255) not null primary key,
+    age int not null
+);
+
 create table orders
 (
     id varchar(36) not null primary key,
@@ -57,9 +63,7 @@ create table all_types(
     short smallint not null,
     string varchar(max) not null,
     uuid varchar(36) not null,
-    zoneddatetime datetimeoffset not null,
-    nchar_ nchar(1) not null,
-    nvarchar_ nvarchar(30) not null
+    zoneddatetime datetimeoffset not null
 );
 
 insert into customers

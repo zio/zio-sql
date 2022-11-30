@@ -9,7 +9,7 @@ object TransactionSpec extends PostgresRunnableSpec with DbSchema {
 
   override val autoCommit = false
 
-  import Customers._
+  import CustomerSchema._
 
   override def specLayered = suite("Postgres module")(
     test("Transaction is returning the last value") {
