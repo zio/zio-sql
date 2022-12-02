@@ -1,17 +1,18 @@
 package zio.sql.sqlserver
 
-import zio._
-import zio.test.Assertion._
-import zio.test.TestAspect.{ retries, samples, sequential, shrinks }
-import zio.test._
-
+import java.math.{ BigDecimal, RoundingMode }
 import java.time._
 import java.time.temporal.ChronoUnit
 import java.util.UUID
-import scala.language.postfixOps
-import zio.schema.DeriveSchema
 
-import java.math.{ BigDecimal, RoundingMode }
+import com.github.ghik.silencer.silent
+import zio._
+import zio.schema.DeriveSchema
+import zio.test._
+import zio.test.Assertion._
+import zio.test.TestAspect.{ retries, samples, sequential, shrinks }
+
+import scala.language.postfixOps
 
 object SqlServerModuleSpec extends SqlServerRunnableSpec {
 
@@ -28,6 +29,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
 
   implicit val customerRow = DeriveSchema.gen[CustomerRow]
 
+  @silent
   private def customerSelectJoseAssertion[F: Features.IsNotAggregated](
     condition: Expr[F, customers.TableType, Boolean]
   ) = {
