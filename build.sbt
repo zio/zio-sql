@@ -75,6 +75,7 @@ lazy val coreJVM = core.jvm.dependsOn(macros)
 
 lazy val macros = project
   .in(file("macros"))
+  .settings(stdSettings("zio-sql-macros"))
   .settings(
     libraryDependencies ++= Seq(
       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
