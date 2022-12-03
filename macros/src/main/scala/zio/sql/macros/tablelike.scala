@@ -8,6 +8,7 @@ import zio.Chunk
 sealed trait TableSchema[T]
 
 object TableSchema {
+  import scala.language.experimental.macros
 
   final case class Compatible[T]() extends TableSchema[T]
 
