@@ -1,4 +1,4 @@
-addSbtPlugin("org.scala-js"                      % "sbt-scalajs"               % "1.7.0")
+addSbtPlugin("org.scala-js"                      % "sbt-scalajs"               % "1.12.0")
 addSbtPlugin("org.portable-scala"                % "sbt-scalajs-crossproject"  % "1.2.0")
 addSbtPlugin("org.scalameta"                     % "sbt-scalafmt"              % "2.5.0")
 addSbtPlugin("pl.project13.scala"                % "sbt-jmh"                   % "0.4.3")
@@ -12,6 +12,6 @@ addSbtPlugin("com.github.cb372"                  % "sbt-explicit-dependencies" %
 addSbtPlugin("com.thoughtworks.sbt-api-mappings" % "sbt-api-mappings"          % "3.0.2")
 addSbtPlugin("ch.epfl.scala"                     % "sbt-scalafix"              % "0.10.1")
 addSbtPlugin("io.github.davidgregory084"         % "sbt-tpolecat"              % "0.4.1")
-addSbtPlugin("dev.zio"                           % "zio-sbt-website"           % "0.0.0+84-6fd7d64e-SNAPSHOT")
+addSbtPlugin("dev.zio"                           % "zio-sbt-website"           % "0.1.0")
 
-resolvers += Resolver.sonatypeRepo("public")
+resolvers ++= Resolver.sonatypeOssRepos("public")

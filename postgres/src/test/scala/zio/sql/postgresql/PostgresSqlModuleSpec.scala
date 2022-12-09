@@ -1,22 +1,24 @@
 package zio.sql.postgresql
 
-import zio._
-import zio.test.Assertion._
-import zio.test.TestAspect._
-import zio.test._
-
+import java.math.BigDecimal
 import java.time._
 import java.util.UUID
-import scala.language.postfixOps
+
+import com.github.ghik.silencer.silent
+import zio._
 import zio.schema._
-import zio.schema.TypeId
-import java.math.BigDecimal
+import zio.test._
+import zio.test.Assertion._
+import zio.test.TestAspect._
+
+import scala.language.postfixOps
 
 object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
 
   import AggregationDef._
   import CustomerSchema._
 
+  @silent
   private def customerSelectJoseAssertion[F: Features.IsNotAggregated](
     condition: Expr[F, customers.TableType, Boolean]
   ) = {

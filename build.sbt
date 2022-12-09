@@ -64,7 +64,7 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
       "dev.zio" %% "zio-test-sbt"          % zioVersion % Test
     ),
     dependencyOverrides += "dev.zio" %% "zio" % zioVersion,
-    resolvers += Resolver.sonatypeRepo("snapshots")
+    resolvers ++= Resolver.sonatypeOssRepos("snapshots")
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
 
@@ -116,7 +116,7 @@ lazy val driver = project
       "dev.zio" %% "zio-test-sbt"          % zioVersion % Test
     ),
     dependencyOverrides += "dev.zio" %% "zio" % zioVersion,
-    resolvers += Resolver.sonatypeRepo("snapshots")
+    resolvers ++= Resolver.sonatypeOssRepos("snapshots")
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
 

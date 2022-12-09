@@ -2,6 +2,8 @@ package zio.sql
 
 import scala.annotation.implicitNotFound
 
+import com.github.ghik.silencer.silent
+
 trait FeaturesModule {
 
   type :||:[A, B] = Features.Union[A, B]
@@ -16,6 +18,8 @@ trait FeaturesModule {
 
     sealed trait IsNotAggregated[A]
     object IsNotAggregated {
+
+      @silent
       implicit def UnionIsNotAgregated[A: IsNotAggregated, B: IsNotAggregated]: IsNotAggregated[Union[A, B]] =
         new IsNotAggregated[Union[A, B]] {}
 
@@ -41,6 +45,7 @@ trait FeaturesModule {
 
       implicit val LiteralIsAggregated: IsFullyAggregated[Literal] = new IsFullyAggregated[Literal] {}
 
+      @silent
       implicit def UnionIsAggregated[A: IsFullyAggregated, B: IsFullyAggregated]: IsFullyAggregated[Union[A, B]] =
         new IsFullyAggregated[Union[A, B]] {}
     }
