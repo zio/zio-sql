@@ -179,7 +179,7 @@ object Examples extends App with PostgresJdbcModule {
   }
 
   object OrderDetails {
-    case class OrderDetail(orderId: Int, productId: Int, quantity: Double, unitPrice: Double)
+    case class OrderDetail(orderId: java.util.UUID, productId: Int, quantity: Double, unitPrice: Double)
 
     implicit val orderDetailSchema = DeriveSchema.gen[OrderDetail]
 
