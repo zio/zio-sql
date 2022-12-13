@@ -86,10 +86,18 @@ lazy val macros = project
 lazy val docs = project
   .in(file("zio-sql-docs"))
   .settings(
-    publish / skip := true,
-    moduleName     := "zio-sql-docs",
+    publish / skip    := true,
+    moduleName        := "zio-sql-docs",
     scalacOptions -= "-Yno-imports",
-    scalacOptions -= "-Xfatal-warnings"
+    scalacOptions -= "-Xfatal-warnings",
+    projectName       := "ZIO SQL",
+    badgeInfo         := Some(
+      BadgeInfo(
+        artifact = "zio-sql_2.12",
+        projectStage = ProjectStage.ProductionReady
+      )
+    ),
+    docsPublishBranch := "master"
   )
   .dependsOn(postgres)
   .enablePlugins(WebsitePlugin)
