@@ -461,4 +461,91 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
         def typeTag = implicitly[TypeTag[Value]]
       }
   }
+
+  object StoredProcs {
+
+    sealed trait InvariantStoredProc[F, -A, B] extends Expr[F, A, B] {
+      def handler: StoredProcHandler[B]
+    }
+    sealed trait StoredProcHandler[A] {
+      def handle = ??? // probably need some special casing here for stored procs returning a single value vs a table
+    }
+    object StoredProcHandler          {
+      implicit def basicTypes[A: TypeTag]: StoredProcHandler[A]     = new StoredProcHandler[A] {}
+      implicit def tableTypes[A <: ColumnSet]: StoredProcHandler[A] = new StoredProcHandler[A] {}
+    }
+
+    sealed case class StoredProcDef[-A, +B: StoredProcHandler](name: StoredProcName) { self =>
+
+      def narrow[C](implicit ev: C <:< A): StoredProcDef[C, B] = {
+        val _ = ev
+        self.asInstanceOf[StoredProcDef[C, B]]
+      }
+
+      def apply[B1 >: B]()(implicit
+        ev: Any <:< A,
+        typeTag: StoredProcHandler[B1]
+      ): Expr[Features.StoredProc0, Any, B1] =
+        StoredProcCall0(self.asInstanceOf[StoredProcDef[Any, B1]])
+
+      def apply[F, Source, B1 >: B](param1: Expr[F, Source, A])(implicit
+        typeTag: StoredProcHandler[B1]
+      ): Expr[F, Source, B1] =
+        StoredProcCall1(param1, self: StoredProcDef[A, B1])
+
+      def apply[F1, F2, Source, P1, P2, B1 >: B](param1: Expr[F1, Source, P1], param2: Expr[F2, Source, P2])(implicit
+        ev: (P1, P2) <:< A,
+        typeTag: StoredProcHandler[B1]
+      ): Expr[F1 :||: F2, Source, B1] =
+        StoredProcCall2(param1, param2, self.narrow[(P1, P2)]: StoredProcDef[(P1, P2), B1])
+      // ...
+    }
+
+    sealed case class StoredProcCall0[Z: StoredProcHandler](storedProc: StoredProcDef[Any, Z])
+        extends InvariantStoredProc[Features.StoredProc0, Any, Z] {
+      def handler: StoredProcHandler[Z] = implicitly[StoredProcHandler[Z]]
+    }
+
+    sealed case class StoredProcCall1[F, A, B, Z: StoredProcHandler](
+      param: Expr[F, A, B],
+      storedProc: StoredProcDef[B, Z]
+    ) extends InvariantStoredProc[F, A, Z] {
+      def handler: StoredProcHandler[Z] = implicitly[StoredProcHandler[Z]]
+    }
+
+    sealed case class StoredProcCall2[F1, F2, A, B, C, Z: StoredProcHandler](
+      param1: Expr[F1, A, B],
+      param2: Expr[F2, A, C],
+      storedProc: StoredProcDef[(B, C), Z]
+    ) extends InvariantStoredProc[Features.Union[F1, F2], A, Z] {
+      def handler: StoredProcHandler[Z] = implicitly[StoredProcHandler[Z]]
+    }
+  }
+}
+
+object test extends Sql { self =>
+  import self.ColumnSet._
+  import self.StoredProcs._
+  import zio.schema._
+
+  override def renderDelete(delete: self.Delete[_]): String               = ???
+  override def renderRead(read: self.Read[_]): String                     = ???
+  override def renderUpdate(update: self.Update[_]): String               = ???
+  override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = ???
+
+  val userTable =
+    (string("user_id") ++ localDate("dob") ++ string("first_name") ++ string("last_name")).table("users")
+
+  val (userId, dob, fName, lName) = userTable.columns
+
+  val storedProcSchema = (string("a column") ++ int("another column"))
+  val tableReturn      = StoredProcDef[(Int, String), storedProcSchema.type](
+    StoredProcName("doMagic")
+  )
+
+  tableReturn(1, "hello")
+
+  val myStoredBasic = StoredProcDef[(Int, Int), Int](
+    StoredProcName("doMagic")
+  )
 }
