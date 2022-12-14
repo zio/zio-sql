@@ -1,7 +1,14 @@
 const sidebars = {
   sidebar: [
-    "index",
-    "deep-dive"
+    {
+      type: "category",
+      label: "ZIO SQL",
+      collapsed: false,
+      link: { type: "doc", id: "index" },
+      items: [
+        "deep-dive"
+      ]
+    }
   ]
 };
 
