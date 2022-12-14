@@ -12,6 +12,6 @@ addSbtPlugin("com.github.cb372"                  % "sbt-explicit-dependencies" %
 addSbtPlugin("com.thoughtworks.sbt-api-mappings" % "sbt-api-mappings"          % "3.0.2")
 addSbtPlugin("ch.epfl.scala"                     % "sbt-scalafix"              % "0.10.1")
 addSbtPlugin("io.github.davidgregory084"         % "sbt-tpolecat"              % "0.4.1")
-addSbtPlugin("dev.zio"                           % "zio-sbt-website"           % "0.1.5+10-49adf3d7-SNAPSHOT")
+addSbtPlugin("dev.zio"                           % "zio-sbt-website"           % "0.1.5+13-34a3dfc4-SNAPSHOT")
 
 resolvers ++= Resolver.sonatypeOssRepos("public")
