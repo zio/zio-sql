@@ -5,6 +5,7 @@ import com.github.ghik.silencer.silent
 import java.time._
 import scala.language.implicitConversions
 import java.math.BigDecimal
+import scala.annotation.implicitNotFound
 
 trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
   self: SelectModule with TableModule =>
@@ -38,25 +39,37 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     )(implicit ev: B <:< Boolean): Expr[F :||: F2, A1, Boolean] =
       Expr.Binary(self.widen[Boolean], that, BinaryOp.OrBool)
 
-    def ===[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
+    def ===[F2, A1 <: A, B1 >: B, B2](that: Expr[F2, A1, B2])(implicit
+      eql: ComparableTypes[B1, B2]
+    ): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.Equals)
 
-    def <>[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
+    def <>[F2, A1 <: A, B1 >: B, B2](that: Expr[F2, A1, B2])(implicit
+      eql: ComparableTypes[B1, B2]
+    ): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.NotEqual)
 
-    def >[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
+    def >[F2, A1 <: A, B1 >: B, B2](that: Expr[F2, A1, B2])(implicit
+      eql: ComparableTypes[B1, B2]
+    ): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.GreaterThan)
 
-    def <[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
+    def <[F2, A1 <: A, B1 >: B, B2](that: Expr[F2, A1, B2])(implicit
+      eql: ComparableTypes[B1, B2]
+    ): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.LessThan)
 
-    def >=[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
+    def >=[F2, A1 <: A, B1 >: B, B2](that: Expr[F2, A1, B2])(implicit
+      eql: ComparableTypes[B1, B2]
+    ): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.GreaterThanEqual)
 
-    def <=[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
+    def <=[F2, A1 <: A, B1 >: B, B2](that: Expr[F2, A1, B2])(implicit
+      eql: ComparableTypes[B1, B2]
+    ): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.LessThanEqual)
 
-    def like[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1]): Expr[F :||: F2, A1, Boolean] =
+    def like[F2, A1 <: A](that: Expr[F2, A1, String])(implicit ev: B <:< String): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.Like)
 
     def &[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsIntegral[B1]): Expr[F :||: F2, A1, B1] =
@@ -460,5 +473,26 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
 
         def typeTag = implicitly[TypeTag[Value]]
       }
+  }
+
+  @implicitNotFound(
+    "You cannot compare values of different types ${A} and ${B}. " +
+      "As those are unrelated types, this query would blow up at database level."
+  )
+  sealed trait ComparableTypes[A, B]
+
+  object ComparableTypes extends ComparableTypesLowPriority {
+    implicit final def comparableSubtype1[A <: B, B]: ComparableTypes[A, B] = new ComparableTypes[A, B] {}
+
+    implicit final def dateIsComprable[A, B](implicit ev1: IsDate[A], ev2: IsDate[B]): ComparableTypes[A, B] =
+      new ComparableTypes[A, B] {}
+    implicit final def numbericIsComparable[A, B](implicit
+      ev1: IsNumeric[A],
+      ev2: IsNumeric[B]
+    ): ComparableTypes[A, B] = new ComparableTypes[A, B] {}
+  }
+
+  sealed trait ComparableTypesLowPriority {
+    implicit final def comparableSubtype2[A, B <: A]: ComparableTypes[A, B] = new ComparableTypes[A, B] {}
   }
 }

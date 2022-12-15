@@ -47,7 +47,7 @@ object GroupByExamples extends App with PostgresJdbcModule {
   select(Sum(price))
     .from(productTable)
     .groupBy(name)
-    .having(name > 10)
+    .having(name > "z")
 
   select(price)
     .from(productTable)
