@@ -4,6 +4,7 @@ import zio.test.TestAspect._
 import zio.test._
 
 import java.math.{ BigDecimal, RoundingMode }
+import java.util.UUID
 
 object AgregationSpec extends PostgresRunnableSpec with DbSchema {
 
@@ -16,7 +17,7 @@ object AgregationSpec extends PostgresRunnableSpec with DbSchema {
 
         val query = select((SumDec(unitPrice) as "totalAmount"), (SumInt(quantity) as "soldQuantity"))
           .from(orderDetails)
-          .where(orderDetailsProductId === "7368ABF4-AED2-421F-B426-1725DE756895")
+          .where(orderDetailsProductId === UUID.fromString("7368ABF4-AED2-421F-B426-1725DE756895"))
 
         val result = execute(query).runCollect.map(_.toList).head
         for {
@@ -26,7 +27,7 @@ object AgregationSpec extends PostgresRunnableSpec with DbSchema {
       test("Can aggregate  colums  of typ  money () AvgDec(BigDdecimal colum)") {
         val query = select((AvgDec(unitPrice) as "AverageAmount"))
           .from(orderDetails)
-          .where(orderDetailsProductId === "7368ABF4-AED2-421F-B426-1725DE756895")
+          .where(orderDetailsProductId === UUID.fromString("7368ABF4-AED2-421F-B426-1725DE756895"))
 
         val result = execute(query).runCollect.map(_.toList).head
         for {

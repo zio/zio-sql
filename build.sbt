@@ -86,10 +86,34 @@ lazy val macros = project
 lazy val docs = project
   .in(file("zio-sql-docs"))
   .settings(
-    publish / skip := true,
-    moduleName     := "zio-sql-docs",
+    publish / skip     := true,
+    moduleName         := "zio-sql-docs",
     scalacOptions -= "-Yno-imports",
-    scalacOptions -= "-Xfatal-warnings"
+    scalacOptions -= "-Xfatal-warnings",
+    projectName        := "ZIO SQL",
+    badgeInfo          := Some(
+      BadgeInfo(
+        artifact = "zio-sql_2.12",
+        projectStage = ProjectStage.ProductionReady
+      )
+    ),
+    docsPublishBranch  := "master",
+    readmeContribution := readmeContribution.value +
+      """|### TL;DR
+         |Prerequisites (installed):
+         |
+         || Technology | Version |  
+         ||------------|---------|
+         || sbt        | 1.4.3   |
+         || Docker     | 3.1     |
+         | 
+         |To set up the project follow below steps:
+         |1. Fork the repository.
+         |2. Setup the upstream (Extended instructions can be followed [here](https://docs.github.com/en/free-pro-team@latest/github/getting-started-with-github/fork-a-repo)).
+         |3. Make sure you have installed `sbt` and `Docker`.
+         |4. In project directory execute `sbt test`.
+         |5. Pick up an issue & you are ready to go!
+         |""".stripMargin
   )
   .dependsOn(postgres)
   .enablePlugins(WebsitePlugin)
