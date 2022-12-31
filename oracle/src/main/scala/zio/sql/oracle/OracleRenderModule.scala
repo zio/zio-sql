@@ -182,15 +182,7 @@ trait OracleRenderModule extends OracleSqlModule { self =>
       }
     case Expr.In(value, set)                                                                  =>
       buildExpr(value, builder)
-      val _ = builder.append(" IN ")
       buildReadString(set, builder)
-      if (set.isInstanceOf[Read.Subselect[_, _, _, _, _, _]]) {
-        val _ = builder.append("(")
-        buildReadString(set, builder)
-        val _ = builder.append(")")
-      } else {
-        buildReadString(set, builder)
-      }
     case Expr.Literal(true)                                                                   =>
       val _ = builder.append("1 = 1")
     case Expr.Literal(false)                                                                  =>
