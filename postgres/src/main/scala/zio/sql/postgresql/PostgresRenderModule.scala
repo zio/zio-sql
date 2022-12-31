@@ -260,7 +260,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
         }
         e.typeTag match {
           case TypeTag.TBigDecimal => render("::numeric")
-          case _ => ()
+          case _                   => ()
         }
       case Expr.Unary(base, op)                                                         =>
         render(" ", op.symbol)
