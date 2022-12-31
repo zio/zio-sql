@@ -258,9 +258,9 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
             render(quoted(tableName), ".", quoted(columnName))
           case _                                        => ()
         }
-        if (e.typeTag.isInstanceOf[TypeTag.TBigDecimal.type]) {
-          // type money needs to be casted
-          render("::numeric")
+        e.typeTag match {
+          case TypeTag.TBigDecimal => render("::numeric")
+          case _ => ()
         }
       case Expr.Unary(base, op)                                                         =>
         render(" ", op.symbol)
