@@ -6,8 +6,9 @@ import java.time._
 import scala.language.implicitConversions
 import java.math.BigDecimal
 import scala.annotation.implicitNotFound
+import zio.sql.Features._
 
-trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
+trait ExprModule extends NewtypesModule with OpsModule {
   self: SelectModule with TableModule =>
 
   /**

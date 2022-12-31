@@ -10,6 +10,7 @@ import zio.schema._
 import zio.test._
 import zio.test.Assertion._
 import zio.test.TestAspect._
+import zio.sql.Features._
 
 import scala.language.postfixOps
 
@@ -19,7 +20,7 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
   import CustomerSchema._
 
   @silent
-  private def customerSelectJoseAssertion[F: Features.IsNotAggregated](
+  private def customerSelectJoseAssertion[F: IsNotAggregated](
     condition: Expr[F, customers.TableType, Boolean]
   ) = {
     case class Customer(id: UUID, fname: String, lname: String, verified: Boolean, dateOfBirth: LocalDate)
@@ -479,10 +480,10 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
 
       val query = insertInto(customers)(
         customerId,
+        dob,
         fName,
         lName,
         verified,
-        dob,
         createdString,
         createdTimestamp
       ).values(data)
