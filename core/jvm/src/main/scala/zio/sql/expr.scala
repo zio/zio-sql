@@ -8,7 +8,7 @@ import java.math.BigDecimal
 import scala.annotation.implicitNotFound
 
 trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
-  module: SelectModule with TableModule =>
+  self: SelectModule with TableModule =>
 
   /**
    * Models a function `A => B`.
@@ -124,7 +124,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
   }
 
   object Expr {
-    implicit val subqueryToExpr = module.Read.Subselect.subselectToExpr _
+    implicit val subqueryToExpr = self.Read.Subselect.subselectToExpr _
 
     sealed trait InvariantExpr[F, -A, B] extends Expr[F, A, B] {
       def typeTag: TypeTag[B]

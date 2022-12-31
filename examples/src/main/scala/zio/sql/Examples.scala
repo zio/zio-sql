@@ -12,21 +12,6 @@ object Examples extends App with PostgresJdbcModule {
   import this.Orders._
   import this.Users._
 
-  val x = select(1)
-
-  val subselectSurname = select(lName).from(users).where(age > 18)
-  val subselectAge     = select(age).from(users).where(age > 18)
-
-  // select(fName, lName).from(users).where(lName in lit("Jaro", "Peter"))
-
-  // select(fName, lName).from(users).where(lName in List("Jaro", "Peter"))
-  select(fName, lName).from(users).where(lName in List("Jaro", "Peter"))
-
-  // select(fName, lName).from(users).where(lName in Read.lit("Jaro", "Peter"))
-
-  select(fName).from(users).where(lName in subselectSurname)
-  select(fName).from(users).where(age in subselectAge)
-
   // SELECT "users"."first_name", "users"."last_name" FROM "users"
   val basicSelect =
     select(fName, lName).from(users)
@@ -108,6 +93,15 @@ object Examples extends App with PostgresJdbcModule {
   // SELECT "users"."first_name", "users"."last_name" FROM "users" WHERE true and "users"."first_name" is not null
   val withPropertyOp = select(fName, lName).from(users).where(fName isNotNull)
   println(renderRead(withPropertyOp))
+
+  // IN
+  val subselectSurname = select(lName).from(users).where(age > 18)
+  val subselectAge     = select(age).from(users).where(age > 18)
+
+  select(fName, lName).from(users).where(lName in List("Jaro", "Peter"))
+
+  select(fName).from(users).where(lName in subselectSurname)
+  select(fName).from(users).where(age in subselectAge)
 
   /*
   insert tuples
