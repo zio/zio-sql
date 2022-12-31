@@ -2,12 +2,12 @@ package zio.sql.mysql
 
 import java.time._
 import java.util.UUID
-
 import zio._
 import zio.schema._
 import zio.test._
 import zio.test.Assertion._
 import zio.test.TestAspect._
+import java.math.BigDecimal
 
 import scala.language.postfixOps
 
@@ -29,7 +29,50 @@ object MysqlModuleSpec extends MysqlRunnableSpec {
 
   val (orderId, fkCustomerId, orderDate, deletedAt) = orders.columns
 
+  case class ProductPrice(productId: UUID, effective: LocalDate, price: BigDecimal)
+  implicit val productPriceSchema = DeriveSchema.gen[ProductPrice]
+
+  val productPrices = defineTableSmart[ProductPrice]
+
+  val (productPricesOrderId, effectiveDate, productPrice) = productPrices.columns
+
+  case class OrderDetails(orderId: UUID, productId: UUID, quantity: Int, unitPrice: BigDecimal)
+
+  implicit val orderDetailsSchema = DeriveSchema.gen[OrderDetails]
+
+  val orderDetails = defineTableSmart[OrderDetails]
+
+  val (orderDetailsOrderId, orderDetailsProductId, quantity, unitPrice) = orderDetails.columns
+
   override def specLayered = suite("Mysql module")(
+    test("`in` clause sequence") {
+      val query = select(productPricesOrderId).from(productPrices).where(productPrice in List(10, 20, 74))
+
+      for {
+        result <- execute(query).runCollect
+      } yield assertTrue(
+        result == Chunk(
+          UUID.fromString("7368abf4-aed2-421f-b426-1725de756895"),
+          UUID.fromString("4c770002-4c8f-455a-96ff-36a8186d5290"),
+          UUID.fromString("105a2701-ef93-4e25-81ab-8952cc7d9daa")
+        )
+      )
+    },
+    test("`in` clause from subquery") {
+      val higherPrices = select(productPrice).from(productPrices).where(productPrice > 74)
+
+      val query = select(orderDetailsOrderId).from(orderDetails).where(unitPrice in higherPrices)
+
+      for {
+        result <- execute(query).runCollect
+      } yield assertTrue(
+        result == Chunk(
+          UUID.fromString("9473a0bc-396a-4936-96b0-3eea922af36b"),
+          UUID.fromString("fd0fa8d4-e1a0-4369-be07-945450db5d36"),
+          UUID.fromString("763a7c39-833f-4ee8-9939-e80dfdbfc0fc")
+        )
+      )
+    },
     test("Can select from single table") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 

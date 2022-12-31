@@ -432,7 +432,9 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
         ] { type ColumnsOut = self.ColumnsOut }, Any](self, name)
     }
 
-    def lit[B: TypeTag](values: B*): Read[B] = Literal(values.toSeq)
+    implicit def seqToLiteral[B](values: Seq[B])(implicit typeTag: TypeTag[B]): Read[B] =
+      Read.Literal[B](values)
+
   }
 
   /**
