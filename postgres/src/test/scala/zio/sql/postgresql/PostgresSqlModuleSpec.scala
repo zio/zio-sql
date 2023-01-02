@@ -429,7 +429,7 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
 
       // example - first one compiles, second one does not
       insertInto(persons)(personsId).values(UUID.randomUUID())
-      //insertInto(persons)(personsName).values((Some("UUID.randomUUID()")))
+      // insertInto(persons)(personsName).values((Some("UUID.randomUUID()")))
 
       for {
         _       <- execute(insertSome)
@@ -683,13 +683,13 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
       } yield assertTrue(result == expected)
 
     },
-   test("update rows") {
-     import PersonsSchema._
+    test("update rows") {
+      import PersonsSchema._
 
-     // TODO support here also Some and None
-     for {
-       result <- execute(update(persons).set(personsName, Option("Charlie")).where(personsName === Option("Murray")))
-     } yield assertTrue(result == 1)
-   }
+      // TODO support here also Some and None
+      for {
+        result <- execute(update(persons).set(personsName, Option("Charlie")).where(personsName === Option("Murray")))
+      } yield assertTrue(result == 1)
+    }
   ) @@ sequential
 }

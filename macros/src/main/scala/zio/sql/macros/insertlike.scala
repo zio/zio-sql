@@ -10,17 +10,17 @@ sealed trait InsertLike[F, ColsRepr, AllColumnIdentities, Z]
     1. We are inserting to all required (non optional) columns from table
     2. Types and order of inserting values match the columns
     3. Macro does not handle the case when we insert columns from different table. That is handled before we call macro by Insert.scala
-  */  
+  */
 object InsertLike {
 
   final case class CanBeInserted[F, ColsRepr, AllColumnIdentities, Z]()
       extends InsertLike[F, ColsRepr, AllColumnIdentities, Z]
 
   implicit def createInsertLike[
-      F,
-      ColsRepr,
-      AllColumnIdentities,
-      Z
+    F,
+    ColsRepr,
+    AllColumnIdentities,
+    Z
   ]: InsertLike[
     F,
     ColsRepr,
@@ -29,51 +29,46 @@ object InsertLike {
   ] = macro createInsertLikeImpl[F, ColsRepr, AllColumnIdentities, Z]
 
   def createInsertLikeImpl[
-      F: c.WeakTypeTag,
-      ColsRepr: c.WeakTypeTag,
-      AllColumnIdentities: c.WeakTypeTag,
-      Z: c.WeakTypeTag
+    F: c.WeakTypeTag,
+    ColsRepr: c.WeakTypeTag,
+    AllColumnIdentities: c.WeakTypeTag,
+    Z: c.WeakTypeTag
   ](
-      c: blackbox.Context
+    c: blackbox.Context
   ): c.Expr[InsertLike[F, ColsRepr, AllColumnIdentities, Z]] = {
     import c.universe._
 
-    val featuresType = weakTypeOf[F]
+    val featuresType      = weakTypeOf[F]
     val allIdentitiesType = weakTypeOf[AllColumnIdentities]
 
-    val valuesType = weakTypeOf[Z]    
+    val valuesType   = weakTypeOf[Z]
     val colsReprType = weakTypeOf[ColsRepr]
 
     def splitIntersection(t: Type): List[(Type, Type)] =
       t.dealias match {
-        case t: RefinedType =>
+        case t: RefinedType                                              =>
           t.parents.flatMap(s => splitIntersection(s))
         case TypeRef(_, sym, _) if sym.info.isInstanceOf[RefinedTypeApi] =>
           splitIntersection(sym.info)
-        case t: TypeRef => {
+        case t: TypeRef                                                  =>
           extractHead(t.args.headOption)
             .flatMap(h => extractHead(t.args.tail.headOption).map(t => (h.dealias -> t.dealias)))
-        }
-        case _ => Nil
+        case _                                                           => Nil
       }
 
-    def extractHead(headOption : Option[Type]): List[Type] =  headOption match {
-        case Some(value) => List(value)
-        case None        => Nil
+    def extractHead(headOption: Option[Type]): List[Type] = headOption match {
+      case Some(value) => List(value)
+      case None        => Nil
     }
 
     def extractSingletons(f: Type): List[Type] =
       f.dealias match {
-        case TypeRef(_, typeSymbol, args) 
-            if typeSymbol == symbolOf[zio.sql.Features.Source[_, _]] => {
-                List(args.head.dealias)
-            }
-        case TypeRef(_, typeSymbol, args) 
-            if typeSymbol == symbolOf[zio.sql.Features.Union[_, _]] => {
-                args.flatMap(f => extractSingletons(f))
-            }
-        case _ => 
-           c.abort(
+        case TypeRef(_, typeSymbol, args) if typeSymbol == symbolOf[zio.sql.Features.Source[_, _]] =>
+          List(args.head.dealias)
+        case TypeRef(_, typeSymbol, args) if typeSymbol == symbolOf[zio.sql.Features.Union[_, _]]  =>
+          args.flatMap(f => extractSingletons(f))
+        case _                                                                                     =>
+          c.abort(
             c.enclosingPosition,
             s"You can insert only to source columns."
           )
@@ -83,46 +78,45 @@ object InsertLike {
       colsRepr.dealias match {
         case TypeRef(_, sym, args) if sym == symbolOf[Tuple2[_, _]] =>
           args.flatMap(a => flatColsRepr(a))
-        case TypeRef(_, sym, _) if sym == symbolOf[Unit] => Nil
-        case t @ TypeRef(pre, sym, args) if sym == symbolOf[Option[_]] => {
+        case TypeRef(_, sym, _) if sym == symbolOf[Unit]            => Nil
+        case TypeRef(pre, sym, args) if sym == symbolOf[Option[_]]  =>
           // to avoid mismatch between Option]scala.predef.String] vs Option[java.lang.String]
           List(internal.typeRef(pre, sym, args.map(_.dealias)))
-        }
-        case t: TypeRef                                 => List(t.dealias)
-        case _ => Nil
+        case t: TypeRef                                             => List(t.dealias)
+        case _                                                      => Nil
       }
 
     def extractValueTypes(toInsert: Type) =
       if (toInsert.typeSymbol.asClass.isCaseClass) {
         toInsert.dealias match {
           // for case classes
-          case TypeRef(_, _, types) if types == Nil =>
+          case TypeRef(_, _, types) if types == Nil                  =>
             toInsert.decls.sorted.collect {
               case p: TermSymbol if p.isCaseAccessor && !p.isMethod =>
                 p.typeSignature match {
-                  case t @ TypeRef(pre, sym, args) if optionOrSome.contains(sym) =>            
+                  case TypeRef(pre, sym, args) if optionOrSome.contains(sym) =>
                     // dealias inner type like Option]scala.predef.String] vs Option[java.lang.String]
                     internal.typeRef(pre, sym, args.map(_.dealias))
-                  case x => x.dealias
+                  case x                                                     => x.dealias
                 }
             }
 
           // for single options like Some("x")
-          case TypeRef(pre, sym, args) if optionOrSome.contains(sym) => {
+          case TypeRef(pre, sym, args) if optionOrSome.contains(sym) =>
             // maps Some[_] to Option[_], dealias inner type
             List(internal.typeRef(pre, symbolOf[Option[_]], args.map(_.dealias)))
-          }
           // for tuples
-          case TypeRef(_, sym, types) => {
-            types.map(t => t match {
-              case t @ TypeRef(pre, sym, args) if optionOrSome.contains(sym) =>            
-                // maps Some[_] to Option[_], dealias inner type
-                internal.typeRef(pre, symbolOf[Option[_]], args.map(_.dealias))
+          case TypeRef(_, _, types)                                  =>
+            types.map(t =>
+              t match {
+                case TypeRef(pre, sym, args) if optionOrSome.contains(sym) =>
+                  // maps Some[_] to Option[_], dealias inner type
+                  internal.typeRef(pre, symbolOf[Option[_]], args.map(_.dealias))
 
-              case x => x.dealias
-            })
-          }
-          case _ => Nil
+                case x => x.dealias
+              }
+            )
+          case _                                                     => Nil
         }
       } else {
         toInsert match {
@@ -172,25 +166,29 @@ object InsertLike {
     }
 
     if (values.size > colsRepr.size) {
-        c.abort(c.enclosingPosition, s"INSERT has more expressions than target columns")
+      c.abort(c.enclosingPosition, s"INSERT has more expressions than target columns")
     }
 
     if (values.size < colsRepr.size) {
-        c.abort(c.enclosingPosition, s"INSERT has more target columns than expressions")
+      c.abort(c.enclosingPosition, s"INSERT has more target columns than expressions")
     }
-    
-    val (vals, cols) = values.zip(colsRepr).flatMap {
-      case (input, col) if (input == typeOf[None.type] && col.typeSymbol == symbolOf[Option[_]]) => {
-        List((col, col))
-      }
-      case (input, col) =>  List((input, col))
-    }.unzip
 
+    val (vals, cols) = values
+      .zip(colsRepr)
+      .flatMap {
+        case (input, col) if (input == typeOf[None.type] && col.typeSymbol == symbolOf[Option[_]]) =>
+          List((col, col))
+        case (input, col)                                                                          => List((input, col))
+      }
+      .unzip
 
     if (vals != cols) {
-      c.abort(c.enclosingPosition, s"Order of types of columns don't match the inserted values. \n" +
-        s"Column types: ${cols.mkString(", ")}\n" +
-        s"Inserted types: ${vals.mkString(", ")}")
+      c.abort(
+        c.enclosingPosition,
+        s"Order of types of columns don't match the inserted values. \n" +
+          s"Column types: ${cols.mkString(", ")}\n" +
+          s"Inserted types: ${vals.mkString(", ")}"
+      )
     }
 
     c.Expr[InsertLike[F, ColsRepr, AllColumnIdentities, Z]](
