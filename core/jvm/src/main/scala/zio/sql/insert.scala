@@ -12,12 +12,12 @@ trait InsertModule { self: ExprModule with TableModule with SelectModule =>
 
     def values[Z](values: Seq[Z])(implicit
       schemaCC: Schema[Z],
-      schemaValidity: InsertLike[F, ColsRepr, AllColumnIdentities, Source]
+      schemaValidity: InsertLike[F, ColsRepr, AllColumnIdentities, Z]
     ): Insert[Source, Z] = Insert(table, sources.value, values)
 
     def values[Z](value: Z)(implicit
       schemaCC: Schema[Z],
-      schemaValidity: InsertLike[F, ColsRepr, AllColumnIdentities, Source]
+      schemaValidity: InsertLike[F, ColsRepr, AllColumnIdentities, Z]
     ): Insert[Source, Z] = Insert(table, sources.value, Seq(value))
   }
 
