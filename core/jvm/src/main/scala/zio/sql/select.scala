@@ -1,7 +1,7 @@
 package zio.sql
 
 import zio.sql.Features._
-import zio.sql.macros.GroupByLike
+import zio.sql.macros._
 import scala.language.implicitConversions
 
 trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
@@ -181,24 +181,6 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
         )
     }
 
-    /**
-      * `HAVING` can only be called:
-      *
-      *  1. If its called with an aggregated function returning boolean like `Having Count(id) > 5`, 
-      *     while all the previously selected columns appeared in group by clause.
-      *  2. If its called with a normal expression returning boolean like `having customer_id = '636ae137-5b1a-4c8c-b11f-c47c624d9cdc``
-      *     and all the previously selected columns appeared in group by clause.
-      */
-    //TODO replace with macro
-    sealed trait HavingIsSound[F, GroupByF]
-
-    object HavingIsSound {
-      implicit def havingWasGroupedBy[F, GroupByF, Remainder](implicit
-        i: Features.IsPartiallyAggregated.WithRemainder[F, Remainder],
-        ev: GroupByF <:< Remainder
-      ): HavingIsSound[F, GroupByF] = new HavingIsSound[F, GroupByF] {}
-    }
-
     type Select[F, Repr, Source, Head, Tail <: SelectionSet[Source]] = Subselect[F, Repr, Source, Source, Head, Tail]
 
     sealed case class Subselect[F, Repr, Source, Subsource, Head, Tail <: SelectionSet[Source]](
@@ -214,13 +196,9 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
 
       type GroupByF <: Any
 
-      // TODO FIX 
-      // F2 should be not aggregated ->
-      // we cannot call where by partial aggregation on F
-      // however we can call where by full aggregation -> select Count(id) where x = ''
       def where[F2](
         whereExpr2: Expr[F2, Source, Boolean]
-      ): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF] =
+      )(implicit ev: WhereIsSound[F2, self.GroupByF]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF] =
          new Subselect(selection, table, self.whereExpr && whereExpr2, groupByExprs, havingExpr, orderByExprs, offset, limit) {
           override type GroupByF = self.GroupByF
         }
@@ -243,12 +221,10 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
           override type GroupByF = self.GroupByF
         }
 
-      def having[F2, Remainder](
+      def having[F2](
         havingExpr2: Expr[F2, Source, Boolean]
       )(implicit
-        i: Features.IsPartiallyAggregated.WithRemainder[F, Remainder],
-        ev: GroupByF <:< Remainder,
-        i2: HavingIsSound[F2, GroupByF]
+        ev: HavingIsSound[F, self.GroupByF, F2]
       ): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF] =
         new Subselect(selection, table, whereExpr, groupByExprs, self.havingExpr && havingExpr2, orderByExprs, offset, limit) {
           override type GroupByF = self.GroupByF
@@ -285,7 +261,7 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
          override type GroupByF =  self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6
       }
 
-      //TODO add arities up to 22 when needed
+      //TODO add arities up to 22 if needed
       def groupBy[F1, F2, F3, F4, F5, F6, F7](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any], expr6: Expr[F6, Source, Any], expr7: Expr[F7, Source, Any])(implicit verify: GroupByLike[F, F1 with F2 with F3 with F4 with F5 with F6 with F7]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6 with F7] =
         new Subselect(selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7, havingExpr, orderByExprs, offset, limit) {
          override type GroupByF =  self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6 with F7

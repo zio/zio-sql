@@ -4,13 +4,11 @@ import java.math.BigDecimal
 import java.time._
 import java.util.UUID
 
-import com.github.ghik.silencer.silent
 import zio._
 import zio.schema._
 import zio.test._
 import zio.test.Assertion._
 import zio.test.TestAspect._
-import zio.sql.Features._
 
 import scala.language.postfixOps
 
@@ -19,8 +17,7 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
   import AggregationDef._
   import CustomerSchema._
 
-  @silent
-  private def customerSelectJoseAssertion[F: IsNotAggregated](
+  private def customerSelectJoseAssertion[F](
     condition: Expr[F, customers.TableType, Boolean]
   ) = {
     case class Customer(id: UUID, fname: String, lname: String, verified: Boolean, dateOfBirth: LocalDate)

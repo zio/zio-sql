@@ -20,10 +20,6 @@ object GroupByExamples extends App with PostgresJdbcModule {
 
   val e = Sum(price) > 10
 
-  def testF[F, A, B](value: Expr[F, A, B])(implicit in: Features.IsFullyAggregated[F]) = ???
-
-  def test2[F, A, B](value: Expr[F, A, B])(implicit i: Features.IsPartiallyAggregated[F]): i.Unaggregated = ???
-
   val orderValue = select(name, Sum(price))
     .from(productTable)
     .groupBy(name, price)
@@ -31,6 +27,7 @@ object GroupByExamples extends App with PostgresJdbcModule {
 
   execute(orderValue)
 
+  //this
   select(Sum(price))
     .from(productTable)
     .groupBy(name)
@@ -45,8 +42,8 @@ object GroupByExamples extends App with PostgresJdbcModule {
     .from(productTable)
     .groupBy(amount)
     .having(amount > 10)
-    .where(amount > 10)
 
+  // this 
   select(Sum(price))
     .from(productTable)
     .groupBy(name)
@@ -75,16 +72,38 @@ object GroupByExamples extends App with PostgresJdbcModule {
 
   //execute(select(name, Sum(price)).from(productTable))
 
-  
-  // TODO better error message by having + remove isPartialAggregation
-  // select(price)
-  //   .from(productTable)
-  //   .having(Count(price) > 10)
+  select(price)
+    .from(productTable)
+    .groupBy(price)
+    .having(Count(price) > 10)
 
-  //TODO make the following not to compile
-  select(amount)
+  select(Sum(price))
+    .from(productTable)
+    .having(Sum(price) > 10)
+
+  select(price)
+    .from(productTable)
+    .groupBy(price, amount)
+    .having(amount > 200)
+
+    select(amount)
     .from(productTable)
     .groupBy(amount)
-    .having(amount > 10)
-    .where(amount > 10)
+    .having(Sum(price) > 200)
+
+
+  // select(price)
+  //   .from(productTable)
+  //   .groupBy(price)
+  //   .having(amount > 200)
+
+  // select(amount)
+  //   .from(productTable)
+  //   .having(Sum(price) > 200)
+  
+  // select(amount)
+  //   .from(productTable)
+  //   .groupBy(amount)
+  //   .having(amount > 10)
+  //   .where(amount > 10)
 }
