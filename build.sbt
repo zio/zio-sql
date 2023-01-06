@@ -77,10 +77,15 @@ lazy val macros = project
   .in(file("macros"))
   .settings(stdSettings("zio-sql-macros"))
   .settings(
-    libraryDependencies ++= Seq(
-      "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-      "dev.zio"       %% "zio"           % zioVersion
-    )
+    libraryDependencies ++= {
+      if (scalaVersion.value == ScalaDotty) {
+        Seq()
+      } else 
+        Seq(
+          "org.scala-lang" % "scala-reflect" % scalaVersion.value,
+          "dev.zio"       %% "zio"           % zioVersion
+        )
+    }
   )
 
 lazy val docs = project

@@ -3,6 +3,7 @@ package zio.sql
 import zio._
 import zio.stream._
 import zio.schema.Schema
+import zio.sql.macros.GroupByLike
 
 trait Jdbc extends zio.sql.Sql with JdbcInternalModule with SqlDriverLiveModule with ExprSyntaxModule {
   trait SqlDriver  {
@@ -42,6 +43,10 @@ trait Jdbc extends zio.sql.Sql with JdbcInternalModule with SqlDriverLiveModule 
 
   def execute[A](read: Read[A]): ZStream[SqlDriver, Exception, A] =
     ZStream.serviceWithStream(_.read(read))
+
+  def execute[F, A, Source, Subsource, Head, Tail <: SelectionSet[Source]](
+    select: Read.Subselect[F, A, Source, Subsource, Head, Tail])(implicit verify: GroupByLike[F, select.GroupByF]): ZStream[SqlDriver, Exception, A] =
+    ZStream.serviceWithStream(_.read(select))
 
   def execute(delete: Delete[_]): ZIO[SqlDriver, Exception, Int] =
     ZIO.serviceWithZIO(_.delete(delete))

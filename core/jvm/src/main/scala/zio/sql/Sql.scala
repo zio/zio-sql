@@ -4,7 +4,6 @@ import zio.schema.Schema
 
 trait Sql
     extends SelectModule
-    with GroupByUtilsModule
     with DeleteModule
     with UpdateModule
     with ExprModule
@@ -28,10 +27,8 @@ trait Sql
    */
   val select: SelectByCommaBuilder = SelectByCommaBuilder()
 
-  def select[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B])(implicit
-    i: Features.IsPartiallyAggregated[F]
-  ): Selector[F, A, B, i.Unaggregated] =
-    Selector[F, A, B, i.Unaggregated](selection)
+  def select[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]): SelectBuilder[F, A, B] =
+    SelectBuilder[F, A, B](selection)
 
   def subselect[ParentTable]: SubselectPartiallyApplied[ParentTable] = new SubselectPartiallyApplied[ParentTable]
 

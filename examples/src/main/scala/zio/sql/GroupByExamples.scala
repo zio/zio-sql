@@ -29,6 +29,8 @@ object GroupByExamples extends App with PostgresJdbcModule {
     .groupBy(name, price)
     .having(Sum(price) > 10)
 
+  execute(orderValue)
+
   select(Sum(price))
     .from(productTable)
     .groupBy(name)
@@ -43,6 +45,7 @@ object GroupByExamples extends App with PostgresJdbcModule {
     .from(productTable)
     .groupBy(amount)
     .having(amount > 10)
+    .where(amount > 10)
 
   select(Sum(price))
     .from(productTable)
@@ -63,14 +66,25 @@ object GroupByExamples extends App with PostgresJdbcModule {
   // select(price)
   //   .from(productTable)
   //   .groupBy(name)
-  //   .having(name > 10)
+  //   .having(name > "")
 
   // select(price ++ name)
   //   .from(productTable)
   //   .groupBy(price)
   //   .having(Count(price) > 10)
 
+  //execute(select(name, Sum(price)).from(productTable))
+
+  
+  // TODO better error message by having + remove isPartialAggregation
   // select(price)
   //   .from(productTable)
   //   .having(Count(price) > 10)
+
+  //TODO make the following not to compile
+  select(amount)
+    .from(productTable)
+    .groupBy(amount)
+    .having(amount > 10)
+    .where(amount > 10)
 }
