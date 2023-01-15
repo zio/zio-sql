@@ -45,6 +45,7 @@ trait TypeTagModule { self: SelectModule =>
     sealed case class Nullable[A: NotNull]()                                      extends TypeTag[Option[A]] {
       def typeTag: TypeTag[A] = implicitly[TypeTag[A]]
     }
+    implicit case object TNone extends TypeTag[None.type]
 
     implicit def option[A: NotNull]: TypeTag[Option[A]] = Nullable[A]()
 

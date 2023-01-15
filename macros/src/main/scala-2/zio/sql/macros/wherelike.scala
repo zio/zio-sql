@@ -35,14 +35,14 @@ object WhereIsSound {
 
     def isThereAggregation(t: Type): Boolean =
       t.dealias match {
-        case TypeRef(_, typeSymbol, args) if typeSymbol == symbolOf[zio.sql.Features.Union[_, _]] =>
-          args.find(t => isThereAggregation(t)) match {
+        case TypeRef(_, typeSymbol, _) if typeSymbol == symbolOf[zio.sql.Features.Aggregated[_]]  =>
+          true
+        case RefinedType(members, _)                                              =>
+          members.find(t => isThereAggregation(t)) match {
             case None    => false
             case Some(_) => true
           }
-        case TypeRef(_, typeSymbol, _) if typeSymbol == symbolOf[zio.sql.Features.Aggregated[_]]  =>
-          true
-        case _                                                                                    => false
+        case _                                                                    => false
       }
 
     if (!splitIntersection(groupedType).isEmpty) {

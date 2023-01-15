@@ -7,9 +7,88 @@ import java.util.{ Calendar, UUID }
 import org.postgresql.util.PGInterval
 import zio.Chunk
 import zio.sql.Sql
+import zio.schema.DeriveSchema
+import zio.sql.macros.internal.Normalizer
 
 trait PostgresSqlModule extends Sql { self =>
   import TypeTag._
+
+  object Example {
+    case class Arity22(name: String,age: Int,street: String,verified: Boolean,kind: Boolean,status: String,length: Long,id: String,hair: String,eyes: String,first_name: String,last_name: String,order_id: String,customer_id: String,date: String,time: String,happy: Boolean,hungy: Boolean,healthy: Boolean,mood: String,whoo: String,last: Boolean)
+    implicit val aritySchema = DeriveSchema.gen[Arity22]
+
+    val tableDesc = defineTable[Arity22]
+
+    val (name, age, street, verified, kind, status, length, id, hair, eyes, first_name, last_name,
+        order_id, customer_id, date, time, happy, hungy, healthy, mood, whoo, last) = tableDesc.columns
+
+    import zio.sql.Features._
+    def testt(value: Expr[Source["last", Arity22], Arity22,Boolean]): Unit = ???
+
+    name ++ age
+
+    // covariant F
+    // trait Expr2[+F, -A, +B] { 
+    //   def &&[F2 >: F, A1 <: A, B1 >: B](
+    //     that: Expr2[F2, A1, Boolean]
+    //   ): Expr[F with F2, A1, Boolean] = ???
+    // }
+
+    // contravariant F
+    trait Expr2[-F, -A, +B] { 
+      def &&[F2, A1 <: A, B1 >: B](
+        that: Expr2[F2, A1, Boolean]
+      ): Expr2[F with F2, A1, Boolean] = ???
+    }
+
+    def kkk[F, S, A](exprs: Expr2[F, S, A] *) : F = ???
+    
+    def kkk1[F, S, A](exprs: Expr[F, S, A] *) : F = ???
+
+    val name2 = name.asInstanceOf[Expr2[Source["name", Arity22], Arity22,Boolean]]
+    val age2 =  age.asInstanceOf[Expr2[Source["age", Arity22], Arity22, Int]]
+
+    val x = kkk(name2, age2)
+
+    //val y = kkk1(name, age)
+
+    val minAge: Option[Int] = Some(10)
+    val maxAge: Option[Int] = None
+
+    val minAgeQuery : Option[Expr2[Source["age",Arity22], Arity22, Boolean]] = ??? //minAge.map(m => age >= m)
+    val maxAgeQuery : Option[Expr2[Source["name",Arity22], Arity22, Boolean]] = ??? //maxAge.map(m => age <= m)   
+
+    val default : Expr2[Literal, Any, Boolean] = ???
+
+    // Source[age] with Literal <: Source[age]
+
+    // + F
+    // Expr[Source[age] with Literal] <: Expr[Source[age]]
+
+    // - F
+    // Expr[Source[age] with Literal] >: Expr[Source[age]]
+
+    val whereExpr = 
+        List(minAgeQuery, maxAgeQuery)
+                .flatten
+                .fold(default)(_ && _)
+
+    testt(last)
+
+
+    def normalizerTest[A](a: A)(implicit i: Normalizer[A]): i.Out = {
+      val _ = a
+      ???
+    }
+
+    def normalizerTypeTest[A](implicit i: Normalizer[A]): i.Out = {
+      ???
+    }
+      
+    val w = normalizerTest((100L, (10, ("10", ()))))
+    implicitly[Normalizer[(UUID, (UUID, (java.math.BigDecimal, Unit)))]]
+    normalizerTypeTest[(UUID, (LocalDate, (String, (String, (Boolean, (String, (ZonedDateTime, Unit)))))))]
+  }
 
   override type TypeTagExtension[+A] = PostgresSpecific.PostgresTypeTag[A]
 

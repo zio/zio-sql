@@ -646,6 +646,16 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
     test("in joined tables, columns of the same name from different table are treated as different columns") {
       import Cities._
       import Ordering._
+      import Expr._
+
+      select(cityName).from(city).where(link === Option(""))
+      select(cityName).from(city).where(link === Some(""))
+      select(cityName).from(city).where(Some("") === link)
+      select(cityName).from(city).where(link === None)
+      select(cityName).from(city).where(None === link)
+
+      select(cityName).from(city).where(link === "")
+      select(cityName).from(city).where(" " === link)
 
       /**
        *          SELECT ms.name, c.name, COUNT(ml.id) as line_count
@@ -683,9 +693,8 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
     test("update rows") {
       import PersonsSchema._
 
-      // TODO support here also Some and None
       for {
-        result <- execute(update(persons).set(personsName, Option("Charlie")).where(personsName === Option("Murray")))
+        result <- execute(update(persons).set(personsName, Some("Charlie")).where(personsName === Some("Murray")))
       } yield assertTrue(result == 1)
     }
   ) @@ sequential

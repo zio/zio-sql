@@ -1,6 +1,5 @@
 package zio.sql
 
-import zio.sql.Features._
 import zio.sql.macros._
 import scala.language.implicitConversions
 
@@ -230,43 +229,43 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
           override type GroupByF = self.GroupByF
         }
 
-      // format: off
+      //format: off
       def groupBy[F1](expr1: Expr[F1, Source, Any])(implicit verify: GroupByLike[F, F1]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1] =
-        new Subselect(selection, table, whereExpr, self.groupByExprs ++ expr1, havingExpr, orderByExprs, offset, limit) {
+        new Subselect[F, Repr, Source, Subsource, Head, Tail](selection, table, whereExpr, self.groupByExprs ++ expr1, havingExpr, orderByExprs, offset, limit) {
          override type GroupByF = self.GroupByF with F1
        }
 
       def groupBy[F1, F2](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any])(implicit verify: GroupByLike[F, F1 with F2]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2] =
-        new Subselect(selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2, havingExpr, orderByExprs, offset, limit) {
+        new Subselect[F, Repr, Source, Subsource, Head, Tail](selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2, havingExpr, orderByExprs, offset, limit) {
          override type GroupByF = self.GroupByF with  F1 with F2
       }
 
       def groupBy[F1, F2, F3](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any])(implicit verify: GroupByLike[F, F1 with F2 with F3]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3] =
-        new Subselect(selection, table, whereExpr,self.groupByExprs ++ expr1 ++ expr2 ++ expr3, havingExpr, orderByExprs, offset, limit) {
+        new Subselect[F, Repr, Source, Subsource, Head, Tail](selection, table, whereExpr,self.groupByExprs ++ expr1 ++ expr2 ++ expr3, havingExpr, orderByExprs, offset, limit) {
          override type GroupByF =  self.GroupByF with F1 with F2 with F3
       }
 
       def groupBy[F1, F2, F3, F4](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any])(implicit verify: GroupByLike[F, F1 with F2 with F3 with F4]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3 with F4] =
-        new Subselect(selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4, havingExpr, orderByExprs, offset, limit) {
+        new Subselect[F, Repr, Source, Subsource, Head, Tail](selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4, havingExpr, orderByExprs, offset, limit) {
          override type GroupByF = self.GroupByF with F1 with F2 with F3 with F4
       }
       
       def groupBy[F1, F2, F3, F4, F5](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any])(implicit verify: GroupByLike[F, F1 with F2 with F3 with F4 with F5]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3 with F4 with F5] =
-        new Subselect(selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5, havingExpr, orderByExprs, offset, limit) {
+        new Subselect[F, Repr, Source, Subsource, Head, Tail](selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5, havingExpr, orderByExprs, offset, limit) {
          override type GroupByF =  self.GroupByF with F1 with F2 with F3 with F4 with F5
       }
       
       def groupBy[F1, F2, F3, F4, F5, F6](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any], expr6: Expr[F6, Source, Any])(implicit verify: GroupByLike[F, F1 with F2 with F3 with F4 with F5 with F6]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6] =
-        new Subselect(selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6, havingExpr, orderByExprs, offset, limit) {
+        new Subselect[F, Repr, Source, Subsource, Head, Tail](selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6, havingExpr, orderByExprs, offset, limit) {
          override type GroupByF =  self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6
       }
 
       //TODO add arities up to 22 if needed
       def groupBy[F1, F2, F3, F4, F5, F6, F7](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any], expr6: Expr[F6, Source, Any], expr7: Expr[F7, Source, Any])(implicit verify: GroupByLike[F, F1 with F2 with F3 with F4 with F5 with F6 with F7]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6 with F7] =
-        new Subselect(selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7, havingExpr, orderByExprs, offset, limit) {
+        new Subselect[F, Repr, Source, Subsource, Head, Tail](selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7, havingExpr, orderByExprs, offset, limit) {
          override type GroupByF =  self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6 with F7
       }
-      // format: on
+      //format: on
 
       def normalize(implicit
         instance: TrailingUnitNormalizer[ResultType]
@@ -380,7 +379,7 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
 
     def ++[F2, A1 <: A, C <: SelectionSet[A1]](
       that: Selection[F2, A1, C]
-    ): Selection[F :||: F2, A1, self.value.Append[A1, C]] =
+    ): Selection[F with F2, A1, self.value.Append[A1, C]] =
       Selection(self.value ++ that.value)
   }
 
