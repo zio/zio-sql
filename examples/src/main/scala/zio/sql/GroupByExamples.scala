@@ -27,7 +27,7 @@ object GroupByExamples extends App with PostgresJdbcModule {
 
   execute(orderValue)
 
-  //this
+  // this
   select(Sum(price))
     .from(productTable)
     .groupBy(name)
@@ -43,7 +43,7 @@ object GroupByExamples extends App with PostgresJdbcModule {
     .groupBy(amount)
     .having(amount > 10)
 
-  // this 
+  // this
   select(Sum(price))
     .from(productTable)
     .groupBy(name)
@@ -70,7 +70,7 @@ object GroupByExamples extends App with PostgresJdbcModule {
   //   .groupBy(price)
   //   .having(Count(price) > 10)
 
-  //execute(select(name, Sum(price)).from(productTable))
+  // execute(select(name, Sum(price)).from(productTable))
 
   select(price)
     .from(productTable)
@@ -86,11 +86,10 @@ object GroupByExamples extends App with PostgresJdbcModule {
     .groupBy(price, amount)
     .having(amount > 200)
 
-    select(amount)
+  select(amount)
     .from(productTable)
     .groupBy(amount)
     .having(Sum(price) > 200)
-
 
   // select(price)
   //   .from(productTable)
@@ -100,7 +99,7 @@ object GroupByExamples extends App with PostgresJdbcModule {
   // select(amount)
   //   .from(productTable)
   //   .having(Sum(price) > 200)
-  
+
   // select(amount)
   //   .from(productTable)
   //   .groupBy(amount)

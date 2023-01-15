@@ -45,7 +45,8 @@ trait Jdbc extends zio.sql.Sql with JdbcInternalModule with SqlDriverLiveModule 
     ZStream.serviceWithStream(_.read(read))
 
   def execute[F, A, Source, Subsource, Head, Tail <: SelectionSet[Source]](
-    select: Read.Subselect[F, A, Source, Subsource, Head, Tail])(implicit verify: GroupByLike[F, select.GroupByF]): ZStream[SqlDriver, Exception, A] =
+    select: Read.Subselect[F, A, Source, Subsource, Head, Tail]
+  )(implicit verify: GroupByLike[F, select.GroupByF]): ZStream[SqlDriver, Exception, A] =
     ZStream.serviceWithStream(_.read(select))
 
   def execute(delete: Delete[_]): ZIO[SqlDriver, Exception, Int] =

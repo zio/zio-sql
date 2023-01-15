@@ -148,7 +148,7 @@ object BuildHelper {
     name                     := s"$prjName",
     scalacOptions            := stdOptions,
     crossScalaVersions       := Seq(Scala213, Scala212, ScalaDotty),
-    //ThisBuild / scalaVersion := ScalaDotty,
+    // ThisBuild / scalaVersion := ScalaDotty,
     ThisBuild / scalaVersion := Scala213,
     scalacOptions            := stdOptions ++ extraOptions(scalaVersion.value, optimize = !isSnapshot.value),
     libraryDependencies ++= {

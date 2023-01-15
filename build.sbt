@@ -80,7 +80,7 @@ lazy val macros = project
     libraryDependencies ++= {
       if (scalaVersion.value == ScalaDotty) {
         Seq()
-      } else 
+      } else
         Seq(
           "org.scala-lang" % "scala-reflect" % scalaVersion.value,
           "dev.zio"       %% "zio"           % zioVersion
