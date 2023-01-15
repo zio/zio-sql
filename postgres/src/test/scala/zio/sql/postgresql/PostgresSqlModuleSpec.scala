@@ -48,6 +48,39 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
   }
 
   override def specLayered = suite("Postgres module")(
+    test("`in` clause sequence") {
+      import ProductPrices._
+
+      val query = select(productPricesOrderId).from(productPrices).where(productPrice in List(10, 20, 74))
+
+      for {
+        result <- execute(query).runCollect
+      } yield assertTrue(
+        result == Chunk(
+          UUID.fromString("7368abf4-aed2-421f-b426-1725de756895"),
+          UUID.fromString("4c770002-4c8f-455a-96ff-36a8186d5290"),
+          UUID.fromString("105a2701-ef93-4e25-81ab-8952cc7d9daa")
+        )
+      )
+    },
+    test("`in` clause from subquery") {
+      import ProductPrices._
+      import OrderDetailsSchema._
+
+      val higherPrices = select(productPrice).from(productPrices).where(productPrice > 74)
+
+      val query = select(orderDetailsOrderId).from(orderDetails).where(unitPrice in higherPrices)
+
+      for {
+        result <- execute(query).runCollect
+      } yield assertTrue(
+        result == Chunk(
+          UUID.fromString("9473a0bc-396a-4936-96b0-3eea922af36b"),
+          UUID.fromString("fd0fa8d4-e1a0-4369-be07-945450db5d36"),
+          UUID.fromString("763a7c39-833f-4ee8-9939-e80dfdbfc0fc")
+        )
+      )
+    },
     test("Can select from single table") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 

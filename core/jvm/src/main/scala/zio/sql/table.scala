@@ -196,10 +196,7 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule with Sel
   object Table {
 
     class JoinBuilder[A, B](joinType: JoinType, left: Table.Aux[A], right: Table.Aux[B]) {
-      // TODO on(expr1 == expr2) yields false, which may be surprising
-      // https://github.com/zio/zio-sql/issues/587
-      // idea -> restrict F so its union or anything just not literal
-      def on[F](expr: Expr[F, A with B, Boolean]): Table.Aux[A with B] =
+      def on[F](expr: Expr[F, A with B, Boolean])(implicit ev: Features.IsNotLiteral[F]): Table.Aux[A with B] =
         Joined(joinType, left, right, expr)
     }
 

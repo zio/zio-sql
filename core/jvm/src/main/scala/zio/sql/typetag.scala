@@ -81,6 +81,7 @@ trait TypeTagModule { self: SelectModule =>
     implicit case object TLongIsNumeric          extends AbstractIsNumeric[Long]
     implicit case object TFloatIsNumeric         extends AbstractIsNumeric[Float]
     implicit case object TDoubleIsNumeric        extends AbstractIsNumeric[Double]
+    // TODO IS BigDecimal numeric? can I work in sql with -, + on `money` type?
     implicit case object TBigDecimalIsNumeric    extends AbstractIsNumeric[java.math.BigDecimal]
   }
 

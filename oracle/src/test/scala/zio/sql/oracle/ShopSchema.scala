@@ -28,6 +28,25 @@ trait ShopSchema extends OracleSqlModule { self =>
     val (orderId, fkCustomerId, orderDate) = orders.columns
   }
 
+  object ProductPrices {
+    case class ProductPrice(productId: UUID, effective: LocalDate, price: BigDecimal)
+    implicit val productPriceSchema = DeriveSchema.gen[ProductPrice]
+
+    val productPrices = defineTableSmart[ProductPrice]
+
+    val (productPricesOrderId, effectiveDate, productPrice) = productPrices.columns
+  }
+
+  object OrderDetailsSchema {
+    case class OrderDetails(orderId: UUID, productId: UUID, quantity: Int, unitPrice: BigDecimal)
+
+    implicit val orderDetailsSchema = DeriveSchema.gen[OrderDetails]
+
+    val orderDetails = defineTableSmart[OrderDetails]
+
+    val (orderDetailsOrderId, orderDetailsProductId, quantity, unitPrice) = orderDetails.columns
+  }
+
   object AllTypes {
 
     case class AllType(

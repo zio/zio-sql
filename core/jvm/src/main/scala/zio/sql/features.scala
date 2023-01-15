@@ -16,6 +16,28 @@ trait FeaturesModule {
     type Function0
     type Derived
 
+    @implicitNotFound("Use === instead of == when comparing two Exprs")
+    sealed trait IsNotLiteral[A]
+    object IsNotLiteral {
+      implicit def AggregatedIsNotLiteral[A](implicit ev: IsNotLiteral[A]): IsNotLiteral[Aggregated[A]] =
+        new IsNotLiteral[Aggregated[A]] {}
+
+      implicit def UnionIsNotLiteral[A, B](implicit
+        ev1: IsNotLiteral[A],
+        ev2: IsNotLiteral[B]
+      ): IsNotLiteral[Union[A, B]] =
+        new IsNotLiteral[Union[A, B]] {}
+
+      implicit def SourceIsNotLiteral[ColumnName, TableType]: IsNotLiteral[Source[ColumnName, TableType]] =
+        new IsNotLiteral[Source[ColumnName, TableType]] {}
+
+      implicit val DerivedIsNotLiteral: IsNotLiteral[Derived] =
+        new IsNotLiteral[Derived] {}
+
+      implicit val Function0IsNotLiteral: IsNotLiteral[Function0] =
+        new IsNotLiteral[Function0] {}
+    }
+
     sealed trait IsNotAggregated[A]
     object IsNotAggregated {
 
