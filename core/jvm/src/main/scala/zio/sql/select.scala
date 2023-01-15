@@ -1,7 +1,7 @@
 package zio.sql
 
 import com.github.ghik.silencer.silent
-
+import zio.sql.Features._
 import scala.language.implicitConversions
 
 trait SelectModule { self: ExprModule with TableModule with UtilsModule with GroupByUtilsModule =>
@@ -407,7 +407,6 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
           )
     }
 
-    // TODO add name to literal selection - e.g. select '1' as one
     sealed case class Literal[B: TypeTag](values: Iterable[B]) extends Read[B] { self =>
       override type ResultType = B
 
@@ -432,7 +431,9 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
         ] { type ColumnsOut = self.ColumnsOut }, Any](self, name)
     }
 
-    def lit[B: TypeTag](values: B*): Read[B] = Literal(values.toSeq)
+    implicit def seqToLiteral[B](values: Seq[B])(implicit typeTag: TypeTag[B]): Read[B] =
+      Read.Literal[B](values)
+
   }
 
   /**

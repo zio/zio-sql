@@ -6,8 +6,9 @@ import java.time._
 import scala.language.implicitConversions
 import java.math.BigDecimal
 import scala.annotation.implicitNotFound
+import zio.sql.Features._
 
-trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
+trait ExprModule extends NewtypesModule with OpsModule {
   self: SelectModule with TableModule =>
 
   /**
@@ -40,32 +41,32 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
       Expr.Binary(self.widen[Boolean], that, BinaryOp.OrBool)
 
     def ===[F2, A1 <: A, B1 >: B, B2](that: Expr[F2, A1, B2])(implicit
-      eql: ComparableTypes[B1, B2]
+      ct: ComparableTypes[B1, B2]
     ): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.Equals)
 
     def <>[F2, A1 <: A, B1 >: B, B2](that: Expr[F2, A1, B2])(implicit
-      eql: ComparableTypes[B1, B2]
+      ct: ComparableTypes[B1, B2]
     ): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.NotEqual)
 
     def >[F2, A1 <: A, B1 >: B, B2](that: Expr[F2, A1, B2])(implicit
-      eql: ComparableTypes[B1, B2]
+      ct: ComparableTypes[B1, B2]
     ): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.GreaterThan)
 
     def <[F2, A1 <: A, B1 >: B, B2](that: Expr[F2, A1, B2])(implicit
-      eql: ComparableTypes[B1, B2]
+      ct: ComparableTypes[B1, B2]
     ): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.LessThan)
 
     def >=[F2, A1 <: A, B1 >: B, B2](that: Expr[F2, A1, B2])(implicit
-      eql: ComparableTypes[B1, B2]
+      ct: ComparableTypes[B1, B2]
     ): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.GreaterThanEqual)
 
     def <=[F2, A1 <: A, B1 >: B, B2](that: Expr[F2, A1, B2])(implicit
-      eql: ComparableTypes[B1, B2]
+      ct: ComparableTypes[B1, B2]
     ): Expr[F :||: F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.LessThanEqual)
 
@@ -99,7 +100,6 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
     def isNotTrue[A1 <: A](implicit ev: B <:< Boolean): Expr[F, A1, Boolean] =
       Expr.Property(self, PropertyOp.IsNotTrue)
 
-    // TODO https://github.com/zio/zio-sql/issues/564
     def as[B1 >: B](name: String): Expr[F, A, B1] = {
       val _ = name
       self
@@ -113,8 +113,10 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
 
     def desc: Ordering[Expr[F, A, B]] = Ordering.Desc(self)
 
-    def in[B1 >: B <: SelectionSet[_]](set: Read[B1]): Expr[F, A, Boolean] =
-      Expr.In(self.asInstanceOf[Expr[F, A, SelectionSet[_]]], set)
+    def in[B1 >: B, B2](
+      set: Read[B2]
+    )(implicit ct: ComparableTypes[B1, B2], ev: Features.IsSource[F]): Expr[F, A, Boolean] =
+      Expr.In(self, set)
 
     def widen[C](implicit ev: B <:< C): Expr[F, A, C] = {
       val _ = ev
@@ -176,8 +178,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
       def typeTag: TypeTag[Boolean] = TypeTag.TBoolean
     }
 
-    sealed case class In[F, A, B <: SelectionSet[_]](value: Expr[F, A, B], set: Read[B])
-        extends InvariantExpr[F, A, Boolean] {
+    sealed case class In[F, A, B](value: Expr[F, A, B], set: Read[B]) extends InvariantExpr[F, A, Boolean] {
       def typeTag: TypeTag[Boolean] = TypeTag.TBoolean
     }
 
@@ -477,7 +478,7 @@ trait ExprModule extends NewtypesModule with FeaturesModule with OpsModule {
 
   @implicitNotFound(
     "You cannot compare values of different types ${A} and ${B}. " +
-      "As those are unrelated types, this query would blow up at database level."
+      "As those are unrelated types, this query would fail at database level."
   )
   sealed trait ComparableTypes[A, B]
 

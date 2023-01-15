@@ -186,7 +186,14 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
         }
       case Expr.In(value, set)                                                                  =>
         buildExpr(value)
-        renderReadImpl(set)
+        render(" IN ")
+        if (set.isInstanceOf[Read.Subselect[_, _, _, _, _, _]]) {
+          render("(")
+          renderReadImpl(set)
+          render(")")
+        } else {
+          renderReadImpl(set)
+        }
       case literal: Expr.Literal[_]                                                             => renderLit(literal)
       case Expr.AggregationCall(param, aggregation)                                             =>
         render(aggregation.name.name)
