@@ -11,8 +11,7 @@ trait Sql
     with TableModule
     with InsertModule
     with UtilsModule
-    with SelectUtilsModule
-    with InsertUtilsModule {
+    with SelectUtilsModule {
   self =>
 
   /*

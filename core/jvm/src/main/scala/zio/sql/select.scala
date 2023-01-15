@@ -1,7 +1,7 @@
 package zio.sql
 
 import com.github.ghik.silencer.silent
-
+import zio.sql.Features._
 import scala.language.implicitConversions
 
 trait SelectModule { self: ExprModule with TableModule with UtilsModule with GroupByUtilsModule =>

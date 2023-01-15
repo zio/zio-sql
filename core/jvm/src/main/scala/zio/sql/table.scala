@@ -24,7 +24,7 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule with Sel
   def defineTableSmart[T](implicit
     schema: Schema.Record[T],
     tableLike: TableSchema[T]
-  ): Table.Source.WithTableDetails[schema.FieldNames, T, schema.Accessors[Lens, Prism, Traversal]] = {
+  ): Table.Source.WithTableDetails[schema.Terms, T, schema.Accessors[Lens, Prism, Traversal]] = {
     val tableName = extractAnnotationName(schema) match {
       case Some(name) => name
       case None       =>
@@ -45,7 +45,7 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule with Sel
   def defineTable[T](implicit
     schema: Schema.Record[T],
     tableLike: TableSchema[T]
-  ): Table.Source.WithTableDetails[schema.FieldNames, T, schema.Accessors[Lens, Prism, Traversal]] = {
+  ): Table.Source.WithTableDetails[schema.Terms, T, schema.Accessors[Lens, Prism, Traversal]] = {
     val tableName = extractAnnotationName(schema) match {
       case Some(name) => name
       case None       => convertToSnakeCase(schema.id.name)
@@ -63,12 +63,12 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule with Sel
   )(implicit
     schema: Schema.Record[T],
     tableLike: TableSchema[T]
-  ): Table.Source.WithTableDetails[schema.FieldNames, T, schema.Accessors[Lens, Prism, Traversal]] =
+  ): Table.Source.WithTableDetails[schema.Terms, T, schema.Accessors[Lens, Prism, Traversal]] =
     new Table.Source {
 
       val exprAccessorBuilder = new ExprAccessorBuilder(tableName)
 
-      override type AllColumnIdentities = schema.FieldNames
+      override type AllColumnIdentities = schema.Terms
 
       override type TableType = T
 
