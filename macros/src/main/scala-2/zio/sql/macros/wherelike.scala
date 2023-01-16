@@ -46,7 +46,7 @@ object WhereIsSound {
       }
 
     if (!splitIntersection(groupedType).isEmpty) {
-      c.abort(c.enclosingPosition, "WHERE not allowed. Using `HAVING` instead.")
+      c.abort(c.enclosingPosition, "WHERE not allowed. Use `HAVING` instead.")
     }
 
     if (isThereAggregation(whereF)) {
