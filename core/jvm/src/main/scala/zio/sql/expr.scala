@@ -125,6 +125,7 @@ trait ExprModule extends NewtypesModule with OpsModule {
   }
 
   object Expr {
+
     implicit val subqueryToExpr = self.Read.Subselect.subselectToExpr _
 
     sealed trait InvariantExpr[F, -A, B] extends Expr[F, A, B] {
