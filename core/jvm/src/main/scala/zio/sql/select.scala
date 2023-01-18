@@ -197,17 +197,28 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
 
       def where[F2](
         whereExpr2: Expr[F2, Source, Boolean]
-      )(implicit ev: WhereIsSound[F2, self.GroupByF]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF] =
-         new Subselect(selection, table, self.whereExpr && whereExpr2, groupByExprs, havingExpr, orderByExprs, offset, limit) {
+      )(implicit
+        ev: WhereIsSound[F2, self.GroupByF]
+      ): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF] =
+        new Subselect(
+          selection,
+          table,
+          self.whereExpr && whereExpr2,
+          groupByExprs,
+          havingExpr,
+          orderByExprs,
+          offset,
+          limit
+        ) {
           override type GroupByF = self.GroupByF
         }
 
-      def limit(n: Long): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF] = 
+      def limit(n: Long): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF] =
         new Subselect(selection, table, whereExpr, groupByExprs, havingExpr, orderByExprs, offset, Some(n)) {
           override type GroupByF = self.GroupByF
         }
 
-      def offset(n: Long): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF] = 
+      def offset(n: Long): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF] =
         new Subselect(selection, table, whereExpr, groupByExprs, havingExpr, orderByExprs, Some(n), limit) {
           override type GroupByF = self.GroupByF
         }
@@ -216,7 +227,16 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
         o: Ordering[Expr[_, Source, Any]],
         os: Ordering[Expr[_, Source, Any]]*
       ): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF] =
-        new Subselect(selection, table, whereExpr, groupByExprs, havingExpr, self.orderByExprs ++ (o :: os.toList), offset, limit) {
+        new Subselect(
+          selection,
+          table,
+          whereExpr,
+          groupByExprs,
+          havingExpr,
+          self.orderByExprs ++ (o :: os.toList),
+          offset,
+          limit
+        ) {
           override type GroupByF = self.GroupByF
         }
 
@@ -225,7 +245,16 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
       )(implicit
         ev: HavingIsSound[F, self.GroupByF, F2]
       ): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF] =
-        new Subselect(selection, table, whereExpr, groupByExprs, self.havingExpr && havingExpr2, orderByExprs, offset, limit) {
+        new Subselect(
+          selection,
+          table,
+          whereExpr,
+          groupByExprs,
+          self.havingExpr && havingExpr2,
+          orderByExprs,
+          offset,
+          limit
+        ) {
           override type GroupByF = self.GroupByF
         }
 

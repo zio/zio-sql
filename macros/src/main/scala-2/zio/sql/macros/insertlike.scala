@@ -13,6 +13,7 @@ sealed trait InsertLike[F, ColsRepr, AllColumnIdentities, Z]
   */
 object InsertLike {
 
+  // TODO check arity and if > 22 AllColumnIdentites is a nested tuple
   final case class CanBeInserted[F, ColsRepr, AllColumnIdentities, Z]()
       extends InsertLike[F, ColsRepr, AllColumnIdentities, Z]
 
@@ -65,7 +66,7 @@ object InsertLike {
       f.dealias match {
         case TypeRef(_, typeSymbol, args) if typeSymbol == symbolOf[zio.sql.Features.Source[_, _]] =>
           List(args.head.dealias)
-        case RefinedType(members, _)                                              =>
+        case RefinedType(members, _)                                                               =>
           members.flatMap(f => extractSingletons(f))
         case _                                                                                     =>
           c.abort(

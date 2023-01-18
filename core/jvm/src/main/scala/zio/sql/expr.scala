@@ -135,9 +135,8 @@ trait ExprModule extends NewtypesModule with OpsModule {
 
     implicit def literal[A: TypeTag](a: A): Expr[Features.Literal, Any, A] = Expr.Literal(a)
 
-    implicit def some[A](someA: Some[A]): Expr[Features.Literal, Any, Option[A]] = {
+    implicit def some[A](someA: Some[A]): Expr[Features.Literal, Any, Option[A]] =
       Expr.Literal[Option[A]](someA)
-    }
 
     def exprName[F, A, B](expr: Expr[F, A, B]): Option[String] =
       expr match {
@@ -488,13 +487,16 @@ trait ExprModule extends NewtypesModule with OpsModule {
 
     implicit final def AWithOptionIsComparable[A]: ComparableTypes[A, Option[A]] = new ComparableTypes[A, Option[A]] {}
     implicit final def optionWithAIsComparable[A]: ComparableTypes[Option[A], A] = new ComparableTypes[Option[A], A] {}
-    
-    implicit final def optionAndNone[A]: ComparableTypes[Option[A], None.type] = new ComparableTypes[Option[A], None.type] {}
-    implicit final def noneAndOption[A]: ComparableTypes[None.type, Option[A]] = new ComparableTypes[None.type, Option[A]] {}
-    
-    implicit final def optionAndSome[A]: ComparableTypes[Option[A], Expr.Literal[Some[A]]] = new ComparableTypes[Option[A], Expr.Literal[Some[A]]] {}
-    implicit final def someAndOption[A]: ComparableTypes[Expr.Literal[Some[A]], Option[A]] = new ComparableTypes[Expr.Literal[Some[A]], Option[A]] {}
-    
+
+    implicit final def optionAndNone[A]: ComparableTypes[Option[A], None.type] =
+      new ComparableTypes[Option[A], None.type] {}
+    implicit final def noneAndOption[A]: ComparableTypes[None.type, Option[A]] =
+      new ComparableTypes[None.type, Option[A]] {}
+
+    implicit final def optionAndSome[A]: ComparableTypes[Option[A], Expr.Literal[Some[A]]] =
+      new ComparableTypes[Option[A], Expr.Literal[Some[A]]] {}
+    implicit final def someAndOption[A]: ComparableTypes[Expr.Literal[Some[A]], Option[A]] =
+      new ComparableTypes[Expr.Literal[Some[A]], Option[A]] {}
 
     implicit final def dateIsComprable[A, B](implicit ev1: IsDate[A], ev2: IsDate[B]): ComparableTypes[A, B] =
       new ComparableTypes[A, B] {}

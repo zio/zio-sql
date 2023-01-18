@@ -228,7 +228,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
         case TInt                               => render(value)
         case n: Nullable[_]                     =>
           renderLit(n.typeTag, value.asInstanceOf[Option[_]].get)
-        case TNone => 
+        case TNone                              =>
           render("null")
       }
     }

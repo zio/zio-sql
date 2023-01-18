@@ -4,6 +4,7 @@ import zio.schema._
 import zio.sql.macros.TableSchema
 import scala.annotation.StaticAnnotation
 import scala.collection.immutable
+import zio.sql.macros.IsNotLiteral
 
 object TableAnnotation {
   case class name(name: String) extends StaticAnnotation
@@ -196,8 +197,7 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule with Sel
   object Table {
 
     class JoinBuilder[A, B](joinType: JoinType, left: Table.Aux[A], right: Table.Aux[B]) {
-      //def on[F](expr: Expr[F, A with B, Boolean])(implicit ev: Features.IsNotLiteral[F]): Table.Aux[A with B] =
-      def on[F](expr: Expr[F, A with B, Boolean]): Table.Aux[A with B] =
+      def on[F](expr: Expr[F, A with B, Boolean])(implicit ev: IsNotLiteral[F]): Table.Aux[A with B] =
         Joined(joinType, left, right, expr)
     }
 
