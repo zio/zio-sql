@@ -46,7 +46,8 @@ lazy val root = project
     postgres,
     sqlserver,
     jdbc_hikaricp,
-    macros
+    macros,
+    docs
   )
 
 lazy val core = crossProject(JSPlatform, JVMPlatform)
@@ -91,19 +92,25 @@ lazy val macros = project
 lazy val docs = project
   .in(file("zio-sql-docs"))
   .settings(
-    publish / skip     := true,
-    moduleName         := "zio-sql-docs",
+    moduleName                                 := "zio-sql-docs",
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
-    projectName        := "ZIO SQL",
-    badgeInfo          := Some(
-      BadgeInfo(
-        artifact = "zio-sql_2.12",
-        projectStage = ProjectStage.ProductionReady
-      )
+    projectName                                := "ZIO SQL",
+    mainModuleName                             := (coreJVM / moduleName).value,
+    projectStage                               := ProjectStage.ProductionReady,
+    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(
+      coreJVM,
+      driver,
+      jdbc,
+      mysql,
+      oracle,
+      postgres,
+      sqlserver,
+      jdbc_hikaricp,
+      macros
     ),
-    docsPublishBranch  := "master",
-    readmeContribution := readmeContribution.value +
+    docsPublishBranch                          := "master",
+    readmeContribution                         := readmeContribution.value +
       """|### TL;DR
          |Prerequisites (installed):
          |
@@ -120,7 +127,7 @@ lazy val docs = project
          |5. Pick up an issue & you are ready to go!
          |""".stripMargin
   )
-  .dependsOn(postgres)
+  .dependsOn(coreJVM, postgres)
   .enablePlugins(WebsitePlugin)
 
 lazy val examples = project
