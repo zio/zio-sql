@@ -648,15 +648,6 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
       import Ordering._
       import Expr._
 
-      select(cityName).from(city).where(link === Option(""))
-      select(cityName).from(city).where(link === Some(""))
-      select(cityName).from(city).where(Some("") === link)
-      select(cityName).from(city).where(link === None)
-      select(cityName).from(city).where(None === link)
-
-      select(cityName).from(city).where(link === "")
-      select(cityName).from(city).where(" " === link)
-
       /**
        *          SELECT ms.name, c.name, COUNT(ml.id) as line_count
        *            FROM metro_line as ml

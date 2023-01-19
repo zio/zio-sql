@@ -98,9 +98,14 @@ object GroupByExamples extends App with PostgresJdbcModule {
   //   .from(productTable)
   //   .having(Sum(price) > 200)
 
+  // select(amount)
+  //  .from(productTable)
+  //  .groupBy(amount)
+  //  .having(amount > 10)
+  //  .where(amount > 10)
+
   select(amount)
     .from(productTable)
     .groupBy(amount)
     .having(amount > 10)
-
 }
