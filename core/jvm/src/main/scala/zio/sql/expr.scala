@@ -135,8 +135,10 @@ trait ExprModule extends NewtypesModule with OpsModule {
 
     implicit def literal[A: TypeTag](a: A): Expr[Features.Literal, Any, A] = Expr.Literal(a)
 
-    implicit def some[A](someA: Some[A]): Expr[Features.Literal, Any, Option[A]] =
+    implicit def some[A: TypeTag.NotNull](someA: Some[A]): Expr[Features.Literal, Any, Option[A]] = {
+      implicit val typeTagA = TypeTag.Nullable[A]()
       Expr.Literal[Option[A]](someA)
+    }
 
     def exprName[F, A, B](expr: Expr[F, A, B]): Option[String] =
       expr match {
