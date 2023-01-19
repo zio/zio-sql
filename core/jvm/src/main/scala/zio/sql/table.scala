@@ -10,7 +10,7 @@ object TableAnnotation {
   case class name(name: String) extends StaticAnnotation
 }
 
-trait TableModule { self: ExprModule with SelectModule with UtilsModule with SelectUtilsModule =>
+trait TableModule { self: ExprModule with SelectModule with UtilsModule with SelectUtilsModule with AllColumnsModule =>
 
   type Lens[F, S, A] = Expr[Features.Source[F, S], S, A]
 
@@ -22,6 +22,7 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule with Sel
     * Creates a table descripton from the Schema of T. 
     * Table name is taken either from @name annotation or schema id type and pluralized.
     */
+  // TODO do not allow CaseClass0 with macro
   def defineTableSmart[T](implicit
     schema: Schema.Record[T],
     tableLike: TableSchema[T]
@@ -77,6 +78,11 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule with Sel
         schema.Accessors[exprAccessorBuilder.Lens, exprAccessorBuilder.Prism, exprAccessorBuilder.Traversal]
 
       override val columns: ColumnsOut = schema.makeAccessors(exprAccessorBuilder)
+
+      override def *(implicit
+        helper: ColumnsHelper[ColumnsOut, TableType]
+      ): SelectBuilder[helper.F, TableType, helper.SelSet] =
+        helper.apply(columns)
 
       override val name: TableName = tableName.toLowerCase()
     }
@@ -220,6 +226,8 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule with Sel
       type ColumnsOut
 
       val columns: ColumnsOut
+
+      def *(implicit helper: ColumnsHelper[ColumnsOut, TableType]): SelectBuilder[helper.F, TableType, helper.SelSet]
 
       override def ahhhhhhhhhhhhh[A]: A = ??? // don't remove or it'll break
     }

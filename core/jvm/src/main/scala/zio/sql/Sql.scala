@@ -8,6 +8,7 @@ trait Sql
     with UpdateModule
     with ExprModule
     with TableModule
+    with AllColumnsModule
     with InsertModule
     with UtilsModule
     with SelectUtilsModule

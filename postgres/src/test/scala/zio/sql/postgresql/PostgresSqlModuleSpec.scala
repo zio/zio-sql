@@ -687,6 +687,15 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
       for {
         result <- execute(update(persons).set(personsName, Some("Charlie")).where(personsName === Some("Murray")))
       } yield assertTrue(result == 1)
+    },
+    test("select all rows") {
+      import CustomerSchema._
+
+      val query = select.*.from(customers)
+
+      for {
+        result <- execute(query).runCollect
+      } yield assertTrue(result.length == 2)
     }
   ) @@ sequential
 }
