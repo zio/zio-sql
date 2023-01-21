@@ -95,6 +95,7 @@ lazy val docs = project
     moduleName                                 := "zio-sql-docs",
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
+    crossScalaVersions                         := Seq(Scala213, Scala212, ScalaDotty),
     projectName                                := "ZIO SQL",
     mainModuleName                             := (coreJVM / moduleName).value,
     projectStage                               := ProjectStage.ProductionReady,
