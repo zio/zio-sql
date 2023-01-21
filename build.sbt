@@ -106,9 +106,7 @@ lazy val docs = project
       mysql,
       oracle,
       postgres,
-      sqlserver,
-      jdbc_hikaricp,
-      macros
+      sqlserver
     ),
     docsPublishBranch                          := "master",
     readmeContribution                         := readmeContribution.value +
