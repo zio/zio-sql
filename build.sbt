@@ -99,9 +99,7 @@ lazy val docs = project
     projectName                                := "ZIO SQL",
     mainModuleName                             := (coreJVM / moduleName).value,
     projectStage                               := ProjectStage.ProductionReady,
-    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(
-      coreJVM
-    ),
+    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(),
     docsPublishBranch                          := "master",
     readmeContribution                         := readmeContribution.value +
       """|### TL;DR
