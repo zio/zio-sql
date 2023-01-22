@@ -100,13 +100,7 @@ lazy val docs = project
     mainModuleName                             := (coreJVM / moduleName).value,
     projectStage                               := ProjectStage.ProductionReady,
     ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(
-      coreJVM,
-      driver,
-      jdbc,
-      mysql,
-      oracle,
-      postgres,
-      sqlserver
+      coreJVM
     ),
     docsPublishBranch                          := "master",
     readmeContribution                         := readmeContribution.value +
