@@ -1,7 +1,8 @@
 package zio.sql.sqlserver
 
-import zio.sql.Sql
 import java.math.BigDecimal
+
+import zio.sql.Sql
 
 trait SqlServerSqlModule extends Sql { self =>
 

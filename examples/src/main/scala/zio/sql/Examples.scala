@@ -94,6 +94,15 @@ object Examples extends App with PostgresJdbcModule {
   val withPropertyOp = select(fName, lName).from(users).where(fName isNotNull)
   println(renderRead(withPropertyOp))
 
+  // IN
+  val subselectSurname = select(lName).from(users).where(age > 18)
+  val subselectAge     = select(age).from(users).where(age > 18)
+
+  select(fName, lName).from(users).where(lName in List("Jaro", "Peter"))
+
+  select(fName).from(users).where(lName in subselectSurname)
+  select(fName).from(users).where(age in subselectAge)
+
   /*
   insert tuples
   INSERT INTO
@@ -179,7 +188,7 @@ object Examples extends App with PostgresJdbcModule {
   }
 
   object OrderDetails {
-    case class OrderDetail(orderId: Int, productId: Int, quantity: Double, unitPrice: Double)
+    case class OrderDetail(orderId: java.util.UUID, productId: Int, quantity: Double, unitPrice: Double)
 
     implicit val orderDetailSchema = DeriveSchema.gen[OrderDetail]
 

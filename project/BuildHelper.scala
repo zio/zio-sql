@@ -10,15 +10,14 @@ import scalafix.sbt.ScalafixPlugin.autoImport.scalafixSemanticdb
 
 object BuildHelper {
   val SilencerVersion = "1.7.12"
-  val Scala212        = "2.12.16"
-  val Scala213        = "2.13.8"
-  val ScalaDotty      = "3.0.0-RC3"
+  val Scala212        = "2.12.17"
+  val Scala213        = "2.13.10"
+  val ScalaDotty      = "3.2.1"
 
   def buildInfoSettings(packageName: String) =
     Seq(
-      buildInfoKeys    := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion, isSnapshot),
-      buildInfoPackage := packageName,
-      buildInfoObject  := "BuildInfo"
+      buildInfoKeys    := Seq[BuildInfoKey](organization, moduleName, name, version, scalaVersion, sbtVersion, isSnapshot),
+      buildInfoPackage := packageName
     )
 
   private val stdOptions = Seq(
@@ -35,7 +34,7 @@ object BuildHelper {
     "-language:existentials",
     "-explaintypes",
     "-Yrangepos",
-    "-Xlint:_,-missing-interpolator,-type-parameter-shadow",
+    "-Xlint:_,-missing-interpolator,-type-parameter-shadow,-infer-any",
     "-Ywarn-numeric-widen",
     "-Ywarn-value-discard"
   )
@@ -53,10 +52,11 @@ object BuildHelper {
 
   def extraOptions(scalaVersion: String, optimize: Boolean) =
     CrossVersion.partialVersion(scalaVersion) match {
-      case Some((0, _))  =>
+      case Some((3, _))  =>
         Seq(
           "-language:implicitConversions",
-          "-Xignore-scala2-macros"
+          "-Xignore-scala2-macros",
+          "-noindent"
         )
       case Some((2, 13)) =>
         Seq(
@@ -71,7 +71,6 @@ object BuildHelper {
           "-Ypartial-unification",
           "-Yno-adapted-args",
           "-Ywarn-inaccessible",
-          "-Ywarn-infer-any",
           "-Ywarn-nullary-override",
           "-Ywarn-nullary-unit",
           "-Ywarn-unused:params,-implicits",
@@ -148,21 +147,22 @@ object BuildHelper {
   def stdSettings(prjName: String) = Seq(
     name                     := s"$prjName",
     scalacOptions            := stdOptions,
-    crossScalaVersions       := Seq(Scala213, Scala212),
-    ThisBuild / scalaVersion := Scala213, // ScalaDotty,
+    crossScalaVersions       := Seq(Scala213, Scala212, ScalaDotty),
+    // ThisBuild / scalaVersion := ScalaDotty,
+    ThisBuild / scalaVersion := Scala213,
     scalacOptions            := stdOptions ++ extraOptions(scalaVersion.value, optimize = !isSnapshot.value),
     libraryDependencies ++= {
       if (scalaVersion.value == ScalaDotty)
         Seq(
-          "com.github.ghik"                 % s"silencer-lib_2.13.6" % SilencerVersion % Provided
+          "com.github.ghik"                 % s"silencer-lib_2.13.10" % SilencerVersion % Provided
         )
       else
         Seq(
-          ("com.github.ghik"                % "silencer-lib"         % SilencerVersion % Provided).cross(CrossVersion.full),
-          compilerPlugin(("com.github.ghik" % "silencer-plugin"      % SilencerVersion).cross(CrossVersion.full))
+          ("com.github.ghik"                % "silencer-lib"          % SilencerVersion % Provided).cross(CrossVersion.full),
+          compilerPlugin(("com.github.ghik" % "silencer-plugin"       % SilencerVersion).cross(CrossVersion.full))
         )
     },
-    resolvers += Resolver.sonatypeRepo("snapshots"),
+    resolvers ++= Resolver.sonatypeOssRepos("snapshots"),
     Test / parallelExecution := true,
     incOptions ~= (_.withLogRecompileOnMacro(false)),
     autoAPIMappings          := true,

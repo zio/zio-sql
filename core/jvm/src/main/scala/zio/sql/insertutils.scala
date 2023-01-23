@@ -1,401 +1,253 @@
 package zio.sql
 
-import zio.schema.Schema
+// format: off
+trait InsertUtilsModule {  self: ExprModule with TableModule with InsertModule with SelectModule =>
 
-trait InsertUtilsModule { self: FeaturesModule =>
+  sealed case class InsertIntoBuilder[Source, AllColumnIdentities](
+    table: Table.Source.Aux_[Source, AllColumnIdentities]
+  ) {
 
-  sealed trait SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source]
+      def apply[F, B <: SelectionSet[Source]](sources: Selection[F, Source, B]) =
+        InsertBuilder[F, Source, AllColumnIdentities, B, sources.ColsRepr](table, sources)
 
-  // format: off
-  object SchemaValidity extends SchemaValidityCaseClasses {
-     implicit def tuple1[F, A1, ColsRepr,  AllColumnIdentities, Source, Identity1](implicit
-      ev1: Schema[A1],
-      ev2: (A1, Unit) <:< ColsRepr,
-      ev3: F <:< Features.Source[Identity1, Source],
-      ev4: AllColumnIdentities <:< Identity1
-    ): SchemaValidity[F, A1, ColsRepr, AllColumnIdentities, Source] =
-      new SchemaValidity[F, A1, ColsRepr, AllColumnIdentities, Source] {}
+      def apply[F1, B1](expr1: Expr[F1, Source, B1]) = {
+        type B = SelectionSet.Cons[Source, B1, SelectionSet.Empty]
 
+        val selection: Selection[F1, Source, B] = expr1
 
-    implicit def tuple2[F, A1, A2, ColsRepr,  AllColumnIdentities, Source, Identity1, Identity2](implicit
-      ev1: Schema[(A1, A2)],
-      ev2: (A1, (A2, Unit)) <:< ColsRepr,
-      ev3: F <:< Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]],
-      ev4: AllColumnIdentities <:< Identity1 with Identity2
-    ): SchemaValidity[F, (A1, A2), ColsRepr, AllColumnIdentities, Source] =
-      new SchemaValidity[F, (A1, A2), ColsRepr, AllColumnIdentities, Source] {}
-
-    implicit def tuple3[F, A1, A2, A3, ColsRepr,  AllColumnIdentities, Source, Identity1, Identity2, Identity3, Z](implicit
-      ev1: Schema[(A1, A2, A3)],
-      ev2: (A1, (A2, (A3, Unit))) <:< ColsRepr,
-      ev3: F <:< Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]],
-      ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3
-    ): SchemaValidity[F, (A1, A2, A3), ColsRepr, AllColumnIdentities, Source] =
-      new SchemaValidity[F, (A1, A2, A3), ColsRepr, AllColumnIdentities, Source] {}
-
-    implicit def tuple4[F, A1, A2, A3, A4, ColsRepr,  AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4](implicit
-      ev1: Schema[(A1, A2, A3, A4)],
-      ev2: (A1, (A2, (A3, (A4, Unit)))) <:< ColsRepr,
-      ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],
-      ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4
-    ): SchemaValidity[F, (A1, A2, A3, A4), ColsRepr, AllColumnIdentities, Source] =
-      new SchemaValidity[F, (A1, A2, A3, A4), ColsRepr, AllColumnIdentities, Source] {}
-
-    implicit def tuple5[F, A1, A2, A3, A4, A5, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5]
-      (implicit 
-        ev1: Schema[(A1, A2, A3, A4, A5)],
-        ev2: (A1, (A2, (A3, (A4, (A5, Unit))))) <:< ColsRepr,
-        ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5
-      ): SchemaValidity[F, (A1, A2, A3, A4, A5), ColsRepr, AllColumnIdentities, Source] =
-        new SchemaValidity[F, (A1, A2, A3, A4, A5), ColsRepr, AllColumnIdentities, Source] {}
-
-    implicit def tuple6[F, A1, A2, A3, A4, A5, A6, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6]
-      (implicit 
-        ev1: Schema[(A1, A2, A3, A4, A5, A6)],
-        ev2: (A1, (A2, (A3, (A4, (A5, (A6, Unit)))))) <:< ColsRepr,
-        ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6
-      ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6), ColsRepr, AllColumnIdentities, Source] =
-        new SchemaValidity[F, (A1, A2, A3, A4, A5, A6), ColsRepr, AllColumnIdentities, Source] {}
-
-    implicit def tuple7[F, A1, A2, A3, A4, A5, A6, A7, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7]
-      (implicit 
-        ev1: Schema[(A1, A2, A3, A4, A5, A6, A7)],
-        ev2: (A1, (A2, (A3, (A4, (A5, (A6, (A7, Unit))))))) <:< ColsRepr,
-        ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]], Features.Source[Identity7, Source]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7
-      ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7), ColsRepr, AllColumnIdentities, Source] =
-        new SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7), ColsRepr, AllColumnIdentities, Source] {}
-
-    implicit def tuple8[F, A1, A2, A3, A4, A5, A6, A7, A8, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8]
-      (implicit 
-        ev1: Schema[(A1, A2, A3, A4, A5, A6, A7, A8)],
-        ev2: (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, Unit)))))))) <:< ColsRepr,
-        ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]], Features.Source[Identity7, Source]], Features.Source[Identity8, Source]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8
-      ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8), ColsRepr, AllColumnIdentities, Source] =
-        new SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8), ColsRepr, AllColumnIdentities, Source] {}
+        InsertBuilder[F1, Source, AllColumnIdentities, B, selection.ColsRepr](table, selection)
+      }
   
-    implicit def tuple9[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9]
-      (implicit 
-        ev1: Schema[(A1, A2, A3, A4, A5, A6, A7, A8, A9)],
-        ev2: (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, Unit))))))))) <:< ColsRepr,
-        ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]], Features.Source[Identity7, Source]], Features.Source[Identity8, Source]], Features.Source[Identity9, Source]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9
-      ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9), ColsRepr, AllColumnIdentities, Source] =
-        new SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9), ColsRepr, AllColumnIdentities, Source] {}
+      def apply[F1, F2, B1, B2](expr1: Expr[F1, Source, B1], expr2: Expr[F2, Source, B2]) = {
+        val selection = expr1 ++ expr2
 
-    implicit def tuple10[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10]
-      (implicit 
-        ev1: Schema[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10)],
-        ev2: (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, Unit)))))))))) <:< ColsRepr,
-        ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]], Features.Source[Identity7, Source]], Features.Source[Identity8, Source]], Features.Source[Identity9, Source]], Features.Source[Identity10, Source]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10
-      ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10), ColsRepr, AllColumnIdentities, Source] =
-        new SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10), ColsRepr, AllColumnIdentities, Source] {}
+        type B = SelectionSet.Cons[Source, B1, SelectionSet.Cons[Source, B2, SelectionSet.Empty]]
 
-    implicit def tuple11[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11]
-      (implicit 
-        ev1: Schema[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11)],
-        ev2: (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, Unit))))))))))) <:< ColsRepr,
-        ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]], Features.Source[Identity7, Source]], Features.Source[Identity8, Source]], Features.Source[Identity9, Source]], Features.Source[Identity10, Source]], Features.Source[Identity11, Source]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11
-      ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11), ColsRepr, AllColumnIdentities, Source] =
-        new SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11), ColsRepr, AllColumnIdentities, Source] {}
+        InsertBuilder[Features.Union[F1, F2], Source, AllColumnIdentities, B, selection.ColsRepr](
+           table,
+           selection
+        )
+      }
 
-    implicit def tuple12[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12]
-      (implicit 
-        ev1: Schema[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12)],
-        ev2: (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, Unit)))))))))))) <:< ColsRepr,
-        ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]], Features.Source[Identity7, Source]], Features.Source[Identity8, Source]], Features.Source[Identity9, Source]], Features.Source[Identity10, Source]], Features.Source[Identity11, Source]], Features.Source[Identity12, Source]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12
-      ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12), ColsRepr, AllColumnIdentities, Source] =
-        new SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12), ColsRepr, AllColumnIdentities, Source] {}
+      def apply[F1, F2, F3, B1, B2, B3](expr1: Expr[F1, Source, B1], expr2: Expr[F2, Source, B2], expr3: Expr[F3, Source, B3]) = {
+        val selection = expr1 ++ expr2 ++ expr3
 
-    implicit def tuple13[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13]
-      (implicit 
-        ev1: Schema[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13)],
-        ev2: (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, Unit))))))))))))) <:< ColsRepr,
-        ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]], Features.Source[Identity7, Source]], Features.Source[Identity8, Source]], Features.Source[Identity9, Source]], Features.Source[Identity10, Source]], Features.Source[Identity11, Source]], Features.Source[Identity12, Source]], Features.Source[Identity13, Source]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13
-      ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13), ColsRepr, AllColumnIdentities, Source] =
-        new SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13), ColsRepr, AllColumnIdentities, Source] {}
+        type B = SelectionSet.Cons[Source, B1, SelectionSet.Cons[Source, B2, SelectionSet.Cons[Source, B3, SelectionSet.Empty]]]
 
-    implicit def tuple14[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14]
-      (implicit 
-        ev1: Schema[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14)],
-        ev2: (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, Unit)))))))))))))) <:< ColsRepr,
-        ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]], Features.Source[Identity7, Source]], Features.Source[Identity8, Source]], Features.Source[Identity9, Source]], Features.Source[Identity10, Source]], Features.Source[Identity11, Source]], Features.Source[Identity12, Source]], Features.Source[Identity13, Source]], Features.Source[Identity14, Source]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14
-      ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14), ColsRepr, AllColumnIdentities, Source] =
-        new SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14), ColsRepr, AllColumnIdentities, Source] {}
+        InsertBuilder[Features.Union[Features.Union[F1, F2], F3], Source, AllColumnIdentities, B, selection.ColsRepr](
+           table,
+           selection
+        )
+      }
 
-    implicit def tuple15[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15]
-      (implicit 
-        ev1: Schema[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15)],
-        ev2: (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, Unit))))))))))))))) <:< ColsRepr,
-        ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]], Features.Source[Identity7, Source]], Features.Source[Identity8, Source]], Features.Source[Identity9, Source]], Features.Source[Identity10, Source]], Features.Source[Identity11, Source]], Features.Source[Identity12, Source]], Features.Source[Identity13, Source]], Features.Source[Identity14, Source]], Features.Source[Identity15, Source]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15
-      ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15), ColsRepr, AllColumnIdentities, Source] =
-        new SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15), ColsRepr, AllColumnIdentities, Source] {}
+      def apply[F1, F2, F3, F4, B1, B2, B3, B4](expr1: Expr[F1, Source, B1], expr2: Expr[F2, Source, B2], expr3: Expr[F3, Source, B3], expr4: Expr[F4, Source, B4]) = {
+        val selection = expr1 ++ expr2 ++ expr3 ++ expr4
 
-    implicit def tuple16[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15, Identity16]
-      (implicit 
-        ev1: Schema[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16)],
-        ev2: (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, (A16, Unit)))))))))))))))) <:< ColsRepr,
-        ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]], Features.Source[Identity7, Source]], Features.Source[Identity8, Source]], Features.Source[Identity9, Source]], Features.Source[Identity10, Source]], Features.Source[Identity11, Source]], Features.Source[Identity12, Source]], Features.Source[Identity13, Source]], Features.Source[Identity14, Source]], Features.Source[Identity15, Source]], Features.Source[Identity16, Source]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16
-      ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16), ColsRepr, AllColumnIdentities, Source] =
-        new SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16), ColsRepr, AllColumnIdentities, Source] {}
+        type B = SelectionSet.Cons[Source, B1, SelectionSet.Cons[Source, B2, SelectionSet.Cons[Source, B3, SelectionSet.Cons[Source, B4, SelectionSet.Empty]]]]
 
-    implicit def tuple17[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15, Identity16, Identity17]
-      (implicit 
-        ev1: Schema[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17)],
-        ev2: (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, (A16, (A17, Unit))))))))))))))))) <:< ColsRepr,
-        ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]], Features.Source[Identity7, Source]], Features.Source[Identity8, Source]], Features.Source[Identity9, Source]], Features.Source[Identity10, Source]], Features.Source[Identity11, Source]], Features.Source[Identity12, Source]], Features.Source[Identity13, Source]], Features.Source[Identity14, Source]], Features.Source[Identity15, Source]], Features.Source[Identity16, Source]], Features.Source[Identity17, Source]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16 with Identity17
-      ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17), ColsRepr, AllColumnIdentities, Source] =
-        new SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17), ColsRepr, AllColumnIdentities, Source] {}
+        InsertBuilder[Features.Union[Features.Union[Features.Union[F1, F2], F3], F4], Source, AllColumnIdentities, B, selection.ColsRepr](
+           table,
+           selection
+        )
+      }
 
-    implicit def tuple18[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15, Identity16, Identity17, Identity18]
-      (implicit
-        ev1: Schema[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18)],
-        ev2: (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, (A16, (A17, (A18, Unit)))))))))))))))))) <:< ColsRepr,
-        ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]], Features.Source[Identity7, Source]], Features.Source[Identity8, Source]], Features.Source[Identity9, Source]], Features.Source[Identity10, Source]], Features.Source[Identity11, Source]], Features.Source[Identity12, Source]], Features.Source[Identity13, Source]], Features.Source[Identity14, Source]], Features.Source[Identity15, Source]], Features.Source[Identity16, Source]], Features.Source[Identity17, Source]], Features.Source[Identity18, Source]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16 with Identity17 with Identity18
-      ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18), ColsRepr, AllColumnIdentities, Source] =
-        new SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18), ColsRepr, AllColumnIdentities, Source] {}
+      def apply[F1, F2, F3, F4, F5, B1, B2, B3, B4, B5](expr1: Expr[F1, Source, B1], expr2: Expr[F2, Source, B2], expr3: Expr[F3, Source, B3], expr4: Expr[F4, Source, B4], expr5: Expr[F5, Source, B5]) = {
+        val selection = expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5
 
-    implicit def tuple19[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15, Identity16, Identity17, Identity18, Identity19]
-      (implicit 
-        ev1: Schema[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19)],
-        ev2: (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, (A16, (A17, (A18, (A19, Unit))))))))))))))))))) <:< ColsRepr,
-        ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]], Features.Source[Identity7, Source]], Features.Source[Identity8, Source]], Features.Source[Identity9, Source]], Features.Source[Identity10, Source]], Features.Source[Identity11, Source]], Features.Source[Identity12, Source]], Features.Source[Identity13, Source]], Features.Source[Identity14, Source]], Features.Source[Identity15, Source]], Features.Source[Identity16, Source]], Features.Source[Identity17, Source]], Features.Source[Identity18, Source]], Features.Source[Identity19, Source]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16 with Identity17 with Identity18 with Identity19
-      ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19), ColsRepr, AllColumnIdentities, Source] =
-        new SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19), ColsRepr, AllColumnIdentities, Source] {}
-    
-    implicit def tuple20[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15, Identity16, Identity17, Identity18, Identity19, Identity20]
-      (implicit
-        ev1: Schema[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20)],
-        ev2: (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, (A16, (A17, (A18, (A19, (A20, Unit)))))))))))))))))))) <:< ColsRepr,
-        ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]], Features.Source[Identity7, Source]], Features.Source[Identity8, Source]], Features.Source[Identity9, Source]], Features.Source[Identity10, Source]], Features.Source[Identity11, Source]], Features.Source[Identity12, Source]], Features.Source[Identity13, Source]], Features.Source[Identity14, Source]], Features.Source[Identity15, Source]], Features.Source[Identity16, Source]], Features.Source[Identity17, Source]], Features.Source[Identity18, Source]], Features.Source[Identity19, Source]], Features.Source[Identity20, Source]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16 with Identity17 with Identity18 with Identity19 with Identity20
-      ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20), ColsRepr, AllColumnIdentities, Source] =
-        new SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20), ColsRepr, AllColumnIdentities, Source] {}
+        type B = SelectionSet.Cons[Source, B1, SelectionSet.Cons[Source, B2, SelectionSet.Cons[Source, B3, SelectionSet.Cons[Source, B4, SelectionSet.Cons[Source, B5, SelectionSet.Empty]]]]]
 
-    implicit def tuple21[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15, Identity16, Identity17, Identity18, Identity19, Identity20, Identity21]
-      (implicit 
-        ev1: Schema[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21)],
-        ev2: (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, (A16, (A17, (A18, (A19, (A20, (A21, Unit))))))))))))))))))))) <:< ColsRepr,
-        ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]], Features.Source[Identity7, Source]], Features.Source[Identity8, Source]], Features.Source[Identity9, Source]], Features.Source[Identity10, Source]], Features.Source[Identity11, Source]], Features.Source[Identity12, Source]], Features.Source[Identity13, Source]], Features.Source[Identity14, Source]], Features.Source[Identity15, Source]], Features.Source[Identity16, Source]], Features.Source[Identity17, Source]], Features.Source[Identity18, Source]], Features.Source[Identity19, Source]], Features.Source[Identity20, Source]], Features.Source[Identity21, Source]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16 with Identity17 with Identity18 with Identity19 with Identity20 with Identity21
-      ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21), ColsRepr, AllColumnIdentities, Source] =
-        new SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21), ColsRepr, AllColumnIdentities, Source] {}
+        InsertBuilder[Features.Union[Features.Union[Features.Union[Features.Union[F1, F2], F3], F4], F5], Source, AllColumnIdentities, B, selection.ColsRepr](
+           table,
+           selection
+        )
+      }
 
-    implicit def tuple22[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, A22, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15, Identity16, Identity17, Identity18, Identity19, Identity20, Identity21, Identity22]
-      (implicit
-        ev1: Schema[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, A22)],
-        ev2: (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, (A16, (A17, (A18, (A19, (A20, (A21, (A22, Unit)))))))))))))))))))))) <:< ColsRepr,
-        ev3: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]], Features.Source[Identity7, Source]], Features.Source[Identity8, Source]], Features.Source[Identity9, Source]], Features.Source[Identity10, Source]], Features.Source[Identity11, Source]], Features.Source[Identity12, Source]], Features.Source[Identity13, Source]], Features.Source[Identity14, Source]], Features.Source[Identity15, Source]], Features.Source[Identity16, Source]], Features.Source[Identity17, Source]], Features.Source[Identity18, Source]], Features.Source[Identity19, Source]], Features.Source[Identity20, Source]], Features.Source[Identity21, Source]], Features.Source[Identity22, Source]],
-        ev4: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16 with Identity17 with Identity18 with Identity19 with Identity20 with Identity21 with Identity22
-      ): SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, A22), ColsRepr, AllColumnIdentities, Source] =
-        new SchemaValidity[F, (A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, A22), ColsRepr, AllColumnIdentities, Source] {}
+      def apply[F1, F2, F3, F4, F5, F6, B1, B2, B3, B4, B5, B6](expr1: Expr[F1, Source, B1], expr2: Expr[F2, Source, B2], expr3: Expr[F3, Source, B3], expr4: Expr[F4, Source, B4], expr5: Expr[F5, Source, B5], expr6: Expr[F6, Source, B6]) = {
+        val selection = expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6
+
+        type B = SelectionSet.Cons[Source, B1, SelectionSet.Cons[Source, B2, SelectionSet.Cons[Source, B3, SelectionSet.Cons[Source, B4, SelectionSet.Cons[Source, B5, SelectionSet.Cons[Source, B6, SelectionSet.Empty]]]]]]
+
+        InsertBuilder[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[F1, F2], F3], F4], F5], F6], Source, AllColumnIdentities, B, selection.ColsRepr](
+           table,
+           selection
+        )
+      }
+
+      def apply[F1, F2, F3, F4, F5, F6, F7, B1, B2, B3, B4, B5, B6, B7](expr1: Expr[F1, Source, B1], expr2: Expr[F2, Source, B2], expr3: Expr[F3, Source, B3], expr4: Expr[F4, Source, B4], expr5: Expr[F5, Source, B5], expr6: Expr[F6, Source, B6], expr7: Expr[F7, Source, B7]) = {
+        val selection = expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7
+
+        type B = SelectionSet.Cons[Source, B1, SelectionSet.Cons[Source, B2, SelectionSet.Cons[Source, B3, SelectionSet.Cons[Source, B4, SelectionSet.Cons[Source, B5, SelectionSet.Cons[Source, B6, SelectionSet.Cons[Source, B7, SelectionSet.Empty]]]]]]]
+
+        InsertBuilder[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[F1, F2], F3], F4], F5], F6], F7], Source, AllColumnIdentities, B, selection.ColsRepr](
+           table,
+           selection
+        )
+      }
+      
+      def apply[F1, F2, F3, F4, F5, F6, F7, F8, B1, B2, B3, B4, B5, B6, B7, B8](expr1: Expr[F1, Source, B1], expr2: Expr[F2, Source, B2], expr3: Expr[F3, Source, B3], expr4: Expr[F4, Source, B4], expr5: Expr[F5, Source, B5], expr6: Expr[F6, Source, B6], expr7: Expr[F7, Source, B7], expr8: Expr[F8, Source, B8]) = {
+        val selection = expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7 ++ expr8
+
+        type B = SelectionSet.Cons[Source, B1, SelectionSet.Cons[Source, B2, SelectionSet.Cons[Source, B3, SelectionSet.Cons[Source, B4, SelectionSet.Cons[Source, B5, SelectionSet.Cons[Source, B6, SelectionSet.Cons[Source, B7, SelectionSet.Cons[Source, B8, SelectionSet.Empty]]]]]]]]
+
+        InsertBuilder[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[F1, F2], F3], F4], F5], F6], F7], F8], Source, AllColumnIdentities, B, selection.ColsRepr](
+           table,
+           selection
+        )
+      }
+
+      def apply[F1, F2, F3, F4, F5, F6, F7, F8, F9, B1, B2, B3, B4, B5, B6, B7, B8, B9](expr1: Expr[F1, Source, B1], expr2: Expr[F2, Source, B2], expr3: Expr[F3, Source, B3], expr4: Expr[F4, Source, B4], expr5: Expr[F5, Source, B5], expr6: Expr[F6, Source, B6], expr7: Expr[F7, Source, B7], expr8: Expr[F8, Source, B8], expr9: Expr[F9, Source, B9]) = {
+        val selection = expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7 ++ expr8 ++ expr9
+
+        type B = SelectionSet.Cons[Source, B1, SelectionSet.Cons[Source, B2, SelectionSet.Cons[Source, B3, SelectionSet.Cons[Source, B4, SelectionSet.Cons[Source, B5, SelectionSet.Cons[Source, B6, SelectionSet.Cons[Source, B7, SelectionSet.Cons[Source, B8, SelectionSet.Cons[Source, B9, SelectionSet.Empty]]]]]]]]]
+
+        InsertBuilder[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[F1, F2], F3], F4], F5], F6], F7], F8], F9], Source, AllColumnIdentities, B, selection.ColsRepr](
+           table,
+           selection
+        )
+      }
+      
+      def apply[F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10](expr1: Expr[F1, Source, B1], expr2: Expr[F2, Source, B2], expr3: Expr[F3, Source, B3], expr4: Expr[F4, Source, B4], expr5: Expr[F5, Source, B5], expr6: Expr[F6, Source, B6], expr7: Expr[F7, Source, B7], expr8: Expr[F8, Source, B8], expr9: Expr[F9, Source, B9], expr10: Expr[F10, Source, B10]) = {
+        val selection = expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7 ++ expr8 ++ expr9 ++ expr10
+
+        type B = SelectionSet.Cons[Source, B1, SelectionSet.Cons[Source, B2, SelectionSet.Cons[Source, B3, SelectionSet.Cons[Source, B4, SelectionSet.Cons[Source, B5, SelectionSet.Cons[Source, B6, SelectionSet.Cons[Source, B7, SelectionSet.Cons[Source, B8, SelectionSet.Cons[Source, B9, SelectionSet.Cons[Source, B10, SelectionSet.Empty]]]]]]]]]]
+
+        InsertBuilder[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[F1, F2], F3], F4], F5], F6], F7], F8], F9], F10], Source, AllColumnIdentities, B, selection.ColsRepr](
+           table,
+           selection
+        )
+      }
+
+      def apply[F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11](expr1: Expr[F1, Source, B1], expr2: Expr[F2, Source, B2], expr3: Expr[F3, Source, B3], expr4: Expr[F4, Source, B4], expr5: Expr[F5, Source, B5], expr6: Expr[F6, Source, B6], expr7: Expr[F7, Source, B7], expr8: Expr[F8, Source, B8], expr9: Expr[F9, Source, B9], expr10: Expr[F10, Source, B10], expr11: Expr[F11, Source, B11]) = {
+        val selection = expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7 ++ expr8 ++ expr9 ++ expr10 ++ expr11
+
+        type B = SelectionSet.Cons[Source, B1, SelectionSet.Cons[Source, B2, SelectionSet.Cons[Source, B3, SelectionSet.Cons[Source, B4, SelectionSet.Cons[Source, B5, SelectionSet.Cons[Source, B6, SelectionSet.Cons[Source, B7, SelectionSet.Cons[Source, B8, SelectionSet.Cons[Source, B9, SelectionSet.Cons[Source, B10, SelectionSet.Cons[Source, B11, SelectionSet.Empty]]]]]]]]]]]
+
+        InsertBuilder[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[F1, F2], F3], F4], F5], F6], F7], F8], F9], F10], F11], Source, AllColumnIdentities, B, selection.ColsRepr](
+           table,
+           selection
+        )
+      }
+
+      def apply[F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12](expr1: Expr[F1, Source, B1], expr2: Expr[F2, Source, B2], expr3: Expr[F3, Source, B3], expr4: Expr[F4, Source, B4], expr5: Expr[F5, Source, B5], expr6: Expr[F6, Source, B6], expr7: Expr[F7, Source, B7], expr8: Expr[F8, Source, B8], expr9: Expr[F9, Source, B9], expr10: Expr[F10, Source, B10], expr11: Expr[F11, Source, B11], expr12: Expr[F12, Source, B12]) = {
+        val selection = expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7 ++ expr8 ++ expr9 ++ expr10 ++ expr11 ++ expr12
+
+        type B = SelectionSet.Cons[Source, B1, SelectionSet.Cons[Source, B2, SelectionSet.Cons[Source, B3, SelectionSet.Cons[Source, B4, SelectionSet.Cons[Source, B5, SelectionSet.Cons[Source, B6, SelectionSet.Cons[Source, B7, SelectionSet.Cons[Source, B8, SelectionSet.Cons[Source, B9, SelectionSet.Cons[Source, B10, SelectionSet.Cons[Source, B11, SelectionSet.Cons[Source, B12, SelectionSet.Empty]]]]]]]]]]]]
+
+        InsertBuilder[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[F1, F2], F3], F4], F5], F6], F7], F8], F9], F10], F11], F12], Source, AllColumnIdentities, B, selection.ColsRepr](
+           table,
+           selection
+        )
+      }
+
+      def apply[F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13](expr1: Expr[F1, Source, B1], expr2: Expr[F2, Source, B2], expr3: Expr[F3, Source, B3], expr4: Expr[F4, Source, B4], expr5: Expr[F5, Source, B5], expr6: Expr[F6, Source, B6], expr7: Expr[F7, Source, B7], expr8: Expr[F8, Source, B8], expr9: Expr[F9, Source, B9], expr10: Expr[F10, Source, B10], expr11: Expr[F11, Source, B11], expr12: Expr[F12, Source, B12], expr13: Expr[F13, Source, B13]) = {
+        val selection = expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7 ++ expr8 ++ expr9 ++ expr10 ++ expr11 ++ expr12 ++ expr13
+
+        type B = SelectionSet.Cons[Source, B1, SelectionSet.Cons[Source, B2, SelectionSet.Cons[Source, B3, SelectionSet.Cons[Source, B4, SelectionSet.Cons[Source, B5, SelectionSet.Cons[Source, B6, SelectionSet.Cons[Source, B7, SelectionSet.Cons[Source, B8, SelectionSet.Cons[Source, B9, SelectionSet.Cons[Source, B10, SelectionSet.Cons[Source, B11, SelectionSet.Cons[Source, B12, SelectionSet.Cons[Source, B13, SelectionSet.Empty]]]]]]]]]]]]]
+
+        InsertBuilder[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[F1, F2], F3], F4], F5], F6], F7], F8], F9], F10], F11], F12], F13], Source, AllColumnIdentities, B, selection.ColsRepr](
+           table,
+           selection
+        )
+      }
+
+      def apply[F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13, B14](expr1: Expr[F1, Source, B1], expr2: Expr[F2, Source, B2], expr3: Expr[F3, Source, B3], expr4: Expr[F4, Source, B4], expr5: Expr[F5, Source, B5], expr6: Expr[F6, Source, B6], expr7: Expr[F7, Source, B7], expr8: Expr[F8, Source, B8], expr9: Expr[F9, Source, B9], expr10: Expr[F10, Source, B10], expr11: Expr[F11, Source, B11], expr12: Expr[F12, Source, B12], expr13: Expr[F13, Source, B13], expr14: Expr[F14, Source, B14]) = {
+        val selection = expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7 ++ expr8 ++ expr9 ++ expr10 ++ expr11 ++ expr12 ++ expr13 ++ expr14
+
+        type B = SelectionSet.Cons[Source, B1, SelectionSet.Cons[Source, B2, SelectionSet.Cons[Source, B3, SelectionSet.Cons[Source, B4, SelectionSet.Cons[Source, B5, SelectionSet.Cons[Source, B6, SelectionSet.Cons[Source, B7, SelectionSet.Cons[Source, B8, SelectionSet.Cons[Source, B9, SelectionSet.Cons[Source, B10, SelectionSet.Cons[Source, B11, SelectionSet.Cons[Source, B12, SelectionSet.Cons[Source, B13, SelectionSet.Cons[Source, B14, SelectionSet.Empty]]]]]]]]]]]]]]
+
+        InsertBuilder[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[F1, F2], F3], F4], F5], F6], F7], F8], F9], F10], F11], F12], F13], F14], Source, AllColumnIdentities, B, selection.ColsRepr](
+           table,
+           selection
+        )
+      }
+      
+      def apply[F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13, B14, B15](expr1: Expr[F1, Source, B1], expr2: Expr[F2, Source, B2], expr3: Expr[F3, Source, B3], expr4: Expr[F4, Source, B4], expr5: Expr[F5, Source, B5], expr6: Expr[F6, Source, B6], expr7: Expr[F7, Source, B7], expr8: Expr[F8, Source, B8], expr9: Expr[F9, Source, B9], expr10: Expr[F10, Source, B10], expr11: Expr[F11, Source, B11], expr12: Expr[F12, Source, B12], expr13: Expr[F13, Source, B13], expr14: Expr[F14, Source, B14], expr15: Expr[F15, Source, B15]) = {
+        val selection = expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7 ++ expr8 ++ expr9 ++ expr10 ++ expr11 ++ expr12 ++ expr13 ++ expr14 ++ expr15
+
+        type B = SelectionSet.Cons[Source, B1, SelectionSet.Cons[Source, B2, SelectionSet.Cons[Source, B3, SelectionSet.Cons[Source, B4, SelectionSet.Cons[Source, B5, SelectionSet.Cons[Source, B6, SelectionSet.Cons[Source, B7, SelectionSet.Cons[Source, B8, SelectionSet.Cons[Source, B9, SelectionSet.Cons[Source, B10, SelectionSet.Cons[Source, B11, SelectionSet.Cons[Source, B12, SelectionSet.Cons[Source, B13, SelectionSet.Cons[Source, B14, SelectionSet.Cons[Source, B15, SelectionSet.Empty]]]]]]]]]]]]]]]
+
+        InsertBuilder[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[F1, F2], F3], F4], F5], F6], F7], F8], F9], F10], F11], F12], F13], F14], F15], Source, AllColumnIdentities, B, selection.ColsRepr](
+           table,
+           selection
+        )
+      }
+      
+      def apply[F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15, F16, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13, B14, B15, B16](expr1: Expr[F1, Source, B1], expr2: Expr[F2, Source, B2], expr3: Expr[F3, Source, B3], expr4: Expr[F4, Source, B4], expr5: Expr[F5, Source, B5], expr6: Expr[F6, Source, B6], expr7: Expr[F7, Source, B7], expr8: Expr[F8, Source, B8], expr9: Expr[F9, Source, B9], expr10: Expr[F10, Source, B10], expr11: Expr[F11, Source, B11], expr12: Expr[F12, Source, B12], expr13: Expr[F13, Source, B13], expr14: Expr[F14, Source, B14], expr15: Expr[F15, Source, B15], expr16: Expr[F16, Source, B16]) = {
+        val selection = expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7 ++ expr8 ++ expr9 ++ expr10 ++ expr11 ++ expr12 ++ expr13 ++ expr14 ++ expr15 ++ expr16
+
+        type B = SelectionSet.Cons[Source, B1, SelectionSet.Cons[Source, B2, SelectionSet.Cons[Source, B3, SelectionSet.Cons[Source, B4, SelectionSet.Cons[Source, B5, SelectionSet.Cons[Source, B6, SelectionSet.Cons[Source, B7, SelectionSet.Cons[Source, B8, SelectionSet.Cons[Source, B9, SelectionSet.Cons[Source, B10, SelectionSet.Cons[Source, B11, SelectionSet.Cons[Source, B12, SelectionSet.Cons[Source, B13, SelectionSet.Cons[Source, B14, SelectionSet.Cons[Source, B15, SelectionSet.Cons[Source, B16, SelectionSet.Empty]]]]]]]]]]]]]]]]
+
+        InsertBuilder[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[F1, F2], F3], F4], F5], F6], F7], F8], F9], F10], F11], F12], F13], F14], F15], F16], Source, AllColumnIdentities, B, selection.ColsRepr](
+           table,
+           selection
+        )
+      }
+
+      def apply[F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15, F16, F17, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13, B14, B15, B16, B17](expr1: Expr[F1, Source, B1], expr2: Expr[F2, Source, B2], expr3: Expr[F3, Source, B3], expr4: Expr[F4, Source, B4], expr5: Expr[F5, Source, B5], expr6: Expr[F6, Source, B6], expr7: Expr[F7, Source, B7], expr8: Expr[F8, Source, B8], expr9: Expr[F9, Source, B9], expr10: Expr[F10, Source, B10], expr11: Expr[F11, Source, B11], expr12: Expr[F12, Source, B12], expr13: Expr[F13, Source, B13], expr14: Expr[F14, Source, B14], expr15: Expr[F15, Source, B15], expr16: Expr[F16, Source, B16], expr17: Expr[F17, Source, B17]) = {
+        val selection = expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7 ++ expr8 ++ expr9 ++ expr10 ++ expr11 ++ expr12 ++ expr13 ++ expr14 ++ expr15 ++ expr16 ++ expr17
+
+        type B = SelectionSet.Cons[Source, B1, SelectionSet.Cons[Source, B2, SelectionSet.Cons[Source, B3, SelectionSet.Cons[Source, B4, SelectionSet.Cons[Source, B5, SelectionSet.Cons[Source, B6, SelectionSet.Cons[Source, B7, SelectionSet.Cons[Source, B8, SelectionSet.Cons[Source, B9, SelectionSet.Cons[Source, B10, SelectionSet.Cons[Source, B11, SelectionSet.Cons[Source, B12, SelectionSet.Cons[Source, B13, SelectionSet.Cons[Source, B14, SelectionSet.Cons[Source, B15, SelectionSet.Cons[Source, B16, SelectionSet.Cons[Source, B17, SelectionSet.Empty]]]]]]]]]]]]]]]]]
+
+        InsertBuilder[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[F1, F2], F3], F4], F5], F6], F7], F8], F9], F10], F11], F12], F13], F14], F15], F16], F17], Source, AllColumnIdentities, B, selection.ColsRepr](
+           table,
+           selection
+        )
+      }
+      
+      def apply[F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15, F16, F17, F18, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13, B14, B15, B16, B17, B18](expr1: Expr[F1, Source, B1], expr2: Expr[F2, Source, B2], expr3: Expr[F3, Source, B3], expr4: Expr[F4, Source, B4], expr5: Expr[F5, Source, B5], expr6: Expr[F6, Source, B6], expr7: Expr[F7, Source, B7], expr8: Expr[F8, Source, B8], expr9: Expr[F9, Source, B9], expr10: Expr[F10, Source, B10], expr11: Expr[F11, Source, B11], expr12: Expr[F12, Source, B12], expr13: Expr[F13, Source, B13], expr14: Expr[F14, Source, B14], expr15: Expr[F15, Source, B15], expr16: Expr[F16, Source, B16], expr17: Expr[F17, Source, B17], expr18: Expr[F18, Source, B18]) = {
+        val selection = expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7 ++ expr8 ++ expr9 ++ expr10 ++ expr11 ++ expr12 ++ expr13 ++ expr14 ++ expr15 ++ expr16 ++ expr17 ++ expr18
+
+        type B = SelectionSet.Cons[Source, B1, SelectionSet.Cons[Source, B2, SelectionSet.Cons[Source, B3, SelectionSet.Cons[Source, B4, SelectionSet.Cons[Source, B5, SelectionSet.Cons[Source, B6, SelectionSet.Cons[Source, B7, SelectionSet.Cons[Source, B8, SelectionSet.Cons[Source, B9, SelectionSet.Cons[Source, B10, SelectionSet.Cons[Source, B11, SelectionSet.Cons[Source, B12, SelectionSet.Cons[Source, B13, SelectionSet.Cons[Source, B14, SelectionSet.Cons[Source, B15, SelectionSet.Cons[Source, B16, SelectionSet.Cons[Source, B17, SelectionSet.Cons[Source, B18, SelectionSet.Empty]]]]]]]]]]]]]]]]]]
+
+        InsertBuilder[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[F1, F2], F3], F4], F5], F6], F7], F8], F9], F10], F11], F12], F13], F14], F15], F16], F17], F18], Source, AllColumnIdentities, B, selection.ColsRepr](
+           table,
+           selection
+        )
+      }
+      
+      def apply[F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15, F16, F17, F18, F19, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13, B14, B15, B16, B17, B18, B19](expr1: Expr[F1, Source, B1], expr2: Expr[F2, Source, B2], expr3: Expr[F3, Source, B3], expr4: Expr[F4, Source, B4], expr5: Expr[F5, Source, B5], expr6: Expr[F6, Source, B6], expr7: Expr[F7, Source, B7], expr8: Expr[F8, Source, B8], expr9: Expr[F9, Source, B9], expr10: Expr[F10, Source, B10], expr11: Expr[F11, Source, B11], expr12: Expr[F12, Source, B12], expr13: Expr[F13, Source, B13], expr14: Expr[F14, Source, B14], expr15: Expr[F15, Source, B15], expr16: Expr[F16, Source, B16], expr17: Expr[F17, Source, B17], expr18: Expr[F18, Source, B18], expr19: Expr[F19, Source, B19]) = {
+        val selection = expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7 ++ expr8 ++ expr9 ++ expr10 ++ expr11 ++ expr12 ++ expr13 ++ expr14 ++ expr15 ++ expr16 ++ expr17 ++ expr18 ++ expr19
+
+        type B = SelectionSet.Cons[Source, B1, SelectionSet.Cons[Source, B2, SelectionSet.Cons[Source, B3, SelectionSet.Cons[Source, B4, SelectionSet.Cons[Source, B5, SelectionSet.Cons[Source, B6, SelectionSet.Cons[Source, B7, SelectionSet.Cons[Source, B8, SelectionSet.Cons[Source, B9, SelectionSet.Cons[Source, B10, SelectionSet.Cons[Source, B11, SelectionSet.Cons[Source, B12, SelectionSet.Cons[Source, B13, SelectionSet.Cons[Source, B14, SelectionSet.Cons[Source, B15, SelectionSet.Cons[Source, B16, SelectionSet.Cons[Source, B17, SelectionSet.Cons[Source, B18, SelectionSet.Cons[Source, B19, SelectionSet.Empty]]]]]]]]]]]]]]]]]]]
+
+        InsertBuilder[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[F1, F2], F3], F4], F5], F6], F7], F8], F9], F10], F11], F12], F13], F14], F15], F16], F17], F18], F19], Source, AllColumnIdentities, B, selection.ColsRepr](
+           table,
+           selection
+        )
+      }
+      
+      def apply[F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15, F16, F17, F18, F19, F20, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13, B14, B15, B16, B17, B18, B19, B20](expr1: Expr[F1, Source, B1], expr2: Expr[F2, Source, B2], expr3: Expr[F3, Source, B3], expr4: Expr[F4, Source, B4], expr5: Expr[F5, Source, B5], expr6: Expr[F6, Source, B6], expr7: Expr[F7, Source, B7], expr8: Expr[F8, Source, B8], expr9: Expr[F9, Source, B9], expr10: Expr[F10, Source, B10], expr11: Expr[F11, Source, B11], expr12: Expr[F12, Source, B12], expr13: Expr[F13, Source, B13], expr14: Expr[F14, Source, B14], expr15: Expr[F15, Source, B15], expr16: Expr[F16, Source, B16], expr17: Expr[F17, Source, B17], expr18: Expr[F18, Source, B18], expr19: Expr[F19, Source, B19], expr20: Expr[F20, Source, B20]) = {
+        val selection = expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7 ++ expr8 ++ expr9 ++ expr10 ++ expr11 ++ expr12 ++ expr13 ++ expr14 ++ expr15 ++ expr16 ++ expr17 ++ expr18 ++ expr19 ++ expr20
+
+        type B = SelectionSet.Cons[Source, B1, SelectionSet.Cons[Source, B2, SelectionSet.Cons[Source, B3, SelectionSet.Cons[Source, B4, SelectionSet.Cons[Source, B5, SelectionSet.Cons[Source, B6, SelectionSet.Cons[Source, B7, SelectionSet.Cons[Source, B8, SelectionSet.Cons[Source, B9, SelectionSet.Cons[Source, B10, SelectionSet.Cons[Source, B11, SelectionSet.Cons[Source, B12, SelectionSet.Cons[Source, B13, SelectionSet.Cons[Source, B14, SelectionSet.Cons[Source, B15, SelectionSet.Cons[Source, B16, SelectionSet.Cons[Source, B17, SelectionSet.Cons[Source, B18, SelectionSet.Cons[Source, B19, SelectionSet.Cons[Source, B20, SelectionSet.Empty]]]]]]]]]]]]]]]]]]]]
+
+        InsertBuilder[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[F1, F2], F3], F4], F5], F6], F7], F8], F9], F10], F11], F12], F13], F14], F15], F16], F17], F18], F19], F20], Source, AllColumnIdentities, B, selection.ColsRepr](
+           table,
+           selection
+        )
+      }
+      
+      def apply[F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15, F16, F17, F18, F19, F20, F21, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13, B14, B15, B16, B17, B18, B19, B20, B21](expr1: Expr[F1, Source, B1], expr2: Expr[F2, Source, B2], expr3: Expr[F3, Source, B3], expr4: Expr[F4, Source, B4], expr5: Expr[F5, Source, B5], expr6: Expr[F6, Source, B6], expr7: Expr[F7, Source, B7], expr8: Expr[F8, Source, B8], expr9: Expr[F9, Source, B9], expr10: Expr[F10, Source, B10], expr11: Expr[F11, Source, B11], expr12: Expr[F12, Source, B12], expr13: Expr[F13, Source, B13], expr14: Expr[F14, Source, B14], expr15: Expr[F15, Source, B15], expr16: Expr[F16, Source, B16], expr17: Expr[F17, Source, B17], expr18: Expr[F18, Source, B18], expr19: Expr[F19, Source, B19], expr20: Expr[F20, Source, B20], expr21: Expr[F21, Source, B21]) = {
+        val selection = expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7 ++ expr8 ++ expr9 ++ expr10 ++ expr11 ++ expr12 ++ expr13 ++ expr14 ++ expr15 ++ expr16 ++ expr17 ++ expr18 ++ expr19 ++ expr20 ++ expr21
+
+        type B = SelectionSet.Cons[Source, B1, SelectionSet.Cons[Source, B2, SelectionSet.Cons[Source, B3, SelectionSet.Cons[Source, B4, SelectionSet.Cons[Source, B5, SelectionSet.Cons[Source, B6, SelectionSet.Cons[Source, B7, SelectionSet.Cons[Source, B8, SelectionSet.Cons[Source, B9, SelectionSet.Cons[Source, B10, SelectionSet.Cons[Source, B11, SelectionSet.Cons[Source, B12, SelectionSet.Cons[Source, B13, SelectionSet.Cons[Source, B14, SelectionSet.Cons[Source, B15, SelectionSet.Cons[Source, B16, SelectionSet.Cons[Source, B17, SelectionSet.Cons[Source, B18, SelectionSet.Cons[Source, B19, SelectionSet.Cons[Source, B20, SelectionSet.Cons[Source, B21, SelectionSet.Empty]]]]]]]]]]]]]]]]]]]]]
+
+        InsertBuilder[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[F1, F2], F3], F4], F5], F6], F7], F8], F9], F10], F11], F12], F13], F14], F15], F16], F17], F18], F19], F20], F21], Source, AllColumnIdentities, B, selection.ColsRepr](
+           table,
+           selection
+        )
+      }
+
+      def apply[F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15, F16, F17, F18, F19, F20, F21, F22, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13, B14, B15, B16, B17, B18, B19, B20, B21, B22](expr1: Expr[F1, Source, B1], expr2: Expr[F2, Source, B2], expr3: Expr[F3, Source, B3], expr4: Expr[F4, Source, B4], expr5: Expr[F5, Source, B5], expr6: Expr[F6, Source, B6], expr7: Expr[F7, Source, B7], expr8: Expr[F8, Source, B8], expr9: Expr[F9, Source, B9], expr10: Expr[F10, Source, B10], expr11: Expr[F11, Source, B11], expr12: Expr[F12, Source, B12], expr13: Expr[F13, Source, B13], expr14: Expr[F14, Source, B14], expr15: Expr[F15, Source, B15], expr16: Expr[F16, Source, B16], expr17: Expr[F17, Source, B17], expr18: Expr[F18, Source, B18], expr19: Expr[F19, Source, B19], expr20: Expr[F20, Source, B20], expr21: Expr[F21, Source, B21], expr22: Expr[F22, Source, B22]) = {
+        val selection = expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7 ++ expr8 ++ expr9 ++ expr10 ++ expr11 ++ expr12 ++ expr13 ++ expr14 ++ expr15 ++ expr16 ++ expr17 ++ expr18 ++ expr19 ++ expr20 ++ expr21 ++ expr22
+
+        type B = SelectionSet.Cons[Source, B1, SelectionSet.Cons[Source, B2, SelectionSet.Cons[Source, B3, SelectionSet.Cons[Source, B4, SelectionSet.Cons[Source, B5, SelectionSet.Cons[Source, B6, SelectionSet.Cons[Source, B7, SelectionSet.Cons[Source, B8, SelectionSet.Cons[Source, B9, SelectionSet.Cons[Source, B10, SelectionSet.Cons[Source, B11, SelectionSet.Cons[Source, B12, SelectionSet.Cons[Source, B13, SelectionSet.Cons[Source, B14, SelectionSet.Cons[Source, B15, SelectionSet.Cons[Source, B16, SelectionSet.Cons[Source, B17, SelectionSet.Cons[Source, B18, SelectionSet.Cons[Source, B19, SelectionSet.Cons[Source, B20, SelectionSet.Cons[Source, B21, SelectionSet.Cons[Source, B22, SelectionSet.Empty]]]]]]]]]]]]]]]]]]]]]]
+
+        InsertBuilder[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[F1, F2], F3], F4], F5], F6], F7], F8], F9], F10], F11], F12], F13], F14], F15], F16], F17], F18], F19], F20], F21], F22], Source, AllColumnIdentities, B, selection.ColsRepr](
+           table,
+           selection
+        )
+      }
   }
-  // format: on
-
-    // format: off
-  trait SchemaValidityCaseClasses {
-    implicit def caseClass1[F, A, Z, ColsRepr, AllColumnIdentities, Source, Identity1, S <: Singleton with String](implicit
-      ccSchema: Schema.CaseClass1[A, Z],
-      ev: ColsRepr <:< (A, Unit),
-      ev2: F <:< Features.Source[Identity1, Source],
-      ev3: AllColumnIdentities =:= Identity1
-    ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] =
-      new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] {}
-
-    implicit def caseClass2[S1 <: Singleton with String,       
-        S2 <: Singleton with String, F, A1, A2, Z, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2](implicit
-      ccSchema: Schema.CaseClass2[A1, A2, Z],
-      ev: ColsRepr <:< (A1, (A2, Unit)),
-      ev2: F <:<  :||:[Features.Source[Identity1, Source], Features.Source[Identity2, Source]],
-      ev3: AllColumnIdentities =:= Identity1 with Identity2
-    ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] =
-      new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] {}
-
-    implicit def caseClass3[F, A1, A2, A3, Z, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3](implicit
-      ccSchema: Schema.CaseClass3[A1, A2, A3, Z],
-      ev: ColsRepr <:< (A1, (A2, (A3, Unit))),
-     ev2: F <:< Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]],
-     ev3: AllColumnIdentities =:= Identity1 with Identity2 with Identity3
-    ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] =
-      new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] {}
-
-    implicit def caseClass4[F, A1, A2, A3, A4, Z, ColsRepr,  AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4](implicit
-      ccSchema: Schema.CaseClass4[A1, A2, A3, A4, Z],
-      ev: ColsRepr <:< (A1, (A2, (A3, (A4, Unit)))),
-     ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],
-     ev3: AllColumnIdentities =:= Identity1 with Identity2 with Identity3 with Identity4
-    ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] =
-      new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] {}
-
-    implicit def caseClass5[F, A1, A2, A3, A4, A5, Z, ColsRepr,  AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5](implicit
-      ccSchema: Schema.CaseClass5[A1, A2, A3, A4, A5, Z],
-      ev: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, Unit))))),
-      ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]],  Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]],
-      ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5
-    ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] =
-      new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] {}
-
-    implicit def caseClass6[F, A1, A2, A3, A4, A5, A6, Z, ColsRepr,  AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6](implicit
-      ccSchema: Schema.CaseClass6[A1, A2, A3, A4, A5, A6, Z],
-      ev: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, Unit)))))),
-      ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]],
-      ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6
-    ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] =
-      new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] {}
-
-    implicit def caseClass7[F, A1, A2, A3, A4, A5, A6, A7, Z, ColsRepr,  AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7](implicit
-      ccSchema: Schema.CaseClass7[A1, A2, A3, A4, A5, A6, A7, Z],
-      ev: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, Unit))))))),
-     ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]], Features.Source[Identity7, Source]],
-     ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7
-    ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] =
-      new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] {}
-
-    implicit def caseClass8[F, A1, A2, A3, A4, A5, A6, A7, A8, Z, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8](implicit
-      ccSchema: Schema.CaseClass8[A1, A2, A3, A4, A5, A6, A7, A8, Z],
-      ev: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, Unit)))))))),
-      ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]], Features.Source[Identity7, Source]], Features.Source[Identity8, Source]],
-      ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8
-    ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] =
-      new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] {}
-
-    implicit def caseClass9[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, Z, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9](implicit
-      ccSchema: Schema.CaseClass9[A1, A2, A3, A4, A5, A6, A7, A8, A9, Z],
-      ev: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, Unit))))))))),
-      ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]], Features.Source[Identity7, Source]], Features.Source[Identity8, Source]], Features.Source[Identity9, Source]],
-      ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9
-    ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] =
-      new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] {}
-
-    implicit def caseClass10[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, Z, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10](implicit
-      ccSchema: Schema.CaseClass10[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, Z],
-      ev: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, Unit)))))))))),
-      ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]], Features.Source[Identity7, Source]], Features.Source[Identity8, Source]], Features.Source[Identity9, Source]], Features.Source[Identity10, Source]],
-      ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 
-    ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] =
-      new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] {}
-
-    implicit def caseClass11[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, Z, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11](implicit
-      ccSchema: Schema.CaseClass11[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, Z],
-      ev: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, Unit))))))))))),
-      ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]], Features.Source[Identity7, Source]], Features.Source[Identity8, Source]], Features.Source[Identity9, Source]], Features.Source[Identity10, Source]], Features.Source[Identity11, Source]],
-      ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11
-    ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] =
-      new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] {}
-
-    implicit def caseClass12[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, Z, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12](implicit
-      ccSchema: Schema.CaseClass12[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, Z],
-      ev: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, Unit)))))))))))),
-      ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]], Features.Source[Identity7, Source]], Features.Source[Identity8, Source]], Features.Source[Identity9, Source]], Features.Source[Identity10, Source]], Features.Source[Identity11, Source]], Features.Source[Identity12, Source]],
-      ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12
-    ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] =
-      new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] {}
-
-    implicit def caseClass13[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, Z, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13](implicit
-      ccSchema: Schema.CaseClass13[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, Z],
-      ev: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, Unit))))))))))))),
-      ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]], Features.Source[Identity7, Source]], Features.Source[Identity8, Source]], Features.Source[Identity9, Source]], Features.Source[Identity10, Source]], Features.Source[Identity11, Source]], Features.Source[Identity12, Source]], Features.Source[Identity13, Source]], 
-      ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13
-    ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] =
-      new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] {}
-
-    implicit def caseClass14[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, Z, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14](implicit
-      ccSchema: Schema.CaseClass14[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, Z],
-      ev: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, Unit)))))))))))))),
-      ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]], Features.Source[Identity7, Source]], Features.Source[Identity8, Source]], Features.Source[Identity9, Source]], Features.Source[Identity10, Source]], Features.Source[Identity11, Source]], Features.Source[Identity12, Source]], Features.Source[Identity13, Source]], Features.Source[Identity14, Source]],
-      ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14
-    ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] =
-      new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] {}
-
-    implicit def caseClass15[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, Z, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15](implicit
-      ccSchema: Schema.CaseClass15[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, Z],
-      ev: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, Unit))))))))))))))),
-      ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]], Features.Source[Identity7, Source]], Features.Source[Identity8, Source]], Features.Source[Identity9, Source]], Features.Source[Identity10, Source]], Features.Source[Identity11, Source]], Features.Source[Identity12, Source]], Features.Source[Identity13, Source]], Features.Source[Identity14, Source]], Features.Source[Identity15, Source]],
-      ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15
-    ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] =
-      new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] {}
-
-    implicit def caseClass16[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, Z, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15, Identity16](
-      implicit
-      ccSchema: Schema.CaseClass16[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, Z],
-      ev: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, (A16, Unit)))))))))))))))),
-      ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]], Features.Source[Identity7, Source]], Features.Source[Identity8, Source]], Features.Source[Identity9, Source]], Features.Source[Identity10, Source]], Features.Source[Identity11, Source]], Features.Source[Identity12, Source]], Features.Source[Identity13, Source]], Features.Source[Identity14, Source]], Features.Source[Identity15, Source]], Features.Source[Identity16, Source]],
-      ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16
-    ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] =
-      new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] {}
-
-    implicit def caseClass17[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, Z, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15, Identity16, Identity17](
-      implicit
-      ccSchema: Schema.CaseClass17[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, Z],
-      ev: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, (A16, (A17, Unit))))))))))))))))),
-      ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]], Features.Source[Identity7, Source]], Features.Source[Identity8, Source]], Features.Source[Identity9, Source]], Features.Source[Identity10, Source]], Features.Source[Identity11, Source]], Features.Source[Identity12, Source]], Features.Source[Identity13, Source]], Features.Source[Identity14, Source]], Features.Source[Identity15, Source]], Features.Source[Identity16, Source]], Features.Source[Identity17, Source]],
-      ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16 with Identity17
-    ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] =
-      new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] {}
-
-    implicit def caseClass18[
-      F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, Z, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15, Identity16, Identity17, Identity18
-    ](implicit
-      ccSchema: Schema.CaseClass18[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, Z],
-      ev: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, (A16, (A17, (A18, Unit)))))))))))))))))),
-      ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]], Features.Source[Identity7, Source]], Features.Source[Identity8, Source]], Features.Source[Identity9, Source]], Features.Source[Identity10, Source]], Features.Source[Identity11, Source]], Features.Source[Identity12, Source]], Features.Source[Identity13, Source]], Features.Source[Identity14, Source]], Features.Source[Identity15, Source]], Features.Source[Identity16, Source]], Features.Source[Identity17, Source]], Features.Source[Identity18, Source]],
-      ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16 with Identity17 with Identity18
-    ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] =
-      new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] {}
-
-    implicit def caseClass19[
-      F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, Z, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15, Identity16, Identity17, Identity18, Identity19
-    ](implicit
-      ccSchema: Schema.CaseClass19[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, Z],
-      ev: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, (A16, (A17, (A18, (A19, Unit))))))))))))))))))),
-      ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]], Features.Source[Identity7, Source]], Features.Source[Identity8, Source]], Features.Source[Identity9, Source]], Features.Source[Identity10, Source]], Features.Source[Identity11, Source]], Features.Source[Identity12, Source]], Features.Source[Identity13, Source]], Features.Source[Identity14, Source]], Features.Source[Identity15, Source]], Features.Source[Identity16, Source]], Features.Source[Identity17, Source]], Features.Source[Identity18, Source]], Features.Source[Identity19, Source]],
-      ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16 with Identity17 with Identity18 with Identity19
-    ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] =
-      new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] {}
-
-    // TODO fix scalafmt error - it fails in caseClass20 and above because of - `Search state exploded`
-    // https://scalameta.org/scalafmt/docs/known-issues.html#deeply-nested-code
-
-    // implicit def caseClass20[
-    //    F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, Z, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15, Identity16, Identity17, Identity18, Identity19, Identity20
-    // ](implicit
-    //   ccSchema: Schema.CaseClass20[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, Z],
-    //   ev: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, (A16, (A17, (A18, (A19, (A20, Unit)))))))))))))))))))),
-    //   ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]], Features.Source[Identity7, Source]], Features.Source[Identity8, Source]], Features.Source[Identity9, Source]], Features.Source[Identity10, Source]], Features.Source[Identity11, Source]], Features.Source[Identity12, Source]], Features.Source[Identity13, Source]], Features.Source[Identity14, Source]], Features.Source[Identity15, Source]], Features.Source[Identity16, Source]], Features.Source[Identity17, Source]], Features.Source[Identity18, Source]], Features.Source[Identity19, Source]], Features.Source[Identity20, Source]],
-    //   ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16 with Identity17 with Identity18 with Identity19 with Identity20
-    // ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] =
-    //   new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] {}
-
-    // implicit def caseClass21[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, Z, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15, Identity16, Identity17, Identity18, Identity19, Identity20, Identity21
-    // ](implicit
-    //   ccSchema: Schema.CaseClass21[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, Z],
-    //   ev: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, (A16, (A17, (A18, (A19, (A20, (A21, Unit))))))))))))))))))))),
-    //   ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]], Features.Source[Identity7, Source]], Features.Source[Identity8, Source]], Features.Source[Identity9, Source]], Features.Source[Identity10, Source]], Features.Source[Identity11, Source]], Features.Source[Identity12, Source]], Features.Source[Identity13, Source]], Features.Source[Identity14, Source]], Features.Source[Identity15, Source]], Features.Source[Identity16, Source]], Features.Source[Identity17, Source]], Features.Source[Identity18, Source]], Features.Source[Identity19, Source]], Features.Source[Identity20, Source]], Features.Source[Identity21, Source]], 
-    //   ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16 with Identity17 with Identity18 with Identity19 with Identity20 with Identity21
-    // ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] =
-    //   new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] {}
-
-    // implicit def caseClass22[F, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, A22, Z, ColsRepr, AllColumnIdentities, Source, Identity1, Identity2, Identity3, Identity4, Identity5, Identity6, Identity7, Identity8, Identity9, Identity10, Identity11, Identity12, Identity13, Identity14, Identity15, Identity16, Identity17, Identity18, Identity19, Identity20, Identity21, Identity22
-    // ](implicit
-    //   ccSchema: Schema.CaseClass22[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, A22, Z],
-    //   ev: ColsRepr <:< (A1, (A2, (A3, (A4, (A5, (A6, (A7, (A8, (A9, (A10, (A11, (A12, (A13, (A14, (A15, (A16, (A17, (A18, (A19, (A20, (A21, (A22, Unit)))))))))))))))))))))),
-    //   ev2: F <:< Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Union[Features.Source[Identity1, Source], Features.Source[Identity2, Source]], Features.Source[Identity3, Source]], Features.Source[Identity4, Source]],  Features.Source[Identity5, Source]], Features.Source[Identity6, Source]], Features.Source[Identity7, Source]], Features.Source[Identity8, Source]], Features.Source[Identity9, Source]], Features.Source[Identity10, Source]], Features.Source[Identity11, Source]], Features.Source[Identity12, Source]], Features.Source[Identity13, Source]], Features.Source[Identity14, Source]], Features.Source[Identity15, Source]], Features.Source[Identity16, Source]], Features.Source[Identity17, Source]], Features.Source[Identity18, Source]], Features.Source[Identity19, Source]], Features.Source[Identity20, Source]], Features.Source[Identity21, Source]], Features.Source[Identity22, Source]],
-    //   ev3: AllColumnIdentities <:< Identity1 with Identity2 with Identity3 with Identity4 with Identity5 with Identity6 with Identity7 with Identity8 with Identity9 with Identity10 with Identity11 with Identity12 with Identity13 with Identity14 with Identity15 with Identity16 with Identity17 with Identity18 with Identity19 with Identity20 with Identity21 with Identity22
-    // ): SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] =
-    //   new SchemaValidity[F, Z, ColsRepr, AllColumnIdentities, Source] {}
-  }
-  // format: on
 }
+// format: on

@@ -23,8 +23,8 @@ addCommandAlias("fmtOnce", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("fmt", "fmtOnce;fmtOnce")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
-val zioVersion                 = "2.0.4"
-val zioSchemaVersion           = "0.3.1"
+val zioVersion                 = "2.0.5"
+val zioSchemaVersion           = "0.4.1"
 val testcontainersVersion      = "1.17.6"
 val testcontainersScalaVersion = "0.40.11"
 val logbackVersion             = "1.2.11"
@@ -46,7 +46,8 @@ lazy val root = project
     postgres,
     sqlserver,
     jdbc_hikaricp,
-    macros
+    macros,
+    docs
   )
 
 lazy val core = crossProject(JSPlatform, JVMPlatform)
@@ -64,7 +65,7 @@ lazy val core = crossProject(JSPlatform, JVMPlatform)
       "dev.zio" %% "zio-test-sbt"          % zioVersion % Test
     ),
     dependencyOverrides += "dev.zio" %% "zio" % zioVersion,
-    resolvers += Resolver.sonatypeRepo("snapshots")
+    resolvers ++= Resolver.sonatypeOssRepos("snapshots")
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
 
@@ -77,21 +78,46 @@ lazy val macros = project
   .in(file("macros"))
   .settings(stdSettings("zio-sql-macros"))
   .settings(
-    libraryDependencies ++= Seq(
-      "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-      "dev.zio"       %% "zio"           % zioVersion
-    )
+    libraryDependencies ++= {
+      if (scalaVersion.value == ScalaDotty) {
+        Seq()
+      } else
+        Seq(
+          "org.scala-lang" % "scala-reflect" % scalaVersion.value,
+          "dev.zio"       %% "zio"           % zioVersion
+        )
+    }
   )
 
 lazy val docs = project
   .in(file("zio-sql-docs"))
   .settings(
-    publish / skip := true,
-    moduleName     := "zio-sql-docs",
+    moduleName                                 := "zio-sql-docs",
     scalacOptions -= "-Yno-imports",
-    scalacOptions -= "-Xfatal-warnings"
+    scalacOptions -= "-Xfatal-warnings",
+    crossScalaVersions                         := Seq(Scala213, Scala212, ScalaDotty),
+    projectName                                := "ZIO SQL",
+    mainModuleName                             := (coreJVM / moduleName).value,
+    projectStage                               := ProjectStage.ProductionReady,
+    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(),
+    docsPublishBranch                          := "master",
+    readmeContribution                         := readmeContribution.value +
+      """|### TL;DR
+         |Prerequisites (installed):
+         |
+         || Technology | Version |  
+         ||------------|---------|
+         || sbt        | 1.4.3   |
+         || Docker     | 3.1     |
+         | 
+         |To set up the project follow below steps:
+         |1. Fork the repository.
+         |2. Setup the upstream (Extended instructions can be followed [here](https://docs.github.com/en/free-pro-team@latest/github/getting-started-with-github/fork-a-repo)).
+         |3. Make sure you have installed `sbt` and `Docker`.
+         |4. In project directory execute `sbt test`.
+         |5. Pick up an issue & you are ready to go!
+         |""".stripMargin
   )
-  .dependsOn(postgres)
   .enablePlugins(WebsitePlugin)
 
 lazy val examples = project
@@ -116,7 +142,7 @@ lazy val driver = project
       "dev.zio" %% "zio-test-sbt"          % zioVersion % Test
     ),
     dependencyOverrides += "dev.zio" %% "zio" % zioVersion,
-    resolvers += Resolver.sonatypeRepo("snapshots")
+    resolvers ++= Resolver.sonatypeOssRepos("snapshots")
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
 
