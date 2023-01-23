@@ -118,7 +118,6 @@ lazy val docs = project
          |5. Pick up an issue & you are ready to go!
          |""".stripMargin
   )
-  .dependsOn(coreJVM)
   .enablePlugins(WebsitePlugin)
 
 lazy val examples = project
