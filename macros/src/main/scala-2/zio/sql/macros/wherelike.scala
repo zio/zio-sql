@@ -5,7 +5,29 @@ import scala.language.experimental.macros
 
 sealed trait WhereIsSound[WhereF, GroupByF]
 
+/**
+   // WHERE not allowed. Use `HAVING` instead.
+   select(amount)
+     .from(productTable)
+     .groupBy(amount)
+     .having(amount > 10)
+     .where(amount > 10)
+
+     GroupByF = Any with Source["amount"]
+     WhereF = Source["amount"] with Literal] 
+
+    // Aggregate functions are not allowed in WHERE
+    select(amount)
+      .from(productTable)
+      .where(Sum(price) > 200)
+
+    WhereF = Aggregate[Source["price"]] with Literal]
+    GroupByF = Any
+
+  */
 object WhereIsSound {
+
+  // WhereF
   final case class WhereCanBeCalled[WhereF, GroupByF]() extends WhereIsSound[WhereF, GroupByF]
 
   implicit def materializeWhereIsSound[WhereF, GroupByF]: WhereIsSound[WhereF, GroupByF] =
@@ -19,6 +41,7 @@ object WhereIsSound {
     val groupedType = weakTypeOf[GroupByF]
     val whereF      = weakTypeOf[WhereF]
 
+    // Source["age"] with Source["amount"] : List(Source["age"], Source["amount"])
     def splitIntersection(t: Type): List[Type] =
       t.dealias match {
         case t: RefinedType                                              =>
@@ -33,16 +56,19 @@ object WhereIsSound {
         case _                                                           => Nil
       }
 
+    // Aggregate[Source["price"]] with Literal] : true
+    // Source["price"]  with Literal]           : false
+    // we split the intersection and look for Aggregated in F
     def isThereAggregation(t: Type): Boolean =
       t.dealias match {
-        case TypeRef(_, typeSymbol, args) if typeSymbol == symbolOf[zio.sql.Features.Union[_, _]] =>
-          args.find(t => isThereAggregation(t)) match {
+        case TypeRef(_, typeSymbol, _) if typeSymbol == symbolOf[zio.sql.Features.Aggregated[_]] =>
+          true
+        case RefinedType(members, _)                                                             =>
+          members.find(t => isThereAggregation(t)) match {
             case None    => false
             case Some(_) => true
           }
-        case TypeRef(_, typeSymbol, _) if typeSymbol == symbolOf[zio.sql.Features.Aggregated[_]]  =>
-          true
-        case _                                                                                    => false
+        case _                                                                                   => false
       }
 
     if (!splitIntersection(groupedType).isEmpty) {
