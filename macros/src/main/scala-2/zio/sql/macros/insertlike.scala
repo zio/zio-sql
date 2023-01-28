@@ -26,7 +26,7 @@ object InsertLike {
     F,
     ColsRepr,
     AllColumnIdentities,
-    Z,
+    Z
   ] = macro createInsertLikeImpl[F, ColsRepr, AllColumnIdentities, Z]
 
   def createInsertLikeImpl[
