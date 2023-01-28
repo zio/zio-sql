@@ -45,6 +45,7 @@ trait TypeTagModule { self: SelectModule =>
     sealed case class Nullable[A: NotNull]()                                      extends TypeTag[Option[A]] {
       def typeTag: TypeTag[A] = implicitly[TypeTag[A]]
     }
+    implicit case object TNone                                                    extends TypeTag[None.type]
 
     implicit def option[A: NotNull]: TypeTag[Option[A]] = Nullable[A]()
 
@@ -81,6 +82,7 @@ trait TypeTagModule { self: SelectModule =>
     implicit case object TLongIsNumeric          extends AbstractIsNumeric[Long]
     implicit case object TFloatIsNumeric         extends AbstractIsNumeric[Float]
     implicit case object TDoubleIsNumeric        extends AbstractIsNumeric[Double]
+    // TODO IS BigDecimal numeric? can I work in sql with -, + on `money` type?
     implicit case object TBigDecimalIsNumeric    extends AbstractIsNumeric[java.math.BigDecimal]
   }
 

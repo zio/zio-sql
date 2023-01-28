@@ -4,7 +4,6 @@ import java.math.BigDecimal
 import java.time._
 import java.util.UUID
 
-import com.github.ghik.silencer.silent
 import zio._
 import zio.schema._
 import zio.test._
@@ -18,8 +17,7 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
   import AggregationDef._
   import CustomerSchema._
 
-  @silent
-  private def customerSelectJoseAssertion[F: Features.IsNotAggregated](
+  private def customerSelectJoseAssertion[F](
     condition: Expr[F, customers.TableType, Boolean]
   ) = {
     case class Customer(id: UUID, fname: String, lname: String, verified: Boolean, dateOfBirth: LocalDate)
@@ -48,6 +46,63 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
   }
 
   override def specLayered = suite("Postgres module")(
+    test("Can select with property binary operator with numbers") {
+      import OrderDetailsSchema._
+      case class OrderDetails(orderId: UUID, productId: UUID, quantity: Int, unitPrice: BigDecimal)
+
+      val orderDetailQuantity  = 3
+      val orderDetailUnitPrice = BigDecimal.valueOf(80.00).setScale(2)
+      val condition            = (quantity === orderDetailQuantity) && (unitPrice === orderDetailUnitPrice)
+      val query                =
+        select(orderDetailsOrderId, orderDetailsProductId, quantity, unitPrice).from(orderDetails).where(condition)
+
+      val expected =
+        OrderDetails(
+          UUID.fromString("763a7c39-833f-4ee8-9939-e80dfdbfc0fc"),
+          UUID.fromString("105a2701-ef93-4e25-81ab-8952cc7d9daa"),
+          orderDetailQuantity,
+          orderDetailUnitPrice
+        )
+
+      for {
+        r <- execute(query).map(OrderDetails tupled _).runHead
+      } yield assertTrue(
+        r.get == expected
+      )
+    },
+    test("`in` clause sequence") {
+      import ProductPrices._
+
+      val query = select(productPricesOrderId).from(productPrices).where(productPrice in List(10, 20, 74))
+
+      for {
+        result <- execute(query).runCollect
+      } yield assertTrue(
+        result == Chunk(
+          UUID.fromString("7368abf4-aed2-421f-b426-1725de756895"),
+          UUID.fromString("4c770002-4c8f-455a-96ff-36a8186d5290"),
+          UUID.fromString("105a2701-ef93-4e25-81ab-8952cc7d9daa")
+        )
+      )
+    },
+    test("`in` clause from subquery") {
+      import ProductPrices._
+      import OrderDetailsSchema._
+
+      val higherPrices = select(productPrice).from(productPrices).where(productPrice > 74)
+
+      val query = select(orderDetailsOrderId).from(orderDetails).where(unitPrice in higherPrices)
+
+      for {
+        result <- execute(query).runCollect
+      } yield assertTrue(
+        result == Chunk(
+          UUID.fromString("9473a0bc-396a-4936-96b0-3eea922af36b"),
+          UUID.fromString("fd0fa8d4-e1a0-4369-be07-945450db5d36"),
+          UUID.fromString("763a7c39-833f-4ee8-9939-e80dfdbfc0fc")
+        )
+      )
+    },
     test("Can select from single table") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
@@ -121,38 +176,6 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
     test("Can select with property binary operator with Instant") {
       customerSelectJoseAssertion(dob === Instant.parse("1987-03-23T00:00:00Z"))
     },
-    // TODO try to translate money as "::numeric"
-//    test("Can select with property binary operator with numbers") {
-//      case class OrderDetails(orderId: UUID, product_id: UUID, quantity: Int, unitPrice: BigDecimal)
-//
-//      val orderDetailQuantity  = 3
-//      val orderDetailUnitPrice = BigDecimal(80.0)
-//      val condition            = (quantity === orderDetailQuantity) && (unitPrice === orderDetailUnitPrice)
-//      val query                =
-//        select(fkOrderId ++ fkProductId ++ quantity ++ unitPrice).from(orderDetails).where(condition)
-//
-//      println(renderRead(query))
-//
-//      val expected =
-//        Seq(
-//          OrderDetails(
-//            UUID.fromString("763a7c39-833f-4ee8-9939-e80dfdbfc0fc"),
-//            UUID.fromString("105a2701-ef93-4e25-81ab-8952cc7d9daa"),
-//            orderDetailQuantity,
-//            orderDetailUnitPrice
-//          )
-//        )
-//
-//      val testResult = execute(query.to[UUID, UUID, Int, BigDecimal, OrderDetails] { case row =>
-//        OrderDetails(row._1, row._2, row._3, row._4)
-//      })
-//
-//      val assertion = for {
-//        r <- testResult.runCollect
-//      } yield assert(r)(hasSameElementsDistinct(expected))
-//
-//      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
-//    },
     test("Can select from single table with limit, offset and order by") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
@@ -378,6 +401,40 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
         actual <- execute(query).map(arg => arg._2.toInt).runCollect.map(_.toList)
       } yield assertTrue(actual == expected)
     },
+    test("insert and query nullable field") {
+      import PersonsSchema._
+
+      val expected = List(
+        (Some("Russell"), Some(LocalDate.of(1983, 1, 5))),
+        (Some("Noel"), None),
+        (Some("Paterso"), Some(LocalDate.of(1990, 11, 16))),
+        (Some("Murray"), Some(LocalDate.of(1995, 11, 12))),
+        (None, None),
+        (Some("Harvey"), Some(LocalDate.of(2022, 1, 31))),
+        (Some("Dent"), None),
+        (Some("Charles"), None)
+      )
+
+      val insertSome = insertInto(persons)(personsId, personsName, birthDate)
+        .values((UUID.randomUUID(), Some("Harvey"), Some(LocalDate.of(2022, 1, 31))))
+
+      val insertNone =
+        insertInto(persons)(personsId, personsName, birthDate).values((UUID.randomUUID(), Some("Dent"), None))
+
+      val insertNone2 = insertInto(persons)(personsId, personsName, birthDate)
+        .values(Persons(UUID.randomUUID(), Some("Charles"), None))
+
+      // example - first one compiles, second one does not
+      insertInto(persons)(personsId).values(UUID.randomUUID())
+      // insertInto(persons)(personsName).values((Some("UUID.randomUUID()")))
+
+      for {
+        _       <- execute(insertSome)
+        _       <- execute(insertNone)
+        _       <- execute(insertNone2)
+        persons <- execute(select(personsName, birthDate).from(persons)).runCollect
+      } yield assertTrue(persons.toList == expected)
+    },
     test("insert - 1 rows into customers") {
       final case class CustomerRow(
         id: UUID,
@@ -586,39 +643,10 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
         result <- execute(query)
       } yield assertTrue(result == 4)
     },
-    test("insert and query nullable field") {
-      import PersonsSchema._
-
-      val expected = List(
-        (Some("Russell"), Some(LocalDate.of(1983, 1, 5))),
-        (Some("Noel"), None),
-        (Some("Paterso"), Some(LocalDate.of(1990, 11, 16))),
-        (Some("Murray"), Some(LocalDate.of(1995, 11, 12))),
-        (None, None),
-        (Some("Harvey"), Some(LocalDate.of(2022, 1, 31))),
-        (Some("Dent"), None),
-        (Some("Charles"), None)
-      )
-
-      val insertSome = insertInto(persons)(personsId, personsName, birthDate)
-        .values((UUID.randomUUID(), Option.apply("Harvey"), Option.apply(LocalDate.of(2022, 1, 31))))
-
-      val insertNone =
-        insertInto(persons)(personsId, personsName, birthDate).values((UUID.randomUUID(), Some("Dent"), None))
-
-      val insertNone2 = insertInto(persons)(personsId, personsName, birthDate)
-        .values(Persons(UUID.randomUUID(), Some("Charles"), None))
-
-      for {
-        _       <- execute(insertSome)
-        _       <- execute(insertNone)
-        _       <- execute(insertNone2)
-        persons <- execute(select(personsName, birthDate).from(persons)).runCollect
-      } yield assertTrue(persons.toList == expected)
-    },
     test("in joined tables, columns of the same name from different table are treated as different columns") {
       import Cities._
       import Ordering._
+      import Expr._
 
       /**
        *          SELECT ms.name, c.name, COUNT(ml.id) as line_count
@@ -656,9 +684,8 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
     test("update rows") {
       import PersonsSchema._
 
-      // TODO support here also Some and None
       for {
-        result <- execute(update(persons).set(personsName, Option("Charlie")).where(personsName === Option("Murray")))
+        result <- execute(update(persons).set(personsName, Some("Charlie")).where(personsName === Some("Murray")))
       } yield assertTrue(result == 1)
     }
   ) @@ sequential

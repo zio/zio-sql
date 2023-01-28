@@ -104,6 +104,7 @@ trait JdbcInternalModule { self: Jdbc =>
       case t @ Nullable()      =>
         val _ = nonNull
         extractColumn(columnIndex, resultSet, t.typeTag, false).map(Option(_))
+      case TNone               => Right(None)
     }
   }
 

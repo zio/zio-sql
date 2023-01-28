@@ -20,14 +20,12 @@ object GroupByExamples extends App with PostgresJdbcModule {
 
   val e = Sum(price) > 10
 
-  def testF[F, A, B](value: Expr[F, A, B])(implicit in: Features.IsFullyAggregated[F]) = ???
-
-  def test2[F, A, B](value: Expr[F, A, B])(implicit i: Features.IsPartiallyAggregated[F]): i.Unaggregated = ???
-
   val orderValue = select(name, Sum(price))
     .from(productTable)
     .groupBy(name, price)
     .having(Sum(price) > 10)
+
+  execute(orderValue)
 
   select(Sum(price))
     .from(productTable)
@@ -63,14 +61,51 @@ object GroupByExamples extends App with PostgresJdbcModule {
   // select(price)
   //   .from(productTable)
   //   .groupBy(name)
-  //   .having(name > 10)
+  //   .having(name > "")
 
   // select(price ++ name)
   //   .from(productTable)
   //   .groupBy(price)
   //   .having(Count(price) > 10)
 
+  // execute(select(name, Sum(price)).from(productTable))
+
+  select(price)
+    .from(productTable)
+    .groupBy(price)
+    .having(Count(price) > 10)
+
+  select(Sum(price))
+    .from(productTable)
+    .having(Sum(price) > 10)
+
+  select(price)
+    .from(productTable)
+    .groupBy(price, amount)
+    .having(amount > 200)
+
+  select(amount)
+    .from(productTable)
+    .groupBy(amount)
+    .having(Sum(price) > 200)
+
   // select(price)
   //   .from(productTable)
-  //   .having(Count(price) > 10)
+  //   .groupBy(price)
+  //   .having(amount > 200)
+
+  // select(amount)
+  //   .from(productTable)
+  //   .having(Sum(price) > 200)
+
+  // select(amount)
+  //  .from(productTable)
+  //  .groupBy(amount)
+  //  .having(amount > 10)
+  //  .where(amount > 10)
+
+  select(amount)
+    .from(productTable)
+    .groupBy(amount)
+    .having(amount > 10)
 }
