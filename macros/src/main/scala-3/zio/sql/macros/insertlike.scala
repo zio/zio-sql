@@ -16,6 +16,6 @@ object InsertLike {
     F,
     ColsRepr,
     AllColumnIdentities,
-    Z
+    Z,
   ] = CanBeInserted[F, ColsRepr, AllColumnIdentities, Z]()
 }

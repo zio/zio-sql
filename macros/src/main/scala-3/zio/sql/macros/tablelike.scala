@@ -6,6 +6,7 @@ object TableSchema {
 
   final case class Compatible[T]() extends TableSchema[T]
 
+
   implicit def materializeTableSchema[T]: TableSchema[T] = Compatible[T]()
 
 }
