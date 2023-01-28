@@ -228,6 +228,8 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
         case TInt                               => render(value)
         case n: Nullable[_]                     =>
           renderLit(n.typeTag, value.asInstanceOf[Option[_]].get)
+        case TNone                              =>
+          render("null")
       }
     }
 
@@ -252,11 +254,15 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
         render(" (")
         render(renderRead(subselect))
         render(") ")
-      case Expr.Source(table, column)                                                   =>
+      case e @ Expr.Source(table, column)                                               =>
         (table, column.name) match {
           case (tableName: TableName, Some(columnName)) =>
             render(quoted(tableName), ".", quoted(columnName))
           case _                                        => ()
+        }
+        e.typeTag match {
+          case TypeTag.TBigDecimal => render("::numeric")
+          case _                   => ()
         }
       case Expr.Unary(base, op)                                                         =>
         render(" ", op.symbol)
@@ -274,7 +280,14 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
         renderExpr(right)
       case Expr.In(value, set)                                                          =>
         renderExpr(value)
-        renderReadImpl(set)
+        render(" IN ")
+        if (set.isInstanceOf[Read.Subselect[_, _, _, _, _, _]]) {
+          render("(")
+          renderReadImpl(set)
+          render(")")
+        } else {
+          renderReadImpl(set)
+        }
       case lit: Expr.Literal[_]                                                         => renderLit(lit)
       case Expr.AggregationCall(p, aggregation)                                         =>
         render(aggregation.name.name, "(")

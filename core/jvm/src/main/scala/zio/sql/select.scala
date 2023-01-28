@@ -1,92 +1,9 @@
 package zio.sql
 
-import com.github.ghik.silencer.silent
-
+import zio.sql.macros._
 import scala.language.implicitConversions
 
-trait SelectModule { self: ExprModule with TableModule with UtilsModule with GroupByUtilsModule =>
-
-  sealed case class Selector[F, Source, B <: SelectionSet[Source], Unaggregated](selection: Selection[F, Source, B])
-
-  object Selector extends SelectorImplicitLowerPriority {
-    implicit def aggregatedSelectorToBuilder[F, Source, B <: SelectionSet[Source]](
-      selector: Selector[F, Source, B, Any]
-    )(implicit i: Features.IsFullyAggregated[F]): SelectBuilder[F, Source, B] =
-      SelectBuilder(selector.selection)
-
-    implicit def notAggregatedSelectorToBuilder[F, Source, B <: SelectionSet[Source], Unaggregated](
-      selector: Selector[F, Source, B, Unaggregated]
-    )(implicit i: Features.IsNotAggregated[F]): SelectBuilder[F, Source, B] =
-      SelectBuilder(selector.selection)
-  }
-
-  trait SelectorImplicitLowerPriority {
-    implicit def partiallyAggregatedSelectorToBuilder[F, Source, B <: SelectionSet[Source], Unaggregated](
-      selector: Selector[F, Source, B, Unaggregated]
-    ): AggSelectBuilder[F, Source, B, Unaggregated] =
-      AggSelectBuilder[F, Source, B, Unaggregated](selector.selection)
-
-    implicit def noTable[F, Source >: Any, B <: SelectionSet[Source]](
-      selectBuilder: Selector[F, Source, B, Any]
-    )(implicit
-      ev: B <:< SelectionSet.Cons[
-        Source,
-        selectBuilder.selection.value.ColumnHead,
-        selectBuilder.selection.value.SelectionTail
-      ],
-      normalizer: TrailingUnitNormalizer[selectBuilder.selection.value.ResultTypeRepr]
-    ): Read.Select[
-      F,
-      normalizer.Out,
-      Source,
-      selectBuilder.selection.value.ColumnHead,
-      selectBuilder.selection.value.SelectionTail
-    ] = {
-      type B0 = SelectionSet.ConsAux[
-        selectBuilder.selection.value.ResultTypeRepr,
-        Source,
-        selectBuilder.selection.value.ColumnHead,
-        selectBuilder.selection.value.SelectionTail
-      ]
-      val b: B0 = selectBuilder.selection.value.asInstanceOf[B0]
-
-      Read.Subselect(Selection[F, Source, B0](b), None, true).normalize
-    }
-  }
-
-  sealed case class AggSelectBuilder[F0, Source, B <: SelectionSet[Source], Unaggregated](
-    selection: Selection[F0, Source, B]
-  ) {
-
-    def from[Source0 <: Source](table: Table.Aux[Source0])(implicit
-      ev: B <:< SelectionSet.Cons[Source0, selection.value.ColumnHead, selection.value.SelectionTail],
-      normalizer: TrailingUnitNormalizer[selection.value.ResultTypeRepr]
-    ): AggSelectBuilderGroupBy[
-      F0,
-      normalizer.Out,
-      Source0,
-      selection.value.ColumnHead,
-      selection.value.SelectionTail,
-      Unaggregated
-    ] = {
-      type B0 = SelectionSet.ConsAux[
-        selection.value.ResultTypeRepr,
-        Source0,
-        selection.value.ColumnHead,
-        selection.value.SelectionTail
-      ]
-      val b: B0 = selection.value.asInstanceOf[B0]
-
-      AggSelectBuilderGroupBy[
-        F0,
-        normalizer.Out,
-        Source0,
-        selection.value.ColumnHead,
-        selection.value.SelectionTail,
-        Unaggregated
-      ](Read.Subselect(Selection[F0, Source0, B0](b), Some(table), true).normalize)
-    }
-  }
+trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
 
   sealed case class SelectBuilder[F0, Source, B <: SelectionSet[Source]](selection: Selection[F0, Source, B]) {
 
@@ -109,6 +26,36 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
       val b: B0 = selection.value.asInstanceOf[B0]
 
       Read.Subselect(Selection[F0, Source0, B0](b), Some(table), true).normalize
+    }
+  }
+
+  object SelectBuilder {
+
+    implicit def noTable[F, Source >: Any, B <: SelectionSet[Source]](
+      builder: SelectBuilder[F, Source, B]
+    )(implicit
+      ev: B <:< SelectionSet.Cons[
+        Source,
+        builder.selection.value.ColumnHead,
+        builder.selection.value.SelectionTail
+      ],
+      normalizer: TrailingUnitNormalizer[builder.selection.value.ResultTypeRepr]
+    ): Read.Select[
+      F,
+      normalizer.Out,
+      Source,
+      builder.selection.value.ColumnHead,
+      builder.selection.value.SelectionTail
+    ] = {
+      type B0 = SelectionSet.ConsAux[
+        builder.selection.value.ResultTypeRepr,
+        Source,
+        builder.selection.value.ColumnHead,
+        builder.selection.value.SelectionTail
+      ]
+      val b: B0 = builder.selection.value.asInstanceOf[B0]
+
+      Read.Subselect(Selection[F, Source, B0](b), None, true).normalize
     }
   }
 
@@ -233,23 +180,6 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
         )
     }
 
-    /**
-      * `HAVING` can only be called:
-      *
-      *  1. If its called with an aggregated function returning boolean like `Having Count(id) > 5`, 
-      *     while all the previously selected columns appeared in group by clause.
-      *  2. If its called with a normal expression returning boolean like `having customer_id = '636ae137-5b1a-4c8c-b11f-c47c624d9cdc``
-      *     and all the previously selected columns appeared in group by clause.
-      */
-    trait HavingIsSound[F, GroupByF]
-
-    object HavingIsSound {
-      implicit def havingWasGroupedBy[F, GroupByF, Remainder](implicit
-        i: Features.IsPartiallyAggregated.WithRemainder[F, Remainder],
-        ev: GroupByF <:< Remainder
-      ): HavingIsSound[F, GroupByF] = new HavingIsSound[F, GroupByF] {}
-    }
-
     type Select[F, Repr, Source, Head, Tail <: SelectionSet[Source]] = Subselect[F, Repr, Source, Source, Head, Tail]
 
     sealed case class Subselect[F, Repr, Source, Subsource, Head, Tail <: SelectionSet[Source]](
@@ -265,77 +195,106 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
 
       type GroupByF <: Any
 
-      // TODO add F2: Features.IsNotAggregated constraint when https://github.com/zio/zio-sql/issues/583 is fixed
       def where[F2](
         whereExpr2: Expr[F2, Source, Boolean]
-      ): Subselect[F, Repr, Source, Subsource, Head, Tail] =
-        copy(whereExpr = self.whereExpr && whereExpr2)
+      )(implicit
+        ev: WhereIsSound[F2, self.GroupByF]
+      ): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF] =
+        new Subselect(
+          selection,
+          table,
+          self.whereExpr && whereExpr2,
+          groupByExprs,
+          havingExpr,
+          orderByExprs,
+          offset,
+          limit
+        ) {
+          override type GroupByF = self.GroupByF
+        }
 
-      def limit(n: Long): Subselect[F, Repr, Source, Subsource, Head, Tail] = copy(limit = Some(n))
+      def limit(n: Long): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF] =
+        new Subselect(selection, table, whereExpr, groupByExprs, havingExpr, orderByExprs, offset, Some(n)) {
+          override type GroupByF = self.GroupByF
+        }
 
-      def offset(n: Long): Subselect[F, Repr, Source, Subsource, Head, Tail] = copy(offset = Some(n))
+      def offset(n: Long): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF] =
+        new Subselect(selection, table, whereExpr, groupByExprs, havingExpr, orderByExprs, Some(n), limit) {
+          override type GroupByF = self.GroupByF
+        }
 
       def orderBy(
         o: Ordering[Expr[_, Source, Any]],
         os: Ordering[Expr[_, Source, Any]]*
-      ): Subselect[F, Repr, Source, Subsource, Head, Tail] =
-        copy(orderByExprs = self.orderByExprs ++ (o :: os.toList))
+      ): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF] =
+        new Subselect(
+          selection,
+          table,
+          whereExpr,
+          groupByExprs,
+          havingExpr,
+          self.orderByExprs ++ (o :: os.toList),
+          offset,
+          limit
+        ) {
+          override type GroupByF = self.GroupByF
+        }
 
-      def having[F2, Remainder](
+      def having[F2](
         havingExpr2: Expr[F2, Source, Boolean]
       )(implicit
-        i: Features.IsPartiallyAggregated.WithRemainder[F, Remainder],
-        ev: GroupByF <:< Remainder,
-        i2: HavingIsSound[F2, GroupByF]
-      ): Subselect[F, Repr, Source, Subsource, Head, Tail] =
-        copy(havingExpr = self.havingExpr && havingExpr2)
+        ev: HavingIsSound[F, self.GroupByF, F2]
+      ): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF] =
+        new Subselect(
+          selection,
+          table,
+          whereExpr,
+          groupByExprs,
+          self.havingExpr && havingExpr2,
+          orderByExprs,
+          offset,
+          limit
+        ) {
+          override type GroupByF = self.GroupByF
+        }
 
-      // format: off
-      @silent
-      def groupBy[F1: Features.IsNotAggregated](expr1: Expr[F1, Source, Any]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1] =
-        new Subselect(selection, table, whereExpr, self.groupByExprs ++ expr1, havingExpr, orderByExprs, offset, limit) {
+      //format: off
+      def groupBy[F1](expr1: Expr[F1, Source, Any])(implicit verify: GroupByLike[F, F1]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1] =
+        new Subselect[F, Repr, Source, Subsource, Head, Tail](selection, table, whereExpr, self.groupByExprs ++ expr1, havingExpr, orderByExprs, offset, limit) {
          override type GroupByF = self.GroupByF with F1
        }
 
-      @silent
-      def groupBy[F1: Features.IsNotAggregated, F2: Features.IsNotAggregated](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2] =
-        new Subselect(selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2, havingExpr, orderByExprs, offset, limit) {
+      def groupBy[F1, F2](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any])(implicit verify: GroupByLike[F, F1 with F2]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2] =
+        new Subselect[F, Repr, Source, Subsource, Head, Tail](selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2, havingExpr, orderByExprs, offset, limit) {
          override type GroupByF = self.GroupByF with  F1 with F2
       }
 
-      @silent
-      def groupBy[F1: Features.IsNotAggregated, F2: Features.IsNotAggregated, F3: Features.IsNotAggregated](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3] =
-        new Subselect(selection, table, whereExpr,self.groupByExprs ++ expr1 ++ expr2 ++ expr3, havingExpr, orderByExprs, offset, limit) {
+      def groupBy[F1, F2, F3](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any])(implicit verify: GroupByLike[F, F1 with F2 with F3]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3] =
+        new Subselect[F, Repr, Source, Subsource, Head, Tail](selection, table, whereExpr,self.groupByExprs ++ expr1 ++ expr2 ++ expr3, havingExpr, orderByExprs, offset, limit) {
          override type GroupByF =  self.GroupByF with F1 with F2 with F3
       }
 
-      @silent
-      def groupBy[F1: Features.IsNotAggregated, F2: Features.IsNotAggregated, F3: Features.IsNotAggregated, F4: Features.IsNotAggregated](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3 with F4] =
-        new Subselect(selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4, havingExpr, orderByExprs, offset, limit) {
+      def groupBy[F1, F2, F3, F4](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any])(implicit verify: GroupByLike[F, F1 with F2 with F3 with F4]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3 with F4] =
+        new Subselect[F, Repr, Source, Subsource, Head, Tail](selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4, havingExpr, orderByExprs, offset, limit) {
          override type GroupByF = self.GroupByF with F1 with F2 with F3 with F4
       }
       
-      @silent
-      def groupBy[F1: Features.IsNotAggregated, F2: Features.IsNotAggregated, F3: Features.IsNotAggregated, F4: Features.IsNotAggregated, F5: Features.IsNotAggregated](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3 with F4 with F5] =
-        new Subselect(selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5, havingExpr, orderByExprs, offset, limit) {
+      def groupBy[F1, F2, F3, F4, F5](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any])(implicit verify: GroupByLike[F, F1 with F2 with F3 with F4 with F5]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3 with F4 with F5] =
+        new Subselect[F, Repr, Source, Subsource, Head, Tail](selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5, havingExpr, orderByExprs, offset, limit) {
          override type GroupByF =  self.GroupByF with F1 with F2 with F3 with F4 with F5
       }
       
-      @silent
-      def groupBy[F1: Features.IsNotAggregated, F2: Features.IsNotAggregated, F3: Features.IsNotAggregated, F4: Features.IsNotAggregated, F5: Features.IsNotAggregated, F6: Features.IsNotAggregated](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any], expr6: Expr[F6, Source, Any]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6] =
-        new Subselect(selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6, havingExpr, orderByExprs, offset, limit) {
+      def groupBy[F1, F2, F3, F4, F5, F6](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any], expr6: Expr[F6, Source, Any])(implicit verify: GroupByLike[F, F1 with F2 with F3 with F4 with F5 with F6]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6] =
+        new Subselect[F, Repr, Source, Subsource, Head, Tail](selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6, havingExpr, orderByExprs, offset, limit) {
          override type GroupByF =  self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6
       }
 
-      /**
-        * TODO add arities up to 22 when needed / requested by users
-        */
-      @silent
-      def groupBy[F1: Features.IsNotAggregated, F2: Features.IsNotAggregated, F3: Features.IsNotAggregated, F4: Features.IsNotAggregated, F5: Features.IsNotAggregated, F6: Features.IsNotAggregated, F7: Features.IsNotAggregated](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any], expr6: Expr[F6, Source, Any], expr7: Expr[F7, Source, Any]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6 with F7] =
-        new Subselect(selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7, havingExpr, orderByExprs, offset, limit) {
+      //TODO add arities up to 22 if needed
+      def groupBy[F1, F2, F3, F4, F5, F6, F7](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any], expr6: Expr[F6, Source, Any], expr7: Expr[F7, Source, Any])(implicit verify: GroupByLike[F, F1 with F2 with F3 with F4 with F5 with F6 with F7]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6 with F7] =
+        new Subselect[F, Repr, Source, Subsource, Head, Tail](selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7, havingExpr, orderByExprs, offset, limit) {
          override type GroupByF =  self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6 with F7
       }
-      // format: on
+      //format: on
 
       def normalize(implicit
         instance: TrailingUnitNormalizer[ResultType]
@@ -407,7 +366,6 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
           )
     }
 
-    // TODO add name to literal selection - e.g. select '1' as one
     sealed case class Literal[B: TypeTag](values: Iterable[B]) extends Read[B] { self =>
       override type ResultType = B
 
@@ -432,7 +390,9 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
         ] { type ColumnsOut = self.ColumnsOut }, Any](self, name)
     }
 
-    def lit[B: TypeTag](values: B*): Read[B] = Literal(values.toSeq)
+    implicit def seqToLiteral[B](values: Seq[B])(implicit typeTag: TypeTag[B]): Read[B] =
+      Read.Literal[B](values)
+
   }
 
   /**
@@ -448,7 +408,7 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule with Gro
 
     def ++[F2, A1 <: A, C <: SelectionSet[A1]](
       that: Selection[F2, A1, C]
-    ): Selection[F :||: F2, A1, self.value.Append[A1, C]] =
+    ): Selection[F with F2, A1, self.value.Append[A1, C]] =
       Selection(self.value ++ that.value)
   }
 

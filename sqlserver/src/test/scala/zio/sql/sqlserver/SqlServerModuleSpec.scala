@@ -4,8 +4,6 @@ import java.math.{ BigDecimal, RoundingMode }
 import java.time._
 import java.time.temporal.ChronoUnit
 import java.util.UUID
-
-import com.github.ghik.silencer.silent
 import zio._
 import zio.schema.DeriveSchema
 import zio.test._
@@ -29,8 +27,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
 
   implicit val customerRow = DeriveSchema.gen[CustomerRow]
 
-  @silent
-  private def customerSelectJoseAssertion[F: Features.IsNotAggregated](
+  private def customerSelectJoseAssertion[F](
     condition: Expr[F, customers.TableType, Boolean]
   ) = {
     case class Customer(id: UUID, fname: String, lname: String, verified: Boolean, dateOfBirth: LocalDate)
@@ -59,6 +56,39 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
   }
 
   override def specLayered = suite("MSSQL Server module")(
+    test("`in` clause sequence") {
+      import ProductSchema._
+
+      val query = select(fkProductId).from(productPrices).where(price in List(10, 20, 74))
+
+      for {
+        result <- execute(query).runCollect
+      } yield assertTrue(
+        result == Chunk(
+          UUID.fromString("7368abf4-aed2-421f-b426-1725de756895"),
+          UUID.fromString("4c770002-4c8f-455a-96ff-36a8186d5290"),
+          UUID.fromString("105a2701-ef93-4e25-81ab-8952cc7d9daa")
+        )
+      )
+    },
+    test("`in` clause from subquery") {
+      import ProductSchema._
+      import OrderDetails._
+
+      val higherPrices = select(price).from(productPrices).where(price > 74)
+
+      val query = select(orderDetailsId).from(orderDetails).where(unitPrice in higherPrices)
+
+      for {
+        result <- execute(query).runCollect
+      } yield assertTrue(
+        result == Chunk(
+          UUID.fromString("9473a0bc-396a-4936-96b0-3eea922af36b"),
+          UUID.fromString("fd0fa8d4-e1a0-4369-be07-945450db5d36"),
+          UUID.fromString("763a7c39-833f-4ee8-9939-e80dfdbfc0fc")
+        )
+      )
+    },
     test("Can select from single table") {
       case class Customer(id: UUID, fname: String, lname: String, dateOfBirth: LocalDate)
 
