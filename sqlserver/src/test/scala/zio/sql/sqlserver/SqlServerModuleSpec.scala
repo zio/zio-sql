@@ -4,12 +4,10 @@ import java.math.{ BigDecimal, RoundingMode }
 import java.time._
 import java.time.temporal.ChronoUnit
 import java.util.UUID
-import com.github.ghik.silencer.silent
 import zio._
 import zio.schema.DeriveSchema
 import zio.test._
 import zio.test.Assertion._
-import zio.sql.Features._
 import zio.test.TestAspect.{ retries, samples, sequential, shrinks }
 
 import scala.language.postfixOps
@@ -29,8 +27,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
 
   implicit val customerRow = DeriveSchema.gen[CustomerRow]
 
-  @silent
-  private def customerSelectJoseAssertion[F: IsNotAggregated](
+  private def customerSelectJoseAssertion[F](
     condition: Expr[F, customers.TableType, Boolean]
   ) = {
     case class Customer(id: UUID, fname: String, lname: String, verified: Boolean, dateOfBirth: LocalDate)

@@ -4,13 +4,11 @@ import java.math.BigDecimal
 import java.time._
 import java.util.UUID
 
-import com.github.ghik.silencer.silent
 import zio._
 import zio.schema._
 import zio.test._
 import zio.test.Assertion._
 import zio.test.TestAspect._
-import zio.sql.Features._
 
 import scala.language.postfixOps
 
@@ -19,8 +17,7 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
   import AggregationDef._
   import CustomerSchema._
 
-  @silent
-  private def customerSelectJoseAssertion[F: IsNotAggregated](
+  private def customerSelectJoseAssertion[F](
     condition: Expr[F, customers.TableType, Boolean]
   ) = {
     case class Customer(id: UUID, fname: String, lname: String, verified: Boolean, dateOfBirth: LocalDate)
@@ -649,6 +646,7 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
     test("in joined tables, columns of the same name from different table are treated as different columns") {
       import Cities._
       import Ordering._
+      import Expr._
 
       /**
        *          SELECT ms.name, c.name, COUNT(ml.id) as line_count
@@ -686,9 +684,8 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
     test("update rows") {
       import PersonsSchema._
 
-      // TODO support here also Some and None
       for {
-        result <- execute(update(persons).set(personsName, Option("Charlie")).where(personsName === Option("Murray")))
+        result <- execute(update(persons).set(personsName, Some("Charlie")).where(personsName === Some("Murray")))
       } yield assertTrue(result == 1)
     }
   ) @@ sequential
