@@ -24,7 +24,7 @@ addCommandAlias("fmt", "fmtOnce;fmtOnce")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
 val zioVersion                 = "2.0.5"
-val zioSchemaVersion           = "0.4.1"
+val zioSchemaVersion           = "0.4.2"
 val testcontainersVersion      = "1.17.6"
 val testcontainersScalaVersion = "0.40.11"
 val logbackVersion             = "1.2.11"
@@ -197,7 +197,7 @@ lazy val mysql = project
       "org.testcontainers" % "database-commons"           % testcontainersVersion      % Test,
       "org.testcontainers" % "jdbc"                       % testcontainersVersion      % Test,
       "org.testcontainers" % "mysql"                      % testcontainersVersion      % Test,
-      "mysql"              % "mysql-connector-java"       % "8.0.30"                   % Test,
+      "mysql"              % "mysql-connector-java"       % "8.0.32"                   % Test,
       "com.dimafeng"      %% "testcontainers-scala-mysql" % testcontainersScalaVersion % Test,
       "ch.qos.logback"     % "logback-classic"            % logbackVersion             % Test
     )
