@@ -6,7 +6,6 @@ import java.time._
 import scala.language.implicitConversions
 import java.math.BigDecimal
 import scala.annotation.implicitNotFound
-import zio.sql.Features._
 
 trait ExprModule extends NewtypesModule with OpsModule {
   self: SelectModule with TableModule =>
@@ -15,78 +14,78 @@ trait ExprModule extends NewtypesModule with OpsModule {
    * Models a function `A => B`.
    * SELECT product.price + 10
    */
-  sealed trait Expr[F, -A, +B] { self =>
+  sealed trait Expr[-F, -A, +B] { self =>
 
-    def +[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =
+    def +[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F with F2, A1, B1] =
       Expr.Binary(self, that, BinaryOp.Add[B1]())
 
-    def -[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =
+    def -[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F with F2, A1, B1] =
       Expr.Binary(self, that, BinaryOp.Sub[B1]())
 
-    def *[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =
+    def *[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F with F2, A1, B1] =
       Expr.Binary(self, that, BinaryOp.Mul[B1]())
 
     // todo do something special for divide by 0? also Mod/log/whatever else is really a partial function.. PartialExpr?
-    def /[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F :||: F2, A1, B1] =
+    def /[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsNumeric[B1]): Expr[F with F2, A1, B1] =
       Expr.Binary(self, that, BinaryOp.Div[B1]())
 
     def &&[F2, A1 <: A, B1 >: B](
       that: Expr[F2, A1, Boolean]
-    )(implicit ev: B <:< Boolean): Expr[F :||: F2, A1, Boolean] =
+    )(implicit ev: B <:< Boolean): Expr[F with F2, A1, Boolean] =
       Expr.Binary(self.widen[Boolean], that, BinaryOp.AndBool)
 
     def ||[F2, A1 <: A, B1 >: B](
       that: Expr[F2, A1, Boolean]
-    )(implicit ev: B <:< Boolean): Expr[F :||: F2, A1, Boolean] =
+    )(implicit ev: B <:< Boolean): Expr[F with F2, A1, Boolean] =
       Expr.Binary(self.widen[Boolean], that, BinaryOp.OrBool)
 
     def ===[F2, A1 <: A, B1 >: B, B2](that: Expr[F2, A1, B2])(implicit
       ct: ComparableTypes[B1, B2]
-    ): Expr[F :||: F2, A1, Boolean] =
+    ): Expr[F with F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.Equals)
 
     def <>[F2, A1 <: A, B1 >: B, B2](that: Expr[F2, A1, B2])(implicit
       ct: ComparableTypes[B1, B2]
-    ): Expr[F :||: F2, A1, Boolean] =
+    ): Expr[F with F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.NotEqual)
 
     def >[F2, A1 <: A, B1 >: B, B2](that: Expr[F2, A1, B2])(implicit
       ct: ComparableTypes[B1, B2]
-    ): Expr[F :||: F2, A1, Boolean] =
+    ): Expr[F with F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.GreaterThan)
 
     def <[F2, A1 <: A, B1 >: B, B2](that: Expr[F2, A1, B2])(implicit
       ct: ComparableTypes[B1, B2]
-    ): Expr[F :||: F2, A1, Boolean] =
+    ): Expr[F with F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.LessThan)
 
     def >=[F2, A1 <: A, B1 >: B, B2](that: Expr[F2, A1, B2])(implicit
       ct: ComparableTypes[B1, B2]
-    ): Expr[F :||: F2, A1, Boolean] =
+    ): Expr[F with F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.GreaterThanEqual)
 
     def <=[F2, A1 <: A, B1 >: B, B2](that: Expr[F2, A1, B2])(implicit
       ct: ComparableTypes[B1, B2]
-    ): Expr[F :||: F2, A1, Boolean] =
+    ): Expr[F with F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.LessThanEqual)
 
-    def like[F2, A1 <: A](that: Expr[F2, A1, String])(implicit ev: B <:< String): Expr[F :||: F2, A1, Boolean] =
+    def like[F2, A1 <: A](that: Expr[F2, A1, String])(implicit ev: B <:< String): Expr[F with F2, A1, Boolean] =
       Expr.Relational(self, that, RelationalOp.Like)
 
-    def &[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsIntegral[B1]): Expr[F :||: F2, A1, B1] =
+    def &[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsIntegral[B1]): Expr[F with F2, A1, B1] =
       Expr.Binary(self, that, BinaryOp.AndBit[B1]())
 
-    def |[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsIntegral[B1]): Expr[F :||: F2, A1, B1] =
+    def |[F2, A1 <: A, B1 >: B](that: Expr[F2, A1, B1])(implicit ev: IsIntegral[B1]): Expr[F with F2, A1, B1] =
       Expr.Binary(self, that, BinaryOp.OrBit[B1]())
 
-    def unary_~[B1 >: B](implicit ev: IsIntegral[B1]): Expr.Unary[F, A, B1] =
+    def unary_~[F1 <: F, B1 >: B](implicit ev: IsIntegral[B1]): Expr.Unary[F1, A, B1] =
       Expr.Unary(self, UnaryOp.NotBit[B1]())
 
-    def unary_-[B1 >: B](implicit ev: IsNumeric[B1]): Expr.Unary[F, A, B1] =
+    def unary_-[F1 <: F, B1 >: B](implicit ev: IsNumeric[B1]): Expr.Unary[F1, A, B1] =
       Expr.Unary(self, UnaryOp.Negate[B1]())
 
-    def not[A1 <: A](implicit ev: B <:< Boolean): Expr.Unary[F, A1, Boolean] =
-      Expr.Unary(self.widen[Boolean], UnaryOp.NotBool)
+    def not[F1 <: F, A1 <: A](implicit ev: B <:< Boolean): Expr.Unary[F1, A1, Boolean] =
+      Expr.Unary[F1, A1, Boolean](self.widen[Boolean], UnaryOp.NotBool)
 
     def isNull[A1 <: A]: Expr[F, A1, Boolean] =
       Expr.Property(self, PropertyOp.IsNull)
@@ -113,9 +112,9 @@ trait ExprModule extends NewtypesModule with OpsModule {
 
     def desc: Ordering[Expr[F, A, B]] = Ordering.Desc(self)
 
-    def in[B1 >: B, B2](
+    def in[F1 <: F, B1 >: B, B2](
       set: Read[B2]
-    )(implicit ct: ComparableTypes[B1, B2], ev: Features.IsSource[F]): Expr[F, A, Boolean] =
+    )(implicit ct: ComparableTypes[B1, B2], ev: Features.IsSource[F1]): Expr[F, A, Boolean] =
       Expr.In(self, set)
 
     def widen[C](implicit ev: B <:< C): Expr[F, A, C] = {
@@ -135,6 +134,11 @@ trait ExprModule extends NewtypesModule with OpsModule {
     def typeTagOf[A](expr: Expr[_, _, A]): TypeTag[A] = expr.asInstanceOf[InvariantExpr[_, _, A]].typeTag
 
     implicit def literal[A: TypeTag](a: A): Expr[Features.Literal, Any, A] = Expr.Literal(a)
+
+    implicit def some[A: TypeTag.NotNull](someA: Some[A]): Expr[Features.Literal, Any, Option[A]] = {
+      implicit val typeTagA = TypeTag.Nullable[A]()
+      Expr.Literal[Option[A]](someA)
+    }
 
     def exprName[F, A, B](expr: Expr[F, A, B]): Option[String] =
       expr match {
@@ -161,7 +165,7 @@ trait ExprModule extends NewtypesModule with OpsModule {
       def typeTag: TypeTag[B] = column.typeTag
     }
 
-    sealed case class Unary[F, -A, B](base: Expr[F, A, B], op: UnaryOp[B]) extends InvariantExpr[F, A, B] {
+    sealed case class Unary[-F, -A, B](base: Expr[F, A, B], op: UnaryOp[B]) extends Expr[F, A, B] {
       def typeTag: TypeTag[B] = typeTagOf(base)
     }
 
@@ -170,12 +174,12 @@ trait ExprModule extends NewtypesModule with OpsModule {
     }
 
     sealed case class Binary[F1, F2, A, B](left: Expr[F1, A, B], right: Expr[F2, A, B], op: BinaryOp[B])
-        extends InvariantExpr[Features.Union[F1, F2], A, B] {
+        extends InvariantExpr[F1 with F2, A, B] {
       def typeTag: TypeTag[B] = typeTagOf(left)
     }
 
     sealed case class Relational[F1, F2, A, B](left: Expr[F1, A, B], right: Expr[F2, A, B], op: RelationalOp)
-        extends InvariantExpr[Features.Union[F1, F2], A, Boolean] {
+        extends InvariantExpr[F1 with F2, A, Boolean] {
       def typeTag: TypeTag[Boolean] = TypeTag.TBoolean
     }
 
@@ -211,7 +215,7 @@ trait ExprModule extends NewtypesModule with OpsModule {
       param1: Expr[F1, A, B],
       param2: Expr[F2, A, C],
       function: FunctionDef[(B, C), Z]
-    ) extends InvariantExpr[Features.Union[F1, F2], A, Z] {
+    ) extends InvariantExpr[F1 with F2, A, Z] {
       def typeTag: TypeTag[Z] = implicitly[TypeTag[Z]]
     }
 
@@ -220,7 +224,7 @@ trait ExprModule extends NewtypesModule with OpsModule {
       param2: Expr[F2, A, C],
       param3: Expr[F3, A, D],
       function: FunctionDef[(B, C, D), Z]
-    ) extends InvariantExpr[Features.Union[F1, Features.Union[F2, F3]], A, Z] {
+    ) extends InvariantExpr[F1 with F2 with F3, A, Z] {
       def typeTag: TypeTag[Z] = implicitly[TypeTag[Z]]
     }
 
@@ -230,7 +234,7 @@ trait ExprModule extends NewtypesModule with OpsModule {
       param3: Expr[F3, A, D],
       param4: Expr[F4, A, E],
       function: FunctionDef[(B, C, D, E), Z]
-    ) extends InvariantExpr[Features.Union[F1, Features.Union[F2, Features.Union[F3, F4]]], A, Z] {
+    ) extends InvariantExpr[F1 with F2 with F3 with F4, A, Z] {
       def typeTag: TypeTag[Z] = implicitly[TypeTag[Z]]
     }
 
@@ -241,7 +245,7 @@ trait ExprModule extends NewtypesModule with OpsModule {
       param4: Expr[F4, A, E],
       param5: Expr[F5, A, F],
       function: FunctionDef[(B, C, D, E, F), Z]
-    ) extends InvariantExpr[Features.Union[F1, Features.Union[F2, Features.Union[F3, Features.Union[F4, F5]]]], A, Z] {
+    ) extends InvariantExpr[F1 with F2 with F3 with F4 with F5, A, Z] {
       def typeTag: TypeTag[Z] = implicitly[TypeTag[Z]]
     }
 
@@ -254,7 +258,7 @@ trait ExprModule extends NewtypesModule with OpsModule {
       param6: Expr[F6, A, G],
       function: FunctionDef[(B, C, D, E, F, G), Z]
     ) extends InvariantExpr[
-          Features.Union[F1, Features.Union[F2, Features.Union[F3, Features.Union[F4, Features.Union[F5, F6]]]]],
+          F1 with F2 with F3 with F4 with F5 with F6,
           A,
           Z
         ] {
@@ -271,10 +275,7 @@ trait ExprModule extends NewtypesModule with OpsModule {
       param7: Expr[F7, A, H],
       function: FunctionDef[(B, C, D, E, F, G, H), Z]
     ) extends InvariantExpr[
-          Features.Union[
-            F1,
-            Features.Union[F2, Features.Union[F3, Features.Union[F4, Features.Union[F5, Features.Union[F6, F7]]]]]
-          ],
+          F1 with F2 with F3 with F4 with F5 with F6 with F7,
           A,
           Z
         ] {
@@ -312,14 +313,14 @@ trait ExprModule extends NewtypesModule with OpsModule {
     def apply[F1, F2, Source, P1, P2, B1 >: B](param1: Expr[F1, Source, P1], param2: Expr[F2, Source, P2])(implicit
       ev: (P1, P2) <:< A,
       typeTag: TypeTag[B1]
-    ): Expr[F1 :||: F2, Source, B1] =
+    ): Expr[F1 with F2, Source, B1] =
       Expr.FunctionCall2(param1, param2, self.narrow[(P1, P2)]: FunctionDef[(P1, P2), B1])
 
     def apply[F1, F2, F3, Source, P1, P2, P3, B1 >: B](
       param1: Expr[F1, Source, P1],
       param2: Expr[F2, Source, P2],
       param3: Expr[F3, Source, P3]
-    )(implicit ev: (P1, P2, P3) <:< A, typeTag: TypeTag[B1]): Expr[F1 :||: F2 :||: F3, Source, B1] =
+    )(implicit ev: (P1, P2, P3) <:< A, typeTag: TypeTag[B1]): Expr[F1 with F2 with F3, Source, B1] =
       Expr.FunctionCall3(param1, param2, param3, self.narrow[(P1, P2, P3)]: FunctionDef[(P1, P2, P3), B1])
 
     def apply[F1, F2, F3, F4, Source, P1, P2, P3, P4, B1 >: B](
@@ -327,7 +328,7 @@ trait ExprModule extends NewtypesModule with OpsModule {
       param2: Expr[F2, Source, P2],
       param3: Expr[F3, Source, P3],
       param4: Expr[F4, Source, P4]
-    )(implicit ev: (P1, P2, P3, P4) <:< A, typeTag: TypeTag[B1]): Expr[F1 :||: F2 :||: F3 :||: F4, Source, B1] =
+    )(implicit ev: (P1, P2, P3, P4) <:< A, typeTag: TypeTag[B1]): Expr[F1 with F2 with F3 with F4, Source, B1] =
       Expr.FunctionCall4(
         param1,
         param2,
@@ -345,7 +346,7 @@ trait ExprModule extends NewtypesModule with OpsModule {
     )(implicit
       ev: (P1, P2, P3, P4, P5) <:< A,
       typeTag: TypeTag[B1]
-    ): Expr[F1 :||: F2 :||: F3 :||: F4 :||: F5, Source, B1] =
+    ): Expr[F1 with F2 with F3 with F4 with F5, Source, B1] =
       Expr.FunctionCall5(
         param1,
         param2,
@@ -365,7 +366,7 @@ trait ExprModule extends NewtypesModule with OpsModule {
     )(implicit
       ev: (P1, P2, P3, P4, P5, P6) <:< A,
       typeTag: TypeTag[B1]
-    ): Expr[F1 :||: F2 :||: F3 :||: F4 :||: F5 :||: F6, Source, B1] =
+    ): Expr[F1 with F2 with F3 with F4 with F5 with F6, Source, B1] =
       Expr.FunctionCall6(
         param1,
         param2,
@@ -387,7 +388,7 @@ trait ExprModule extends NewtypesModule with OpsModule {
     )(implicit
       ev: (P1, P2, P3, P4, P5, P6, P7) <:< A,
       typeTag: TypeTag[B1]
-    ): Expr[F1 :||: F2 :||: F3 :||: F4 :||: F5 :||: F6 :||: F7, Source, B1] =
+    ): Expr[F1 with F2 with F3 with F4 with F5 with F6 with F7, Source, B1] =
       Expr.FunctionCall7(
         param1,
         param2,
@@ -486,9 +487,23 @@ trait ExprModule extends NewtypesModule with OpsModule {
   object ComparableTypes extends ComparableTypesLowPriority {
     implicit final def comparableSubtype1[A <: B, B]: ComparableTypes[A, B] = new ComparableTypes[A, B] {}
 
+    implicit final def AWithOptionIsComparable[A]: ComparableTypes[A, Option[A]] = new ComparableTypes[A, Option[A]] {}
+    implicit final def optionWithAIsComparable[A]: ComparableTypes[Option[A], A] = new ComparableTypes[Option[A], A] {}
+
+    implicit final def optionAndNone[A]: ComparableTypes[Option[A], None.type] =
+      new ComparableTypes[Option[A], None.type] {}
+    implicit final def noneAndOption[A]: ComparableTypes[None.type, Option[A]] =
+      new ComparableTypes[None.type, Option[A]] {}
+
+    implicit final def optionAndSome[A]: ComparableTypes[Option[A], Expr.Literal[Some[A]]] =
+      new ComparableTypes[Option[A], Expr.Literal[Some[A]]] {}
+    implicit final def someAndOption[A]: ComparableTypes[Expr.Literal[Some[A]], Option[A]] =
+      new ComparableTypes[Expr.Literal[Some[A]], Option[A]] {}
+
     implicit final def dateIsComprable[A, B](implicit ev1: IsDate[A], ev2: IsDate[B]): ComparableTypes[A, B] =
       new ComparableTypes[A, B] {}
-    implicit final def numbericIsComparable[A, B](implicit
+
+    implicit final def numericIsComparable[A, B](implicit
       ev1: IsNumeric[A],
       ev2: IsNumeric[B]
     ): ComparableTypes[A, B] = new ComparableTypes[A, B] {}

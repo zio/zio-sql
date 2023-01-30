@@ -66,8 +66,8 @@ object HavingIsSound {
       f.dealias match {
         case TypeRef(_, typeSymbol, args) if typeSymbol == symbolOf[zio.sql.Features.Source[_, _]] =>
           List(args.head.dealias)
-        case TypeRef(_, typeSymbol, args) if typeSymbol == symbolOf[zio.sql.Features.Union[_, _]]  =>
-          args.flatMap(f => extractSourceColumns(f))
+        case RefinedType(members, _)                                                               =>
+          members.flatMap(f => extractSourceColumns(f))
         case _                                                                                     =>
           Nil
       }

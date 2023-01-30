@@ -24,7 +24,7 @@ addCommandAlias("fmt", "fmtOnce;fmtOnce")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
 val zioVersion                 = "2.0.6"
-val zioSchemaVersion           = "0.4.1"
+val zioSchemaVersion           = "0.4.2"
 val testcontainersVersion      = "1.17.6"
 val testcontainersScalaVersion = "0.40.11"
 val logbackVersion             = "1.2.11"
@@ -46,7 +46,8 @@ lazy val root = project
     postgres,
     sqlserver,
     jdbc_hikaricp,
-    macros
+    macros,
+    docs
   )
 
 lazy val core = crossProject(JSPlatform, JVMPlatform)
@@ -91,19 +92,16 @@ lazy val macros = project
 lazy val docs = project
   .in(file("zio-sql-docs"))
   .settings(
-    publish / skip     := true,
-    moduleName         := "zio-sql-docs",
+    moduleName                                 := "zio-sql-docs",
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
-    projectName        := "ZIO SQL",
-    badgeInfo          := Some(
-      BadgeInfo(
-        artifact = "zio-sql_2.12",
-        projectStage = ProjectStage.ProductionReady
-      )
-    ),
-    docsPublishBranch  := "master",
-    readmeContribution := readmeContribution.value +
+    crossScalaVersions                         := Seq(Scala213, Scala212, ScalaDotty),
+    projectName                                := "ZIO SQL",
+    mainModuleName                             := (coreJVM / moduleName).value,
+    projectStage                               := ProjectStage.ProductionReady,
+    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(),
+    docsPublishBranch                          := "master",
+    readmeContribution                         := readmeContribution.value +
       """|### TL;DR
          |Prerequisites (installed):
          |
@@ -120,7 +118,6 @@ lazy val docs = project
          |5. Pick up an issue & you are ready to go!
          |""".stripMargin
   )
-  .dependsOn(postgres)
   .enablePlugins(WebsitePlugin)
 
 lazy val examples = project
@@ -200,7 +197,7 @@ lazy val mysql = project
       "org.testcontainers" % "database-commons"           % testcontainersVersion      % Test,
       "org.testcontainers" % "jdbc"                       % testcontainersVersion      % Test,
       "org.testcontainers" % "mysql"                      % testcontainersVersion      % Test,
-      "mysql"              % "mysql-connector-java"       % "8.0.30"                   % Test,
+      "mysql"              % "mysql-connector-java"       % "8.0.32"                   % Test,
       "com.dimafeng"      %% "testcontainers-scala-mysql" % testcontainersScalaVersion % Test,
       "ch.qos.logback"     % "logback-classic"            % logbackVersion             % Test
     )
