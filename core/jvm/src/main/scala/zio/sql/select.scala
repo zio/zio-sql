@@ -9,7 +9,7 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
 
     def from[Source0 <: Source](table: Table.Aux[Source0])(implicit
       ev: B <:< SelectionSet.Cons[Source0, selection.value.ColumnHead, selection.value.SelectionTail],
-      normalizer: TrailingUnitNormalizer[selection.value.ResultTypeRepr]
+      normalizer: Normalizer[selection.value.ResultTypeRepr]
     ): Read.Select[
       F0,
       normalizer.Out,
@@ -39,7 +39,7 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
         builder.selection.value.ColumnHead,
         builder.selection.value.SelectionTail
       ],
-      normalizer: TrailingUnitNormalizer[builder.selection.value.ResultTypeRepr]
+      normalizer: Normalizer[builder.selection.value.ResultTypeRepr]
     ): Read.Select[
       F,
       normalizer.Out,
@@ -65,7 +65,7 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
     def from[Source0](table: Table.Aux[Source0])(implicit
       ev1: Source0 with ParentTable <:< Source,
       ev2: B <:< SelectionSet.Cons[Source, selection.value.ColumnHead, selection.value.SelectionTail],
-      normalizer: TrailingUnitNormalizer[selection.value.ResultTypeRepr]
+      normalizer: Normalizer[selection.value.ResultTypeRepr]
     ): Read.Subselect[
       F,
       normalizer.Out,
@@ -297,7 +297,7 @@ trait SelectModule { self: ExprModule with TableModule with UtilsModule =>
       //format: on
 
       def normalize(implicit
-        instance: TrailingUnitNormalizer[ResultType]
+        instance: Normalizer[ResultType]
       ): Subselect[F, instance.Out, Source, Subsource, Head, Tail] =
         self.asInstanceOf[Subselect[F, instance.Out, Source, Subsource, Head, Tail]]
 

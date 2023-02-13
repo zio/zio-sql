@@ -18,7 +18,7 @@ trait SelectUtilsModule { self: TableModule with ExprModule with InsertModule wi
         helper.ColumnHead,
         helper.SelectionTail
       ]
-      val b: B0 = table.*.selection.value.asInstanceOf[B0]
+      val b: B0 = table.all.selection.value.asInstanceOf[B0]
 
       Read.Subselect[helper.F, helper.ResultTypeRepr, A, A, helper.ColumnHead, helper.SelectionTail](
           Selection[helper.F, A, B0](b), Some(table), true
@@ -27,8 +27,6 @@ trait SelectUtilsModule { self: TableModule with ExprModule with InsertModule wi
   }
 
   sealed case class SelectByCommaBuilder() {
-
-    def * : SelectAll = SelectAll()
 
     def apply[F1, Source, B1](expr1: Expr[F1, Source, B1]) = {
       SelectBuilder[F1, Source, SelectionSet.Cons[Source, B1, SelectionSet.Empty]](expr1)

@@ -13,7 +13,7 @@ sealed trait InsertLike[F, ColsRepr, AllColumnIdentities, Z]
   */
 object InsertLike {
 
-  // TODO check arity and if > 22 AllColumnIdentites is a nested tuple
+  // TODO check when arity > 22 is AllColumnIdentites is a nested tuple?
   final case class CanBeInserted[F, ColsRepr, AllColumnIdentities, Z]()
       extends InsertLike[F, ColsRepr, AllColumnIdentities, Z]
 

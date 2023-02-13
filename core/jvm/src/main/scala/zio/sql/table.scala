@@ -68,18 +68,18 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule with Sel
   ): Table.Source.WithTableDetails[schema.Terms, T, schema.Accessors[Lens, Prism, Traversal]] =
     new Table.Source {
 
-      val exprAccessorBuilder = new ExprAccessorBuilder(tableName)
+      protected[sql] val exprAccessorBuilder = new ExprAccessorBuilder(tableName)
 
-      override type AllColumnIdentities = schema.Terms
+      override protected[sql] type AllColumnIdentities = schema.Terms
 
-      override type TableType = T
+      override protected[sql] type TableType = T
 
-      override type ColumnsOut =
+      override protected[sql] type ColumnsOut =
         schema.Accessors[exprAccessorBuilder.Lens, exprAccessorBuilder.Prism, exprAccessorBuilder.Traversal]
 
       override val columns: ColumnsOut = schema.makeAccessors(exprAccessorBuilder)
 
-      override def *(implicit
+      override protected[sql] def all(implicit
         helper: ColumnsHelper[ColumnsOut, TableType]
       ): SelectBuilder[helper.F, TableType, helper.SelSet] =
         helper.apply(columns)
@@ -183,7 +183,7 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule with Sel
   }
 
   sealed trait Table { self =>
-    type TableType
+    protected[sql] type TableType
 
     final def fullOuter[That](that: Table.Aux[That]): Table.JoinBuilder[self.TableType, That] =
       new Table.JoinBuilder[self.TableType, That](JoinType.FullOuter, self, that)
@@ -215,21 +215,23 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule with Sel
     }
 
     trait Insanity {
-      def ahhhhhhhhhhhhh[A]: A
+      protected[sql] def ahhhhhhhhhhhhh[A]: A
     }
 
     sealed trait Source extends Table with Insanity {
-      type AllColumnIdentities
+      protected[sql] type AllColumnIdentities
 
       val name: TableName
 
-      type ColumnsOut
+      protected[sql] type ColumnsOut
 
       val columns: ColumnsOut
 
-      def *(implicit helper: ColumnsHelper[ColumnsOut, TableType]): SelectBuilder[helper.F, TableType, helper.SelSet]
+      protected[sql] def all(implicit
+        helper: ColumnsHelper[ColumnsOut, TableType]
+      ): SelectBuilder[helper.F, TableType, helper.SelSet]
 
-      override def ahhhhhhhhhhhhh[A]: A = ??? // don't remove or it'll break
+      override protected[sql] def ahhhhhhhhhhhhh[A]: A = ??? // don't remove or it'll break
     }
 
     object Source {

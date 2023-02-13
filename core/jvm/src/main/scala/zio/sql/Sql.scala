@@ -29,6 +29,14 @@ trait Sql
    */
   val select: SelectByCommaBuilder = SelectByCommaBuilder()
 
+  sealed trait Star
+  val * : Star = new Star {}
+
+  def select(star: Star): SelectAll = {
+    val _ = star
+    new SelectAll()
+  }
+
   def select[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]): SelectBuilder[F, A, B] =
     SelectBuilder[F, A, B](selection)
 

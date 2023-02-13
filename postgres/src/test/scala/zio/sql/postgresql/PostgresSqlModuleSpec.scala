@@ -691,7 +691,7 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
     test("select all rows") {
       import CustomerSchema._
 
-      val query = select.*.from(customers)
+      val query = select(*).from(customers)
 
       for {
         result <- execute(query).runCollect
