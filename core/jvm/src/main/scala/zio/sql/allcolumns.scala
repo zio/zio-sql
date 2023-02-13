@@ -4,7 +4,9 @@ import scala.annotation.implicitNotFound
 
 trait AllColumnsModule { self: SelectModule with ExprModule =>
 
-  @implicitNotFound("SELECT * currently not supported on joined tables, derived tables and for table of size bigger than 22.")
+  @implicitNotFound(
+    "SELECT * currently not supported on joined tables, derived tables and for table of size bigger than 22."
+  )
   sealed trait ColumnsHelper[ColumnsOut, TableType] {
     type F
     type SelSet <: SelectionSet[TableType]

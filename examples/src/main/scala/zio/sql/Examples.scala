@@ -19,7 +19,7 @@ object Examples extends App with PostgresJdbcModule {
 
   val selectAll1 = select(*).from(orderDetails)
   val selectAll2 = select(*).from(users)
- 
+
   // SELECT "users"."age" + 2, concat_ws("users"."first_name",' ',"users"."last_name"), abs(-42.0) FROM "users" ORDER BY "users"."age" DESC LIMIT 10 OFFSET 20
   val selectWithFunctions =
     select(age + 2, ConcatWs3(fName, " ", lName), Abs(-42.0))

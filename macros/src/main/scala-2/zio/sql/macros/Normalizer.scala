@@ -23,12 +23,11 @@ object Normalizer {
     val inType = weakTypeOf[In]
     val _      = weakTypeOf[Out]
 
-
     def deconstructType(t: Type): List[Type] =
       t.dealias match {
         case TypeRef(_, y, types) if (types != Nil && (y == symbolOf[scala.Tuple2[_, _]])) =>
           types.head :: deconstructType(types.tail.head)
-        case TypeRef(_, _, types) if (types == Nil)     =>
+        case TypeRef(_, _, types) if (types == Nil)                                        =>
           Nil
         case s                                                                             =>
           c.abort(c.enclosingPosition, s"Error ${showRaw(s)}")
