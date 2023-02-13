@@ -10,7 +10,7 @@ object TableAnnotation {
   case class name(name: String) extends StaticAnnotation
 }
 
-trait TableModule { self: ExprModule with SelectModule with UtilsModule with SelectUtilsModule =>
+trait TableModule { self: ExprModule with SelectModule with UtilsModule with SelectUtilsModule with AllColumnsModule =>
 
   type Lens[F, S, A] = Expr[Features.Source[F, S], S, A]
 
@@ -22,6 +22,7 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule with Sel
     * Creates a table descripton from the Schema of T. 
     * Table name is taken either from @name annotation or schema id type and pluralized.
     */
+  // TODO do not allow CaseClass0 with macro
   def defineTableSmart[T](implicit
     schema: Schema.Record[T],
     tableLike: TableSchema[T]
@@ -67,16 +68,21 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule with Sel
   ): Table.Source.WithTableDetails[schema.Terms, T, schema.Accessors[Lens, Prism, Traversal]] =
     new Table.Source {
 
-      val exprAccessorBuilder = new ExprAccessorBuilder(tableName)
+      protected[sql] val exprAccessorBuilder = new ExprAccessorBuilder(tableName)
 
-      override type AllColumnIdentities = schema.Terms
+      override protected[sql] type AllColumnIdentities = schema.Terms
 
-      override type TableType = T
+      override protected[sql] type TableType = T
 
-      override type ColumnsOut =
+      override protected[sql] type ColumnsOut =
         schema.Accessors[exprAccessorBuilder.Lens, exprAccessorBuilder.Prism, exprAccessorBuilder.Traversal]
 
       override val columns: ColumnsOut = schema.makeAccessors(exprAccessorBuilder)
+
+      override protected[sql] def all(implicit
+        helper: ColumnsHelper[ColumnsOut, TableType]
+      ): SelectBuilder[helper.F, TableType, helper.SelSet] =
+        helper.apply(columns)
 
       override val name: TableName = tableName.toLowerCase()
     }
@@ -177,7 +183,7 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule with Sel
   }
 
   sealed trait Table { self =>
-    type TableType
+    protected[sql] type TableType
 
     final def fullOuter[That](that: Table.Aux[That]): Table.JoinBuilder[self.TableType, That] =
       new Table.JoinBuilder[self.TableType, That](JoinType.FullOuter, self, that)
@@ -209,19 +215,23 @@ trait TableModule { self: ExprModule with SelectModule with UtilsModule with Sel
     }
 
     trait Insanity {
-      def ahhhhhhhhhhhhh[A]: A
+      protected[sql] def ahhhhhhhhhhhhh[A]: A
     }
 
     sealed trait Source extends Table with Insanity {
-      type AllColumnIdentities
+      protected[sql] type AllColumnIdentities
 
       val name: TableName
 
-      type ColumnsOut
+      protected[sql] type ColumnsOut
 
       val columns: ColumnsOut
 
-      override def ahhhhhhhhhhhhh[A]: A = ??? // don't remove or it'll break
+      protected[sql] def all(implicit
+        helper: ColumnsHelper[ColumnsOut, TableType]
+      ): SelectBuilder[helper.F, TableType, helper.SelSet]
+
+      override protected[sql] def ahhhhhhhhhhhhh[A]: A = ??? // don't remove or it'll break
     }
 
     object Source {

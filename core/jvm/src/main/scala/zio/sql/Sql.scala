@@ -8,6 +8,7 @@ trait Sql
     with UpdateModule
     with ExprModule
     with TableModule
+    with AllColumnsModule
     with InsertModule
     with UtilsModule
     with SelectUtilsModule
@@ -27,6 +28,14 @@ trait Sql
    * SELECT ARBITRARY(age), COUNT(*) FROM person GROUP BY age
    */
   val select: SelectByCommaBuilder = SelectByCommaBuilder()
+
+  sealed trait Star
+  val * : Star = new Star {}
+
+  def select(star: Star): SelectAll = {
+    val _ = star
+    new SelectAll()
+  }
 
   def select[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]): SelectBuilder[F, A, B] =
     SelectBuilder[F, A, B](selection)

@@ -12,11 +12,13 @@ object Examples extends App with PostgresJdbcModule {
   import this.Orders._
   import this.Users._
 
-  // SELECT "users"."first_name", "users"."last_name" FROM "users"
   val basicSelect =
     select(fName, lName).from(users)
 
   println(renderRead(basicSelect))
+
+  val selectAll1 = select(*).from(orderDetails)
+  val selectAll2 = select(*).from(users)
 
   // SELECT "users"."age" + 2, concat_ws("users"."first_name",' ',"users"."last_name"), abs(-42.0) FROM "users" ORDER BY "users"."age" DESC LIMIT 10 OFFSET 20
   val selectWithFunctions =
@@ -66,7 +68,7 @@ object Examples extends App with PostgresJdbcModule {
 
   /*
     SELECT "users"."id", "users"."first_name", "users"."last_name", sum("order_details"."quantity" * "order_details"."unit_price"), sum(abs("order_details"."quantity"))
-    FROM "users"
+    FROM "users"x
     INNER JOIN "orders" ON "users"."id" = "orders"."usr_id"
     LEFT JOIN "order_details" ON "orders"."id" = "order_details"."order_id"
     GROUP BY "users"."id", "users"."first_name", "users"."last_name" */
