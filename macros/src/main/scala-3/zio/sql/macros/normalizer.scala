@@ -1,6 +1,5 @@
 package zio.sql.macros
 
-import scala.reflect.macros.whitebox
 import scala.language.experimental.macros
 
 sealed trait Normalizer[In] {
