@@ -22,7 +22,7 @@ trait SqlServerSqlModule extends Sql { self =>
         case object OuterApply extends CrossType
       }
 
-      sealed case class CrossOuterApplyTable[A, B](
+      final case class CrossOuterApplyTable[A, B](
         crossType: CrossType,
         left: Table.Aux[A],
         right: Table.Aux[B]
@@ -33,7 +33,7 @@ trait SqlServerSqlModule extends Sql { self =>
       ): CrossOuterApplyTableBuilder[A] =
         new CrossOuterApplyTableBuilder(table)
 
-      sealed case class CrossOuterApplyTableBuilder[A](left: Table.Aux[A]) {
+      final case class CrossOuterApplyTableBuilder[A](left: Table.Aux[A]) {
         self =>
 
         final def crossApply[Reprs, Out, RightSource](

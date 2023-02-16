@@ -1,19 +1,13 @@
 package zio.sql
 
 import zio.schema.Schema
+import zio.sql.table._
+import zio.sql.update._
+import zio.sql.select._
+import zio.sql.insert._
+import zio.sql.delete._
 
-trait Sql
-    extends SelectModule
-    with DeleteModule
-    with UpdateModule
-    with ExprModule
-    with TableModule
-    with AllColumnsModule
-    with InsertModule
-    with UtilsModule
-    with SelectUtilsModule
-    with InsertUtilsModule {
-  self =>
+trait Sql {
 
   /*
    * (SELECT *, "foo", table.a + table.b AS sum... FROM table WHERE cond) UNION (SELECT ... FROM table)
@@ -48,13 +42,24 @@ trait Sql
 
   def insertInto[Source, AllColumnIdentities](
     table: Table.Source.Aux_[Source, AllColumnIdentities]
-  ): InsertIntoBuilder[Source, AllColumnIdentities] = InsertIntoBuilder(table)
+  ): InsertByCommaBuilder[Source, AllColumnIdentities] = InsertByCommaBuilder(table)
 
-  def renderDelete(delete: self.Delete[_]): String
+  def renderDelete(delete: Delete[_]): String
 
-  def renderRead(read: self.Read[_]): String
+  def renderRead(read: Read[_]): String
 
-  def renderUpdate(update: self.Update[_]): String
+  def renderUpdate(update: Update[_]): String
 
-  def renderInsert[A: Schema](insert: self.Insert[_, A]): String
+  def renderInsert[A: Schema](insert: Insert[_, A]): String
+
+  //TODO don't know where to put it now
+  implicit def convertOptionToSome[A](implicit op: Schema[Option[A]]): Schema[Some[A]] =
+    op.transformOrFail[Some[A]](
+      {
+        case Some(a) => Right(Some(a))
+        case None    => Left("cannot encode Right")
+      },
+      someA => Right(someA)
+    )
+  implicit val none: Schema[None.type]                                                 = Schema.singleton(None)
 }

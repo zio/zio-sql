@@ -1,0 +1,12 @@
+package zio.sql.typetag
+
+import java.sql.ResultSet
+import zio.sql.select.DecodingError
+
+trait Decodable[+A] {
+  def decode(column: Int, resultSet: ResultSet): Either[DecodingError, A]
+}
+
+object Decodable {
+  type TypeTagExtension[+A] <: Tag[A] with Decodable[A]
+}

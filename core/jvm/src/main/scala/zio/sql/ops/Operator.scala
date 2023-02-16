@@ -1,27 +1,12 @@
-package zio.sql
+package zio.sql.ops
 
-trait OpsModule extends TypeTagModule { self: SelectModule =>
+import zio.sql.typetag._
 
-  sealed trait Operator {
-    val symbol: String
-  }
-  sealed trait UnaryOp[A] extends Operator
+trait Operator {
+  val symbol: String
+}
 
-  object UnaryOp {
-    sealed case class Negate[A: IsNumeric]() extends UnaryOp[A] {
-      def isNumeric: IsNumeric[A] = implicitly[IsNumeric[A]]
-      val symbol                  = "-"
-    }
-
-    sealed case class NotBit[A: IsIntegral]() extends UnaryOp[A] {
-      def isIntegral: IsIntegral[A] = implicitly[IsIntegral[A]]
-      val symbol                    = "~"
-    }
-
-    case object NotBool extends UnaryOp[Boolean] {
-      val symbol = "not"
-    }
-  }
+object Operator {
 
   sealed trait BinaryOp[A] extends Operator {
     val symbol: String
@@ -29,25 +14,25 @@ trait OpsModule extends TypeTagModule { self: SelectModule =>
 
   object BinaryOp {
 
-    sealed case class Add[A: IsNumeric]() extends BinaryOp[A] {
+    final case class Add[A: IsNumeric]() extends BinaryOp[A] {
       def isNumeric: IsNumeric[A] = implicitly[IsNumeric[A]]
 
       override val symbol: String = "+"
     }
 
-    sealed case class Sub[A: IsNumeric]() extends BinaryOp[A] {
+    final case class Sub[A: IsNumeric]() extends BinaryOp[A] {
       def isNumeric: IsNumeric[A] = implicitly[IsNumeric[A]]
 
       override val symbol: String = "-"
     }
 
-    sealed case class Mul[A: IsNumeric]() extends BinaryOp[A] {
+    final case class Mul[A: IsNumeric]() extends BinaryOp[A] {
       def isNumeric: IsNumeric[A] = implicitly[IsNumeric[A]]
 
       override val symbol: String = "*"
     }
 
-    sealed case class Div[A: IsNumeric]() extends BinaryOp[A]       {
+    final case class Div[A: IsNumeric]() extends BinaryOp[A]       {
       def isNumeric: IsNumeric[A] = implicitly[IsNumeric[A]]
 
       override val symbol: String = "/"
@@ -60,11 +45,11 @@ trait OpsModule extends TypeTagModule { self: SelectModule =>
       override val symbol: String = "or"
     }
 
-    sealed case class AndBit[A: IsIntegral]() extends BinaryOp[A] {
+    final case class AndBit[A: IsIntegral]() extends BinaryOp[A] {
       def isIntegral: IsIntegral[A] = implicitly[IsIntegral[A]]
       override val symbol: String   = "&"
     }
-    sealed case class OrBit[A: IsIntegral]()  extends BinaryOp[A] {
+    final case class OrBit[A: IsIntegral]()  extends BinaryOp[A] {
       def isIntegral: IsIntegral[A] = implicitly[IsIntegral[A]]
       override val symbol: String   = "|"
 
@@ -111,6 +96,24 @@ trait OpsModule extends TypeTagModule { self: SelectModule =>
     }
     case object Like             extends RelationalOp {
       override val symbol: String = "like"
+    }
+  }
+
+  sealed trait UnaryOp[A] extends Operator
+
+  object UnaryOp {
+    final case class Negate[A: IsNumeric]() extends UnaryOp[A] {
+      def isNumeric: IsNumeric[A] = implicitly[IsNumeric[A]]
+      val symbol                  = "-"
+    }
+
+    final case class NotBit[A: IsIntegral]() extends UnaryOp[A] {
+      def isIntegral: IsIntegral[A] = implicitly[IsIntegral[A]]
+      val symbol                    = "~"
+    }
+
+    case object NotBool extends UnaryOp[Boolean] {
+      val symbol = "not"
     }
   }
 

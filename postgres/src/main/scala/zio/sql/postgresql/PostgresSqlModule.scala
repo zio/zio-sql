@@ -21,7 +21,7 @@ trait PostgresSqlModule extends Sql { self =>
     object PostgresSpecificTable {
       import scala.language.implicitConversions
 
-      sealed case class LateraLTable[A, B](left: Table.Aux[A], right: Table.Aux[B])
+      final case class LateraLTable[A, B](left: Table.Aux[A], right: Table.Aux[B])
           extends PostgresSpecificTable[A with B]
 
       implicit def tableSourceToSelectedBuilder[A](
@@ -29,7 +29,7 @@ trait PostgresSqlModule extends Sql { self =>
       ): LateralTableBuilder[A] =
         new LateralTableBuilder(table)
 
-      sealed case class LateralTableBuilder[A](left: Table.Aux[A]) {
+      final case class LateralTableBuilder[A](left: Table.Aux[A]) {
         self =>
 
         final def lateral[Reprs, Out, B](
@@ -91,7 +91,7 @@ trait PostgresSqlModule extends Sql { self =>
       }
     }
 
-    sealed case class Timestampz(
+    final case class Timestampz(
       year: Int = 0,
       month: Int = 0,
       day: Int = 0,
@@ -105,7 +105,7 @@ trait PostgresSqlModule extends Sql { self =>
     }
 
     // Based upon https://github.com/tminglei/slick-pg/blob/master/src/main/scala/com/github/tminglei/slickpg/PgDateSupport.scala
-    sealed case class Interval(
+    final case class Interval(
       years: Int = 0,
       months: Int = 0,
       days: Int = 0,

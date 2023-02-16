@@ -1,6 +1,6 @@
-package zio.sql
+package zio.sql.utils
 
-trait UtilsModule { self =>
+
   sealed trait TrailingUnitNormalizer[In] {
     type Out
 
@@ -166,4 +166,3 @@ trait UtilsModule { self =>
     }
     // format: on
   }
-}
