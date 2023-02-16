@@ -8,7 +8,7 @@ import zio.sql.table._
 import zio.sql.insert._
 import zio.sql.select._
 import zio.sql.update._
-import zio.sql.delete._ 
+import zio.sql.delete._
 
 object ProductSchema {
   val sql = new Sql { self =>

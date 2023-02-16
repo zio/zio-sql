@@ -16,7 +16,7 @@ object DecodingError {
   final case class MissingColumn(column: Int)                        extends DecodingError {
     def message = s"The column with index ${column} does not exist"
   }
-  case object Closed                                                  extends DecodingError {
+  case object Closed                                                 extends DecodingError {
     def message = s"The ResultSet has been closed, so decoding is impossible"
   }
 }

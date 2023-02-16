@@ -4,7 +4,6 @@ import java.time._
 import java.util.UUID
 import zio.Chunk
 import zio.schema._
-import zio.sql.typetag.Decodable
 
 trait Tag[+A] {
   private[zio] def cast(a: Any): A = a.asInstanceOf[A]
@@ -13,7 +12,7 @@ trait Tag[+A] {
 sealed trait TypeTag[+A] extends Tag[A]
 
 object TypeTag {
-  
+
   trait TypeTagExtension[+A] extends Tag[A] with Decodable[A]
 
   sealed trait NotNull[+A]             extends TypeTag[A]
@@ -42,7 +41,7 @@ object TypeTag {
   final case class Nullable[A: NotNull]()                                      extends TypeTag[Option[A]] {
     def typeTag: TypeTag[A] = implicitly[TypeTag[A]]
   }
-  implicit case object TNone                                                    extends TypeTag[None.type]
+  implicit case object TNone                                                   extends TypeTag[None.type]
 
   implicit def option[A: NotNull]: TypeTag[Option[A]] = Nullable[A]()
 
@@ -110,8 +109,3 @@ object TypeTag {
       case _                                          => None
     }
 }
-
-
-
-
-

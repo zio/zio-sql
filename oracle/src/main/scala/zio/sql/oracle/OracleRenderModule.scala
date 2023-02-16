@@ -163,7 +163,7 @@ trait OracleRenderModule extends OracleSqlModule { self =>
       (table, column.name) match {
         case (tableName: String, Some(columnName)) =>
           val _ = builder.append(tableName).append(".").append(columnName)
-        case _                                        => ()
+        case _                                     => ()
       }
     case Expr.Unary(base, op)                                                                 =>
       val _ = builder.append(" ").append(op.symbol)
@@ -656,7 +656,7 @@ trait OracleRenderModule extends OracleSqlModule { self =>
     table match {
       case Table.DialectSpecificTable(_)           => ???
       // The outer reference in this type test cannot be checked at run time?!
-      case sourceTable: Table.Source          =>
+      case sourceTable: Table.Source               =>
         val _ = builder.append(sourceTable.name)
       case Table.DerivedTable(read, name)          =>
         builder.append(" ( ")

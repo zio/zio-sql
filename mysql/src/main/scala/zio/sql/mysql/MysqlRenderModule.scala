@@ -257,7 +257,7 @@ trait MysqlRenderModule extends MysqlSqlModule { self =>
       table match {
         case Table.DialectSpecificTable(_)           => ???
         // The outer reference in this type test cannot be checked at run time?!
-        case sourceTable: Table.Source          =>
+        case sourceTable: Table.Source               =>
           render(sourceTable.name)
         case Table.DerivedTable(read, name)          =>
           render(" ( ")
@@ -288,7 +288,7 @@ trait MysqlRenderModule extends MysqlSqlModule { self =>
       case Expr.Source(table, column)                                                   =>
         (table, column.name) match {
           case (tableName: String, Some(columnName)) => render(tableName, ".", columnName)
-          case _                                        => ()
+          case _                                     => ()
         }
       case Expr.Unary(base, op)                                                         =>
         render(" ", op.symbol)
@@ -415,9 +415,9 @@ trait MysqlRenderModule extends MysqlSqlModule { self =>
       lit.typeTag match {
         case TDialectSpecific(tt) =>
           tt match {
-            case tt @ TYear                      =>
+            case tt @ TYear =>
               render(tt.cast(lit.value))
-            case _ => ???
+            case _          => ???
           }
         case TByteArray           =>
           render(

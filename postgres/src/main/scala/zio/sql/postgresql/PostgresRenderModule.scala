@@ -218,9 +218,9 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
         case TString                            => render("'", value, "'")
         case TDialectSpecific(typeTagExtension) =>
           typeTagExtension match {
-            case tt @ TInterval                         => render(tt.cast(value))
-            case tt @ TTimestampz                       => render(tt.cast(value))
-            case _ => ???
+            case tt @ TInterval   => render(tt.cast(value))
+            case tt @ TTimestampz => render(tt.cast(value))
+            case _                => ???
           }
         case TByteArray                         =>
           render(
@@ -265,7 +265,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
         (table, column.name) match {
           case (tableName: String, Some(columnName)) =>
             render(quoted(tableName), ".", quoted(columnName))
-          case _                                        => ()
+          case _                                     => ()
         }
         e.typeTag match {
           case TypeTag.TBigDecimal => render("::numeric")
@@ -530,10 +530,10 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
               render(" ,lateral ")
 
               renderTable(derivedTable)
-            case _ => ???
+            case _                                                                       => ???
           }
         // The outer reference in this type test cannot be checked at run time?!
-        case sourceTable: Table.Source             => render(quoted(sourceTable.name))
+        case sourceTable: Table.Source                  => render(quoted(sourceTable.name))
         case Table.DerivedTable(read, name)             =>
           render(" ( ")
           render(renderRead(read.asInstanceOf[Read[_]]))

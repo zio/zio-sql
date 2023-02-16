@@ -37,7 +37,7 @@ object Operator {
 
       override val symbol: String = "/"
     }
-    case object AndBool                   extends BinaryOp[Boolean] {
+    case object AndBool                  extends BinaryOp[Boolean] {
       override val symbol: String = "and"
     }
 

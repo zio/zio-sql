@@ -4,8 +4,8 @@ import java.time._
 import java.sql.ResultSet
 import java.util.UUID
 import zio.sql.Sql
-import zio.sql.select._ 
-import zio.sql.expr._ 
+import zio.sql.select._
+import zio.sql.expr._
 import zio.sql.typetag._
 
 trait MysqlSqlModule extends Sql { self =>

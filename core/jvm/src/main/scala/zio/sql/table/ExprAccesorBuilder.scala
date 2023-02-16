@@ -1,6 +1,6 @@
 package zio.sql.table
 
-import zio.sql._ 
+import zio.sql._
 import zio.schema._
 import zio.sql.typetag._
 

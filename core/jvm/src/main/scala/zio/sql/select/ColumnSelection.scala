@@ -12,7 +12,6 @@ sealed trait ColumnSelection[-Source, +ColumnType] {
   val toColumn: Column[ColumnType]
 }
 
-
 object ColumnSelection {
   final case class Constant[ColumnType: TypeTag](value: ColumnType, name: Option[String])
       extends ColumnSelection[Any, ColumnType] {

@@ -52,7 +52,7 @@ trait Sql {
 
   def renderInsert[A: Schema](insert: Insert[_, A]): String
 
-  //TODO don't know where to put it now
+  // TODO don't know where to put it now
   implicit def convertOptionToSome[A](implicit op: Schema[Option[A]]): Schema[Some[A]] =
     op.transformOrFail[Some[A]](
       {
@@ -61,5 +61,5 @@ trait Sql {
       },
       someA => Right(someA)
     )
-   implicit val none: Schema[None.type]                                                 = Schema.singleton(None)
+  implicit val none: Schema[None.type]                                                 = Schema.singleton(None)
 }

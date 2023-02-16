@@ -3,7 +3,6 @@ package zio.sql.insert
 import zio.sql.table._
 import zio.sql.expr.Expr
 import zio.sql.select._
-import zio.sql.insert.InsertBuilder
 
 // format: off
 final case class InsertByCommaBuilder[Source, AllColumnIdentities](

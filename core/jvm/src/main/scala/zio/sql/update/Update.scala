@@ -4,7 +4,7 @@ import zio.sql.table._
 import zio.sql.typetag._
 import zio.sql.Features
 
-import zio.sql.expr.{Expr, Set}
+import zio.sql.expr.{ Expr, Set }
 
 // UPDATE table
 // SET foo = bar

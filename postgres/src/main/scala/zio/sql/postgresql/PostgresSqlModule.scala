@@ -46,7 +46,7 @@ trait PostgresSqlModule extends Sql { self =>
       }
     }
 
-    //could not find implicit value for evidence parameter of type 
+    // could not find implicit value for evidence parameter of type
     // zio.sql.typetag.TypeTag[zio.sql.postgresql.CustomFunctionDefSpec.PostgresSpecific.Interval]
 
     trait PostgresTypeTag[+A] extends TypeTagExtension[A]
@@ -60,7 +60,7 @@ trait PostgresSqlModule extends Sql { self =>
               _ => Right(())
             )
       }
-      implicit case object TInterval   extends TypeTagExtension[Interval]   {
+      implicit case object TInterval   extends TypeTagExtension[Interval]  {
         override def decode(
           column: Int,
           resultSet: ResultSet

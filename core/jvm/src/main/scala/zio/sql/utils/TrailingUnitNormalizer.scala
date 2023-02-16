@@ -1,16 +1,15 @@
 package zio.sql.utils
 
+sealed trait TrailingUnitNormalizer[In] {
+  type Out
 
-  sealed trait TrailingUnitNormalizer[In] {
-    type Out
+  def apply(in: In): Out
+}
 
-    def apply(in: In): Out
+object TrailingUnitNormalizer {
+  type WithOut[In0, Out0] = TrailingUnitNormalizer[In0] {
+    type Out = Out0
   }
-
-  object TrailingUnitNormalizer {
-    type WithOut[In0, Out0] = TrailingUnitNormalizer[In0] {
-      type Out = Out0
-    }
     // format: off
     implicit def arity1[In, A]: TrailingUnitNormalizer.WithOut[(A, Unit), A] = new TrailingUnitNormalizer[(A, Unit)] {
       override type Out = A
@@ -165,4 +164,4 @@ package zio.sql.utils
         (in._1, in._2._1, in._2._2._1, in._2._2._2._1, in._2._2._2._2._1, in._2._2._2._2._2._1, in._2._2._2._2._2._2._1, in._2._2._2._2._2._2._2._1, in._2._2._2._2._2._2._2._2._1, in._2._2._2._2._2._2._2._2._2._1, in._2._2._2._2._2._2._2._2._2._2._1, in._2._2._2._2._2._2._2._2._2._2._2._1, in._2._2._2._2._2._2._2._2._2._2._2._2._1, in._2._2._2._2._2._2._2._2._2._2._2._2._2._1, in._2._2._2._2._2._2._2._2._2._2._2._2._2._2._1, in._2._2._2._2._2._2._2._2._2._2._2._2._2._2._2._1, in._2._2._2._2._2._2._2._2._2._2._2._2._2._2._2._2._1, in._2._2._2._2._2._2._2._2._2._2._2._2._2._2._2._2._2._1, in._2._2._2._2._2._2._2._2._2._2._2._2._2._2._2._2._2._2._1, in._2._2._2._2._2._2._2._2._2._2._2._2._2._2._2._2._2._2._2._1, in._2._2._2._2._2._2._2._2._2._2._2._2._2._2._2._2._2._2._2._2._1, in._2._2._2._2._2._2._2._2._2._2._2._2._2._2._2._2._2._2._2._2._2._1)
     }
     // format: on
-  }
+}

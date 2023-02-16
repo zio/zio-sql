@@ -166,7 +166,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
         (table, column.name) match {
           case (tableName: String, Some(columnName)) =>
             render(tableName, ".", columnName)
-          case _                                        => ()
+          case _                                     => ()
         }
       case Expr.Unary(base, op)                                                                 =>
         render(" ", op.symbol)
@@ -387,7 +387,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
               }
 
               val _ = buildTable(derivedTable)
-            case _ => ???
+            case _                                                                                    => ???
           }
 
         case Table.Joined(joinType, left, right, on) =>
