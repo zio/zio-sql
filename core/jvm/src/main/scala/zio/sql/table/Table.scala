@@ -192,8 +192,5 @@ object Table {
     override type TableType = A
   }
 
-  trait TableEx[A]
-
-  type TableExtension[A] <: Table.TableEx[A]
-
+  trait TableExtension[A]
 }

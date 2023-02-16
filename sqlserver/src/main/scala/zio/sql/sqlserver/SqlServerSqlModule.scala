@@ -1,16 +1,17 @@
 package zio.sql.sqlserver
 
 import java.math.BigDecimal
-
+import zio.sql.table._
+import zio.sql.select._
 import zio.sql.Sql
+import zio.sql.expr.FunctionName
+import zio.sql.expr.AggregationDef
 
 trait SqlServerSqlModule extends Sql { self =>
 
-  override type TableExtension[A] = SqlServerSpecific.SqlServerTable[A]
-
   object SqlServerSpecific {
 
-    sealed trait SqlServerTable[A] extends Table.TableEx[A]
+    sealed trait SqlServerTable[A] extends Table.TableExtension[A]
 
     object SqlServerTable {
 
@@ -22,7 +23,7 @@ trait SqlServerSqlModule extends Sql { self =>
         case object OuterApply extends CrossType
       }
 
-      final case class CrossOuterApplyTable[A, B](
+      sealed case class CrossOuterApplyTable[A, B](
         crossType: CrossType,
         left: Table.Aux[A],
         right: Table.Aux[B]
@@ -33,7 +34,7 @@ trait SqlServerSqlModule extends Sql { self =>
       ): CrossOuterApplyTableBuilder[A] =
         new CrossOuterApplyTableBuilder(table)
 
-      final case class CrossOuterApplyTableBuilder[A](left: Table.Aux[A]) {
+      sealed case class CrossOuterApplyTableBuilder[A](left: Table.Aux[A]) {
         self =>
 
         final def crossApply[Reprs, Out, RightSource](

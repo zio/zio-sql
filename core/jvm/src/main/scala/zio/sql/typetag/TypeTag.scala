@@ -4,7 +4,7 @@ import java.time._
 import java.util.UUID
 import zio.Chunk
 import zio.schema._
-import zio.sql.typetag.Decodable._
+import zio.sql.typetag.Decodable
 
 trait Tag[+A] {
   private[zio] def cast(a: Any): A = a.asInstanceOf[A]
@@ -13,6 +13,9 @@ trait Tag[+A] {
 sealed trait TypeTag[+A] extends Tag[A]
 
 object TypeTag {
+  
+  trait TypeTagExtension[+A] extends Tag[A] with Decodable[A]
+
   sealed trait NotNull[+A]             extends TypeTag[A]
   implicit case object TBigDecimal     extends NotNull[java.math.BigDecimal]
   implicit case object TBoolean        extends NotNull[Boolean]

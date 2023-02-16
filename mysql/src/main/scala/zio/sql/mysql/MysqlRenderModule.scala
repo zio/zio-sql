@@ -7,28 +7,35 @@ import zio.Chunk
 import zio.schema._
 import zio.schema.StandardType._
 import zio.sql.driver.Renderer
+import zio.sql.update._
+import zio.sql.select._
+import zio.sql.insert._
+import zio.sql.delete._
+import zio.sql.expr._
+import zio.sql.table._
+import zio.sql.typetag._
 
 trait MysqlRenderModule extends MysqlSqlModule { self =>
 
-  override def renderRead(read: self.Read[_]): String = {
+  override def renderRead(read: Read[_]): String = {
     implicit val render: Renderer = Renderer()
     MysqlRenderer.renderReadImpl(read)
     render.toString
   }
 
-  override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = {
+  override def renderInsert[A: Schema](insert: Insert[_, A]): String = {
     implicit val render: Renderer = Renderer()
     MysqlRenderer.renderInsertImpl(insert)
     render.toString
   }
 
-  override def renderDelete(delete: self.Delete[_]): String = {
+  override def renderDelete(delete: Delete[_]): String = {
     implicit val render: Renderer = Renderer()
     MysqlRenderer.renderDeleteImpl(delete)
     render.toString
   }
 
-  override def renderUpdate(update: self.Update[_]): String = {
+  override def renderUpdate(update: Update[_]): String = {
     implicit val render: Renderer = Renderer()
     MysqlRenderer.renderUpdateImpl(update)
     render.toString
@@ -62,7 +69,7 @@ trait MysqlRenderModule extends MysqlSqlModule { self =>
           renderWhereExpr(whereExpr)
       }
 
-    def renderReadImpl(read: self.Read[_])(implicit render: Renderer): Unit =
+    def renderReadImpl(read: Read[_])(implicit render: Renderer): Unit =
       read match {
         case Read.Mapped(read, _) => renderReadImpl(read)
 
@@ -250,7 +257,7 @@ trait MysqlRenderModule extends MysqlSqlModule { self =>
       table match {
         case Table.DialectSpecificTable(_)           => ???
         // The outer reference in this type test cannot be checked at run time?!
-        case sourceTable: self.Table.Source          =>
+        case sourceTable: Table.Source          =>
           render(sourceTable.name)
         case Table.DerivedTable(read, name)          =>
           render(" ( ")
@@ -273,14 +280,14 @@ trait MysqlRenderModule extends MysqlSqlModule { self =>
 
     private[zio] def quoted(name: String): String = "\"" + name + "\""
 
-    private def renderExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
+    private def renderExpr[A, B](expr: Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
       case Expr.Subselect(subselect)                                                    =>
         render(" (")
         renderRead(subselect)
         render(") ")
       case Expr.Source(table, column)                                                   =>
         (table, column.name) match {
-          case (tableName: TableName, Some(columnName)) => render(tableName, ".", columnName)
+          case (tableName: String, Some(columnName)) => render(tableName, ".", columnName)
           case _                                        => ()
         }
       case Expr.Unary(base, op)                                                         =>
@@ -402,15 +409,15 @@ trait MysqlRenderModule extends MysqlSqlModule { self =>
         render(")")
     }
 
-    private def renderLit[A, B](lit: self.Expr.Literal[_])(implicit render: Renderer): Unit = {
+    private def renderLit[A, B](lit: Expr.Literal[_])(implicit render: Renderer): Unit = {
       import MysqlSpecific.MysqlTypeTag._
       import TypeTag._
       lit.typeTag match {
         case TDialectSpecific(tt) =>
           tt match {
-            case tt @ TYear                       =>
+            case tt @ TYear                      =>
               render(tt.cast(lit.value))
-            case _: MysqlSpecific.MysqlTypeTag[_] => ???
+            case _ => ???
           }
         case TByteArray           =>
           render(
@@ -531,7 +538,7 @@ trait MysqlRenderModule extends MysqlSqlModule { self =>
     * Drops the initial Litaral(true) present at the start of every WHERE expressions by default
     * and proceeds to the rest of Expr's.
     */
-    private def renderWhereExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
+    private def renderWhereExpr[A, B](expr: Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
       case Expr.Literal(true)   => ()
       case Expr.Binary(_, b, _) =>
         render(" WHERE ")

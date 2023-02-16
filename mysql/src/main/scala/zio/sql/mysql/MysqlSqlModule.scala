@@ -4,13 +4,14 @@ import java.time._
 import java.sql.ResultSet
 import java.util.UUID
 import zio.sql.Sql
+import zio.sql.select._ 
+import zio.sql.expr._ 
+import zio.sql.typetag._
 
 trait MysqlSqlModule extends Sql { self =>
 
-  override type TypeTagExtension[+A] = MysqlSpecific.MysqlTypeTag[A]
-
   object MysqlSpecific {
-    trait MysqlTypeTag[+A] extends Tag[A] with Decodable[A]
+    trait MysqlTypeTag[+A] extends TypeTag.TypeTagExtension[A]
 
     object MysqlTypeTag {
       implicit case object TYear extends MysqlTypeTag[Year] {

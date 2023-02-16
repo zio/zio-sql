@@ -7,21 +7,21 @@ import java.util.{ Calendar, UUID }
 import org.postgresql.util.PGInterval
 import zio.Chunk
 import zio.sql.Sql
+import zio.sql.typetag._
+import zio.sql.table._
+import zio.sql.select._
+import zio.sql.expr._
 
 trait PostgresSqlModule extends Sql { self =>
   import TypeTag._
 
-  override type TypeTagExtension[+A] = PostgresSpecific.PostgresTypeTag[A]
-
-  override type TableExtension[A] = PostgresSpecific.PostgresSpecificTable[A]
-
   object PostgresSpecific {
-    sealed trait PostgresSpecificTable[A] extends Table.TableEx[A]
+    sealed trait PostgresSpecificTable[A] extends Table.TableExtension[A]
 
     object PostgresSpecificTable {
       import scala.language.implicitConversions
 
-      final case class LateraLTable[A, B](left: Table.Aux[A], right: Table.Aux[B])
+      sealed case class LateraLTable[A, B](left: Table.Aux[A], right: Table.Aux[B])
           extends PostgresSpecificTable[A with B]
 
       implicit def tableSourceToSelectedBuilder[A](
@@ -29,7 +29,7 @@ trait PostgresSqlModule extends Sql { self =>
       ): LateralTableBuilder[A] =
         new LateralTableBuilder(table)
 
-      final case class LateralTableBuilder[A](left: Table.Aux[A]) {
+      sealed case class LateralTableBuilder[A](left: Table.Aux[A]) {
         self =>
 
         final def lateral[Reprs, Out, B](
@@ -46,7 +46,10 @@ trait PostgresSqlModule extends Sql { self =>
       }
     }
 
-    trait PostgresTypeTag[+A] extends Tag[A] with Decodable[A]
+    //could not find implicit value for evidence parameter of type 
+    // zio.sql.typetag.TypeTag[zio.sql.postgresql.CustomFunctionDefSpec.PostgresSpecific.Interval]
+
+    trait PostgresTypeTag[+A] extends TypeTagExtension[A]
     object PostgresTypeTag {
       implicit case object TVoid       extends PostgresTypeTag[Unit]       {
         override def decode(column: Int, resultSet: ResultSet): Either[DecodingError, Unit] =
@@ -57,7 +60,7 @@ trait PostgresSqlModule extends Sql { self =>
               _ => Right(())
             )
       }
-      implicit case object TInterval   extends PostgresTypeTag[Interval]   {
+      implicit case object TInterval   extends TypeTagExtension[Interval]   {
         override def decode(
           column: Int,
           resultSet: ResultSet
@@ -91,7 +94,7 @@ trait PostgresSqlModule extends Sql { self =>
       }
     }
 
-    final case class Timestampz(
+    sealed case class Timestampz(
       year: Int = 0,
       month: Int = 0,
       day: Int = 0,
@@ -105,7 +108,7 @@ trait PostgresSqlModule extends Sql { self =>
     }
 
     // Based upon https://github.com/tminglei/slick-pg/blob/master/src/main/scala/com/github/tminglei/slickpg/PgDateSupport.scala
-    final case class Interval(
+    sealed case class Interval(
       years: Int = 0,
       months: Int = 0,
       days: Int = 0,

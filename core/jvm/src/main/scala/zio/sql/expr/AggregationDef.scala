@@ -2,6 +2,7 @@ package zio.sql.expr
 
 import zio.sql.typetag.TypeTag
 import zio.sql.Features
+import java.math.BigDecimal
 
 final case class AggregationDef[-A, +B](name: FunctionName) { self =>
 

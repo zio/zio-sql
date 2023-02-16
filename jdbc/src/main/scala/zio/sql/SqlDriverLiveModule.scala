@@ -6,6 +6,10 @@ import zio._
 import zio.stream.{ Stream, ZStream }
 import zio.schema.Schema
 import zio.IO
+import zio.sql.update._
+import zio.sql.select._
+import zio.sql.insert._
+import zio.sql.delete._
 
 trait SqlDriverLiveModule { self: Jdbc =>
   private[sql] trait SqlDriverCore {

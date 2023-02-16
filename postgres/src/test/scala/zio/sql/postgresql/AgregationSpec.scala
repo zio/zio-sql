@@ -2,19 +2,18 @@ package zio.sql.postgresql
 
 import zio.test.TestAspect._
 import zio.test._
-
+import zio.sql.expr.AggregationDef._
 import java.math.{ BigDecimal, RoundingMode }
 import java.util.UUID
 
 object AgregationSpec extends PostgresRunnableSpec with DbSchema {
 
-  import AggregationDef._
   import OrderDetailsSchema._
 
   override def specLayered =
     suite("Postgres module with aggregate function SumInt, SumDec and avgDec ")(
       test("Can aggregate  colums   SumInt(Int column)  and SumDec(BigDdecimal colum)") {
-
+        
         val query = select((SumDec(unitPrice) as "totalAmount"), (SumInt(quantity) as "soldQuantity"))
           .from(orderDetails)
           .where(orderDetailsProductId === UUID.fromString("7368ABF4-AED2-421F-B426-1725DE756895"))

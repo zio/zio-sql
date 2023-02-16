@@ -4,13 +4,14 @@ import java.util.UUID
 import java.time._
 import zio.sql.postgresql.PostgresJdbcModule
 import zio.schema.DeriveSchema
+import zio.sql.expr.AggregationDef._
+import zio.sql.expr.FunctionDef._
+import zio.sql.table._
 
 object Examples extends App with PostgresJdbcModule {
-  import this.AggregationDef._
-  import this.FunctionDef._
-  import this.OrderDetails._
-  import this.Orders._
-  import this.Users._
+  import Orders._
+  import Users._
+  import OrderDetails._
 
   val basicSelect =
     select(fName, lName).from(users)
@@ -173,7 +174,7 @@ object Examples extends App with PostgresJdbcModule {
 
     implicit val userSchema = DeriveSchema.gen[Users]
 
-    val users = defineTable[Users]
+    val users = Table.defineTable[Users]
 
     val (userId, age, dob, fName, lName) = users.columns
   }
@@ -184,7 +185,7 @@ object Examples extends App with PostgresJdbcModule {
 
     implicit val orderSchema = DeriveSchema.gen[Orders]
 
-    val orders = defineTable[Orders]
+    val orders = Table.defineTable[Orders]
 
     val (orderId, fkUserId, orderDate) = orders.columns
   }
@@ -194,7 +195,7 @@ object Examples extends App with PostgresJdbcModule {
 
     implicit val orderDetailSchema = DeriveSchema.gen[OrderDetail]
 
-    val orderDetails = defineTable[OrderDetail]
+    val orderDetails = Table.defineTable[OrderDetail]
 
     val (fkOrderId, fkProductId, quantity, unitPrice) = orderDetails.columns
   }

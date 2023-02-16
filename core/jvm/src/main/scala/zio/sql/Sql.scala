@@ -61,5 +61,5 @@ trait Sql {
       },
       someA => Right(someA)
     )
-  implicit val none: Schema[None.type]                                                 = Schema.singleton(None)
+   implicit val none: Schema[None.type]                                                 = Schema.singleton(None)
 }

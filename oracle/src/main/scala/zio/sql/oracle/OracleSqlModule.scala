@@ -5,11 +5,13 @@ import java.time.YearMonth
 import java.sql.ResultSet
 import scala.util.Try
 import java.time.Duration
+import zio.sql.select._ 
+import zio.sql.expr._ 
+import zio.sql.typetag._
 
 trait OracleSqlModule extends Sql { self =>
-  override type TypeTagExtension[+A] = OracleTypeTag[A]
 
-  trait OracleTypeTag[+A] extends Tag[A] with Decodable[A]
+  trait OracleTypeTag[+A] extends TypeTag.TypeTagExtension[A]
 
   object OracleTypeTag {
     implicit case object TYearMonth extends OracleTypeTag[YearMonth] {

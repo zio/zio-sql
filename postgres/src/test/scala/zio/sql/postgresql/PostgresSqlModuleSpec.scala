@@ -9,12 +9,13 @@ import zio.schema._
 import zio.test._
 import zio.test.Assertion._
 import zio.test.TestAspect._
-
+import zio.sql.expr.AggregationDef._
+import zio.sql.expr._
+import zio.sql.select._
 import scala.language.postfixOps
 
 object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
 
-  import AggregationDef._
   import CustomerSchema._
 
   private def customerSelectJoseAssertion[F](

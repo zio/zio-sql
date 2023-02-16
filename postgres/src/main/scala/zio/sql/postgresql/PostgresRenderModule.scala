@@ -8,10 +8,17 @@ import zio.schema._
 import zio.schema.StandardType._
 import zio.sql.driver.Renderer
 import java.time.format.DateTimeFormatter._
+import zio.sql.update._
+import zio.sql.select._
+import zio.sql.insert._
+import zio.sql.delete._
+import zio.sql.expr._
+import zio.sql.table._
+import zio.sql.typetag._
 
 trait PostgresRenderModule extends PostgresSqlModule { self =>
 
-  override def renderRead(read: self.Read[_]): String = {
+  override def renderRead(read: Read[_]): String = {
     implicit val render: Renderer = Renderer()
     PostgresRenderer.renderReadImpl(read)
     render.toString
@@ -23,7 +30,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
     render.toString
   }
 
-  override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = {
+  override def renderInsert[A: Schema](insert: Insert[_, A]): String = {
     implicit val render: Renderer = Renderer()
     PostgresRenderer.renderInsertImpl(insert)
     render.toString
@@ -191,7 +198,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
         case Nil          => // TODO restrict Update to not allow empty set
       }
 
-    private[zio] def renderLit[A, B](lit: self.Expr.Literal[_])(implicit render: Renderer): Unit =
+    private[zio] def renderLit[A, B](lit: Expr.Literal[_])(implicit render: Renderer): Unit =
       renderLit(lit.typeTag, lit.value)
 
     private[zio] def renderLit(typeTag: TypeTag[_], value: Any)(implicit render: Renderer): Unit = {
@@ -213,7 +220,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
           typeTagExtension match {
             case tt @ TInterval                         => render(tt.cast(value))
             case tt @ TTimestampz                       => render(tt.cast(value))
-            case _: PostgresSpecific.PostgresTypeTag[_] => ???
+            case _ => ???
           }
         case TByteArray                         =>
           render(
@@ -237,7 +244,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
      * PostgreSQL doesn't allow for `tableName.columnName = value` format in update statement,
      * instead requires `columnName = value`.
      */
-    private[zio] def renderSetLhs[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit =
+    private[zio] def renderSetLhs[A, B](expr: Expr[_, A, B])(implicit render: Renderer): Unit =
       expr match {
         case Expr.Source(_, column) =>
           column.name match {
@@ -249,14 +256,14 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
 
     private[zio] def quoted(name: String): String = "\"" + name + "\""
 
-    private[zio] def renderExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
+    private[zio] def renderExpr[A, B](expr: Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
       case Expr.Subselect(subselect)                                                    =>
         render(" (")
         render(renderRead(subselect))
         render(") ")
       case e @ Expr.Source(table, column)                                               =>
         (table, column.name) match {
-          case (tableName: TableName, Some(columnName)) =>
+          case (tableName: String, Some(columnName)) =>
             render(quoted(tableName), ".", quoted(columnName))
           case _                                        => ()
         }
@@ -383,7 +390,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
         render(")")
     }
 
-    private[zio] def renderReadImpl(read: self.Read[_])(implicit render: Renderer): Unit =
+    private[zio] def renderReadImpl(read: Read[_])(implicit render: Renderer): Unit =
       read match {
         case Read.Mapped(read, _) => renderReadImpl(read)
 
@@ -523,9 +530,10 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
               render(" ,lateral ")
 
               renderTable(derivedTable)
+            case _ => ???
           }
         // The outer reference in this type test cannot be checked at run time?!
-        case sourceTable: self.Table.Source             => render(quoted(sourceTable.name))
+        case sourceTable: Table.Source             => render(quoted(sourceTable.name))
         case Table.DerivedTable(read, name)             =>
           render(" ( ")
           render(renderRead(read.asInstanceOf[Read[_]]))
@@ -549,7 +557,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
     * Drops the initial Litaral(true) present at the start of every WHERE expressions by default
     * and proceeds to the rest of Expr's.
     */
-    private def renderWhereExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
+    private def renderWhereExpr[A, B](expr: Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
       case Expr.Literal(true)   => ()
       case Expr.Binary(_, b, _) =>
         render(" WHERE ")
