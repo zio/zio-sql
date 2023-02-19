@@ -9,4 +9,4 @@ addSbtPlugin("com.github.sbt"            % "sbt-ci-release"            % "1.5.9"
 addSbtPlugin("com.github.cb372"          % "sbt-explicit-dependencies" % "0.2.16")
 addSbtPlugin("ch.epfl.scala"             % "sbt-scalafix"              % "0.10.1")
 addSbtPlugin("io.github.davidgregory084" % "sbt-tpolecat"              % "0.4.2")
-addSbtPlugin("dev.zio"                   % "zio-sbt-website"           % "0.3.6")
+addSbtPlugin("dev.zio"                   % "zio-sbt-website"           % "0.3.10")
