@@ -18,7 +18,7 @@ final case class SelectAll() {
       helper.ColumnHead,
       helper.SelectionTail
     ]
-    val b: B0 = ??? // table.all.selection.value.asInstanceOf[B0]
+    val b: B0 = table.all.selection.value.asInstanceOf[B0]
 
     Read.Subselect[helper.F, helper.ResultTypeRepr, A, A, helper.ColumnHead, helper.SelectionTail](
       Selection[helper.F, A, B0](b),
