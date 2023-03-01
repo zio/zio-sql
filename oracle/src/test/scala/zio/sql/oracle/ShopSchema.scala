@@ -5,6 +5,7 @@ import java.time._
 import zio.Chunk
 import zio.schema.DeriveSchema
 import java.math.BigDecimal
+import zio.sql.table._
 
 trait ShopSchema extends OracleSqlModule { self =>
 
@@ -14,7 +15,7 @@ trait ShopSchema extends OracleSqlModule { self =>
 
     implicit val customerSchema = DeriveSchema.gen[Customers]
 
-    val customers = defineTableSmart[Customers]
+    val customers = Table.defineTableSmart[Customers]
 
     val (customerId, dob, fName, lName, verified) = customers.columns
   }
@@ -23,7 +24,7 @@ trait ShopSchema extends OracleSqlModule { self =>
 
     implicit val orderSchema = DeriveSchema.gen[Order]
 
-    val orders = defineTableSmart[Order]
+    val orders = Table.defineTableSmart[Order]
 
     val (orderId, fkCustomerId, orderDate) = orders.columns
   }
@@ -32,7 +33,7 @@ trait ShopSchema extends OracleSqlModule { self =>
     case class ProductPrice(productId: UUID, effective: LocalDate, price: BigDecimal)
     implicit val productPriceSchema = DeriveSchema.gen[ProductPrice]
 
-    val productPrices = defineTableSmart[ProductPrice]
+    val productPrices = Table.defineTableSmart[ProductPrice]
 
     val (productPricesOrderId, effectiveDate, productPrice) = productPrices.columns
   }
@@ -42,7 +43,7 @@ trait ShopSchema extends OracleSqlModule { self =>
 
     implicit val orderDetailsSchema = DeriveSchema.gen[OrderDetails]
 
-    val orderDetails = defineTableSmart[OrderDetails]
+    val orderDetails = Table.defineTableSmart[OrderDetails]
 
     val (orderDetailsOrderId, orderDetailsProductId, quantity, unitPrice) = orderDetails.columns
   }
@@ -74,7 +75,7 @@ trait ShopSchema extends OracleSqlModule { self =>
 
     implicit val alTypesSchema = DeriveSchema.gen[AllType]
 
-    val allTypes = defineTableSmart[AllType]
+    val allTypes = Table.defineTableSmart[AllType]
 
     val (
       id,

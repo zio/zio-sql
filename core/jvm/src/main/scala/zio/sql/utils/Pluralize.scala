@@ -1,4 +1,4 @@
-package zio.sql
+package zio.sql.utils
 
 import scala.util.matching.Regex
 

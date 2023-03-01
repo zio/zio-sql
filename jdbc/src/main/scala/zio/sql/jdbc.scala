@@ -4,8 +4,12 @@ import zio._
 import zio.stream._
 import zio.schema.Schema
 import zio.sql.macros.GroupByLike
+import zio.sql.update._
+import zio.sql.select._
+import zio.sql.insert._
+import zio.sql.delete._
 
-trait Jdbc extends zio.sql.Sql with JdbcInternalModule with SqlDriverLiveModule with ExprSyntaxModule {
+trait Jdbc extends Sql with JdbcInternalModule with SqlDriverLiveModule with TransactionSyntaxModule {
   trait SqlDriver  {
     def delete(delete: Delete[_]): IO[Exception, Int]
 

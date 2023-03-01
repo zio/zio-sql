@@ -7,16 +7,16 @@ import java.util.{ Calendar, UUID }
 import org.postgresql.util.PGInterval
 import zio.Chunk
 import zio.sql.Sql
+import zio.sql.typetag._
+import zio.sql.table._
+import zio.sql.select._
+import zio.sql.expr._
 
 trait PostgresSqlModule extends Sql { self =>
   import TypeTag._
 
-  override type TypeTagExtension[+A] = PostgresSpecific.PostgresTypeTag[A]
-
-  override type TableExtension[A] = PostgresSpecific.PostgresSpecificTable[A]
-
   object PostgresSpecific {
-    sealed trait PostgresSpecificTable[A] extends Table.TableEx[A]
+    sealed trait PostgresSpecificTable[A] extends Table.TableExtension[A]
 
     object PostgresSpecificTable {
       import scala.language.implicitConversions
@@ -46,7 +46,10 @@ trait PostgresSqlModule extends Sql { self =>
       }
     }
 
-    trait PostgresTypeTag[+A] extends Tag[A] with Decodable[A]
+    // could not find implicit value for evidence parameter of type
+    // zio.sql.typetag.TypeTag[zio.sql.postgresql.CustomFunctionDefSpec.PostgresSpecific.Interval]
+
+    trait PostgresTypeTag[+A] extends TypeTagExtension[A]
     object PostgresTypeTag {
       implicit case object TVoid       extends PostgresTypeTag[Unit]       {
         override def decode(column: Int, resultSet: ResultSet): Either[DecodingError, Unit] =
@@ -57,7 +60,7 @@ trait PostgresSqlModule extends Sql { self =>
               _ => Right(())
             )
       }
-      implicit case object TInterval   extends PostgresTypeTag[Interval]   {
+      implicit case object TInterval   extends TypeTagExtension[Interval]  {
         override def decode(
           column: Int,
           resultSet: ResultSet

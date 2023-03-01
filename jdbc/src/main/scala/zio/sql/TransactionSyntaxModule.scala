@@ -3,8 +3,12 @@ package zio.sql
 import zio._
 import zio.stream.ZStream
 import zio.schema.Schema
+import zio.sql.update._
+import zio.sql.select._
+import zio.sql.insert._
+import zio.sql.delete._
 
-trait ExprSyntaxModule { self: Jdbc =>
+trait TransactionSyntaxModule { self: Jdbc =>
   implicit final class ReadSyntax[A](self: Read[A]) {
     def run: ZStream[SqlTransaction, Exception, A] =
       ZStream.serviceWithStream(_.read(self))

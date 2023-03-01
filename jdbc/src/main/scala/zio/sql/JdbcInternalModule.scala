@@ -3,6 +3,8 @@ package zio.sql
 import java.sql._
 import java.time.{ OffsetDateTime, OffsetTime, ZoneId, ZoneOffset }
 import zio.Chunk
+import zio.sql.select._
+import zio.sql.typetag._
 
 trait JdbcInternalModule { self: Jdbc =>
 

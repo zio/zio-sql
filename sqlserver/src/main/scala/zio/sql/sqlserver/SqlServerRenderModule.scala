@@ -7,10 +7,18 @@ import zio.sql.driver.Renderer
 import java.time.format.DateTimeFormatter._
 import java.time.format.{ DateTimeFormatter, DateTimeFormatterBuilder }
 import java.time._
+import zio.sql.update._
+import zio.sql.select._
+import zio.sql.insert._
+import zio.sql.delete._
+import zio.sql.expr._
+import zio.sql.table._
+import zio.sql.typetag._
+import zio.sql.ops.Operator._
 
 trait SqlServerRenderModule extends SqlServerSqlModule { self =>
 
-  override def renderRead(read: self.Read[_]): String = {
+  override def renderRead(read: Read[_]): String = {
     implicit val render: Renderer = Renderer()
     SqlServerRenderer.renderReadImpl(read)
     render.toString
@@ -22,7 +30,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
     render.toString
   }
 
-  override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = {
+  override def renderInsert[A: Schema](insert: Insert[_, A]): String = {
     implicit val render: Renderer = Renderer()
     SqlServerRenderer.renderInsertImpl(insert)
     render.toString
@@ -47,7 +55,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
       .appendOffset("+HH:MM", "Z")
       .toFormatter()
 
-    private[zio] def renderReadImpl(read: self.Read[_])(implicit render: Renderer): Unit =
+    private[zio] def renderReadImpl(read: Read[_])(implicit render: Renderer): Unit =
       read match {
         // case Read.Mapped(read, _) => renderReadImpl(read.asInstanceOf[Read[Out]])
         case Read.Mapped(read, _) => renderReadImpl(read)
@@ -106,7 +114,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
           render(" (", values.mkString(","), ") ") // todo fix needs escaping
       }
 
-    private def renderLit(lit: self.Expr.Literal[_])(implicit render: Renderer): Unit = {
+    private def renderLit(lit: Expr.Literal[_])(implicit render: Renderer): Unit = {
       import TypeTag._
       val value = lit.value
       lit.typeTag match {
@@ -149,16 +157,16 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
       }
     }
 
-    private def buildExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
+    private def buildExpr[A, B](expr: Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
       case Expr.Subselect(subselect)                                                            =>
         render(" (")
         render(renderRead(subselect))
         render(") ")
       case Expr.Source(table, column)                                                           =>
         (table, column.name) match {
-          case (tableName: TableName, Some(columnName)) =>
+          case (tableName: String, Some(columnName)) =>
             render(tableName, ".", columnName)
-          case _                                        => ()
+          case _                                     => ()
         }
       case Expr.Unary(base, op)                                                                 =>
         render(" ", op.symbol)
@@ -365,7 +373,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
           render(" ) ")
           render(name)
 
-        case sourceTable: self.Table.Source =>
+        case sourceTable: Table.Source =>
           render(sourceTable.name)
 
         case Table.DialectSpecificTable(tableExtension) =>
@@ -379,6 +387,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
               }
 
               val _ = buildTable(derivedTable)
+            case _                                                                                    => ???
           }
 
         case Table.Joined(joinType, left, right, on) =>
@@ -399,7 +408,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
       * Drops the initial Litaral(true) present at the start of every WHERE expressions by default 
       * and proceeds to the rest of Expr's.
       */
-    private def buildWhereExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
+    private def buildWhereExpr[A, B](expr: Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
       case Expr.Literal(true)   => ()
       case Expr.Binary(_, b, _) =>
         render(" WHERE ")

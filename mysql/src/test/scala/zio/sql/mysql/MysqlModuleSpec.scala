@@ -8,8 +8,9 @@ import zio.test._
 import zio.test.Assertion._
 import zio.test.TestAspect._
 import java.math.BigDecimal
-
+import zio.sql.table._
 import scala.language.postfixOps
+import zio.sql.expr.AggregationDef._
 
 object MysqlModuleSpec extends MysqlRunnableSpec {
 
@@ -17,7 +18,7 @@ object MysqlModuleSpec extends MysqlRunnableSpec {
 
   implicit val customerSchema = DeriveSchema.gen[Customers]
 
-  val customers = defineTable[Customers]
+  val customers = Table.defineTable[Customers]
 
   val (customerId, dob, fName, lName, verified) = customers.columns
 
@@ -25,14 +26,14 @@ object MysqlModuleSpec extends MysqlRunnableSpec {
 
   implicit val orderSchema = DeriveSchema.gen[Orders]
 
-  val orders = defineTable[Orders]
+  val orders = Table.defineTable[Orders]
 
   val (orderId, fkCustomerId, orderDate, deletedAt) = orders.columns
 
   case class ProductPrice(productId: UUID, effective: LocalDate, price: BigDecimal)
   implicit val productPriceSchema = DeriveSchema.gen[ProductPrice]
 
-  val productPrices = defineTableSmart[ProductPrice]
+  val productPrices = Table.defineTableSmart[ProductPrice]
 
   val (productPricesOrderId, effectiveDate, productPrice) = productPrices.columns
 
@@ -40,7 +41,7 @@ object MysqlModuleSpec extends MysqlRunnableSpec {
 
   implicit val orderDetailsSchema = DeriveSchema.gen[OrderDetails]
 
-  val orderDetails = defineTableSmart[OrderDetails]
+  val orderDetails = Table.defineTableSmart[OrderDetails]
 
   val (orderDetailsOrderId, orderDetailsProductId, quantity, unitPrice) = orderDetails.columns
 
@@ -206,7 +207,6 @@ object MysqlModuleSpec extends MysqlRunnableSpec {
      * Uncomment it when aggregation function handling is fixed.
      */
     test("Can count rows") {
-      import AggregationDef._
       val query = select(Count(customerId)) from customers
 
       for {

@@ -4,9 +4,9 @@ import zio.Cause
 import zio.stream.ZStream
 import zio.test.Assertion._
 import zio.test._
+import zio.sql.expr.FunctionDef.{ CharLength => _, _ }
 
 object CommonFunctionDefSpec extends SqlServerRunnableSpec with DbSchema {
-  import FunctionDef.{ CharLength => _, _ }
   import DbSchema._
 
   private def collectAndCompare[R, E](
@@ -34,8 +34,6 @@ object CommonFunctionDefSpec extends SqlServerRunnableSpec with DbSchema {
         collectAndCompare(expected, testResult)
       },
       test("concat_ws #3 - combine columns and flat values") {
-        import Expr._
-
         val query = select(ConcatWs4(" ", "Person:", fName, lName)) from customers
 
         val expected = Seq(
@@ -50,8 +48,6 @@ object CommonFunctionDefSpec extends SqlServerRunnableSpec with DbSchema {
         collectAndCompare(expected, testResult)
       },
       test("concat_ws #3 - combine function calls together") {
-        import Expr._
-
         val query = select(
           ConcatWs3(" and ", Concat("Name: ", fName), Concat("Surname: ", lName))
         ) from customers
@@ -116,8 +112,6 @@ object CommonFunctionDefSpec extends SqlServerRunnableSpec with DbSchema {
     ),
     suite("Schema independent tests")(
       test("concat_ws #1 - combine flat values") {
-        import Expr._
-
         // note: a plain number (3) would and should not compile
         val query = select(ConcatWs4("+", "1", "2", "3"))
 

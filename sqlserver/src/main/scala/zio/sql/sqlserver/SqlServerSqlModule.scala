@@ -1,16 +1,17 @@
 package zio.sql.sqlserver
 
 import java.math.BigDecimal
-
+import zio.sql.table._
+import zio.sql.select._
 import zio.sql.Sql
+import zio.sql.expr.FunctionName
+import zio.sql.expr.AggregationDef
 
 trait SqlServerSqlModule extends Sql { self =>
 
-  override type TableExtension[A] = SqlServerSpecific.SqlServerTable[A]
-
   object SqlServerSpecific {
 
-    sealed trait SqlServerTable[A] extends Table.TableEx[A]
+    sealed trait SqlServerTable[A] extends Table.TableExtension[A]
 
     object SqlServerTable {
 

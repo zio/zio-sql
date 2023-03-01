@@ -19,28 +19,36 @@ import java.time.YearMonth
 import java.time.Duration
 import java.time.format.{ DateTimeFormatter, DateTimeFormatterBuilder }
 import java.time.temporal.ChronoField._
+import zio.sql.update._
+import zio.sql.select._
+import zio.sql.insert._
+import zio.sql.delete._
+import zio.sql.expr._
+import zio.sql.table._
+import zio.sql.typetag._
+import zio.sql.ops.Operator._
 
 trait OracleRenderModule extends OracleSqlModule { self =>
 
-  override def renderDelete(delete: self.Delete[_]): String = {
+  override def renderDelete(delete: Delete[_]): String = {
     val builder = new StringBuilder
     buildDeleteString(delete, builder)
     builder.toString
   }
 
-  override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = {
+  override def renderInsert[A: Schema](insert: Insert[_, A]): String = {
     val builder = new StringBuilder
     buildInsertString(insert, builder)
     builder.toString()
   }
 
-  override def renderRead(read: self.Read[_]): String = {
+  override def renderRead(read: Read[_]): String = {
     val builder = new StringBuilder
     buildReadString(read, builder)
     builder.toString()
   }
 
-  override def renderUpdate(update: self.Update[_]): String = {
+  override def renderUpdate(update: Update[_]): String = {
     implicit val render: Renderer = Renderer()
     OracleRender.renderUpdateImpl(update)
     render.toString
@@ -74,7 +82,7 @@ trait OracleRenderModule extends OracleSqlModule { self =>
       .toFormatter()
   }
 
-  private def buildLit(lit: self.Expr.Literal[_])(builder: StringBuilder): Unit = {
+  private def buildLit(lit: Expr.Literal[_])(builder: StringBuilder): Unit = {
     import TypeTag._
     val value = lit.value
     lit.typeTag match {
@@ -146,16 +154,16 @@ trait OracleRenderModule extends OracleSqlModule { self =>
   }
 
   // TODO: to consider the refactoring and using the implicit `Renderer`, see `renderExpr` in `PostgresRenderModule`
-  private def buildExpr[A, B](expr: self.Expr[_, A, B], builder: StringBuilder): Unit = expr match {
+  private def buildExpr[A, B](expr: Expr[_, A, B], builder: StringBuilder): Unit = expr match {
     case Expr.Subselect(subselect)                                                            =>
       builder.append(" (")
       builder.append(renderRead(subselect))
       val _ = builder.append(") ")
     case Expr.Source(table, column)                                                           =>
       (table, column.name) match {
-        case (tableName: TableName, Some(columnName)) =>
+        case (tableName: String, Some(columnName)) =>
           val _ = builder.append(tableName).append(".").append(columnName)
-        case _                                        => ()
+        case _                                     => ()
       }
     case Expr.Unary(base, op)                                                                 =>
       val _ = builder.append(" ").append(op.symbol)
@@ -283,7 +291,7 @@ trait OracleRenderModule extends OracleSqlModule { self =>
     * Drops the initial Litaral(true) present at the start of every WHERE expressions by default
     * and proceeds to the rest of Expr's.
     */
-  private def buildWhereExpr[A, B](expr: self.Expr[_, A, B], builder: mutable.StringBuilder): Unit = expr match {
+  private def buildWhereExpr[A, B](expr: Expr[_, A, B], builder: mutable.StringBuilder): Unit = expr match {
     case Expr.Literal(true)   => ()
     case Expr.Binary(_, b, _) =>
       builder.append(" WHERE ")
@@ -293,7 +301,7 @@ trait OracleRenderModule extends OracleSqlModule { self =>
       buildExpr(expr, builder)
   }
 
-  private def buildReadString(read: self.Read[_], builder: StringBuilder): Unit =
+  private def buildReadString(read: Read[_], builder: StringBuilder): Unit =
     read match {
       case Read.Mapped(read, _) => buildReadString(read, builder)
 
@@ -358,7 +366,7 @@ trait OracleRenderModule extends OracleSqlModule { self =>
         val _ = builder.append(" (").append(values.mkString(",")).append(") ") // todo fix needs escaping
     }
 
-  private def buildInsertString[A: Schema](insert: self.Insert[_, A], builder: StringBuilder): Unit = {
+  private def buildInsertString[A: Schema](insert: Insert[_, A], builder: StringBuilder): Unit = {
 
     builder.append("INSERT INTO ")
     renderTable(insert.table, builder)
@@ -648,7 +656,7 @@ trait OracleRenderModule extends OracleSqlModule { self =>
     table match {
       case Table.DialectSpecificTable(_)           => ???
       // The outer reference in this type test cannot be checked at run time?!
-      case sourceTable: self.Table.Source          =>
+      case sourceTable: Table.Source               =>
         val _ = builder.append(sourceTable.name)
       case Table.DerivedTable(read, name)          =>
         builder.append(" ( ")
@@ -702,7 +710,7 @@ trait OracleRenderModule extends OracleSqlModule { self =>
         case Nil          => // TODO restrict Update to not allow empty set
       }
 
-    private[zio] def renderSetLhs[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit =
+    private[zio] def renderSetLhs[A, B](expr: Expr[_, A, B])(implicit render: Renderer): Unit =
       expr match {
         case Expr.Source(table, column) =>
           (table, column.name) match {

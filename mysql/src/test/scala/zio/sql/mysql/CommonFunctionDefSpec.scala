@@ -8,15 +8,16 @@ import zio.sql.Jdbc
 import java.util.UUID
 import java.time.LocalDate
 import zio.schema._
+import zio.sql.expr.FunctionDef.{ CharLength => _, _ }
+import zio.sql.table._
 
 object CommonFunctionDefSpec extends MysqlRunnableSpec with Jdbc {
-  import FunctionDef.{ CharLength => _, _ }
 
   case class Customers(id: UUID, dob: LocalDate, first_name: String, last_name: String, verified: Boolean)
 
   implicit val customerSchema = DeriveSchema.gen[Customers]
 
-  val customers = defineTable[Customers]
+  val customers = Table.defineTable[Customers]
 
   val (customerId, dob, fName, lName, verified) = customers.columns
 

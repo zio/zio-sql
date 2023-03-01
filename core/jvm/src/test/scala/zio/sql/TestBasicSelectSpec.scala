@@ -6,13 +6,18 @@ import zio.schema._
 import zio.test.ZIOSpecDefault
 import zio.schema.DeriveSchema
 import java.time.LocalDate
+import zio.sql.table._
+import zio.sql.select._
+import zio.sql.insert._
+import zio.sql.update._
+import zio.sql.delete._
 
 object TestBasicSelect {
   val userSql = new Sql { self =>
-    override def renderDelete(delete: self.Delete[_]): String               = ???
-    override def renderRead(read: self.Read[_]): String                     = ???
-    override def renderUpdate(update: self.Update[_]): String               = ???
-    override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = ???
+    override def renderDelete(delete: Delete[_]): String               = ???
+    override def renderRead(read: Read[_]): String                     = ???
+    override def renderUpdate(update: Update[_]): String               = ???
+    override def renderInsert[A: Schema](insert: Insert[_, A]): String = ???
 
     case class Users(user_id: String, dob: LocalDate, first_name: String, last_name: String)
 
@@ -20,7 +25,7 @@ object TestBasicSelect {
       Schema.primitive[LocalDate](StandardType.LocalDateType)
     implicit val userSchema      = DeriveSchema.gen[Users]
 
-    val userTable = defineTable[Users]
+    val userTable = Table.defineTable[Users]
 
     val (userId, dob, fName, lName) = userTable.columns
 
