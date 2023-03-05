@@ -102,7 +102,9 @@ lazy val docs = project
     ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(),
     docsPublishBranch                          := "master",
     readmeContribution                         := readmeContribution.value +
-      """|### TL;DR
+      """|
+         |
+         |### TL;DR
          |Prerequisites (installed):
          |
          || Technology | Version |  
