@@ -224,7 +224,9 @@ Learn more on the [ZIO SQL homepage](https://zio.dev/zio-sql/)!
 
 ## Contributing
 
-For the general guidelines, see ZIO [contributor's guide](https://zio.dev/about/contributing).### TL;DR
+For the general guidelines, see ZIO [contributor's guide](https://zio.dev/about/contributing).
+
+### TL;DR
 Prerequisites (installed):
 
 | Technology | Version |  
