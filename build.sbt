@@ -4,27 +4,25 @@ import sbtcrossproject.CrossPlugin.autoImport.crossProject
 
 inThisBuild(
   List(
-    organization  := "dev.zio",
-    homepage      := Some(url("https://zio.dev/zio-sql/")),
-    licenses      := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
-    developers    := List(
+    organization := "dev.zio",
+    homepage     := Some(url("https://zio.dev/zio-sql/")),
+    licenses     := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
+    developers   := List(
       Developer("jdegoes", "John De Goes", "john@degoes.net", url("http://degoes.net"))
-    ),
-    pgpPassphrase := sys.env.get("PGP_PASSWORD").map(_.toArray),
-    pgpPublicRing := file("/tmp/public.asc"),
-    pgpSecretRing := file("/tmp/secret.asc"),
-    scmInfo       := Some(
-      ScmInfo(url("https://github.com/zio/zio-sql/"), "scm:git:git@github.com:zio/zio-sql.git")
     )
   )
 )
 
 addCommandAlias("fmtOnce", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("fmt", "fmtOnce;fmtOnce")
-addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
+addCommandAlias("fix", "all scalafmtSbt scalafmtAll")
+addCommandAlias(
+  "check",
+  "; scalafmtSbtCheck; scalafmtCheckAll; Test/compile"
+)
 
-val zioVersion                 = "2.0.6"
-val zioSchemaVersion           = "0.4.2"
+val zioVersion                 = "2.0.9"
+val zioSchemaVersion           = "0.4.8"
 val testcontainersVersion      = "1.17.6"
 val testcontainersScalaVersion = "0.40.11"
 val logbackVersion             = "1.2.11"
@@ -36,8 +34,8 @@ lazy val root = project
     unusedCompileDependenciesFilter -= moduleFilter("org.scala-js", "scalajs-library")
   )
   .aggregate(
-    coreJVM,
-    coreJS,
+    core.js,
+    core.jvm,
     driver,
     examples,
     jdbc,
@@ -46,48 +44,50 @@ lazy val root = project
     postgres,
     sqlserver,
     jdbc_hikaricp,
-    macros,
+    macros.js,
+    macros.jvm,
     docs
   )
 
 lazy val core = crossProject(JSPlatform, JVMPlatform)
   .in(file("core"))
+  .dependsOn(macros)
   .settings(stdSettings("zio-sql"))
   .settings(crossProjectSettings)
   .settings(buildInfoSettings("zio.sql"))
   .settings(
     libraryDependencies ++= Seq(
-      "dev.zio" %% "zio"                   % zioVersion,
-      "dev.zio" %% "zio-streams"           % zioVersion,
-      "dev.zio" %% "zio-schema"            % zioSchemaVersion,
-      "dev.zio" %% "zio-schema-derivation" % zioSchemaVersion,
-      "dev.zio" %% "zio-test"              % zioVersion % Test,
-      "dev.zio" %% "zio-test-sbt"          % zioVersion % Test
-    ),
-    dependencyOverrides += "dev.zio" %% "zio" % zioVersion,
-    resolvers ++= Resolver.sonatypeOssRepos("snapshots")
+      "dev.zio" %%% "zio-streams"           % zioVersion,
+      "dev.zio" %%% "zio-schema"            % zioSchemaVersion,
+      "dev.zio" %%% "zio-schema-derivation" % zioSchemaVersion,
+      "dev.zio" %%% "zio-test"              % zioVersion % Test,
+      "dev.zio" %%% "zio-test-sbt"          % zioVersion % Test
+    )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
+  .jsSettings(
+    scalaJSUseMainModuleInitializer := true
+  )
+  .enablePlugins(BuildInfoPlugin)
 
-lazy val coreJS = core.js
-  .settings(scalaJSUseMainModuleInitializer := true)
-
-lazy val coreJVM = core.jvm.dependsOn(macros)
-
-lazy val macros = project
+lazy val macros = crossProject(JSPlatform, JVMPlatform)
   .in(file("macros"))
   .settings(stdSettings("zio-sql-macros"))
+  .settings(buildInfoSettings("zio.sql.macros"))
   .settings(
+    libraryDependencies ++= Seq(
+      "dev.zio" %%% "zio" % zioVersion
+    ),
     libraryDependencies ++= {
       if (scalaVersion.value == ScalaDotty) {
         Seq()
       } else
         Seq(
-          "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-          "dev.zio"       %% "zio"           % zioVersion
+          "org.scala-lang" % "scala-reflect" % scalaVersion.value
         )
     }
   )
+  .enablePlugins(BuildInfoPlugin)
 
 lazy val docs = project
   .in(file("zio-sql-docs"))
@@ -97,12 +97,14 @@ lazy val docs = project
     scalacOptions -= "-Xfatal-warnings",
     crossScalaVersions                         := Seq(Scala213, Scala212, ScalaDotty),
     projectName                                := "ZIO SQL",
-    mainModuleName                             := (coreJVM / moduleName).value,
+    mainModuleName                             := (core.jvm / moduleName).value,
     projectStage                               := ProjectStage.ProductionReady,
     ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(),
     docsPublishBranch                          := "master",
     readmeContribution                         := readmeContribution.value +
-      """|### TL;DR
+      """|
+         |
+         |### TL;DR
          |Prerequisites (installed):
          |
          || Technology | Version |  
@@ -140,11 +142,10 @@ lazy val driver = project
       "dev.zio" %% "zio-schema-derivation" % zioSchemaVersion,
       "dev.zio" %% "zio-test"              % zioVersion % Test,
       "dev.zio" %% "zio-test-sbt"          % zioVersion % Test
-    ),
-    dependencyOverrides += "dev.zio" %% "zio" % zioVersion,
-    resolvers ++= Resolver.sonatypeOssRepos("snapshots")
+    )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
+  .enablePlugins(BuildInfoPlugin)
 
 lazy val jdbc = project
   .in(file("jdbc"))
@@ -167,11 +168,12 @@ lazy val jdbc = project
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
   .dependsOn(core.jvm)
+  .enablePlugins(BuildInfoPlugin)
 
 lazy val jdbc_hikaricp = project
   .in(file("jdbc-hikaricp"))
   .settings(stdSettings("zio-sql-jdbc-hickaricp"))
-  .settings(buildInfoSettings("zio.sql.jdbc-hickaricp"))
+  .settings(buildInfoSettings("zio.sql.jdbc.hickaricp"))
   .settings(
     libraryDependencies ++= Seq(
       "com.zaxxer"         % "HikariCP"                   % "4.0.3", // 5.x doesn't support Java 1.8
@@ -184,6 +186,7 @@ lazy val jdbc_hikaricp = project
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
   .dependsOn(jdbc)
+  .enablePlugins(BuildInfoPlugin)
 
 lazy val mysql = project
   .in(file("mysql"))
@@ -203,6 +206,7 @@ lazy val mysql = project
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
+  .enablePlugins(BuildInfoPlugin)
 
 lazy val oracle = project
   .in(file("oracle"))
@@ -222,6 +226,7 @@ lazy val oracle = project
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
+  .enablePlugins(BuildInfoPlugin)
 
 lazy val postgres = project
   .in(file("postgres"))
@@ -241,6 +246,7 @@ lazy val postgres = project
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
+  .enablePlugins(BuildInfoPlugin)
 
 lazy val sqlserver = project
   .in(file("sqlserver"))
@@ -260,3 +266,4 @@ lazy val sqlserver = project
     )
   )
   .settings(testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"))
+  .enablePlugins(BuildInfoPlugin)
