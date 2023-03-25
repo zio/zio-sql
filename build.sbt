@@ -27,7 +27,7 @@ val zioVersion                 = "2.0.6"
 val zioSchemaVersion           = "0.4.2"
 val testcontainersVersion      = "1.17.6"
 val testcontainersScalaVersion = "0.40.11"
-val logbackVersion             = "1.2.11"
+val logbackVersion             = "1.2.12"
 
 lazy val root = project
   .in(file("."))
