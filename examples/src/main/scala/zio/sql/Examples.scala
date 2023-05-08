@@ -13,8 +13,23 @@ object Examples extends App with PostgresJdbcModule {
   import Users._
   import OrderDetails._
 
+  // object ExampleMacroCall {
+
+  //   import zio.sql.select.SelectByCommaBuilderMacro
+  //   import zio.sql.select._
+  //   import Users._
+
+  //   val select: SelectByCommaBuilderMacro = SelectByCommaBuilderMacro()
+
+  //   val x = select(userId, age, lName, fName, dob).from(users)
+  //   val y: SelectBuilder[Features.Source["id",Users] with Features.Source["age",Users],Users,SelectionSet.Cons[Users,UUID,SelectionSet.Cons[Users,Int,SelectionSet.Empty]]] = select(userId, age)//.from(users)
+  // }
+
+
   val basicSelect =
     select(fName, lName).from(users)
+
+  //val x: SelectBuilder[Features.Source["id",Users] with Features.Source["age",Users],Users,SelectionSet.Cons[Users,UUID,SelectionSet.Cons[Users,Int,SelectionSet.Empty]]] = select(userId, age)  
 
   println(renderRead(basicSelect))
 

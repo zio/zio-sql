@@ -21,7 +21,7 @@ trait Sql {
    *
    * SELECT ARBITRARY(age), COUNT(*) FROM person GROUP BY age
    */
-  val select: SelectByCommaBuilder = SelectByCommaBuilder()
+  val select: SelectByCommaBuilderMacro = SelectByCommaBuilderMacro()
 
   sealed trait Star
   val * : Star = new Star {}
