@@ -21,7 +21,7 @@ trait Sql {
    *
    * SELECT ARBITRARY(age), COUNT(*) FROM person GROUP BY age
    */
-  val select: SelectByCommaBuilderMacro = SelectByCommaBuilderMacro()
+  val select: SelectByCommaBuilder = SelectByCommaBuilder()
 
   sealed trait Star
   val * : Star = new Star {}
@@ -34,7 +34,7 @@ trait Sql {
   def select[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]): SelectBuilder[F, A, B] =
     SelectBuilder[F, A, B](selection)
 
-  def subselect[ParentTable]: SubselectPartiallyApplied[ParentTable] = new SubselectPartiallyApplied[ParentTable]
+  def subselect[ParentTable]: SubselectByCommaBuilder[ParentTable] = new SubselectByCommaBuilder[ParentTable]
 
   def deleteFrom[T <: Table](table: T): Delete[table.TableType] = Delete(table, true)
 

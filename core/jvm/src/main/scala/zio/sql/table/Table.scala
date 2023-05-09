@@ -27,7 +27,7 @@ sealed trait Table { self =>
   final def rightOuter[That](that: Table.Aux[That]): Table.JoinBuilder[self.TableType, That] =
     new Table.JoinBuilder[self.TableType, That](JoinType.RightOuter, self, that)
 
-  final val subselect: SubselectPartiallyApplied[TableType] = new SubselectPartiallyApplied[TableType]
+  final val subselect: SubselectByCommaBuilder[TableType] = new SubselectByCommaBuilder[TableType]
 }
 
 object Table {
