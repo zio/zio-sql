@@ -80,7 +80,7 @@ object Table {
     schema: Schema.Record[T],
     tableLike: TableSchema[T]
   ): Table.Source.WithTableDetails[schema.Terms, T, schema.Accessors[Lens, Prism, Traversal]] =
-    new Table.Source {
+    new Table.Source { self =>
 
       protected[sql] val exprAccessorBuilder = new ExprAccessorBuilder(tableName)
 
@@ -92,11 +92,6 @@ object Table {
         schema.Accessors[exprAccessorBuilder.Lens, exprAccessorBuilder.Prism, exprAccessorBuilder.Traversal]
 
       override val columns: ColumnsOut = schema.makeAccessors(exprAccessorBuilder)
-
-      override protected[sql] def all(implicit
-        helper: SelectAllHelper[ColumnsOut, TableType]
-      ): SelectBuilder[helper.F, TableType, helper.SelSet] =
-        helper.apply(columns)
 
       override val name: String = tableName.toLowerCase()
     }
@@ -144,10 +139,6 @@ object Table {
     protected[sql] type ColumnsOut
 
     val columns: ColumnsOut
-
-    protected[sql] def all(implicit
-      helper: SelectAllHelper[ColumnsOut, TableType]
-    ): SelectBuilder[helper.F, TableType, helper.SelSet]
   }
 
   object Source {

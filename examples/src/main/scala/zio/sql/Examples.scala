@@ -8,6 +8,7 @@ import zio.sql.expr.AggregationDef._
 import zio.sql.expr.FunctionDef._
 import zio.sql.table._
 
+
 object Examples extends App with PostgresJdbcModule {
   import Orders._
   import Users._
@@ -15,8 +16,6 @@ object Examples extends App with PostgresJdbcModule {
 
   val basicSelect =
     select(fName, lName).from(users)
-
-  //val x: SelectBuilder[Features.Source["id",Users] with Features.Source["age",Users],Users,SelectionSet.Cons[Users,UUID,SelectionSet.Cons[Users,Int,SelectionSet.Empty]]] = select(userId, age)  
 
   println(renderRead(basicSelect))
 
