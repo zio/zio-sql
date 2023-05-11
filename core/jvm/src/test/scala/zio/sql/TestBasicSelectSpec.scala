@@ -14,10 +14,10 @@ import zio.sql.delete._
 
 object TestBasicSelect {
   val userSql = new Sql { self =>
-    override def renderDelete(delete: Delete[_]): String               = ???
-    override def renderRead(read: Read[_]): String                     = ???
-    override def renderUpdate(update: Update[_]): String               = ???
-    override def renderInsert[A: Schema](insert: Insert[_, A]): String = ???
+    override def renderDelete(delete: Delete[_]): String                     = ???
+    override def renderRead(read: Read[_]): String                           = ???
+    override def renderUpdate(update: Update[_]): String                     = ???
+    override def renderInsert[A: Schema](insert: Insert[_, A]): SqlStatement = ???
 
     case class Users(user_id: String, dob: LocalDate, first_name: String, last_name: String)
 
