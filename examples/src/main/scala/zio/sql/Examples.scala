@@ -8,7 +8,6 @@ import zio.sql.expr.AggregationDef._
 import zio.sql.expr.FunctionDef._
 import zio.sql.table._
 
-
 object Examples extends App with PostgresJdbcModule {
   import Orders._
   import Users._
@@ -168,30 +167,6 @@ object Examples extends App with PostgresJdbcModule {
      SELECT "orders"."usr_id" FROM "orders"
    */
   val selectWithUnionAll = select(userId).from(users).unionAll(select(fkUserId).from(orders))
-
-  import OrderDetails._
-
-  import zio.sql.select._
-  val x: SubselectBuilder[Features.Source["userId", Orders] with Features.Source["productId", OrderDetail], 
-         OrderDetail with Orders, 
-         SelectionSet.Cons[OrderDetail with Orders, UUID, SelectionSet.Cons[OrderDetail with Orders, Int, SelectionSet.Empty]], 
-         Orders] = 
-          subselect[orders.TableType](fkUserId, fkProductId)//.from(orderDetails).where(orderId === fkOrderId)
-  
-
-
-  val y = subselect[orders.TableType](fkUserId, fkProductId).from(orderDetails).where(orderId === fkOrderId)
-
-  object ExampleMacroCall {
-
-    import zio.sql.select._
-
-    val select: SelectByCommaBuilder = SelectByCommaBuilder()
-
-    val x = select(userId, age, lName, fName, dob).from(users)
-    val y: SelectBuilder[Features.Source["id",Users] with Features.Source["age",Users],Users,SelectionSet.Cons[Users,UUID,SelectionSet.Cons[Users,Int,SelectionSet.Empty]]] = 
-      select(userId, age)//.from(users)    
-  }
 
   object Users {
 

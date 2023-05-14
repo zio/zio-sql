@@ -81,7 +81,6 @@ object Table {
     tableLike: TableSchema[T]
   ): Table.Source.WithTableDetails[schema.Terms, T, schema.Accessors[Lens, Prism, Traversal]] =
     new Table.Source { self =>
-
       protected[sql] val exprAccessorBuilder = new ExprAccessorBuilder(tableName)
 
       override protected[sql] type AllColumnIdentities = schema.Terms

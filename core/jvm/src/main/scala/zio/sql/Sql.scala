@@ -40,9 +40,7 @@ trait Sql {
 
   def update[A](table: Table.Aux[A]): UpdateBuilder[A] = UpdateBuilder(table)
 
-  def insertInto[Source, AllColumnIdentities](
-    table: Table.Source.Aux_[Source, AllColumnIdentities]
-  ): InsertByCommaBuilder[Source, AllColumnIdentities] = InsertByCommaBuilder(table)
+  val insertInto: InsertByCommaBuilder = InsertByCommaBuilder()
 
   def renderDelete(delete: Delete[_]): String
 

@@ -695,14 +695,13 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
       import ProductSchema._
 
       val allCustomers = select(*).from(customers)
-      val allOrders = select(*).from(orders)
-      val allProducts = select(*).from(products)
-
+      val allOrders    = select(*).from(orders)
+      val allProducts  = select(*).from(products)
 
       for {
         customers <- execute(allCustomers).runCollect
-        orders <- execute(allOrders).runCollect
-        products <- execute(allProducts).runCollect
+        orders    <- execute(allOrders).runCollect
+        products  <- execute(allProducts).runCollect
       } yield assertTrue(customers.length == 2) && assertTrue(orders.length == 35) && assertTrue(products.length == 10)
     }
   ) @@ sequential
