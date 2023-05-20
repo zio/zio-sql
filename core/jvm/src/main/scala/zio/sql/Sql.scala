@@ -34,15 +34,13 @@ trait Sql {
   def select[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]): SelectBuilder[F, A, B] =
     SelectBuilder[F, A, B](selection)
 
-  def subselect[ParentTable]: SubselectPartiallyApplied[ParentTable] = new SubselectPartiallyApplied[ParentTable]
+  def subselect[ParentTable]: SubselectByCommaBuilder[ParentTable] = new SubselectByCommaBuilder[ParentTable]
 
   def deleteFrom[T <: Table](table: T): Delete[table.TableType] = Delete(table, true)
 
   def update[A](table: Table.Aux[A]): UpdateBuilder[A] = UpdateBuilder(table)
 
-  def insertInto[Source, AllColumnIdentities](
-    table: Table.Source.Aux_[Source, AllColumnIdentities]
-  ): InsertByCommaBuilder[Source, AllColumnIdentities] = InsertByCommaBuilder(table)
+  val insertInto: InsertByCommaBuilder = InsertByCommaBuilder()
 
   def renderDelete(delete: Delete[_]): String
 
