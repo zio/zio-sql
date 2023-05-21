@@ -23,8 +23,6 @@ trait Jdbc extends Sql with JdbcInternalModule with SqlDriverLiveModule with Tra
 
     def insert[A: Schema](insert: Insert[_, A]): IO[Exception, Int]
 
-    def insert[A: Schema](insert: List[Insert[_, A]]): IO[Exception, List[Int]]
-
     def transaction: ZLayer[Any, Exception, SqlTransaction]
   }
   object SqlDriver {
@@ -45,6 +43,17 @@ trait Jdbc extends Sql with JdbcInternalModule with SqlDriverLiveModule with Tra
 
   }
 
+  def setParam(param: SqlParameter, jdbcIndex: Int): java.sql.PreparedStatement => Unit
+
+  private[sql] def setParams(rows: List[SqlRow]): java.sql.PreparedStatement => Unit = ps =>
+    rows.foreach { row =>
+      row.params.zipWithIndex.foreach { case (param, i) =>
+        val jdbcIndex = i + 1
+        setParam(param, jdbcIndex)(ps)
+      }
+      ps.addBatch()
+    }
+
   def execute[A](read: Read[A]): ZStream[SqlDriver, Exception, A] =
     ZStream.serviceWithStream(_.read(read))
 
@@ -62,9 +71,6 @@ trait Jdbc extends Sql with JdbcInternalModule with SqlDriverLiveModule with Tra
   def execute[A: Schema](insert: Insert[_, A]): ZIO[SqlDriver, Exception, Int] =
     ZIO.serviceWithZIO(_.insert(insert))
 
-  def executeBatchInsert[A: Schema](insert: List[Insert[_, A]]): ZIO[SqlDriver, Exception, List[Int]] =
-    ZIO.serviceWithZIO(_.insert(insert))
-
   def execute(update: Update[_]): ZIO[SqlDriver, Exception, Int] =
     ZIO.serviceWithZIO(_.update(update))
 
@@ -73,4 +79,5 @@ trait Jdbc extends Sql with JdbcInternalModule with SqlDriverLiveModule with Tra
 
   val transact: ZLayer[SqlDriver, Exception, SqlTransaction] =
     ZLayer(ZIO.serviceWith[SqlDriver](_.transaction)).flatten
+
 }

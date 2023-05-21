@@ -443,7 +443,7 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
         lastName: String,
         verified: Boolean,
         dateOfBirth: LocalDate,
-        cretedTimestampString: String,
+        createdTimestampString: String,
         createdTimestamp: ZonedDateTime
       )
 
@@ -488,8 +488,8 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
           Schema.Field(
             "cretedTimestampString",
             Schema.primitive[String](zio.schema.StandardType.StringType),
-            get0 = _.cretedTimestampString,
-            set0 = (r, a) => r.copy(cretedTimestampString = a)
+            get0 = _.createdTimestampString,
+            set0 = (r, a) => r.copy(createdTimestampString = a)
           ),
           Schema.Field(
             "createdTimestamp",

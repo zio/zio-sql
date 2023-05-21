@@ -1,10 +1,10 @@
 package zio.sql.oracle
 
+import java.math.BigDecimal
 import java.util.UUID
 import java.time._
 import zio.Chunk
 import zio.schema.DeriveSchema
-import java.math.BigDecimal
 import zio.sql.table._
 
 trait ShopSchema extends OracleSqlModule { self =>

@@ -1,7 +1,8 @@
 package zio.sql
 
-import zio.schema.Schema
 import java.time.LocalDate
+
+import zio.schema.Schema
 import zio.schema.DeriveSchema
 import zio.schema.StandardType
 import zio.sql.table._
@@ -12,11 +13,10 @@ import zio.sql.delete._
 
 object ProductSchema {
   val sql = new Sql { self =>
-    override def renderDelete(delete: Delete[_]): String = ???
-    override def renderRead(read: Read[_]): String       = ???
-    override def renderUpdate(update: Update[_]): String = ???
-
-    override def renderInsert[A: Schema](insert: Insert[_, A]): String = ???
+    override def renderDelete(delete: Delete[_]): String                     = ???
+    override def renderRead(read: Read[_]): String                           = ???
+    override def renderUpdate(update: Update[_]): String                     = ???
+    override def renderInsert[A: Schema](insert: Insert[_, A]): SqlStatement = ???
   }
 
   import sql._

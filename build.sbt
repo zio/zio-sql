@@ -131,6 +131,7 @@ lazy val examples = project
 
 lazy val driver = project
   .in(file("driver"))
+  .dependsOn(coreJVM)
   .settings(stdSettings("zio-sql-driver"))
   .settings(buildInfoSettings("zio.sql.driver"))
   .settings(
