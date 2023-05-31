@@ -240,7 +240,8 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
         case _                      => ()
       }
 
-    private[zio] def quoted(name: String): String = "\"" + name + "\""
+    private[zio] def quoted(name: String): String =
+      name.split('.').map("\"" + _ + "\"").mkString(".")
 
     private[zio] def renderExpr[A, B](expr: Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
       case Expr.Subselect(subselect)                                                    =>
