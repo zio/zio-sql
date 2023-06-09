@@ -98,7 +98,7 @@ lazy val docs = project
     crossScalaVersions                         := Seq(Scala213, Scala212, ScalaDotty),
     projectName                                := "ZIO SQL",
     mainModuleName                             := (coreJVM / moduleName).value,
-    projectStage                               := ProjectStage.ProductionReady,
+    projectStage                               := ProjectStage.Development,
     ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(),
     docsPublishBranch                          := "master",
     readmeContribution                         := readmeContribution.value +
@@ -131,6 +131,7 @@ lazy val examples = project
 
 lazy val driver = project
   .in(file("driver"))
+  .dependsOn(coreJVM)
   .settings(stdSettings("zio-sql-driver"))
   .settings(buildInfoSettings("zio.sql.driver"))
   .settings(

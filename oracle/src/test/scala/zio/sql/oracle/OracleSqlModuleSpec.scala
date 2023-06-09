@@ -8,15 +8,50 @@ import zio.test._
 import scala.language.postfixOps
 import java.util.UUID
 import java.time._
-import zio.schema.DeriveSchema
 
 object OracleSqlModuleSpec extends OracleRunnableSpec with ShopSchema {
 
   import Customers._
   import Orders._
 
-  final case class CustomerRow(id: UUID, dateOfBirth: LocalDate, firstName: String, lastName: String, verified: Boolean)
-  implicit val customerRowSchema = DeriveSchema.gen[CustomerRow]
+  // final case class CustomerRow(id: String, dateOfBirth: LocalDate, firstName: String, lastName: String, verified: Boolean)
+
+  // implicit val customerRowSchema = DeriveSchema.gen[CustomerRow]
+  // implicit val customerRowSchema =
+  //       Schema.CaseClass5[UUID, LocalDate, String, String, Boolean, CustomerRow](
+  //         TypeId.parse("zio.sql.oracle.OracleModuleSpec.CustomerRow"),
+  //         Schema.Field(
+  //           "id",
+  //           Schema.primitive[UUID](zio.schema.StandardType.UUIDType),
+  //           get0 = _.id,
+  //           set0 = (r, a) => r.copy(id = a)
+  //         ),
+  //         Schema.Field(
+  //           "dateOfBirth",
+  //           Schema.primitive[LocalDate](zio.schema.StandardType.LocalDateType),
+  //           get0 = _.dateOfBirth,
+  //           set0 = (r, a) => r.copy(dateOfBirth = a)
+  //         ),
+  //         Schema.Field(
+  //           "firstName",
+  //           Schema.primitive[String](zio.schema.StandardType.StringType),
+  //           get0 = _.firstName,
+  //           set0 = (r, a) => r.copy(firstName = a)
+  //         ),
+  //         Schema.Field(
+  //           "lastName",
+  //           Schema.primitive[String](zio.schema.StandardType.StringType),
+  //           get0 = _.lastName,
+  //           set0 = (r, a) => r.copy(lastName = a)
+  //         ),
+  //         Schema.Field(
+  //           "verified",
+  //           Schema.primitive[Boolean](zio.schema.StandardType.BoolType),
+  //           get0 = _.verified,
+  //           set0 = (r, a) => r.copy(verified = a)
+  //         ),
+  //         CustomerRow.apply
+  //       )
 
   override def specLayered: Spec[SqlDriver with TestConfig with Sized, Exception] = suite("Oracle module")(
     test("`in` clause sequence") {
@@ -102,8 +137,8 @@ object OracleSqlModuleSpec extends OracleRunnableSpec with ShopSchema {
     test("Can insert rows") {
 
       val rows = List(
-        CustomerRow(UUID.randomUUID(), LocalDate.ofYearDay(2001, 8), "Peter", "Parker", true),
-        CustomerRow(UUID.randomUUID(), LocalDate.ofYearDay(1980, 2), "Stephen", "Strange", false)
+        Customers.Customers(UUID.randomUUID(), LocalDate.ofYearDay(2001, 8), "Peter", "Parker", true),
+        Customers.Customers(UUID.randomUUID(), LocalDate.ofYearDay(1980, 2), "Stephen", "Strange", false)
       )
 
       val command = insertInto(customers)(

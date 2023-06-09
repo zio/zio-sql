@@ -1,11 +1,8 @@
 package zio.sql.mysql
 
-import java.time._
-import java.time.format.DateTimeFormatter
-import java.time.format.DateTimeFormatter._
 import zio.Chunk
 import zio.schema._
-import zio.schema.StandardType._
+import zio.sql.{ SqlParameter, SqlRow, SqlStatement }
 import zio.sql.driver.Renderer
 import zio.sql.update._
 import zio.sql.select._
@@ -23,10 +20,10 @@ trait MysqlRenderModule extends MysqlSqlModule { self =>
     render.toString
   }
 
-  override def renderInsert[A: Schema](insert: Insert[_, A]): String = {
+  override def renderInsert[A: Schema](insert: Insert[_, A]): SqlStatement = {
     implicit val render: Renderer = Renderer()
-    MysqlRenderer.renderInsertImpl(insert)
-    render.toString
+    val rows                      = MysqlRenderer.renderInsertImpl(insert)
+    SqlStatement(render.toString, rows)
   }
 
   override def renderDelete(delete: Delete[_]): String = {
@@ -42,7 +39,7 @@ trait MysqlRenderModule extends MysqlSqlModule { self =>
   }
 
   object MysqlRenderer {
-    def renderInsertImpl[A](insert: Insert[_, A])(implicit render: Renderer, schema: Schema[A]) = {
+    def renderInsertImpl[A](insert: Insert[_, A])(implicit render: Renderer, schema: Schema[A]): List[SqlRow] = {
       render("INSERT INTO ")
       renderTable(insert.table)
 
@@ -50,7 +47,9 @@ trait MysqlRenderModule extends MysqlSqlModule { self =>
       renderColumnNames(insert.sources)
       render(") VALUES ")
 
-      renderInsertValues(insert.values)
+      renderInsertPlaceholders(insert.values)
+
+      buildInsertList(insert.values)
     }
 
     def renderDeleteImpl(delete: Delete[_])(implicit render: Renderer) = {
@@ -129,98 +128,88 @@ trait MysqlRenderModule extends MysqlSqlModule { self =>
           render(" (", values.mkString(","), ") ") // todo fix needs escaping
       }
 
-    private def renderInsertValues[A](col: Seq[A])(implicit render: Renderer, schema: Schema[A]): Unit =
-      col.toList match {
-        case head :: Nil  =>
-          render("(")
-          renderInsertValue(head)
-          render(");")
-        case head :: next =>
-          render("(")
-          renderInsertValue(head)(render, schema)
-          render(" ),")
-          renderInsertValues(next)
-        case Nil          => ()
+    private def buildInsertList[A](col: Seq[A])(implicit schema: Schema[A]): List[SqlRow] =
+      col.foldLeft(List.empty[SqlRow]) { case (a, z) =>
+        val row = schema.toDynamic(z) match {
+          case DynamicValue.Record(_, listMap) =>
+            val params = listMap.values.foldLeft(List.empty[SqlParameter]) { case (acc, el) =>
+              acc ::: buildInsertRow(el)
+            }
+            SqlRow(params)
+          case value                           =>
+            SqlRow(buildInsertRow(value))
+        }
+        row :: a
       }
 
-    private def renderInsertValue[Z](z: Z)(implicit render: Renderer, schema: Schema[Z]): Unit =
+    private def buildInsertRow(dynValue: DynamicValue): List[SqlParameter] =
+      dynValue match {
+        case DynamicValue.Primitive(value, typeTag) =>
+          // need to do this since StandardType is invariant in A
+          StandardType.fromString(typeTag.tag) match {
+            case Some(v) =>
+              List(SqlParameter(v, value))
+            case None    => Nil
+          }
+        case DynamicValue.Tuple(left, right)        =>
+          buildInsertRow(left) ::: buildInsertRow(right)
+        case DynamicValue.SomeValue(value)          => buildInsertRow(value)
+        case DynamicValue.NoneValue                 =>
+          List(SqlParameter(StandardType.UnitType, null))
+        case DynamicValue.Sequence(chunk)           =>
+          val bytes = chunk.map {
+            case DynamicValue.Primitive(v, t) if t == StandardType.ByteType =>
+              v.asInstanceOf[Byte]
+            case _                                                          => throw new IllegalArgumentException("Only Byte sequences are supported.")
+          }.toArray
+          List(SqlParameter(StandardType.BinaryType, bytes))
+        case _                                      => Nil
+      }
+
+    private def renderInsertPlaceholders[A](col: Seq[A])(implicit render: Renderer, schema: Schema[A]): Unit =
+      col.toList match {
+        case head :: _ =>
+          render("(")
+          renderInsertPlaceholder(head)
+          render(");")
+        case Nil       => ()
+      }
+
+    private def renderInsertPlaceholder[Z](z: Z)(implicit render: Renderer, schema: Schema[Z]): Unit =
       schema.toDynamic(z) match {
         case DynamicValue.Record(_, listMap) =>
           listMap.values.toList match {
-            case head :: Nil  => renderDynamicValue(head)
+            case head :: Nil  => renderPlaceholder(head)
             case head :: next =>
-              renderDynamicValue(head)
+              renderPlaceholder(head)
               render(", ")
-              renderDynamicValues(next)
+              renderPlaceholders(next)
             case Nil          => ()
           }
-        case value                           => renderDynamicValue(value)
+        case value                           => renderPlaceholder(value)
       }
 
-    private def renderDynamicValues(dynValues: List[DynamicValue])(implicit render: Renderer): Unit =
+    private def renderPlaceholders(dynValues: List[DynamicValue])(implicit render: Renderer): Unit =
       dynValues match {
-        case head :: Nil  => renderDynamicValue(head)
+        case head :: Nil  => renderPlaceholder(head)
         case head :: tail =>
-          renderDynamicValue(head)
+          renderPlaceholder(head)
           render(", ")
-          renderDynamicValues(tail)
+          renderPlaceholders(tail)
         case Nil          => ()
       }
 
-    def renderDynamicValue(dynValue: DynamicValue)(implicit render: Renderer): Unit =
+    def renderPlaceholder(dynValue: DynamicValue)(implicit render: Renderer): Unit =
       dynValue match {
-        case DynamicValue.Primitive(value, typeTag) =>
-          StandardType.fromString(typeTag.tag) match {
-            case Some(v) =>
-              v match {
-                case BigDecimalType                  =>
-                  render(value)
-                case StandardType.InstantType        =>
-                  render(s"'${ISO_INSTANT.format(value.asInstanceOf[Instant])}'")
-                case ByteType                        => render(s"'${value}'")
-                case CharType                        => render(s"'${value}'")
-                case IntType                         => render(value)
-                case StandardType.MonthDayType       => render(s"'${value}'")
-                case BinaryType                      => render(s"'${value}'")
-                case StandardType.MonthType          => render(s"'${value}'")
-                case StandardType.LocalDateTimeType  =>
-                  render(s"'${ISO_LOCAL_DATE_TIME.format(value.asInstanceOf[LocalDateTime])}'")
-                case UnitType                        => render("null") // None is encoded as Schema[Unit].transform(_ => None, _ => ())
-                case StandardType.YearMonthType      => render(s"'${value}'")
-                case DoubleType                      => render(value)
-                case StandardType.YearType           => render(s"'${value}'")
-                case StandardType.OffsetDateTimeType =>
-                  render(s"'${ISO_OFFSET_DATE_TIME.format(value.asInstanceOf[OffsetDateTime])}'")
-                case StandardType.ZonedDateTimeType  =>
-                  render(s"'${DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(value.asInstanceOf[ZonedDateTime])}'")
-                case BigIntegerType                  => render(s"'${value}'")
-                case UUIDType                        => render(s"'${value}'")
-                case StandardType.ZoneOffsetType     => render(s"'${value}'")
-                case ShortType                       => render(value)
-                case StandardType.LocalTimeType      =>
-                  render(s"'${ISO_LOCAL_TIME.format(value.asInstanceOf[LocalTime])}'")
-                case StandardType.OffsetTimeType     =>
-                  render(s"'${ISO_OFFSET_TIME.format(value.asInstanceOf[OffsetTime])}'")
-                case LongType                        => render(value)
-                case StringType                      => render(s"'${value}'")
-                case StandardType.PeriodType         => render(s"'${value}'")
-                case StandardType.ZoneIdType         => render(s"'${value}'")
-                case StandardType.LocalDateType      =>
-                  render(s"'${ISO_LOCAL_DATE.format(value.asInstanceOf[LocalDate])}'")
-                case BoolType                        => render(value)
-                case DayOfWeekType                   => render(s"'${value}'")
-                case FloatType                       => render(value)
-                case StandardType.DurationType       => render(s"'${value}'")
-              }
-            case None    => ()
-          }
-        case DynamicValue.Tuple(left, right)        =>
-          renderDynamicValue(left)
+        case DynamicValue.Primitive(_, _)    => render("?")
+        case DynamicValue.Tuple(left, right) =>
+          renderPlaceholder(left)
           render(", ")
-          renderDynamicValue(right)
-        case DynamicValue.SomeValue(value)          => renderDynamicValue(value)
-        case DynamicValue.NoneValue                 => render("null")
-        case _                                      => ()
+          renderPlaceholder(right)
+        case DynamicValue.SomeValue(value)   => renderPlaceholder(value)
+        case DynamicValue.NoneValue          => render("?")
+        case DynamicValue.Sequence(_)        => render("?")
+        case _                               => ()
       }
 
     private def renderColumnNames(sources: SelectionSet[_])(implicit render: Renderer): Unit =

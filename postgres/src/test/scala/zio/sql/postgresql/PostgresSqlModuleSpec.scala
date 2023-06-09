@@ -443,7 +443,7 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
         lastName: String,
         verified: Boolean,
         dateOfBirth: LocalDate,
-        cretedTimestampString: String,
+        createdTimestampString: String,
         createdTimestamp: ZonedDateTime
       )
 
@@ -488,8 +488,8 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
           Schema.Field(
             "cretedTimestampString",
             Schema.primitive[String](zio.schema.StandardType.StringType),
-            get0 = _.cretedTimestampString,
-            set0 = (r, a) => r.copy(cretedTimestampString = a)
+            get0 = _.createdTimestampString,
+            set0 = (r, a) => r.copy(createdTimestampString = a)
           ),
           Schema.Field(
             "createdTimestamp",
@@ -691,12 +691,18 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
     },
     test("select all rows") {
       import CustomerSchema._
+      import OrdersSchema._
+      import ProductSchema._
 
-      val query = select(*).from(customers)
+      val allCustomers = select(*).from(customers)
+      val allOrders    = select(*).from(orders)
+      val allProducts  = select(*).from(products)
 
       for {
-        result <- execute(query).runCollect
-      } yield assertTrue(result.length == 2)
+        customers <- execute(allCustomers).runCollect
+        orders    <- execute(allOrders).runCollect
+        products  <- execute(allProducts).runCollect
+      } yield assertTrue(customers.length == 2) && assertTrue(orders.length == 35) && assertTrue(products.length == 10)
     }
   ) @@ sequential
 }
