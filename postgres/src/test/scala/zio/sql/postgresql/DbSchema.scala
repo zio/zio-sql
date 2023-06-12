@@ -122,4 +122,17 @@ trait DbSchema extends PostgresJdbcModule { self =>
 
     val (personsId, personsName, birthDate) = persons.columns
   }
+
+  object MoviesSchema {
+
+    case class Movies(id: Int, rating: Option[Int])
+
+    implicit val moviesSchema = DeriveSchema.gen[Movies]
+
+    val movies = Table.defineTableSmart[Movies]
+
+    val (id, rating) = movies.columns
+
+  }
+
 }

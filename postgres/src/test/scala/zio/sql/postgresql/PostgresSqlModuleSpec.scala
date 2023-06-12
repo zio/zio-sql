@@ -3,7 +3,6 @@ package zio.sql.postgresql
 import java.math.BigDecimal
 import java.time._
 import java.util.UUID
-
 import zio._
 import zio.schema._
 import zio.test._
@@ -12,6 +11,7 @@ import zio.test.TestAspect._
 import zio.sql.expr.AggregationDef._
 import zio.sql.expr._
 import zio.sql.select._
+
 import scala.language.postfixOps
 
 object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
@@ -703,6 +703,24 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
         orders    <- execute(allOrders).runCollect
         products  <- execute(allProducts).runCollect
       } yield assertTrue(customers.length == 2) && assertTrue(orders.length == 35) && assertTrue(products.length == 10)
+    },
+    test("Select null int value as None Option") {
+      val movieColumns = MoviesSchema.id ++ MoviesSchema.rating
+      val selectStmt   = select(movieColumns).from(MoviesSchema.movies).where(MoviesSchema.id === 1)
+      val selectResult = execute(selectStmt.to((MoviesSchema.Movies.apply _).tupled)).runCollect
+
+      for {
+        movies <- selectResult
+      } yield assert(movies.toList)(
+        equalTo(
+          List(
+            MoviesSchema.Movies(
+              id = 1,
+              rating = None
+            )
+          )
+        )
+      )
     }
   ) @@ sequential
 }
