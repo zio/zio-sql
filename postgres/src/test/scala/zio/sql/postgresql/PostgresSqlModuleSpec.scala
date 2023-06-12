@@ -709,20 +709,18 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
       val selectStmt   = select(movieColumns).from(MoviesSchema.movies).where(MoviesSchema.id === 1)
       val selectResult = execute(selectStmt.to((MoviesSchema.Movies.apply _).tupled)).runCollect
 
-      val insertAssertion =
-        for {
-          movies <- selectResult
-        } yield assert(movies.toList)(
-          equalTo(
-            List(
-              MoviesSchema.Movies(
-                id = 1,
-                rating = None
-              )
+      for {
+        movies <- selectResult
+      } yield assert(movies.toList)(
+        equalTo(
+          List(
+            MoviesSchema.Movies(
+              id = 1,
+              rating = None
             )
           )
         )
-      insertAssertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      )
     }
   ) @@ sequential
 }
