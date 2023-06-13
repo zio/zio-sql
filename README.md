@@ -63,16 +63,16 @@ ZIO SQL is packaged into separate modules for different databases. Depending on 
 
 ```scala
 //PostgreSQL
-libraryDependencies += "dev.zio" %% "zio-sql-postgres" % "<version>" 
+libraryDependencies += "dev.zio" %% "zio-sql-postgres" % "0.0.0+1567-6379510e-SNAPSHOT" 
 
 //MySQL
-libraryDependencies += "dev.zio" %% "zio-sql-mysql" % "<version>"
+libraryDependencies += "dev.zio" %% "zio-sql-mysql" % "0.0.0+1567-6379510e-SNAPSHOT"
 
 //Oracle
-libraryDependencies += "dev.zio" %% "zio-sql-oracle" % "<version>"
+libraryDependencies += "dev.zio" %% "zio-sql-oracle" % "0.0.0+1567-6379510e-SNAPSHOT"
 
 //SQL Server
-libraryDependencies += "dev.zio" %% "zio-sql-sqlserver" % "<version>"
+libraryDependencies += "dev.zio" %% "zio-sql-sqlserver" % "0.0.0+1567-6379510e-SNAPSHOT"
 ```
 
 ## Imports and modules
