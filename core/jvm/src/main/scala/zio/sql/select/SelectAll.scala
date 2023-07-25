@@ -1,29 +1,28 @@
 package zio.sql.select
 
 import zio.sql.table._
+import zio.sql.expr._
+import scala.language.experimental.macros
+import scala.language.implicitConversions
 
 final case class SelectAll() {
+  def from[AllColumnsIdentities, TableType, ColumnsOut, F, Repr, Head, Tail <: SelectionSet[TableType]](
+    wrapper: SelectAllWrapper[AllColumnsIdentities, TableType, ColumnsOut]
+  ): Read.Subselect[F, Repr, TableType, TableType, Head, Tail] =
+    macro SelectionMacro.buildSelectAll[AllColumnsIdentities, ColumnsOut, TableType]
+}
 
-  // TODO check if helper's types can be moved to table or rewrite to macro
-  def from[A](table: Table.Source.Aux[A])(implicit helper: SelectAllHelper[table.ColumnsOut, A]): Read.Select[
-    helper.F,
-    helper.ResultTypeRepr,
-    A,
-    helper.ColumnHead,
-    helper.SelectionTail
-  ] = {
-    type B0 = SelectionSet.ConsAux[
-      helper.ResultTypeRepr,
-      A,
-      helper.ColumnHead,
-      helper.SelectionTail
-    ]
-    val b: B0 = table.all.selection.value.asInstanceOf[B0]
+case class SelectAllWrapper[AllColumnsIdentities, TableType, ColumnsOut](
+  table: Table.Source.WithTableDetails[AllColumnsIdentities, TableType, ColumnsOut],
+  exprs: List[zio.sql.expr.Expr[_, TableType, _]]
+)
 
-    Read.Subselect[helper.F, helper.ResultTypeRepr, A, A, helper.ColumnHead, helper.SelectionTail](
-      Selection[helper.F, A, B0](b),
-      Some(table),
-      true
+object SelectAllWrapper {
+  implicit def tableToExprs[AllColumnsIdentities, TableType, ColumnsOut](
+    table: Table.Source.WithTableDetails[AllColumnsIdentities, TableType, ColumnsOut]
+  ): SelectAllWrapper[AllColumnsIdentities, TableType, ColumnsOut] =
+    SelectAllWrapper(
+      table,
+      table.columns.asInstanceOf[Product].productIterator.toList.map(_.asInstanceOf[Expr[_, TableType, _]])
     )
-  }
 }

@@ -1,11 +1,15 @@
 package zio.sql
 
-import zio.schema.Schema
+import zio.schema.{ Schema, StandardType }
 import zio.sql.table._
 import zio.sql.update._
 import zio.sql.select._
 import zio.sql.insert._
 import zio.sql.delete._
+
+case class SqlRow(params: List[SqlParameter])
+case class SqlParameter(_type: StandardType[_], value: Any)
+case class SqlStatement(query: String, rows: List[SqlRow])
 
 trait Sql {
 
@@ -34,15 +38,13 @@ trait Sql {
   def select[F, A, B <: SelectionSet[A]](selection: Selection[F, A, B]): SelectBuilder[F, A, B] =
     SelectBuilder[F, A, B](selection)
 
-  def subselect[ParentTable]: SubselectPartiallyApplied[ParentTable] = new SubselectPartiallyApplied[ParentTable]
+  def subselect[ParentTable]: SubselectByCommaBuilder[ParentTable] = new SubselectByCommaBuilder[ParentTable]
 
   def deleteFrom[T <: Table](table: T): Delete[table.TableType] = Delete(table, true)
 
   def update[A](table: Table.Aux[A]): UpdateBuilder[A] = UpdateBuilder(table)
 
-  def insertInto[Source, AllColumnIdentities](
-    table: Table.Source.Aux_[Source, AllColumnIdentities]
-  ): InsertByCommaBuilder[Source, AllColumnIdentities] = InsertByCommaBuilder(table)
+  val insertInto: InsertByCommaBuilder = InsertByCommaBuilder()
 
   def renderDelete(delete: Delete[_]): String
 
@@ -50,7 +52,7 @@ trait Sql {
 
   def renderUpdate(update: Update[_]): String
 
-  def renderInsert[A: Schema](insert: Insert[_, A]): String
+  def renderInsert[A: Schema](insert: Insert[_, A]): SqlStatement
 
   // TODO don't know where to put it now
   implicit def convertOptionToSome[A](implicit op: Schema[Option[A]]): Schema[Some[A]] =

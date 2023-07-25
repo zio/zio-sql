@@ -27,7 +27,7 @@ sealed trait Table { self =>
   final def rightOuter[That](that: Table.Aux[That]): Table.JoinBuilder[self.TableType, That] =
     new Table.JoinBuilder[self.TableType, That](JoinType.RightOuter, self, that)
 
-  final val subselect: SubselectPartiallyApplied[TableType] = new SubselectPartiallyApplied[TableType]
+  final val subselect: SubselectByCommaBuilder[TableType] = new SubselectByCommaBuilder[TableType]
 }
 
 object Table {
@@ -80,8 +80,7 @@ object Table {
     schema: Schema.Record[T],
     tableLike: TableSchema[T]
   ): Table.Source.WithTableDetails[schema.Terms, T, schema.Accessors[Lens, Prism, Traversal]] =
-    new Table.Source {
-
+    new Table.Source { self =>
       protected[sql] val exprAccessorBuilder = new ExprAccessorBuilder(tableName)
 
       override protected[sql] type AllColumnIdentities = schema.Terms
@@ -92,11 +91,6 @@ object Table {
         schema.Accessors[exprAccessorBuilder.Lens, exprAccessorBuilder.Prism, exprAccessorBuilder.Traversal]
 
       override val columns: ColumnsOut = schema.makeAccessors(exprAccessorBuilder)
-
-      override protected[sql] def all(implicit
-        helper: SelectAllHelper[ColumnsOut, TableType]
-      ): SelectBuilder[helper.F, TableType, helper.SelSet] =
-        helper.apply(columns)
 
       override val name: String = tableName.toLowerCase()
     }
@@ -144,10 +138,6 @@ object Table {
     protected[sql] type ColumnsOut
 
     val columns: ColumnsOut
-
-    protected[sql] def all(implicit
-      helper: SelectAllHelper[ColumnsOut, TableType]
-    ): SelectBuilder[helper.F, TableType, helper.SelSet]
   }
 
   object Source {

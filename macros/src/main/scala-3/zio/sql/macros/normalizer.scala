@@ -13,8 +13,7 @@ object Normalizer {
 //     override type Out = Out2
 //   }
 
-  implicit def createNormalizer[In]: Normalizer[In] = {
+  implicit def createNormalizer[In]: Normalizer[In] =
     new Normalizer[In] {}
-  }
 
 }
