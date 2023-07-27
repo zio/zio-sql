@@ -1,9 +1,10 @@
 package zio.sql
 
 import zio.test.Assertion.anything
-import zio.test.{ assert, suite, test, DefaultRunnableSpec }
+import zio.test.assert
+import zio.test.ZIOSpecDefault
 
-class LogicalOpsSpec extends DefaultRunnableSpec {
+class LogicalOpsSpec extends ZIOSpecDefault {
   import ProductSchema._
 
   def spec = suite("Relational operators")(
@@ -34,6 +35,10 @@ class LogicalOpsSpec extends DefaultRunnableSpec {
     test("not works on boolean column") {
       val selectNotDeleted = selectAll.where(deleted.not)
       assert(selectNotDeleted)(anything)
+    },
+    test("like works on a string column") {
+      val query = selectAll.where(name like "%")
+      assert(query)(anything)
     }
   )
 }
