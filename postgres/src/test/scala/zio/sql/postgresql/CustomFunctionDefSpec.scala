@@ -727,6 +727,19 @@ object CustomFunctionDefSpec extends PostgresRunnableSpec with DbSchema {
         )
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
+    test("date_part") {
+      val instant    = Instant.parse("1970-01-01T11:00:00Z")
+      val query      = select(DatePart("hour", instant)) from customers
+      val testResult = execute(query)
+
+      val expected = 11d
+
+      val assertion = for {
+        r <- testResult.runCollect
+      } yield assert(r.head)(equalTo(expected))
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
   ) @@ timeout(5.minutes)
 }

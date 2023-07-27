@@ -225,6 +225,7 @@ trait PostgresSqlModule extends Sql { self =>
     val Chr                         = FunctionDef[Int, String](FunctionName("chr"))
     val CurrentDate                 = Expr.ParenlessFunctionCall0[LocalDate](FunctionName("current_date"))
     val CurrentTime                 = Expr.ParenlessFunctionCall0[OffsetTime](FunctionName("current_time"))
+    val DatePart                    = FunctionDef[(String, Instant), Double](FunctionName("date_part"))
     val DateTrunc                   = FunctionDef[(String, Instant), LocalDateTime](FunctionName("date_trunc"))
     val Decode                      = FunctionDef[(String, String), Chunk[Byte]](FunctionName("decode"))
     val Degrees                     = FunctionDef[Double, Double](FunctionName("degrees"))
