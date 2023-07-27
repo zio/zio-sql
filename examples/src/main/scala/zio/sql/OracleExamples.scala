@@ -1,0 +1,197 @@
+// package zio.sql
+
+// import java.util.UUID
+// import java.time._
+// import zio.sql.oracle.OracleJdbcModule
+// import zio.schema.DeriveSchema
+// import zio.sql.expr.AggregationDef._
+// import zio.sql.expr.FunctionDef._
+// import zio.sql.table._
+
+// object OracleExamples extends App with OracleJdbcModule {
+//   import Orders._
+//   import Users._
+//   import OrderDetails._
+
+//   val basicSelect =
+//     select(fName, lName).from(users)
+
+//   println(renderRead(basicSelect))
+
+//   val selectAll1 = select(*).from(orderDetails)
+//   val selectAll2 = select(*).from(users)
+
+//   // SELECT "users"."age" + 2, concat_ws("users"."first_name",' ',"users"."last_name"), abs(-42.0) FROM "users" ORDER BY "users"."age" DESC LIMIT 10 OFFSET 20
+//   val selectWithFunctions =
+//     select(age + 2, ConcatWs3(fName, " ", lName), Abs(-42.0))
+//       .from(users)
+//       .where(age === 10)
+//       .limit(10)
+//       .offset(20)
+//       .orderBy(age.descending)
+//   println(renderRead(selectWithFunctions))
+
+//   // SELECT "users"."first_name", "users"."last_name" FROM "users" ORDER BY "users"."last_name", "users"."first_name" DESC LIMIT 2
+//   val selectWithRefinements =
+//     select(fName, lName)
+//       .from(users)
+//       .orderBy(lName, fName.desc)
+//       .limit(2)
+//   println(renderRead(selectWithRefinements))
+
+//   case class Person(fname: String, lname: String)
+
+//   // execute(selectWithRefinements).to(Person)
+//   // execute(selectWithRefinements).to((_, _))
+
+//   // DELETE FROM "users" WHERE "users"."first_name" = 'Terrence'
+//   val basicDelete =
+//     deleteFrom(users).where(fName === "Terrence")
+//   println(renderDelete(basicDelete))
+
+//   /*
+//     val deleteFromWithSubquery = deleteFrom(orders).where(fkUserId in {
+//       select(userId as "id") from users where (fName === "Fred") //todo fix issue #36
+//     }) */
+
+//   // SELECT "users"."first_name", "users"."last_name", "orders"."order_date" FROM "users" LEFT JOIN "orders" ON "orders"."usr_id" = "users"."id"
+//   val basicJoin =
+//     select(fName, lName, orderDate).from(users.leftOuter(orders).on(fkUserId === userId))
+//   println(renderRead(basicJoin))
+
+//   // UPDATE "users" SET "first_name" = 'foo', "last_name" = 'bar', "age" = "users"."age" + 1 WHERE true and "users"."age" > 100
+//   val basicUpdate =
+//     update(users)
+//       .set(fName, "foo")
+//       .set(lName, "bar")
+//       .set(age, age + 1)
+//       .where(age > 100)
+//   println(renderUpdate(basicUpdate))
+
+//   /*
+//     SELECT "users"."id", "users"."first_name", "users"."last_name", sum("order_details"."quantity" * "order_details"."unit_price"), sum(abs("order_details"."quantity"))
+//     FROM "users"x
+//     INNER JOIN "orders" ON "users"."id" = "orders"."usr_id"
+//     LEFT JOIN "order_details" ON "orders"."id" = "order_details"."order_id"
+//     GROUP BY "users"."id", "users"."first_name", "users"."last_name" */
+//   val orderValues =
+//     select(
+//       userId,
+//       fName,
+//       lName,
+//       Sum(quantity * unitPrice),
+//       Sum(Abs(quantity))
+//     )
+//       .from(
+//         users
+//           .join(orders)
+//           .on(userId === fkUserId)
+//           .leftOuter(orderDetails)
+//           .on(orderId === fkOrderId)
+//       )
+//       .groupBy(userId, fName, lName)
+//   println(renderRead(orderValues))
+
+//   import scala.language.postfixOps
+
+//   // SELECT "users"."first_name", "users"."last_name" FROM "users" WHERE true and "users"."first_name" is not null
+//   val withPropertyOp = select(fName, lName).from(users).where(fName isNotNull)
+//   println(renderRead(withPropertyOp))
+
+//   // IN
+//   val subselectSurname = select(lName).from(users).where(age > 18)
+//   val subselectAge     = select(age).from(users).where(age > 18)
+
+//   select(fName, lName).from(users).where(lName in List("Jaro", "Peter"))
+
+//   select(fName).from(users).where(lName in subselectSurname)
+//   select(fName).from(users).where(age in subselectAge)
+
+//   /*
+//   insert tuples
+//   INSERT INTO
+//     users(uuid, age, date_of_birth, first_name, last_name)
+//   VALUES
+//     ('60b01fc9-c902-4468-8d49-3c0f989def37', ‘1983-01-05’, 22, 'Ronald', 'Russell')
+//    */
+
+//   val data         =
+//     List(
+//       (UUID.randomUUID(), 22, LocalDate.ofYearDay(1990, 1), "Ronald1", "Russel1"),
+//       (UUID.randomUUID(), 32, LocalDate.ofYearDay(1980, 1), "Ronald2", "Russel2"),
+//       (UUID.randomUUID(), 42, LocalDate.ofYearDay(1970, 1), "Ronald3", "Russel3")
+//     )
+//   val insertTuples = insertInto(users)(userId, age, dob, fName, lName)
+//     .values(data)
+
+//   println("***************")
+//   println(renderInsert(insertTuples))
+//   // val insertedTupleRows = execute(insertTuples)
+//   // println(s"$insertedTupleRows rows are inserted!")
+//   println("***************")
+
+//   /*
+//   insert as case class with schema
+//   INSERT INTO
+//     users(uuid, age, date_of_birth, first_name, last_name)
+//   VALUES
+//     ('60b01fc9-c902-4468-8d49-3c0f989def37', ‘1983-01-05’, 22, 'Ronald', 'Russell')
+//    */
+//   val dataSchema: Users.Users = Users.Users(UUID.randomUUID(), 22, LocalDate.ofYearDay(1990, 1), "Ronald", "Russel")
+
+//   val insertSchema = insertInto(users)(
+//     userId,
+//     age,
+//     dob,
+//     fName,
+//     lName
+//   ).values(dataSchema)
+
+//   println(renderInsert(insertSchema))
+//   // val insertedSchemaRows = execute(insertSchema)
+//   // println(s"$insertedSchemaRows rows are inserted!")
+
+//   /* SELECT "users"."user_id" FROM "users"
+//      UNION
+//      SELECT "orders"."usr_id" FROM "orders"
+//    */
+//   val selectWithUnion = select(userId).from(users).union(select(fkUserId).from(orders))
+
+//   /* SELECT "users"."user_id" FROM "users"
+//      UNION ALL
+//      SELECT "orders"."usr_id" FROM "orders"
+//    */
+//   val selectWithUnionAll = select(userId).from(users).unionAll(select(fkUserId).from(orders))
+
+//   object Users {
+
+//     case class Users(id: UUID, age: Int, dob: LocalDate, firstName: String, lastName: String)
+
+//     implicit val userSchema = DeriveSchema.gen[Users]
+
+//     val users = Table.defineTable[Users]
+
+//     val (userId, age, dob, fName, lName) = users.columns
+//   }
+
+//   object Orders {
+
+//     case class Orders(id: java.util.UUID, userId: java.util.UUID, orderDate: LocalDate)
+
+//     implicit val orderSchema = DeriveSchema.gen[Orders]
+
+//     val orders = Table.defineTable[Orders]
+
+//     val (orderId, fkUserId, orderDate) = orders.columns
+//   }
+
+//   object OrderDetails {
+//     case class OrderDetail(orderId: java.util.UUID, productId: Int, quantity: Double, unitPrice: Double)
+
+//     implicit val orderDetailSchema = DeriveSchema.gen[OrderDetail]
+
+//     val orderDetails = Table.defineTable[OrderDetail]
+
+//     val (fkOrderId, fkProductId, quantity, unitPrice) = orderDetails.columns
+//   }
+// }
