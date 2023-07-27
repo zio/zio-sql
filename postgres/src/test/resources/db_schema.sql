@@ -78,6 +78,14 @@ ALTER TABLE metro_line ADD CONSTRAINT metro_line_id PRIMARY KEY(id);
 ALTER TABLE metro_line ADD CONSTRAINT metro_line_system_fk
   FOREIGN KEY(system_id) REFERENCES metro_system(id) ON DELETE CASCADE ON UPDATE CASCADE;
 
+create table movies
+(
+    id int not null primary key,
+    rating int
+);
+
+insert into "movies" ("id", "rating") values (1, null);
+
 insert into "customers"
     ("id", "first_name", "last_name", "verified", "dob", "created_timestamp_string", "created_timestamp")
 values

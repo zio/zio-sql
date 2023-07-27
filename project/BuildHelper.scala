@@ -9,7 +9,7 @@ import BuildInfoKeys._
 import scalafix.sbt.ScalafixPlugin.autoImport.scalafixSemanticdb
 
 object BuildHelper {
-  val SilencerVersion = "1.7.12"
+  val SilencerVersion = "1.7.13"
   val Scala212        = "2.12.17"
   val Scala213        = "2.13.10"
   val ScalaDotty      = "3.2.1"
