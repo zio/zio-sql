@@ -145,7 +145,17 @@ object CustomFunctionDefSpec extends PostgresRunnableSpec with DbSchema {
           val testResult = execute(query)
           collectAndCompare(expected, testResult)
         }
-      )
+      ),
+      test("ltrim2") {
+        assertZIO(execute(select(Ltrim2("$## foo$#", "#$"))).runHead.some)(
+          equalTo(" foo$#")
+        )
+      },
+      test("rtrim2") {
+        assertZIO(execute(select(Rtrim2("$#foo $##", "#$"))).runHead.some)(
+          equalTo("$#foo ")
+        )
+      }
     ),
     test("repeat") {
       assertZIO(execute(select(Repeat("Zio", 3))).runHead.some)(equalTo("ZioZioZio"))

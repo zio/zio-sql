@@ -33,6 +33,7 @@ trait OracleSqlModule extends Sql { self =>
   }
 
   object OracleFunctionDef {
-    val Sind = FunctionDef[Double, Double](FunctionName("sind"))
+    val Ltrim2 = FunctionDef[(String, String), String](FunctionName("ltrim"))
+    val Rtrim2 = FunctionDef[(String, String), String](FunctionName("rtrim"))
   }
 }
