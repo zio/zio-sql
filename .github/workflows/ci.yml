@@ -1,8 +1,8 @@
 name: CI
 
 env:
-  JDK_JAVA_OPTIONS: -XX:+PrintCommandLineFlags -XX:+UseG1GC -Xmx4g -Xms4g
-  JVM_OPTS: -XX:+PrintCommandLineFlags -XX:+UseG1GC -Xmx4g -Xms4g
+  JDK_JAVA_OPTIONS: -XX:+PrintCommandLineFlags -XX:+UseG1GC -Xmx4g -Xms4g -Xss4m
+  JVM_OPTS: -XX:+PrintCommandLineFlags -XX:+UseG1GC -Xmx4g -Xms4g -Xss4m
   
 on:
   pull_request:
@@ -35,7 +35,7 @@ jobs:
       fail-fast: false
       matrix:
         java: ['adopt@1.8', 'adopt@1.11']
-        scala: ['2.12.17', '2.13.10']
+        scala: ['2.12.18', '2.13.10']
     steps:
       - name: Checkout current branch
         uses: actions/checkout@v2.3.4
