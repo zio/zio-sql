@@ -23,11 +23,11 @@ addCommandAlias("fmtOnce", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("fmt", "fmtOnce;fmtOnce")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
-val zioVersion                 = "2.0.6"
-val zioSchemaVersion           = "0.4.2"
+val zioVersion                 = "2.0.15"
+val zioSchemaVersion           = "0.4.13"
 val testcontainersVersion      = "1.18.3"
 val testcontainersScalaVersion = "0.40.17"
-val logbackVersion             = "1.2.12"
+val logbackVersion             = "1.3.8"
 
 lazy val root = project
   .in(file("."))
@@ -155,7 +155,7 @@ lazy val jdbc = project
     libraryDependencies ++= Seq(
       "dev.zio"       %% "zio-test"                        % zioVersion                 % Test,
       "dev.zio"       %% "zio-test-sbt"                    % zioVersion                 % Test,
-      "org.postgresql" % "postgresql"                      % "42.4.3"                   % Test,
+      "org.postgresql" % "postgresql"                      % "42.6.0"                   % Test,
       "com.dimafeng"  %% "testcontainers-scala-postgresql" % testcontainersScalaVersion % Test
     )
   )
@@ -217,7 +217,7 @@ lazy val oracle = project
       "org.testcontainers"       % "database-commons"               % testcontainersVersion      % Test,
       "org.testcontainers"       % "oracle-xe"                      % testcontainersVersion      % Test,
       "org.testcontainers"       % "jdbc"                           % testcontainersVersion      % Test,
-      "com.oracle.database.jdbc" % "ojdbc8"                         % "21.7.0.0"                 % Test,
+      "com.oracle.database.jdbc" % "ojdbc8"                         % "21.10.0.0"                % Test,
       "com.dimafeng"            %% "testcontainers-scala-oracle-xe" % testcontainersScalaVersion % Test,
       "ch.qos.logback"           % "logback-classic"                % logbackVersion             % Test
     )
@@ -236,7 +236,7 @@ lazy val postgres = project
       "org.testcontainers" % "database-commons"                % testcontainersVersion      % Test,
       "org.testcontainers" % "postgresql"                      % testcontainersVersion      % Test,
       "org.testcontainers" % "jdbc"                            % testcontainersVersion      % Test,
-      "org.postgresql"     % "postgresql"                      % "42.4.3"                   % Compile,
+      "org.postgresql"     % "postgresql"                      % "42.6.0"                   % Compile,
       "com.dimafeng"      %% "testcontainers-scala-postgresql" % testcontainersScalaVersion % Test,
       "ch.qos.logback"     % "logback-classic"                 % logbackVersion             % Test
     )
