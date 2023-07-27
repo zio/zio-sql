@@ -1,34 +1,61 @@
 package zio.sql.sqlserver
 
-import zio.sql.Jdbc
+import java.util.UUID
+import java.time._
+import java.math.BigDecimal
+import zio.schema.DeriveSchema
+import zio.sql.table._
+import zio.sql.select._
 
-trait DbSchema extends Jdbc { self =>
-  import self.ColumnSet._
+trait DbSchema extends SqlServerSqlModule { self =>
 
   object DbSchema {
 
-    val customers =
-      (uuid("id") ++ string("first_name") ++ string("last_name") ++ boolean("verified") ++ localDate("dob"))
-        .table("customers")
+    case class Customer(
+      id: UUID,
+      dob: LocalDate,
+      firstName: String,
+      lastName: String,
+      verified: Boolean,
+      createdTimestampString: String,
+      createdTimestamp: ZonedDateTime
+    )
 
-    val (customerId, fName, lName, verified, dob) =
+    implicit val custommerSchema = DeriveSchema.gen[Customer]
+
+    val customers = Table.defineTableSmart[Customer]
+
+    val (customerId, dob, fName, lName, verified, createdString, createdTimestamp) =
       customers.columns
 
-    val orders = (uuid("id") ++ uuid("customer_id") ++ localDate("order_date")).table("orders")
+    val ALL = customerId ++ dob ++ fName ++ lName ++ verified ++ createdString ++ createdTimestamp
+
+    case class Orders(id: UUID, customerId: UUID, orderDate: LocalDate)
+
+    implicit val orderSchema = DeriveSchema.gen[Orders]
+
+    val orders = Table.defineTableSmart[Orders]
 
     val (orderId, fkCustomerId, orderDate) = orders.columns
 
-    val productPrices =
-      (uuid("product_id") ++ offsetDateTime("effective") ++ bigDecimal("price")).table("product_prices")
+    case class Products(id: UUID, name: String, description: String, imageUrl: String)
 
-    val (fkProductId, effective, price) = productPrices.columns
+    implicit val productSchema = DeriveSchema.gen[Products]
 
-    val orderDetails =
-      (uuid("order_id") ++ uuid("product_id") ++ int("quantity") ++ bigDecimal("unit_price")).table("order_details")
+    val products = Table.defineTableSmart[Products]
 
-    val (orderDetailsId, productId, quantity, unitPrice) = orderDetails.columns
+    val (productId, productName, description, imageURL) = products.columns
 
-    val orderDetailsDerived = select(orderDetailsId ++ productId ++ unitPrice).from(orderDetails).asTable("derived")
+    case class OrderDetails(orderId: UUID, productId: UUID, quantity: Int, unitPrice: BigDecimal)
+
+    implicit val orderDetailsSchema = DeriveSchema.gen[OrderDetails]
+
+    val orderDetails = Table.defineTableSmart[OrderDetails]
+
+    val (orderDetailsId, orderDetailsProductId, quantity, unitPrice) = orderDetails.columns
+
+    val orderDetailsDerived =
+      select(orderDetailsId, orderDetailsProductId, unitPrice).from(orderDetails).asTable("derived")
 
     val (derivedOrderId, derivedProductId, derivedUnitPrice) = orderDetailsDerived.columns
 

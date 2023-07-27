@@ -1,24 +1,37 @@
 package zio.sql.mysql
 
-import zio.Cause
-import zio.test.Assertion._
 import zio.test._
 
-object DeleteSpec extends MysqlRunnableSpec with ShopSchema {
+import java.util.UUID
+import java.time.LocalDate
+import zio.schema.DeriveSchema
+import zio.test.TestAspect.sequential
+import zio.sql.table._
 
-  import Customers._
+object DeleteSpec extends MysqlRunnableSpec {
+
+  case class Customers(id: UUID, dob: LocalDate, first_name: String, lastName: String, verified: Boolean)
+
+  implicit val customerSchema = DeriveSchema.gen[Customers]
+
+  val customers = Table.defineTable[Customers]
+
+  val (_, _, _, lastName, verified) = customers.columns
 
   override def specLayered = suite("MySQL module delete")(
-    testM("Can delete from single table with a condition") {
+    test("Can delete from single table with a is not true condition") {
       val query = deleteFrom(customers).where(verified.isNotTrue)
 
-      val result = execute(query)
+      for {
+        r <- execute(query)
+      } yield assertTrue(r == 1)
+    },
+    test("Can delete from single table with an equals condition") {
+      val query = deleteFrom(customers).where(lastName === "Murray")
 
-      val assertion = for {
-        r <- result
-      } yield assert(r)(equalTo(1))
-
-      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+      for {
+        r <- execute(query)
+      } yield assertTrue(r == 1)
     }
-  )
+  ) @@ sequential
 }

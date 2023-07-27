@@ -2,8 +2,9 @@ package zio.sql
 
 import java.sql._
 import java.time.{ OffsetDateTime, OffsetTime, ZoneId, ZoneOffset }
-
 import zio.Chunk
+import zio.sql.select._
+import zio.sql.typetag._
 
 trait JdbcInternalModule { self: Jdbc =>
 
@@ -26,11 +27,12 @@ trait JdbcInternalModule { self: Jdbc =>
         else
           try {
             val value = decoder
+            if (resultSet.wasNull()) return Right(null.asInstanceOf[A])
 
             value match {
               case Some(value) => Right(value)
               case None        =>
-                //TODO following would not be sound - e.g. by outer join any column can be null
+                // TODO following would not be sound - e.g. by outer join any column can be null
                 // if (nonNull)
                 //   Left(DecodingError.UnexpectedNull(column))
                 // else
@@ -51,7 +53,7 @@ trait JdbcInternalModule { self: Jdbc =>
         if (result == null)
           Right(null.asInstanceOf[A])
         else {
-          Right(BigDecimal.javaBigDecimal2bigDecimal(result).asInstanceOf[A])
+          Right(result.asInstanceOf[A])
         }
       case TBoolean            => tryDecode[Boolean](Option(resultSet.getBoolean(columnIndex)))
       case TByte               => tryDecode[Byte](Option(resultSet.getByte(columnIndex)))
@@ -89,7 +91,7 @@ trait JdbcInternalModule { self: Jdbc =>
           Option(resultSet.getString(columnIndex)).map(java.util.UUID.fromString(_))
         )
       case TZonedDateTime      =>
-        //2013-07-15 08:15:23.5+00
+        // 2013-07-15 08:15:23.5+00
         tryDecode[java.time.ZonedDateTime](
           Option(resultSet.getTimestamp(columnIndex))
             .map(_.toInstant())
@@ -105,6 +107,7 @@ trait JdbcInternalModule { self: Jdbc =>
       case t @ Nullable()      =>
         val _ = nonNull
         extractColumn(columnIndex, resultSet, t.typeTag, false).map(Option(_))
+      case TNone               => Right(None)
     }
   }
 

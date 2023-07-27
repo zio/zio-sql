@@ -1,43 +1,83 @@
 package zio.sql
 
 import zio._
-import zio.blocking.Blocking
 import zio.stream._
 import zio.schema.Schema
+import zio.sql.macros.GroupByLike
+import zio.sql.update._
+import zio.sql.select._
+import zio.sql.insert._
+import zio.sql.delete._
 
-trait Jdbc extends zio.sql.Sql with TransactionModule with JdbcInternalModule with SqlDriverLiveModule {
+trait Jdbc extends Sql with JdbcInternalModule with SqlDriverLiveModule with TransactionSyntaxModule {
   trait SqlDriver  {
+    def delete(delete: Delete[_]): IO[Exception, Int]
+
+    def delete(delete: List[Delete[_]]): IO[Exception, List[Int]]
+
+    def update(update: Update[_]): IO[Exception, Int]
+
+    def update(update: List[Update[_]]): IO[Exception, List[Int]]
+
+    def read[A](read: Read[A]): Stream[Exception, A]
+
+    def insert[A: Schema](insert: Insert[_, A]): IO[Exception, Int]
+
+    def transaction: ZLayer[Any, Exception, SqlTransaction]
+  }
+  object SqlDriver {
+
+    val live: ZLayer[ConnectionPool, Nothing, SqlDriver] =
+      ZLayer(ZIO.serviceWith[ConnectionPool](new SqlDriverLive(_)))
+  }
+
+  trait SqlTransaction {
+
     def delete(delete: Delete[_]): IO[Exception, Int]
 
     def update(update: Update[_]): IO[Exception, Int]
 
     def read[A](read: Read[A]): Stream[Exception, A]
 
-    def transact[R, A](tx: ZTransaction[R, Exception, A]): ZManaged[R, Exception, A]
+    def insert[A: Schema](insert: Insert[_, A]): IO[Exception, Int]
 
-    def insert[A: zio.schema.Schema](insert: Insert[_, A]): IO[Exception, Int]
-  }
-  object SqlDriver {
-    val live: ZLayer[Blocking with Has[ConnectionPool], Nothing, Has[SqlDriver]] =
-      (for {
-        blocking <- ZIO.service[Blocking.Service]
-        pool     <- ZIO.service[ConnectionPool]
-      } yield SqlDriverLive(blocking, pool)).toLayer
   }
 
-  def execute[R <: Has[SqlDriver], A](tx: ZTransaction[R, Exception, A]): ZManaged[R, Exception, A] =
-    ZManaged.accessManaged[R](_.get.transact(tx))
+  def setParam(param: SqlParameter, jdbcIndex: Int): java.sql.PreparedStatement => Unit
 
-  def execute[A](read: Read[A]): ZStream[Has[SqlDriver], Exception, A] =
-    ZStream.unwrap(ZIO.access[Has[SqlDriver]](_.get.read(read)))
+  private[sql] def setParams(rows: List[SqlRow]): java.sql.PreparedStatement => Unit = ps =>
+    rows.foreach { row =>
+      row.params.zipWithIndex.foreach { case (param, i) =>
+        val jdbcIndex = i + 1
+        setParam(param, jdbcIndex)(ps)
+      }
+      ps.addBatch()
+    }
 
-  def execute(delete: Delete[_]): ZIO[Has[SqlDriver], Exception, Int] =
-    ZIO.accessM[Has[SqlDriver]](
-      _.get.delete(delete)
-    )
+  def execute[A](read: Read[A]): ZStream[SqlDriver, Exception, A] =
+    ZStream.serviceWithStream(_.read(read))
 
-  def execute[A: Schema](insert: Insert[_, A]): ZIO[Has[SqlDriver], Exception, Int] =
-    ZIO.accessM[Has[SqlDriver]](
-      _.get.insert(insert)
-    )
+  def execute[F, A, Source, Subsource, Head, Tail <: SelectionSet[Source]](
+    select: Read.Subselect[F, A, Source, Subsource, Head, Tail]
+  )(implicit verify: GroupByLike[F, select.GroupByF]): ZStream[SqlDriver, Exception, A] =
+    ZStream.serviceWithStream(_.read(select))
+
+  def execute(delete: Delete[_]): ZIO[SqlDriver, Exception, Int] =
+    ZIO.serviceWithZIO(_.delete(delete))
+
+  def executeBatchDelete(delete: List[Delete[_]]): ZIO[SqlDriver, Exception, List[Int]] =
+    ZIO.serviceWithZIO(_.delete(delete))
+
+  def execute[A: Schema](insert: Insert[_, A]): ZIO[SqlDriver, Exception, Int] =
+    ZIO.serviceWithZIO(_.insert(insert))
+
+  def execute(update: Update[_]): ZIO[SqlDriver, Exception, Int] =
+    ZIO.serviceWithZIO(_.update(update))
+
+  def executeBatchUpdate(update: List[Update[_]]): ZIO[SqlDriver, Exception, List[Int]] =
+    ZIO.serviceWithZIO(_.update(update))
+
+  val transact: ZLayer[SqlDriver, Exception, SqlTransaction] =
+    ZLayer(ZIO.serviceWith[SqlDriver](_.transaction)).flatten
+
 }

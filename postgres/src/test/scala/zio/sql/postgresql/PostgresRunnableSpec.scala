@@ -1,37 +1,17 @@
 package zio.sql.postgresql
 
-import zio.test._
-import zio.test.environment.TestEnvironment
-import java.util.Properties
-import zio.sql.{ ConnectionPoolConfig, JdbcRunnableSpec, TestContainer }
-import zio.Has
+import com.dimafeng.testcontainers.{ JdbcDatabaseContainer, PostgreSQLContainer, SingleContainer }
+import org.testcontainers.utility.DockerImageName
+import zio.sql.JdbcRunnableSpec
 
-trait PostgresRunnableSpec extends JdbcRunnableSpec with PostgresModule {
+trait PostgresRunnableSpec extends JdbcRunnableSpec with PostgresJdbcModule {
 
-  def autoCommit: Boolean = true
-
-  private def connProperties(user: String, password: String): Properties = {
-    val props = new Properties
-    props.setProperty("user", user)
-    props.setProperty("password", password)
-    props
-  }
-
-  val poolConfigLayer = TestContainer
-    .postgres()
-    .map(a =>
-      Has(
-        ConnectionPoolConfig(
-          url = a.get.jdbcUrl,
-          properties = connProperties(a.get.username, a.get.password),
-          autoCommit = autoCommit
-        )
-      )
-    )
-
-  override def spec: Spec[TestEnvironment, TestFailure[Any], TestSuccess] =
-    specLayered.provideCustomLayerShared(jdbcLayer)
-
-  def specLayered: Spec[JdbcEnvironment, TestFailure[Object], TestSuccess]
+  override protected def getContainer: SingleContainer[_] with JdbcDatabaseContainer =
+    new PostgreSQLContainer(
+      dockerImageNameOverride = Option("postgres:alpine").map(DockerImageName.parse)
+    ).configure { a =>
+      a.withInitScript("db_schema.sql")
+      ()
+    }
 
 }
