@@ -23,11 +23,11 @@ addCommandAlias("fmtOnce", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("fmt", "fmtOnce;fmtOnce")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
-val zioVersion                 = "2.0.6"
-val zioSchemaVersion           = "0.4.2"
-val testcontainersVersion      = "1.17.6"
-val testcontainersScalaVersion = "0.40.11"
-val logbackVersion             = "1.2.11"
+val zioVersion                 = "2.0.15"
+val zioSchemaVersion           = "0.4.13"
+val testcontainersVersion      = "1.18.3"
+val testcontainersScalaVersion = "0.40.17"
+val logbackVersion             = "1.3.8"
 
 lazy val root = project
   .in(file("."))
@@ -98,7 +98,7 @@ lazy val docs = project
     crossScalaVersions                         := Seq(Scala213, Scala212, ScalaDotty),
     projectName                                := "ZIO SQL",
     mainModuleName                             := (coreJVM / moduleName).value,
-    projectStage                               := ProjectStage.ProductionReady,
+    projectStage                               := ProjectStage.Development,
     ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(),
     docsPublishBranch                          := "master",
     readmeContribution                         := readmeContribution.value +
@@ -131,6 +131,7 @@ lazy val examples = project
 
 lazy val driver = project
   .in(file("driver"))
+  .dependsOn(coreJVM)
   .settings(stdSettings("zio-sql-driver"))
   .settings(buildInfoSettings("zio.sql.driver"))
   .settings(

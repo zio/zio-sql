@@ -6,7 +6,7 @@
 
 ZIO SQL lets you write type-safe, type-inferred, and composable SQL queries in ordinary Scala, helping you prevent persistence bugs before they happen, and leverage your IDE to make writing SQL productive, safe, and fun.
 
-[![Production Ready](https://img.shields.io/badge/Project%20Stage-Production%20Ready-brightgreen.svg)](https://github.com/zio/zio/wiki/Project-Stages) ![CI Badge](https://github.com/zio/zio-sql/workflows/CI/badge.svg) [![Sonatype Releases](https://img.shields.io/nexus/r/https/oss.sonatype.org/dev.zio/zio-sql_2.13.svg?label=Sonatype%20Release)](https://oss.sonatype.org/content/repositories/releases/dev/zio/zio-sql_2.13/) [![Sonatype Snapshots](https://img.shields.io/nexus/s/https/oss.sonatype.org/dev.zio/zio-sql_2.13.svg?label=Sonatype%20Snapshot)](https://oss.sonatype.org/content/repositories/snapshots/dev/zio/zio-sql_2.13/) [![javadoc](https://javadoc.io/badge2/dev.zio/zio-sql-docs_2.13/javadoc.svg)](https://javadoc.io/doc/dev.zio/zio-sql-docs_2.13) [![ZIO SQL](https://img.shields.io/github/stars/zio/zio-sql?style=social)](https://github.com/zio/zio-sql)
+[![Development](https://img.shields.io/badge/Project%20Stage-Development-green.svg)](https://github.com/zio/zio/wiki/Project-Stages) ![CI Badge](https://github.com/zio/zio-sql/workflows/CI/badge.svg) [![Sonatype Releases](https://img.shields.io/nexus/r/https/oss.sonatype.org/dev.zio/zio-sql_2.13.svg?label=Sonatype%20Release)](https://oss.sonatype.org/content/repositories/releases/dev/zio/zio-sql_2.13/) [![Sonatype Snapshots](https://img.shields.io/nexus/s/https/oss.sonatype.org/dev.zio/zio-sql_2.13.svg?label=Sonatype%20Snapshot)](https://oss.sonatype.org/content/repositories/snapshots/dev/zio/zio-sql_2.13/) [![javadoc](https://javadoc.io/badge2/dev.zio/zio-sql-docs_2.13/javadoc.svg)](https://javadoc.io/doc/dev.zio/zio-sql-docs_2.13) [![ZIO SQL](https://img.shields.io/github/stars/zio/zio-sql?style=social)](https://github.com/zio/zio-sql)
 
 ## Introduction
 
@@ -106,9 +106,12 @@ Values that will represent tables in DSL are then created by calling `defineTabl
 In order for `defineTable` to work, user need to provide implicit `Schema` of data type.
 
 ```scala
-import java.util.UUID
+import zio.schema.DeriveSchema
 import zio.sql.postgresql.PostgresJdbcModule
+import zio.sql.table.Table._
+
 import java.time._
+import java.util.UUID
 
 object Repository extends PostgresJdbcModule {
   final case class Product(id: UUID, name: String, price: BigDecimal)
@@ -140,7 +143,7 @@ Using the previous example with `Product` and `Order` table
 ```scala
 val (id, name, price) = products.columns
 
-val (orderId, productId, quantity) = orders.columns
+val (orderId, productId, quantity, date) = orders.columns
 ```
 
 ## Selects
@@ -148,35 +151,35 @@ val (orderId, productId, quantity) = orders.columns
 Simple select.
 
 ```scala
-val allProducts = select(productId, name, price).from(products)
+val allProducts = select(id, name, price).from(products)
 ```
 
 Using `where` clause.
 
 ```scala
-def productById(id: UUID) = 
-  select(productId, name, price).from(products).where(productId === id)
+def productById(uuid: UUID) = 
+  select(id, name, price).from(products).where(id === uuid)
 ```
 
 Inner join.
 
 ```scala
 val ordersWithProductNames = 
-  select(orderId, name).from(products.join(orders).on(productId === fkProductId))
+  select(orderId, name).from(products.join(orders).on(productId === id))
 ```
 
 Left outer join.
 
 ```scala
 val leftOuter = 
-  select(orderId, name).from(products.leftOuter(orders).on(productId === fkProductId))
+  select(orderId, name).from(products.leftOuter(orders).on(productId === id))
 ```
 
 Right outer join.
 
 ```scala
 val rightOuter = 
-  select(orderId, name).from(products.rightOuter(orders).on(productId === fkProductId))
+  select(orderId, name).from(products.rightOuter(orders).on(productId === id))
 ```
 
 Using `limit` and `offset`
@@ -185,7 +188,7 @@ Using `limit` and `offset`
 val limitedResults = 
   select(orderId, name)
     .from(products.join(orders)
-    .on(productId === fkProductId))
+    .on(productId === id))
     .limit(5)
     .offset(10)
 ```
@@ -193,18 +196,28 @@ val limitedResults =
 ## Inserts
 
 ```scala
-insertInto(products)
-    (productId, name, price)
-  .values((UUID.randomUUID(), "Zionomicon", 10.5))
+def insertProduct(uuid: UUID) =
+  insertInto(products)(id, name, price)
+    .values((uuid, "Zionomicon", 10.5))
 ```
 
 ## Updates
 
-TODO: details
+```scala
+def updateProduct(uuid: UUID) =
+  update(products)
+    .set(name, "foo")
+    .set(price, price * 1.1)
+    .where(id === uuid)
+```
 
 ## Deletes
 
-TODO: details
+```scala
+def deleteProduct(uuid: UUID) =
+    deleteFrom(products)
+      .where(id === uuid)
+```
 
 ## Transactions
 

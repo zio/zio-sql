@@ -123,8 +123,6 @@ sealed trait Expr[-F, -A, +B] { self =>
 
 object Expr {
 
-  implicit val subqueryToExpr = Read.Subselect.subselectToExpr _
-
   sealed trait InvariantExpr[F, -A, B] extends Expr[F, A, B] {
     def typeTag: TypeTag[B]
   }
@@ -134,7 +132,7 @@ object Expr {
   implicit def literal[A: TypeTag](a: A): Expr[Features.Literal, Any, A] = Expr.Literal(a)
 
   implicit def some[A: TypeTag.NotNull](someA: Some[A]): Expr[Features.Literal, Any, Option[A]] = {
-    implicit val typeTagA = TypeTag.Nullable[A]()
+    implicit val typeTagA: TypeTag.Nullable[A] = TypeTag.Nullable[A]()
     Expr.Literal[Option[A]](someA)
   }
 
