@@ -1,46 +1,46 @@
 package zio.sql.oracle
 
-import zio.schema.Schema
-import zio.schema.DynamicValue
-import zio.schema.StandardType
-
-import java.time.Instant
-import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.LocalTime
-import java.time.OffsetTime
-import java.time.ZonedDateTime
-import zio.sql.driver.Renderer
-import zio.Chunk
-import java.time.format.DateTimeFormatter._
-import scala.collection.mutable
-import java.time.OffsetDateTime
-import java.time.YearMonth
-import java.time.Duration
+import java.time._
 import java.time.format.{ DateTimeFormatter, DateTimeFormatterBuilder }
 import java.time.temporal.ChronoField._
 
+import zio.schema.Schema
+import zio.schema.DynamicValue
+import zio.schema.StandardType
+import zio.sql.{ SqlParameter, SqlRow, SqlStatement }
+import zio.sql.delete._
+import zio.sql.driver.Renderer
+import zio.sql.expr._
+import zio.sql.insert._
+import zio.sql.ops.Operator._
+import zio.sql.select._
+import zio.sql.table._
+import zio.sql.typetag._
+import zio.sql.update._
+
+import scala.collection.mutable
+
 trait OracleRenderModule extends OracleSqlModule { self =>
 
-  override def renderDelete(delete: self.Delete[_]): String = {
+  override def renderDelete(delete: Delete[_]): String = {
     val builder = new StringBuilder
     buildDeleteString(delete, builder)
     builder.toString
   }
 
-  override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = {
-    val builder = new StringBuilder
-    buildInsertString(insert, builder)
-    builder.toString()
+  override def renderInsert[A: Schema](insert: Insert[_, A]): SqlStatement = {
+    implicit val render: Renderer = Renderer()
+    val rows                      = OracleRender.renderInsertImpl(insert)
+    SqlStatement(render.toString, rows)
   }
 
-  override def renderRead(read: self.Read[_]): String = {
+  override def renderRead(read: Read[_]): String = {
     val builder = new StringBuilder
     buildReadString(read, builder)
     builder.toString()
   }
 
-  override def renderUpdate(update: self.Update[_]): String = {
+  override def renderUpdate(update: Update[_]): String = {
     implicit val render: Renderer = Renderer()
     OracleRender.renderUpdateImpl(update)
     render.toString
@@ -74,7 +74,7 @@ trait OracleRenderModule extends OracleSqlModule { self =>
       .toFormatter()
   }
 
-  private def buildLit(lit: self.Expr.Literal[_])(builder: StringBuilder): Unit = {
+  private def buildLit(lit: Expr.Literal[_])(builder: StringBuilder): Unit = {
     import TypeTag._
     val value = lit.value
     lit.typeTag match {
@@ -146,16 +146,16 @@ trait OracleRenderModule extends OracleSqlModule { self =>
   }
 
   // TODO: to consider the refactoring and using the implicit `Renderer`, see `renderExpr` in `PostgresRenderModule`
-  private def buildExpr[A, B](expr: self.Expr[_, A, B], builder: StringBuilder): Unit = expr match {
+  private def buildExpr[A, B](expr: Expr[_, A, B], builder: StringBuilder): Unit = expr match {
     case Expr.Subselect(subselect)                                                            =>
       builder.append(" (")
       builder.append(renderRead(subselect))
       val _ = builder.append(") ")
     case Expr.Source(table, column)                                                           =>
       (table, column.name) match {
-        case (tableName: TableName, Some(columnName)) =>
+        case (tableName: String, Some(columnName)) =>
           val _ = builder.append(tableName).append(".").append(columnName)
-        case _                                        => ()
+        case _                                     => ()
       }
     case Expr.Unary(base, op)                                                                 =>
       val _ = builder.append(" ").append(op.symbol)
@@ -283,7 +283,7 @@ trait OracleRenderModule extends OracleSqlModule { self =>
     * Drops the initial Litaral(true) present at the start of every WHERE expressions by default
     * and proceeds to the rest of Expr's.
     */
-  private def buildWhereExpr[A, B](expr: self.Expr[_, A, B], builder: mutable.StringBuilder): Unit = expr match {
+  private def buildWhereExpr[A, B](expr: Expr[_, A, B], builder: mutable.StringBuilder): Unit = expr match {
     case Expr.Literal(true)   => ()
     case Expr.Binary(_, b, _) =>
       builder.append(" WHERE ")
@@ -293,7 +293,7 @@ trait OracleRenderModule extends OracleSqlModule { self =>
       buildExpr(expr, builder)
   }
 
-  private def buildReadString(read: self.Read[_], builder: StringBuilder): Unit =
+  private def buildReadString(read: Read[_], builder: StringBuilder): Unit =
     read match {
       case Read.Mapped(read, _) => buildReadString(read, builder)
 
@@ -358,19 +358,7 @@ trait OracleRenderModule extends OracleSqlModule { self =>
         val _ = builder.append(" (").append(values.mkString(",")).append(") ") // todo fix needs escaping
     }
 
-  private def buildInsertString[A: Schema](insert: self.Insert[_, A], builder: StringBuilder): Unit = {
-
-    builder.append("INSERT INTO ")
-    renderTable(insert.table, builder)
-
-    builder.append(" (")
-    renderColumnNames(insert.sources, builder)
-    builder.append(") ")
-
-    renderInsertValues(insert.values, builder)
-  }
-
-  private def renderTable(table: Table, builder: StringBuilder): Unit                                         = table match {
+  private def renderTable(table: Table, builder: StringBuilder): Unit = table match {
     case Table.DerivedTable(read, name)          =>
       builder.append(" ( ")
       builder.append(renderRead(read.asInstanceOf[Read[_]]))
@@ -396,184 +384,6 @@ trait OracleRenderModule extends OracleSqlModule { self =>
       builder.append(source.name)
       ()
   }
-  private def renderColumnNames(sources: SelectionSet[_], builder: StringBuilder): Unit                       =
-    sources match {
-      case SelectionSet.Empty                       => () // table is a collection of at least ONE column
-      case SelectionSet.Cons(columnSelection, tail) =>
-        val _ = columnSelection.name.map { name =>
-          builder.append(name)
-        }
-        tail.asInstanceOf[SelectionSet[_]] match {
-          case SelectionSet.Empty             => ()
-          case next @ SelectionSet.Cons(_, _) =>
-            builder.append(", ")
-            renderColumnNames(next.asInstanceOf[SelectionSet[_]], builder)
-        }
-    }
-  private def renderInsertValues[A](values: Seq[A], builder: StringBuilder)(implicit schema: Schema[A]): Unit =
-    values.toList match {
-      case head :: Nil  =>
-        builder.append("SELECT ")
-        renderInsertValue(head, builder)
-        builder.append(" FROM DUAL")
-        ()
-      case head :: next =>
-        builder.append("SELECT ")
-        renderInsertValue(head, builder)
-        builder.append(" FROM DUAL UNION ALL ")
-        renderInsertValues(next, builder)
-      case Nil          => ()
-    }
-
-  def renderInsertValue[Z](z: Z, builder: StringBuilder)(implicit schema: Schema[Z]): Unit =
-    schema.toDynamic(z) match {
-      case DynamicValue.Record(_, listMap) =>
-        listMap.values.toList match {
-          case head :: Nil  => renderDynamicValue(head, builder)
-          case head :: next =>
-            renderDynamicValue(head, builder)
-            builder.append(", ")
-            renderDynamicValues(next, builder)
-          case Nil          => ()
-        }
-      case value                           => renderDynamicValue(value, builder)
-    }
-
-  def renderDynamicValue(dynValue: DynamicValue, builder: StringBuilder): Unit =
-    dynValue match {
-      case DynamicValue.Primitive(value, typeTag) =>
-        // need to do this since StandardType is invariant in A
-        import StandardType._
-        StandardType.fromString(typeTag.tag) match {
-          case Some(v) =>
-            v match {
-              case BigDecimalType                  =>
-                builder.append(value)
-                ()
-              case StandardType.InstantType        =>
-                builder.append(
-                  s"""TO_TIMESTAMP_TZ('${ISO_INSTANT.format(
-                      value.asInstanceOf[Instant]
-                    )}', 'SYYYY-MM-DD"T"HH24:MI:SS.FF9TZH:TZM')"""
-                )
-                ()
-              case CharType                        =>
-                builder.append(s"'${value}'")
-                ()
-              case IntType                         =>
-                builder.append(value)
-                ()
-              case BinaryType                      =>
-                val chunk = value.asInstanceOf[Chunk[Object]]
-                builder.append("'")
-                for (b <- chunk)
-                  builder.append("%02x".format(b))
-                builder.append("'")
-                ()
-              case StandardType.LocalDateTimeType  =>
-                builder.append(
-                  s"""TO_TIMESTAMP('${ISO_LOCAL_DATE_TIME.format(
-                      value.asInstanceOf[LocalDateTime]
-                    )}', 'SYYYY-MM-DD"T"HH24:MI:SS.FF9')"""
-                )
-                ()
-              case StandardType.YearMonthType      =>
-                val yearMonth = value.asInstanceOf[YearMonth]
-                builder.append(s"INTERVAL '${yearMonth.getYear}-${yearMonth.getMonth.getValue}' YEAR(4) TO MONTH")
-                ()
-              case DoubleType                      =>
-                builder.append(value)
-                ()
-              case StandardType.OffsetDateTimeType =>
-                builder.append(
-                  s"""TO_TIMESTAMP_TZ('${ISO_OFFSET_DATE_TIME.format(
-                      value.asInstanceOf[OffsetDateTime]
-                    )}', 'SYYYY-MM-DD"T"HH24:MI:SS.FF9TZH:TZM')"""
-                )
-                ()
-              case StandardType.ZonedDateTimeType  =>
-                builder.append(
-                  s"""TO_TIMESTAMP_TZ('${ISO_ZONED_DATE_TIME.format(
-                      value.asInstanceOf[ZonedDateTime]
-                    )}', 'SYYYY-MM-DD"T"HH24:MI:SS.FF9 TZR')"""
-                )
-                ()
-              case UUIDType                        =>
-                builder.append(s"'${value}'")
-                ()
-              case ShortType                       =>
-                builder.append(value)
-                ()
-              case StandardType.LocalTimeType      =>
-                val localTime = value.asInstanceOf[LocalTime]
-                builder.append(
-                  s"INTERVAL '${localTime.getHour}:${localTime.getMinute}:${localTime.getSecond}.${localTime.getNano}' HOUR TO SECOND(9)"
-                )
-                ()
-              case StandardType.OffsetTimeType     =>
-                builder.append(
-                  s"TO_TIMESTAMP_TZ('${ISO_OFFSET_TIME.format(value.asInstanceOf[OffsetTime])}', 'HH24:MI:SS.FF9TZH:TZM')"
-                )
-                ()
-              case LongType                        =>
-                builder.append(value)
-                ()
-              case StringType                      =>
-                builder.append(s"'${value}'")
-                ()
-              case StandardType.LocalDateType      =>
-                builder.append(s"DATE '${ISO_LOCAL_DATE.format(value.asInstanceOf[LocalDate])}'")
-                ()
-              case BoolType                        =>
-                val b = value.asInstanceOf[Boolean]
-                if (b) {
-                  builder.append('1')
-                } else {
-                  builder.append('0')
-                }
-                ()
-              case FloatType                       =>
-                builder.append(value)
-                ()
-              case StandardType.DurationType       =>
-                val duration = value.asInstanceOf[Duration]
-                val days     = duration.toDays()
-                val hours    = duration.toHours()   % 24
-                val minutes  = duration.toMinutes() % 60
-                val seconds  = duration.getSeconds  % 60
-                val nanos    = duration.getNano
-                builder.append(s"INTERVAL '$days $hours:$minutes:$seconds.$nanos' DAY(9) TO SECOND(9)")
-                ()
-              case _                               =>
-                throw new IllegalStateException("unsupported")
-            }
-          case None    => ()
-        }
-      case DynamicValue.Tuple(left, right)        =>
-        renderDynamicValue(left, builder)
-        builder.append(", ")
-        renderDynamicValue(right, builder)
-      case DynamicValue.SomeValue(value)          => renderDynamicValue(value, builder)
-      case DynamicValue.NoneValue                 =>
-        builder.append("null")
-        ()
-      case DynamicValue.Sequence(chunk)           =>
-        builder.append("'")
-        for (DynamicValue.Primitive(v, _) <- chunk)
-          builder.append("%02x".format(v))
-        val _ = builder.append("'")
-      case _                                      => ()
-    }
-
-  def renderDynamicValues(dynValues: List[DynamicValue], builder: StringBuilder): Unit =
-    dynValues match {
-      case head :: Nil  => renderDynamicValue(head, builder)
-      case head :: tail =>
-        renderDynamicValue(head, builder)
-        builder.append(", ")
-        renderDynamicValues(tail, builder)
-      case Nil          => ()
-    }
 
   private def buildExprList(expr: Read.ExprSet[_], builder: StringBuilder): Unit                   =
     expr match {
@@ -648,7 +458,7 @@ trait OracleRenderModule extends OracleSqlModule { self =>
     table match {
       case Table.DialectSpecificTable(_)           => ???
       // The outer reference in this type test cannot be checked at run time?!
-      case sourceTable: self.Table.Source          =>
+      case sourceTable: Table.Source               =>
         val _ = builder.append(sourceTable.name)
       case Table.DerivedTable(read, name)          =>
         builder.append(" ( ")
@@ -677,6 +487,120 @@ trait OracleRenderModule extends OracleSqlModule { self =>
 
   private[oracle] object OracleRender {
 
+    def renderInsertImpl[A](insert: Insert[_, A])(implicit render: Renderer, schema: Schema[A]): List[SqlRow] = {
+
+      render("INSERT INTO ")
+      renderTable(insert.table, render.builder)
+
+      render(" (")
+      renderColumnNames(insert.sources)
+      render(") VALUES ")
+
+      renderInsertPlaceholders(insert.values)
+
+      buildInsertList(insert.values)
+    }
+
+    private def buildInsertList[A](col: Seq[A])(implicit schema: Schema[A]): List[SqlRow] =
+      col.foldLeft(List.empty[SqlRow]) { case (a, z) =>
+        val row = schema.toDynamic(z) match {
+          case DynamicValue.Record(_, listMap) =>
+            val params = listMap.values.foldLeft(List.empty[SqlParameter]) { case (acc, el) =>
+              acc ::: buildInsertRow(el)
+            }
+            SqlRow(params)
+          case value                           =>
+            SqlRow(buildInsertRow(value))
+        }
+        row :: a
+      }
+
+    private def buildInsertRow(dynValue: DynamicValue): List[SqlParameter] =
+      dynValue match {
+        case DynamicValue.Primitive(value, typeTag) =>
+          // need to do this since StandardType is invariant in A
+          StandardType.fromString(typeTag.tag) match {
+            case Some(v) =>
+              List(SqlParameter(v, value))
+            case None    => Nil
+          }
+        case DynamicValue.Tuple(left, right)        =>
+          buildInsertRow(left) ::: buildInsertRow(right)
+        case DynamicValue.SomeValue(value)          => buildInsertRow(value)
+        case DynamicValue.NoneValue                 =>
+          List(SqlParameter(StandardType.UnitType, null))
+        case DynamicValue.Sequence(chunk)           =>
+          val bytes = chunk.map {
+            case DynamicValue.Primitive(v, t) if t == StandardType.ByteType =>
+              v.asInstanceOf[Byte]
+            case _                                                          => throw new IllegalArgumentException("Only Byte sequences are supported.")
+          }.toArray
+          List(SqlParameter(StandardType.BinaryType, bytes))
+        case _                                      => Nil
+      }
+
+    private def renderInsertPlaceholders[A](col: Seq[A])(implicit render: Renderer, schema: Schema[A]): Unit =
+      // TODO any performance penalty because of toList ?
+      col.toList match {
+        case head :: _ =>
+          render("(")
+          renderInsertPlaceholder(head)
+          render(")")
+        case Nil       => ()
+      }
+
+    private def renderInsertPlaceholder[Z](z: Z)(implicit render: Renderer, schema: Schema[Z]): Unit =
+      schema.toDynamic(z) match {
+        case DynamicValue.Record(_, listMap) =>
+          listMap.values.toList match {
+            case head :: Nil  => renderPlaceholder(head)
+            case head :: next =>
+              renderPlaceholder(head)
+              render(", ")
+              renderPlaceholders(next)
+            case Nil          => ()
+          }
+        case value                           => renderPlaceholder(value)
+      }
+
+    private def renderPlaceholders(dynValues: List[DynamicValue])(implicit render: Renderer): Unit =
+      dynValues match {
+        case head :: Nil  => renderPlaceholder(head)
+        case head :: tail =>
+          renderPlaceholder(head)
+          render(", ")
+          renderPlaceholders(tail)
+        case Nil          => ()
+      }
+
+    private def renderPlaceholder(dynValue: DynamicValue)(implicit render: Renderer): Unit =
+      dynValue match {
+        case DynamicValue.Primitive(_, _)    => render("?")
+        case DynamicValue.Tuple(left, right) =>
+          renderPlaceholder(left)
+          render(", ")
+          renderPlaceholder(right)
+        case DynamicValue.SomeValue(value)   => renderPlaceholder(value)
+        case DynamicValue.NoneValue          => render("?")
+        case DynamicValue.Sequence(_)        => render("?")
+        case _                               => ()
+      }
+
+    private def renderColumnNames(sources: SelectionSet[_])(implicit render: Renderer): Unit =
+      sources match {
+        case SelectionSet.Empty                       => () // table is a collection of at least ONE column
+        case SelectionSet.Cons(columnSelection, tail) =>
+          val _ = columnSelection.name.map { name =>
+            render(name)
+          }
+          tail.asInstanceOf[SelectionSet[_]] match {
+            case SelectionSet.Empty             => ()
+            case next @ SelectionSet.Cons(_, _) =>
+              render(", ")
+              renderColumnNames(next.asInstanceOf[SelectionSet[_]])(render)
+          }
+      }
+
     def renderUpdateImpl(update: Update[_])(implicit render: Renderer): Unit =
       update match {
         case Update(table, set, whereExpr) =>
@@ -702,7 +626,7 @@ trait OracleRenderModule extends OracleSqlModule { self =>
         case Nil          => // TODO restrict Update to not allow empty set
       }
 
-    private[zio] def renderSetLhs[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit =
+    private[zio] def renderSetLhs[A, B](expr: Expr[_, A, B])(implicit render: Renderer): Unit =
       expr match {
         case Expr.Source(table, column) =>
           (table, column.name) match {

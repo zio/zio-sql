@@ -5,6 +5,7 @@ import java.util.UUID
 import java.time.LocalDate
 import java.time.ZonedDateTime
 import zio.schema.DeriveSchema
+import zio.sql.table._
 
 object DeleteSpec extends PostgresRunnableSpec {
 
@@ -20,7 +21,7 @@ object DeleteSpec extends PostgresRunnableSpec {
 
   implicit val custommerSchema = DeriveSchema.gen[Customers]
 
-  val customers = defineTable[Customers]
+  val customers = Table.defineTable[Customers]
 
   val (customerId, dob, fName, lName, verified, createdString, createdTimestamp) =
     customers.columns

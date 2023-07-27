@@ -9,6 +9,7 @@ import zio.test._
 import zio.test.TestAspect.sequential
 import java.time.LocalDate
 import zio.sql.Jdbc
+import zio.sql.table._
 
 object TransactionSpec extends MysqlRunnableSpec with Jdbc {
 
@@ -16,7 +17,7 @@ object TransactionSpec extends MysqlRunnableSpec with Jdbc {
 
   implicit val customerSchema = DeriveSchema.gen[Customers]
 
-  val customers = defineTable[Customers]
+  val customers = Table.defineTable[Customers]
 
   val (customerId, dob, fName, lName, verified) = customers.columns
 

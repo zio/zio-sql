@@ -9,7 +9,7 @@ import BuildInfoKeys._
 import scalafix.sbt.ScalafixPlugin.autoImport.scalafixSemanticdb
 
 object BuildHelper {
-  val SilencerVersion = "1.7.12"
+  val SilencerVersion = "1.17.13"
   val Scala212        = "2.12.17"
   val Scala213        = "2.13.10"
   val ScalaDotty      = "3.2.2"
@@ -147,8 +147,7 @@ object BuildHelper {
   def stdSettings(prjName: String) = Seq(
     name                     := s"$prjName",
     scalacOptions            := stdOptions,
-    crossScalaVersions       := Seq(Scala213, Scala212, ScalaDotty),
-    // ThisBuild / scalaVersion := ScalaDotty,
+    crossScalaVersions       := Seq(Scala213, Scala212),
     ThisBuild / scalaVersion := Scala213,
     scalacOptions            := stdOptions ++ extraOptions(scalaVersion.value, optimize = !isSnapshot.value),
     libraryDependencies ++= {

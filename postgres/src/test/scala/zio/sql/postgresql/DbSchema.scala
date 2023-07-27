@@ -4,6 +4,8 @@ import java.time.{ LocalDate, ZonedDateTime }
 import java.util.UUID
 import zio.schema.DeriveSchema
 import java.math.BigDecimal
+import zio.sql.table._
+import zio.sql.select._
 
 trait DbSchema extends PostgresJdbcModule { self =>
 
@@ -14,18 +16,18 @@ trait DbSchema extends PostgresJdbcModule { self =>
 
     implicit val citySchema = DeriveSchema.gen[City]
 
-    val city                                       = defineTable[City]
+    val city                                       = Table.defineTable[City]
     val (cityId, cityName, population, area, link) = city.columns
 
     implicit val metroSystemSchema = DeriveSchema.gen[MetroSystem]
 
-    val metroSystem = defineTable[MetroSystem]
+    val metroSystem = Table.defineTable[MetroSystem]
 
     val (metroSystemId, cityIdFk, metroSystemName, dailyRidership) = metroSystem.columns
 
     implicit val metroLineSchema = DeriveSchema.gen[MetroLine]
 
-    val metroLine = defineTable[MetroLine]
+    val metroLine = Table.defineTable[MetroLine]
 
     val (metroLineId, systemId, metroLineName, stationCount, trackType) = metroLine.columns
   }
@@ -64,7 +66,7 @@ trait DbSchema extends PostgresJdbcModule { self =>
 
     implicit val custommerSchema = DeriveSchema.gen[Customer]
 
-    val customers = defineTableSmart[Customer]
+    val customers = Table.defineTableSmart[Customer]
 
     val (customerId, dob, fName, lName, verified, createdString, createdTimestamp) =
       customers.columns
@@ -77,7 +79,7 @@ trait DbSchema extends PostgresJdbcModule { self =>
 
     implicit val orderSchema = DeriveSchema.gen[Orders]
 
-    val orders = defineTableSmart[Orders]
+    val orders = Table.defineTableSmart[Orders]
 
     val (orderId, fkCustomerId, orderDate) = orders.columns
   }
@@ -87,7 +89,7 @@ trait DbSchema extends PostgresJdbcModule { self =>
 
     implicit val productSchema = DeriveSchema.gen[Products]
 
-    val products = defineTableSmart[Products]
+    val products = Table.defineTableSmart[Products]
 
     val (productId, productName, description, imageURL) = products.columns
   }
@@ -96,7 +98,7 @@ trait DbSchema extends PostgresJdbcModule { self =>
     case class ProductPrice(productId: UUID, effective: LocalDate, price: BigDecimal)
     implicit val productPriceSchema = DeriveSchema.gen[ProductPrice]
 
-    val productPrices = defineTableSmart[ProductPrice]
+    val productPrices = Table.defineTableSmart[ProductPrice]
 
     val (productPricesOrderId, effectiveDate, productPrice) = productPrices.columns
   }
@@ -106,7 +108,7 @@ trait DbSchema extends PostgresJdbcModule { self =>
 
     implicit val orderDetailsSchema = DeriveSchema.gen[OrderDetails]
 
-    val orderDetails = defineTableSmart[OrderDetails]
+    val orderDetails = Table.defineTableSmart[OrderDetails]
 
     val (orderDetailsOrderId, orderDetailsProductId, quantity, unitPrice) = orderDetails.columns
   }
@@ -116,8 +118,21 @@ trait DbSchema extends PostgresJdbcModule { self =>
 
     implicit val personsSchema = DeriveSchema.gen[Persons]
 
-    val persons = defineTableSmart[Persons]
+    val persons = Table.defineTableSmart[Persons]
 
     val (personsId, personsName, birthDate) = persons.columns
   }
+
+  object MoviesSchema {
+
+    case class Movies(id: Int, rating: Option[Int])
+
+    implicit val moviesSchema = DeriveSchema.gen[Movies]
+
+    val movies = Table.defineTableSmart[Movies]
+
+    val (id, rating) = movies.columns
+
+  }
+
 }

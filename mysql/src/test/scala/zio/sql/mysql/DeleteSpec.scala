@@ -6,6 +6,7 @@ import java.util.UUID
 import java.time.LocalDate
 import zio.schema.DeriveSchema
 import zio.test.TestAspect.sequential
+import zio.sql.table._
 
 object DeleteSpec extends MysqlRunnableSpec {
 
@@ -13,7 +14,7 @@ object DeleteSpec extends MysqlRunnableSpec {
 
   implicit val customerSchema = DeriveSchema.gen[Customers]
 
-  val customers = defineTable[Customers]
+  val customers = Table.defineTable[Customers]
 
   val (_, _, _, lastName, verified) = customers.columns
 

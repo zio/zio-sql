@@ -3,18 +3,19 @@ package zio.sql.postgresql
 import java.math.BigDecimal
 import java.time._
 import java.util.UUID
-
 import zio._
 import zio.schema._
 import zio.test._
 import zio.test.Assertion._
 import zio.test.TestAspect._
+import zio.sql.expr.AggregationDef._
+import zio.sql.expr._
+import zio.sql.select._
 
 import scala.language.postfixOps
 
 object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
 
-  import AggregationDef._
   import CustomerSchema._
 
   private def customerSelectJoseAssertion[F](
@@ -442,7 +443,7 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
         lastName: String,
         verified: Boolean,
         dateOfBirth: LocalDate,
-        cretedTimestampString: String,
+        createdTimestampString: String,
         createdTimestamp: ZonedDateTime
       )
 
@@ -487,8 +488,8 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
           Schema.Field(
             "cretedTimestampString",
             Schema.primitive[String](zio.schema.StandardType.StringType),
-            get0 = _.cretedTimestampString,
-            set0 = (r, a) => r.copy(cretedTimestampString = a)
+            get0 = _.createdTimestampString,
+            set0 = (r, a) => r.copy(createdTimestampString = a)
           ),
           Schema.Field(
             "createdTimestamp",
@@ -687,6 +688,39 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
       for {
         result <- execute(update(persons).set(personsName, Some("Charlie")).where(personsName === Some("Murray")))
       } yield assertTrue(result == 1)
+    },
+    test("select all rows") {
+      import CustomerSchema._
+      import OrdersSchema._
+      import ProductSchema._
+
+      val allCustomers = select(*).from(customers)
+      val allOrders    = select(*).from(orders)
+      val allProducts  = select(*).from(products)
+
+      for {
+        customers <- execute(allCustomers).runCollect
+        orders    <- execute(allOrders).runCollect
+        products  <- execute(allProducts).runCollect
+      } yield assertTrue(customers.length == 2) && assertTrue(orders.length == 35) && assertTrue(products.length == 10)
+    },
+    test("Select null int value as None Option") {
+      val movieColumns = MoviesSchema.id ++ MoviesSchema.rating
+      val selectStmt   = select(movieColumns).from(MoviesSchema.movies).where(MoviesSchema.id === 1)
+      val selectResult = execute(selectStmt.to((MoviesSchema.Movies.apply _).tupled)).runCollect
+
+      for {
+        movies <- selectResult
+      } yield assert(movies.toList)(
+        equalTo(
+          List(
+            MoviesSchema.Movies(
+              id = 1,
+              rating = None
+            )
+          )
+        )
+      )
     }
   ) @@ sequential
 }

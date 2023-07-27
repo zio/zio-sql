@@ -9,12 +9,14 @@ import zio.schema.DeriveSchema
 import zio.test._
 import zio.test.Assertion._
 import zio.test.TestAspect.{ retries, samples, sequential, shrinks }
-
+import zio.sql.expr.Expr
+import zio.sql.table._
+import zio.sql.select._
+import zio.sql.expr.AggregationDef._
 import scala.language.postfixOps
 
 object SqlServerModuleSpec extends SqlServerRunnableSpec {
 
-  import AggregationDef._
   import CustomerSchema._
 
   final case class CustomerRow(
@@ -596,9 +598,6 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
       } yield assert(r)(hasSameElementsDistinct(crossOuterApplyExpected))
     },
     test("handle isTrue to 1 bit type") {
-
-      import AggregationDef._
-
       val query =
         select(Count(customerId))
           .from(customers)
@@ -609,8 +608,6 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
       } yield assertTrue(result == 4L)
     },
     test("handle isNotTrue to 0 bit type") {
-      import AggregationDef._
-
       val query =
         select(Count(customerId))
           .from(customers)
@@ -959,7 +956,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
 
     implicit val customerSchema = DeriveSchema.gen[Customers]
 
-    val customers = defineTable[Customers]
+    val customers = Table.defineTable[Customers]
 
     val (customerId, fName, lName, verified, dob) =
       customers.columns
@@ -970,7 +967,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
 
     implicit val orderSchema = DeriveSchema.gen[Orders]
 
-    val orders = defineTable[Orders]
+    val orders = Table.defineTable[Orders]
 
     val (orderId, fkCustomerId, orderDate) = orders.columns
   }
@@ -980,7 +977,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
 
     implicit val productPricesSchema = DeriveSchema.gen[ProductPrices]
 
-    val productPrices = defineTable[ProductPrices]
+    val productPrices = Table.defineTable[ProductPrices]
 
     val (fkProductId, effective, price) = productPrices.columns
   }
@@ -990,7 +987,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
 
     implicit val orderDetailsSchema = DeriveSchema.gen[OrderDetails]
 
-    val orderDetails = defineTable[OrderDetails]
+    val orderDetails = Table.defineTable[OrderDetails]
 
     val (orderDetailsId, productId, quantity, unitPrice) = orderDetails.columns
   }
@@ -1041,7 +1038,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
 
     implicit val alTypesSchema = DeriveSchema.gen[AllType]
 
-    val allTypes = defineTableSmart[AllType]
+    val allTypes = Table.defineTableSmart[AllType]
 
     val (
       id,

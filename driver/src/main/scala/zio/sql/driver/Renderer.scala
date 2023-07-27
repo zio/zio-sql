@@ -1,6 +1,6 @@
 package zio.sql.driver
 
-private[sql] class Renderer(val builder: StringBuilder) extends AnyVal {
+private[sql] class Renderer(val builder: StringBuilder) {
   // not using vararg to avoid allocating `Seq`s
   def apply(s1: Any): Unit                            = {
     val _ = builder.append(s1)

@@ -7,6 +7,7 @@ import java.time.{ LocalDate, LocalTime, ZoneId }
 import java.time.format.DateTimeFormatter
 import zio.sql.Jdbc
 import java.util.UUID
+import zio.sql.table._
 
 object CustomFunctionDefSpec extends MysqlRunnableSpec with Jdbc {
 
@@ -16,7 +17,7 @@ object CustomFunctionDefSpec extends MysqlRunnableSpec with Jdbc {
 
   implicit val customerSchema = DeriveSchema.gen[Customers]
 
-  val customers = defineTable[Customers]
+  val customers = Table.defineTable[Customers]
 
   val (customerId, dob, fName, lName, verified) = customers.columns
 
