@@ -2,15 +2,16 @@ package zio.sql
 
 import zio.schema.DeriveSchema
 import zio.sql.postgresql.PostgresJdbcModule
+import zio.sql.expr.AggregationDef._
+import zio.sql.table._
 
 object GroupByExamples extends App with PostgresJdbcModule {
-  import AggregationDef._
 
   case class Product(id: Int, name: String, amount: Int, price: Double)
 
   implicit val productSchema = DeriveSchema.gen[Product]
 
-  val productTable = defineTable[Product]
+  val productTable = Table.defineTable[Product]
 
   val (id, name, amount, price) = productTable.columns
 

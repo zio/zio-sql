@@ -15,6 +15,7 @@ object CustomFunctionDefSpec extends PostgresRunnableSpec with DbSchema {
   import CustomerSchema._
   import PostgresFunctionDef._
   import PostgresSpecific._
+  import PostgresSpecific.PostgresTypeTag._
 
   private def collectAndCompare[R, E](
     expected: Seq[String],
@@ -48,8 +49,6 @@ object CustomFunctionDefSpec extends PostgresRunnableSpec with DbSchema {
       },
       suite("format function")(
         test("format0") {
-          import Expr._
-
           val query = select(Format0("Person"))
 
           val expected = Seq("Person")
@@ -58,8 +57,6 @@ object CustomFunctionDefSpec extends PostgresRunnableSpec with DbSchema {
           collectAndCompare(expected, testResult)
         },
         test("format1") {
-          import Expr._
-
           val query = select(Format1("Person: %s", fName)) from customers
 
           val expected = Seq(
@@ -74,8 +71,6 @@ object CustomFunctionDefSpec extends PostgresRunnableSpec with DbSchema {
           collectAndCompare(expected, testResult)
         },
         test("format2") {
-          import Expr._
-
           val query = select(Format2("Person: %s %s", fName, lName)) from customers
 
           val expected = Seq(
@@ -90,8 +85,6 @@ object CustomFunctionDefSpec extends PostgresRunnableSpec with DbSchema {
           collectAndCompare(expected, testResult)
         },
         test("format3") {
-          import Expr._
-
           val query = select(
             Format3("Person: %s %s with double quoted %I ", fName, lName, "identi fier")
           ) from customers
@@ -108,8 +101,6 @@ object CustomFunctionDefSpec extends PostgresRunnableSpec with DbSchema {
           collectAndCompare(expected, testResult)
         },
         test("format4") {
-          import Expr._
-
           val query = select(
             Format4(
               "Person: %s %s with null-literal %L and non-null-literal %L ",
@@ -132,8 +123,6 @@ object CustomFunctionDefSpec extends PostgresRunnableSpec with DbSchema {
           collectAndCompare(expected, testResult)
         },
         test("format5") {
-          import Expr._
-
           val query = select(
             Format5(
               "Person: %s %s with more arguments than placeholders: %I %L ",
@@ -156,7 +145,17 @@ object CustomFunctionDefSpec extends PostgresRunnableSpec with DbSchema {
           val testResult = execute(query)
           collectAndCompare(expected, testResult)
         }
-      )
+      ),
+      test("ltrim2") {
+        assertZIO(execute(select(Ltrim2("$## foo$#", "#$"))).runHead.some)(
+          equalTo(" foo$#")
+        )
+      },
+      test("rtrim2") {
+        assertZIO(execute(select(Rtrim2("$#foo $##", "#$"))).runHead.some)(
+          equalTo("$#foo ")
+        )
+      }
     ),
     test("repeat") {
       assertZIO(execute(select(Repeat("Zio", 3))).runHead.some)(equalTo("ZioZioZio"))

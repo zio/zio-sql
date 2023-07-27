@@ -1,17 +1,20 @@
 package zio.sql.postgresql
 
-import java.time._
-import java.time.format.DateTimeFormatter
-
 import zio.Chunk
 import zio.schema._
-import zio.schema.StandardType._
+import zio.sql.{ SqlParameter, SqlRow, SqlStatement }
+import zio.sql.delete._
 import zio.sql.driver.Renderer
-import java.time.format.DateTimeFormatter._
+import zio.sql.expr._
+import zio.sql.insert._
+import zio.sql.select._
+import zio.sql.table._
+import zio.sql.typetag._
+import zio.sql.update._
 
 trait PostgresRenderModule extends PostgresSqlModule { self =>
 
-  override def renderRead(read: self.Read[_]): String = {
+  override def renderRead(read: Read[_]): String = {
     implicit val render: Renderer = Renderer()
     PostgresRenderer.renderReadImpl(read)
     render.toString
@@ -23,10 +26,10 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
     render.toString
   }
 
-  override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = {
+  override def renderInsert[A: Schema](insert: Insert[_, A]): SqlStatement = {
     implicit val render: Renderer = Renderer()
-    PostgresRenderer.renderInsertImpl(insert)
-    render.toString
+    val rows                      = PostgresRenderer.renderInsertImpl(insert)
+    SqlStatement(render.toString, rows)
   }
 
   override def renderDelete(delete: Delete[_]): String = {
@@ -37,7 +40,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
 
   object PostgresRenderer {
 
-    def renderInsertImpl[A](insert: Insert[_, A])(implicit render: Renderer, schema: Schema[A]) = {
+    def renderInsertImpl[A](insert: Insert[_, A])(implicit render: Renderer, schema: Schema[A]): List[SqlRow] = {
       render("INSERT INTO ")
       renderTable(insert.table)
 
@@ -45,104 +48,94 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
       renderColumnNames(insert.sources)
       render(") VALUES ")
 
-      renderInsertValues(insert.values)
+      renderInsertPlaceholders(insert.values)
+
+      buildInsertList(insert.values)
     }
 
-    private def renderInsertValues[A](col: Seq[A])(implicit render: Renderer, schema: Schema[A]): Unit =
-      // TODO any performance penalty because of toList ?
-      col.toList match {
-        case head :: Nil  =>
-          render("(")
-          renderInserValue(head)
-          render(");")
-        case head :: next =>
-          render("(")
-          renderInserValue(head)(render, schema)
-          render(" ),")
-          renderInsertValues(next)
-        case Nil          => ()
+    private def buildInsertList[A](col: Seq[A])(implicit schema: Schema[A]): List[SqlRow] =
+      col.foldLeft(List.empty[SqlRow]) { case (a, z) =>
+        val row = schema.toDynamic(z) match {
+          case DynamicValue.Record(_, listMap) =>
+            val params = listMap.values.foldLeft(List.empty[SqlParameter]) { case (acc, el) =>
+              acc ::: buildInsertRow(el)
+            }
+            SqlRow(params)
+          case value                           =>
+            SqlRow(buildInsertRow(value))
+        }
+        row :: a
       }
 
-    private def renderInserValue[Z](z: Z)(implicit render: Renderer, schema: Schema[Z]): Unit =
-      schema.toDynamic(z) match {
-        case DynamicValue.Record(_, listMap) =>
-          listMap.values.toList match {
-            case head :: Nil  => renderDynamicValue(head)
-            case head :: next =>
-              renderDynamicValue(head)
-              render(", ")
-              renderDynamicValues(next)
-            case Nil          => ()
-          }
-        case value                           => renderDynamicValue(value)
-      }
-
-    private def renderDynamicValues(dynValues: List[DynamicValue])(implicit render: Renderer): Unit =
-      dynValues match {
-        case head :: Nil  => renderDynamicValue(head)
-        case head :: tail =>
-          renderDynamicValue(head)
-          render(", ")
-          renderDynamicValues(tail)
-        case Nil          => ()
-      }
-
-    // TODO render each type according to their specifics & test it
-    private def renderDynamicValue(dynValue: DynamicValue)(implicit render: Renderer): Unit =
+    private def buildInsertRow(dynValue: DynamicValue): List[SqlParameter] =
       dynValue match {
         case DynamicValue.Primitive(value, typeTag) =>
           // need to do this since StandardType is invariant in A
           StandardType.fromString(typeTag.tag) match {
             case Some(v) =>
-              v match {
-                case BigDecimalType                  =>
-                  render(value)
-                case StandardType.InstantType        =>
-                  render(s"'${ISO_INSTANT.format(value.asInstanceOf[Instant])}'")
-                case ByteType                        => render(s"'${value}'")
-                case CharType                        => render(s"'${value}'")
-                case IntType                         => render(value)
-                case StandardType.MonthDayType       => render(s"'${value}'")
-                case BinaryType                      => render(s"'${value}'")
-                case StandardType.MonthType          => render(s"'${value}'")
-                case StandardType.LocalDateTimeType  =>
-                  render(s"'${ISO_LOCAL_DATE_TIME.format(value.asInstanceOf[LocalDateTime])}'")
-                case UnitType                        => render("null") // None is encoded as Schema[Unit].transform(_ => None, _ => ())
-                case StandardType.YearMonthType      => render(s"'${value}'")
-                case DoubleType                      => render(value)
-                case StandardType.YearType           => render(s"'${value}'")
-                case StandardType.OffsetDateTimeType =>
-                  render(s"'${ISO_OFFSET_DATE_TIME.format(value.asInstanceOf[OffsetDateTime])}'")
-                case StandardType.ZonedDateTimeType  =>
-                  render(s"'${DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(value.asInstanceOf[ZonedDateTime])}'")
-                case BigIntegerType                  => render(s"'${value}'")
-                case UUIDType                        => render(s"'${value}'")
-                case StandardType.ZoneOffsetType     => render(s"'${value}'")
-                case ShortType                       => render(value)
-                case StandardType.LocalTimeType      =>
-                  render(s"'${DateTimeFormatter.ISO_LOCAL_TIME.format(value.asInstanceOf[LocalTime])}'")
-                case StandardType.OffsetTimeType     =>
-                  render(s"'${DateTimeFormatter.ISO_OFFSET_TIME.format(value.asInstanceOf[OffsetTime])}'")
-                case LongType                        => render(value)
-                case StringType                      => render(s"'${value}'")
-                case StandardType.PeriodType         => render(s"'${value}'")
-                case StandardType.ZoneIdType         => render(s"'${value}'")
-                case StandardType.LocalDateType      =>
-                  render(s"'${ISO_DATE.format(value.asInstanceOf[LocalDate])}'")
-                case BoolType                        => render(value)
-                case DayOfWeekType                   => render(s"'${value}'")
-                case FloatType                       => render(value)
-                case StandardType.DurationType       => render(s"'${value}'")
-              }
-            case None    => ()
+              List(SqlParameter(v, value))
+            case None    => Nil
           }
         case DynamicValue.Tuple(left, right)        =>
-          renderDynamicValue(left)
+          buildInsertRow(left) ::: buildInsertRow(right)
+        case DynamicValue.SomeValue(value)          => buildInsertRow(value)
+        case DynamicValue.NoneValue                 =>
+          List(SqlParameter(StandardType.UnitType, null))
+        case DynamicValue.Sequence(chunk)           =>
+          val bytes = chunk.map {
+            case DynamicValue.Primitive(v, t) if t == StandardType.ByteType =>
+              v.asInstanceOf[Byte]
+            case _                                                          => throw new IllegalArgumentException("Only Byte sequences are supported.")
+          }.toArray
+          List(SqlParameter(StandardType.BinaryType, bytes))
+        case _                                      => Nil
+      }
+
+    private def renderInsertPlaceholders[A](col: Seq[A])(implicit render: Renderer, schema: Schema[A]): Unit =
+      // TODO any performance penalty because of toList ?
+      col.toList match {
+        case head :: _ =>
+          render("(")
+          renderInsertPlaceholder(head)
+          render(");")
+        case Nil       => ()
+      }
+
+    private def renderInsertPlaceholder[Z](z: Z)(implicit render: Renderer, schema: Schema[Z]): Unit =
+      schema.toDynamic(z) match {
+        case DynamicValue.Record(_, listMap) =>
+          listMap.values.toList match {
+            case head :: Nil  => renderPlaceholder(head)
+            case head :: next =>
+              renderPlaceholder(head)
+              render(", ")
+              renderPlaceholders(next)
+            case Nil          => ()
+          }
+        case value                           => renderPlaceholder(value)
+      }
+
+    private def renderPlaceholders(dynValues: List[DynamicValue])(implicit render: Renderer): Unit =
+      dynValues match {
+        case head :: Nil  => renderPlaceholder(head)
+        case head :: tail =>
+          renderPlaceholder(head)
           render(", ")
-          renderDynamicValue(right)
-        case DynamicValue.SomeValue(value)          => renderDynamicValue(value)
-        case DynamicValue.NoneValue                 => render("null")
-        case _                                      => ()
+          renderPlaceholders(tail)
+        case Nil          => ()
+      }
+
+    private def renderPlaceholder(dynValue: DynamicValue)(implicit render: Renderer): Unit =
+      dynValue match {
+        case DynamicValue.Primitive(_, _)    => render("?")
+        case DynamicValue.Tuple(left, right) =>
+          renderPlaceholder(left)
+          render(", ")
+          renderPlaceholder(right)
+        case DynamicValue.SomeValue(value)   => renderPlaceholder(value)
+        case DynamicValue.NoneValue          => render("?")
+        case DynamicValue.Sequence(_)        => render("?")
+        case _                               => ()
       }
 
     private def renderColumnNames(sources: SelectionSet[_])(implicit render: Renderer): Unit =
@@ -191,7 +184,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
         case Nil          => // TODO restrict Update to not allow empty set
       }
 
-    private[zio] def renderLit[A, B](lit: self.Expr.Literal[_])(implicit render: Renderer): Unit =
+    private[zio] def renderLit[A, B](lit: Expr.Literal[_])(implicit render: Renderer): Unit =
       renderLit(lit.typeTag, lit.value)
 
     private[zio] def renderLit(typeTag: TypeTag[_], value: Any)(implicit render: Renderer): Unit = {
@@ -211,9 +204,9 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
         case TString                            => render("'", value, "'")
         case TDialectSpecific(typeTagExtension) =>
           typeTagExtension match {
-            case tt @ TInterval                         => render(tt.cast(value))
-            case tt @ TTimestampz                       => render(tt.cast(value))
-            case _: PostgresSpecific.PostgresTypeTag[_] => ???
+            case tt @ TInterval   => render(tt.cast(value))
+            case tt @ TTimestampz => render(tt.cast(value))
+            case _                => ???
           }
         case TByteArray                         =>
           render(
@@ -237,7 +230,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
      * PostgreSQL doesn't allow for `tableName.columnName = value` format in update statement,
      * instead requires `columnName = value`.
      */
-    private[zio] def renderSetLhs[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit =
+    private[zio] def renderSetLhs[A, B](expr: Expr[_, A, B])(implicit render: Renderer): Unit =
       expr match {
         case Expr.Source(_, column) =>
           column.name match {
@@ -247,18 +240,19 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
         case _                      => ()
       }
 
-    private[zio] def quoted(name: String): String = "\"" + name + "\""
+    private[zio] def quoted(name: String): String =
+      name.split('.').map("\"" + _ + "\"").mkString(".")
 
-    private[zio] def renderExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
+    private[zio] def renderExpr[A, B](expr: Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
       case Expr.Subselect(subselect)                                                    =>
         render(" (")
         render(renderRead(subselect))
         render(") ")
       case e @ Expr.Source(table, column)                                               =>
         (table, column.name) match {
-          case (tableName: TableName, Some(columnName)) =>
+          case (tableName: String, Some(columnName)) =>
             render(quoted(tableName), ".", quoted(columnName))
-          case _                                        => ()
+          case _                                     => ()
         }
         e.typeTag match {
           case TypeTag.TBigDecimal => render("::numeric")
@@ -383,7 +377,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
         render(")")
     }
 
-    private[zio] def renderReadImpl(read: self.Read[_])(implicit render: Renderer): Unit =
+    private[zio] def renderReadImpl(read: Read[_])(implicit render: Renderer): Unit =
       read match {
         case Read.Mapped(read, _) => renderReadImpl(read)
 
@@ -523,9 +517,10 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
               render(" ,lateral ")
 
               renderTable(derivedTable)
+            case _                                                                       => ???
           }
         // The outer reference in this type test cannot be checked at run time?!
-        case sourceTable: self.Table.Source             => render(quoted(sourceTable.name))
+        case sourceTable: Table.Source                  => render(quoted(sourceTable.name))
         case Table.DerivedTable(read, name)             =>
           render(" ( ")
           render(renderRead(read.asInstanceOf[Read[_]]))
@@ -549,7 +544,7 @@ trait PostgresRenderModule extends PostgresSqlModule { self =>
     * Drops the initial Litaral(true) present at the start of every WHERE expressions by default
     * and proceeds to the rest of Expr's.
     */
-    private def renderWhereExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
+    private def renderWhereExpr[A, B](expr: Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
       case Expr.Literal(true)   => ()
       case Expr.Binary(_, b, _) =>
         render(" WHERE ")

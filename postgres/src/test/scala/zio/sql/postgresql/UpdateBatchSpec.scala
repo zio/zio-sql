@@ -3,7 +3,7 @@ package zio.sql.postgresql
 import zio.Cause
 import zio.test.Assertion._
 import zio.test._
-
+import zio.sql.update._
 import java.time.{ LocalDate, ZonedDateTime }
 import java.util.UUID
 

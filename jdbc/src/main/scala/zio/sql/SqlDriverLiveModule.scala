@@ -1,11 +1,15 @@
 package zio.sql
 
-import java.sql._
+import java.sql.{ Connection, SQLException }
 
 import zio._
 import zio.stream.{ Stream, ZStream }
 import zio.schema.Schema
 import zio.IO
+import zio.sql.update._
+import zio.sql.select._
+import zio.sql.insert._
+import zio.sql.delete._
 
 trait SqlDriverLiveModule { self: Jdbc =>
   private[sql] trait SqlDriverCore {
@@ -13,8 +17,6 @@ trait SqlDriverLiveModule { self: Jdbc =>
     def deleteOnBatch(delete: List[Delete[_]], conn: Connection): IO[Exception, List[Int]]
 
     def updateOnBatch(update: List[Update[_]], conn: Connection): IO[Exception, List[Int]]
-
-    def insertOnBatch[A: Schema](insert: List[Insert[_, A]], conn: Connection): IO[Exception, List[Int]]
 
     def deleteOn(delete: Delete[_], conn: Connection): IO[Exception, Int]
 
@@ -109,25 +111,18 @@ trait SqlDriverLiveModule { self: Jdbc =>
     override def insertOn[A: Schema](insert: Insert[_, A], conn: Connection): IO[Exception, Int] =
       ZIO.attemptBlocking {
 
-        val query = renderInsert(insert)
+        val SqlStatement(query, params) = renderInsert(insert)
 
-        val statement = conn.createStatement()
+        val ps = conn.prepareStatement(query)
 
-        statement.executeUpdate(query)
-      }.refineToOrDie[Exception]
+        setParams(params)(ps)
 
-    override def insertOnBatch[A: Schema](insert: List[Insert[_, A]], conn: Connection): IO[Exception, List[Int]] =
-      ZIO.attemptBlocking {
-        val statement = conn.createStatement()
-        insert.map(insert_ => statement.addBatch(renderInsert(insert_)))
-        statement.executeBatch().toList
+        ps.executeBatch().foldLeft(0) { case (acc, el) => acc + el }
+
       }.refineToOrDie[Exception]
 
     override def insert[A: Schema](insert: Insert[_, A]): IO[Exception, Int] =
       ZIO.scoped(pool.connection.flatMap(insertOn(insert, _)))
-
-    def insert[A: Schema](insert: List[Insert[_, A]]): IO[Exception, List[Int]] =
-      ZIO.scoped(pool.connection.flatMap(insertOnBatch(insert, _)))
 
     override def transaction: ZLayer[Any, Exception, SqlTransaction] =
       ZLayer.scoped {

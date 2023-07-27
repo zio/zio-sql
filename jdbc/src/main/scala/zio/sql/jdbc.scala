@@ -4,8 +4,12 @@ import zio._
 import zio.stream._
 import zio.schema.Schema
 import zio.sql.macros.GroupByLike
+import zio.sql.update._
+import zio.sql.select._
+import zio.sql.insert._
+import zio.sql.delete._
 
-trait Jdbc extends zio.sql.Sql with JdbcInternalModule with SqlDriverLiveModule with ExprSyntaxModule {
+trait Jdbc extends Sql with JdbcInternalModule with SqlDriverLiveModule with TransactionSyntaxModule {
   trait SqlDriver  {
     def delete(delete: Delete[_]): IO[Exception, Int]
 
@@ -18,8 +22,6 @@ trait Jdbc extends zio.sql.Sql with JdbcInternalModule with SqlDriverLiveModule 
     def read[A](read: Read[A]): Stream[Exception, A]
 
     def insert[A: Schema](insert: Insert[_, A]): IO[Exception, Int]
-
-    def insert[A: Schema](insert: List[Insert[_, A]]): IO[Exception, List[Int]]
 
     def transaction: ZLayer[Any, Exception, SqlTransaction]
   }
@@ -41,6 +43,17 @@ trait Jdbc extends zio.sql.Sql with JdbcInternalModule with SqlDriverLiveModule 
 
   }
 
+  def setParam(param: SqlParameter, jdbcIndex: Int): java.sql.PreparedStatement => Unit
+
+  private[sql] def setParams(rows: List[SqlRow]): java.sql.PreparedStatement => Unit = ps =>
+    rows.foreach { row =>
+      row.params.zipWithIndex.foreach { case (param, i) =>
+        val jdbcIndex = i + 1
+        setParam(param, jdbcIndex)(ps)
+      }
+      ps.addBatch()
+    }
+
   def execute[A](read: Read[A]): ZStream[SqlDriver, Exception, A] =
     ZStream.serviceWithStream(_.read(read))
 
@@ -58,9 +71,6 @@ trait Jdbc extends zio.sql.Sql with JdbcInternalModule with SqlDriverLiveModule 
   def execute[A: Schema](insert: Insert[_, A]): ZIO[SqlDriver, Exception, Int] =
     ZIO.serviceWithZIO(_.insert(insert))
 
-  def executeBatchInsert[A: Schema](insert: List[Insert[_, A]]): ZIO[SqlDriver, Exception, List[Int]] =
-    ZIO.serviceWithZIO(_.insert(insert))
-
   def execute(update: Update[_]): ZIO[SqlDriver, Exception, Int] =
     ZIO.serviceWithZIO(_.update(update))
 
@@ -69,4 +79,5 @@ trait Jdbc extends zio.sql.Sql with JdbcInternalModule with SqlDriverLiveModule 
 
   val transact: ZLayer[SqlDriver, Exception, SqlTransaction] =
     ZLayer(ZIO.serviceWith[SqlDriver](_.transaction)).flatten
+
 }

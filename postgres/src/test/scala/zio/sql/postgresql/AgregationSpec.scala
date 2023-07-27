@@ -2,13 +2,12 @@ package zio.sql.postgresql
 
 import zio.test.TestAspect._
 import zio.test._
-
+import zio.sql.expr.AggregationDef._
 import java.math.{ BigDecimal, RoundingMode }
 import java.util.UUID
 
 object AgregationSpec extends PostgresRunnableSpec with DbSchema {
 
-  import AggregationDef._
   import OrderDetailsSchema._
 
   override def specLayered =

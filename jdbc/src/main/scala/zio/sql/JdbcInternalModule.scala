@@ -3,6 +3,8 @@ package zio.sql
 import java.sql._
 import java.time.{ OffsetDateTime, OffsetTime, ZoneId, ZoneOffset }
 import zio.Chunk
+import zio.sql.select._
+import zio.sql.typetag._
 
 trait JdbcInternalModule { self: Jdbc =>
 
@@ -25,6 +27,7 @@ trait JdbcInternalModule { self: Jdbc =>
         else
           try {
             val value = decoder
+            if (resultSet.wasNull()) return Right(null.asInstanceOf[A])
 
             value match {
               case Some(value) => Right(value)

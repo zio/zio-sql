@@ -4,6 +4,8 @@ import java.util.UUID
 import java.time._
 import java.math.BigDecimal
 import zio.schema.DeriveSchema
+import zio.sql.table._
+import zio.sql.select._
 
 trait DbSchema extends SqlServerSqlModule { self =>
 
@@ -21,7 +23,7 @@ trait DbSchema extends SqlServerSqlModule { self =>
 
     implicit val custommerSchema = DeriveSchema.gen[Customer]
 
-    val customers = defineTableSmart[Customer]
+    val customers = Table.defineTableSmart[Customer]
 
     val (customerId, dob, fName, lName, verified, createdString, createdTimestamp) =
       customers.columns
@@ -32,7 +34,7 @@ trait DbSchema extends SqlServerSqlModule { self =>
 
     implicit val orderSchema = DeriveSchema.gen[Orders]
 
-    val orders = defineTableSmart[Orders]
+    val orders = Table.defineTableSmart[Orders]
 
     val (orderId, fkCustomerId, orderDate) = orders.columns
 
@@ -40,7 +42,7 @@ trait DbSchema extends SqlServerSqlModule { self =>
 
     implicit val productSchema = DeriveSchema.gen[Products]
 
-    val products = defineTableSmart[Products]
+    val products = Table.defineTableSmart[Products]
 
     val (productId, productName, description, imageURL) = products.columns
 
@@ -48,7 +50,7 @@ trait DbSchema extends SqlServerSqlModule { self =>
 
     implicit val orderDetailsSchema = DeriveSchema.gen[OrderDetails]
 
-    val orderDetails = defineTableSmart[OrderDetails]
+    val orderDetails = Table.defineTableSmart[OrderDetails]
 
     val (orderDetailsId, orderDetailsProductId, quantity, unitPrice) = orderDetails.columns
 

@@ -4,24 +4,28 @@ import java.util.UUID
 import java.time._
 import zio.sql.postgresql.PostgresJdbcModule
 import zio.schema.DeriveSchema
+import zio.sql.expr.AggregationDef._
+import zio.sql.expr.FunctionDef._
+import zio.sql.table._
 
 object Examples extends App with PostgresJdbcModule {
-  import this.AggregationDef._
-  import this.FunctionDef._
-  import this.OrderDetails._
-  import this.Orders._
-  import this.Users._
+  import Orders._
+  import Users._
+  import OrderDetails._
 
-  // SELECT "users"."first_name", "users"."last_name" FROM "users"
   val basicSelect =
     select(fName, lName).from(users)
 
   println(renderRead(basicSelect))
 
+  val selectAll1 = select(*).from(orderDetails)
+  val selectAll2 = select(*).from(users)
+
   // SELECT "users"."age" + 2, concat_ws("users"."first_name",' ',"users"."last_name"), abs(-42.0) FROM "users" ORDER BY "users"."age" DESC LIMIT 10 OFFSET 20
   val selectWithFunctions =
     select(age + 2, ConcatWs3(fName, " ", lName), Abs(-42.0))
       .from(users)
+      .where(age === 10)
       .limit(10)
       .offset(20)
       .orderBy(age.descending)
@@ -66,7 +70,7 @@ object Examples extends App with PostgresJdbcModule {
 
   /*
     SELECT "users"."id", "users"."first_name", "users"."last_name", sum("order_details"."quantity" * "order_details"."unit_price"), sum(abs("order_details"."quantity"))
-    FROM "users"
+    FROM "users"x
     INNER JOIN "orders" ON "users"."id" = "orders"."usr_id"
     LEFT JOIN "order_details" ON "orders"."id" = "order_details"."order_id"
     GROUP BY "users"."id", "users"."first_name", "users"."last_name" */
@@ -171,7 +175,7 @@ object Examples extends App with PostgresJdbcModule {
 
     implicit val userSchema = DeriveSchema.gen[Users]
 
-    val users = defineTable[Users]
+    val users = Table.defineTable[Users]
 
     val (userId, age, dob, fName, lName) = users.columns
   }
@@ -182,7 +186,7 @@ object Examples extends App with PostgresJdbcModule {
 
     implicit val orderSchema = DeriveSchema.gen[Orders]
 
-    val orders = defineTable[Orders]
+    val orders = Table.defineTable[Orders]
 
     val (orderId, fkUserId, orderDate) = orders.columns
   }
@@ -192,7 +196,7 @@ object Examples extends App with PostgresJdbcModule {
 
     implicit val orderDetailSchema = DeriveSchema.gen[OrderDetail]
 
-    val orderDetails = defineTable[OrderDetail]
+    val orderDetails = Table.defineTable[OrderDetail]
 
     val (fkOrderId, fkProductId, quantity, unitPrice) = orderDetails.columns
   }

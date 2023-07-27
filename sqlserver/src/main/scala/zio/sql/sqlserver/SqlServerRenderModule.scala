@@ -1,16 +1,23 @@
 package zio.sql.sqlserver
 
-import zio.Chunk
-import zio.schema.StandardType._
-import zio.schema._
-import zio.sql.driver.Renderer
-import java.time.format.DateTimeFormatter._
-import java.time.format.{ DateTimeFormatter, DateTimeFormatterBuilder }
 import java.time._
+import java.time.format.{ DateTimeFormatter, DateTimeFormatterBuilder }
+
+import zio.schema._
+import zio.sql.{ SqlParameter, SqlRow, SqlStatement }
+import zio.sql.delete._
+import zio.sql.driver.Renderer
+import zio.sql.expr._
+import zio.sql.insert._
+import zio.sql.ops.Operator._
+import zio.sql.select._
+import zio.sql.table._
+import zio.sql.typetag._
+import zio.sql.update._
 
 trait SqlServerRenderModule extends SqlServerSqlModule { self =>
 
-  override def renderRead(read: self.Read[_]): String = {
+  override def renderRead(read: Read[_]): String = {
     implicit val render: Renderer = Renderer()
     SqlServerRenderer.renderReadImpl(read)
     render.toString
@@ -22,10 +29,10 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
     render.toString
   }
 
-  override def renderInsert[A: Schema](insert: self.Insert[_, A]): String = {
+  override def renderInsert[A: Schema](insert: Insert[_, A]): SqlStatement = {
     implicit val render: Renderer = Renderer()
-    SqlServerRenderer.renderInsertImpl(insert)
-    render.toString
+    val rows                      = SqlServerRenderer.renderInsertImpl(insert)
+    SqlStatement(render.toString, rows)
   }
 
   override def renderDelete(delete: Delete[_]): String = {
@@ -47,7 +54,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
       .appendOffset("+HH:MM", "Z")
       .toFormatter()
 
-    private[zio] def renderReadImpl(read: self.Read[_])(implicit render: Renderer): Unit =
+    private[zio] def renderReadImpl(read: Read[_])(implicit render: Renderer): Unit =
       read match {
         // case Read.Mapped(read, _) => renderReadImpl(read.asInstanceOf[Read[Out]])
         case Read.Mapped(read, _) => renderReadImpl(read)
@@ -106,7 +113,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
           render(" (", values.mkString(","), ") ") // todo fix needs escaping
       }
 
-    private def renderLit(lit: self.Expr.Literal[_])(implicit render: Renderer): Unit = {
+    private def renderLit(lit: Expr.Literal[_])(implicit render: Renderer): Unit = {
       import TypeTag._
       val value = lit.value
       lit.typeTag match {
@@ -149,16 +156,16 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
       }
     }
 
-    private def buildExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
+    private def buildExpr[A, B](expr: Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
       case Expr.Subselect(subselect)                                                            =>
         render(" (")
         render(renderRead(subselect))
         render(") ")
       case Expr.Source(table, column)                                                           =>
         (table, column.name) match {
-          case (tableName: TableName, Some(columnName)) =>
+          case (tableName: String, Some(columnName)) =>
             render(tableName, ".", columnName)
-          case _                                        => ()
+          case _                                     => ()
         }
       case Expr.Unary(base, op)                                                                 =>
         render(" ", op.symbol)
@@ -365,7 +372,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
           render(" ) ")
           render(name)
 
-        case sourceTable: self.Table.Source =>
+        case sourceTable: Table.Source =>
           render(sourceTable.name)
 
         case Table.DialectSpecificTable(tableExtension) =>
@@ -379,6 +386,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
               }
 
               val _ = buildTable(derivedTable)
+            case _                                                                                    => ???
           }
 
         case Table.Joined(joinType, left, right, on) =>
@@ -399,7 +407,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
       * Drops the initial Litaral(true) present at the start of every WHERE expressions by default 
       * and proceeds to the rest of Expr's.
       */
-    private def buildWhereExpr[A, B](expr: self.Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
+    private def buildWhereExpr[A, B](expr: Expr[_, A, B])(implicit render: Renderer): Unit = expr match {
       case Expr.Literal(true)   => ()
       case Expr.Binary(_, b, _) =>
         render(" WHERE ")
@@ -424,116 +432,51 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
           }
       }
 
-    private def buildInsertValues[A](col: Seq[A])(implicit render: Renderer, schema: Schema[A]): Unit =
+    private def renderInsertPlaceholders[A](col: Seq[A])(implicit render: Renderer, schema: Schema[A]): Unit =
       col.toList match {
-        case head :: Nil  =>
+        case head :: _ =>
           render("(")
-          buildInsertValue(head)
+          renderInsertPlaceholder(head)
           render(");")
-        case head :: next =>
-          render("(")
-          buildInsertValue(head)(render, schema)
-          render(" ),")
-          buildInsertValues(next)
-        case Nil          => ()
+        case Nil       => ()
       }
 
-    private def buildInsertValue[Z](z: Z)(implicit render: Renderer, schema: Schema[Z]): Unit =
+    private def renderInsertPlaceholder[Z](z: Z)(implicit render: Renderer, schema: Schema[Z]): Unit =
       schema.toDynamic(z) match {
         case DynamicValue.Record(_, listMap) =>
           listMap.values.toList match {
-            case head :: Nil  => buildDynamicValue(head)
+            case head :: Nil  => renderPlaceholder(head)
             case head :: next =>
-              buildDynamicValue(head)
+              renderPlaceholder(head)
               render(", ")
-              buildDynamicValues(next)
+              renderPlaceholders(next)
             case Nil          => ()
           }
-        case value                           => buildDynamicValue(value)
+        case value                           => renderPlaceholder(value)
       }
 
-    private def buildDynamicValues(dynValues: List[DynamicValue])(implicit render: Renderer): Unit =
+    private def renderPlaceholders(dynValues: List[DynamicValue])(implicit render: Renderer): Unit =
       dynValues match {
-        case head :: Nil  => buildDynamicValue(head)
+        case head :: Nil  => renderPlaceholder(head)
         case head :: tail =>
-          buildDynamicValue(head)
+          renderPlaceholder(head)
           render(", ")
-          buildDynamicValues(tail)
+          renderPlaceholders(tail)
         case Nil          => ()
       }
 
     // TODO render each type according to their specifics & test it
-    private def buildDynamicValue(dynValue: DynamicValue)(implicit render: Renderer): Unit =
+    private def renderPlaceholder(dynValue: DynamicValue)(implicit render: Renderer): Unit =
       dynValue match {
-        case DynamicValue.Primitive(value, typeTag) =>
-          // need to do this since StandardType is invariant in A
-          StandardType.fromString(typeTag.tag) match {
-            case Some(v) =>
-              v match {
-                case BigDecimalType                  =>
-                  render(value)
-                case StandardType.InstantType        =>
-                  render(s"'${ISO_INSTANT.format(value.asInstanceOf[Instant])}'")
-                case ByteType                        => render(s"${value}")
-                case CharType                        => render(s"N'${value}'")
-                case IntType                         => render(value)
-                case StandardType.MonthDayType       => render(s"'${value}'")
-                case BinaryType                      =>
-                  val chunk = value.asInstanceOf[Chunk[Object]]
-                  render("CONVERT(VARBINARY(MAX),'")
-                  for (b <- chunk)
-                    render("%02x".format(b))
-                  render("', 2)")
-                case StandardType.MonthType          => render(s"'${value}'")
-                case StandardType.LocalDateTimeType  =>
-                  render(s"'${ISO_LOCAL_DATE_TIME.format(value.asInstanceOf[LocalDateTime])}'")
-                case UnitType                        => render("null") // None is encoded as Schema[Unit].transform(_ => None, _ => ())
-                case StandardType.YearMonthType      => render(s"'${value}'")
-                case DoubleType                      => render(value)
-                case StandardType.YearType           => render(s"'${value}'")
-                case StandardType.OffsetDateTimeType =>
-                  render(s"'${fmtDateTimeOffset.format(value.asInstanceOf[OffsetDateTime])}'")
-                case StandardType.ZonedDateTimeType  =>
-                  render(s"'${fmtDateTimeOffset.format(value.asInstanceOf[ZonedDateTime])}'")
-                case BigIntegerType                  => render(value)
-                case UUIDType                        => render(s"'${value}'")
-                case StandardType.ZoneOffsetType     => render(s"'${value}'")
-                case ShortType                       => render(value)
-                case StandardType.LocalTimeType      =>
-                  render(s"'${DateTimeFormatter.ISO_LOCAL_TIME.format(value.asInstanceOf[LocalTime])}'")
-                case StandardType.OffsetTimeType     =>
-                  render(s"'${fmtTimeOffset.format(value.asInstanceOf[OffsetTime])}'")
-                case LongType                        => render(value)
-                case StringType                      => render(s"N'${value}'")
-                case StandardType.PeriodType         => render(s"'${value}'")
-                case StandardType.ZoneIdType         => render(s"'${value}'")
-                case StandardType.LocalDateType      =>
-                  render(s"'${DateTimeFormatter.ISO_LOCAL_DATE.format(value.asInstanceOf[LocalDate])}'")
-                case BoolType                        =>
-                  val b = value.asInstanceOf[Boolean]
-                  if (b) {
-                    render('1')
-                  } else {
-                    render('0')
-                  }
-                case DayOfWeekType                   => render(s"'${value}'")
-                case FloatType                       => render(value)
-                case StandardType.DurationType       => render(s"'${value}'")
-              }
-            case None    => ()
-          }
-        case DynamicValue.Tuple(left, right)        =>
-          buildDynamicValue(left)
+        case DynamicValue.Primitive(_, _)    => render("?")
+        case DynamicValue.Tuple(left, right) =>
+          renderPlaceholder(left)
           render(", ")
-          buildDynamicValue(right)
-        case DynamicValue.SomeValue(value)          => buildDynamicValue(value)
-        case DynamicValue.NoneValue                 => render("null")
-        case DynamicValue.Sequence(chunk)           =>
-          render("CONVERT(VARBINARY(MAX),'")
-          for (DynamicValue.Primitive(v, _) <- chunk)
-            render("%02x".format(v))
-          render("', 2)")
-        case _                                      => ()
+          renderPlaceholder(right)
+        case DynamicValue.SomeValue(value)   => renderPlaceholder(value)
+        case DynamicValue.NoneValue          => render("?")
+        case DynamicValue.Sequence(_)        => render("?")
+        case _                               => ()
       }
 
     private def buildSet(set: List[Set[_, _]])(implicit render: Renderer): Unit =
@@ -549,6 +492,44 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
             buildExpr(setEq.rhs)
           }
         case Nil          => // TODO restrict Update to not allow empty set
+      }
+
+    private def buildInsertList[A](col: Seq[A])(implicit schema: Schema[A]): List[SqlRow] =
+      col.foldLeft(List.empty[SqlRow]) { case (a, z) =>
+        val row = schema.toDynamic(z) match {
+          case DynamicValue.Record(_, listMap) =>
+            val params = listMap.values.foldLeft(List.empty[SqlParameter]) { case (acc, el) =>
+              acc ::: buildInsertRow(el)
+            }
+            SqlRow(params)
+          case value                           =>
+            SqlRow(buildInsertRow(value))
+        }
+        row :: a
+      }
+
+    private def buildInsertRow(dynValue: DynamicValue): List[SqlParameter] =
+      dynValue match {
+        case DynamicValue.Primitive(value, typeTag) =>
+          // need to do this since StandardType is invariant in A
+          StandardType.fromString(typeTag.tag) match {
+            case Some(v) =>
+              List(SqlParameter(v, value))
+            case None    => Nil
+          }
+        case DynamicValue.Tuple(left, right)        =>
+          buildInsertRow(left) ::: buildInsertRow(right)
+        case DynamicValue.SomeValue(value)          => buildInsertRow(value)
+        case DynamicValue.NoneValue                 =>
+          List(SqlParameter(StandardType.UnitType, null))
+        case DynamicValue.Sequence(chunk)           =>
+          val bytes = chunk.map {
+            case DynamicValue.Primitive(v, t) if t == StandardType.ByteType =>
+              v.asInstanceOf[Byte]
+            case _                                                          => throw new IllegalArgumentException("Only Byte sequences are supported.")
+          }.toArray
+          List(SqlParameter(StandardType.BinaryType, bytes))
+        case _                                      => Nil
       }
 
     def renderDeleteImpl(delete: Delete[_])(implicit render: Renderer) = {
@@ -567,7 +548,7 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
           buildWhereExpr(whereExpr)
       }
 
-    def renderInsertImpl[A](insert: Insert[_, A])(implicit render: Renderer, schema: Schema[A]) = {
+    def renderInsertImpl[A](insert: Insert[_, A])(implicit render: Renderer, schema: Schema[A]): List[SqlRow] = {
       render("INSERT INTO ")
       buildTable(insert.table)
 
@@ -575,7 +556,9 @@ trait SqlServerRenderModule extends SqlServerSqlModule { self =>
       buildColumnNames(insert.sources)
       render(") VALUES ")
 
-      buildInsertValues(insert.values)
+      renderInsertPlaceholders(insert.values)
+
+      buildInsertList(insert.values)
     }
   }
 }

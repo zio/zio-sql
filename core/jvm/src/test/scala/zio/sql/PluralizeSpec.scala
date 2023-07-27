@@ -2,6 +2,7 @@ package zio.sql
 
 import zio.test._
 import zio.Scope
+import zio.sql.utils.Pluralize
 
 object PluralizeSpec extends ZIOSpecDefault {
 
