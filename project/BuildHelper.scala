@@ -9,10 +9,10 @@ import BuildInfoKeys._
 import scalafix.sbt.ScalafixPlugin.autoImport.scalafixSemanticdb
 
 object BuildHelper {
-  val SilencerVersion = "1.7.12"
-  val Scala212        = "2.12.17"
+  val SilencerVersion = "1.17.13"
+  val Scala212        = "2.12.18"
   val Scala213        = "2.13.10"
-  val ScalaDotty      = "3.2.1"
+  val ScalaDotty      = "3.3.0"
 
   def buildInfoSettings(packageName: String) =
     Seq(
