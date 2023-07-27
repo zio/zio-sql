@@ -6,7 +6,7 @@ import zio.sql.expr.Expr
 /**
    * A columnar selection of `B` from a source `A`, modeled as `A => B`.
    */
-final case class Selection[F, -A, +B <: SelectionSet[A]](value: B) { self =>
+final case class Selection[-F, -A, +B <: SelectionSet[A]](value: B) { self =>
 
   type ColsRepr = value.ResultTypeRepr
 

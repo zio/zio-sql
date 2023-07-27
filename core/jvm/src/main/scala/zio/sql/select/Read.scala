@@ -180,43 +180,162 @@ object Read {
         override type GroupByF = self.GroupByF
       }
 
-      //format: off
-      def groupBy[F1](expr1: Expr[F1, Source, Any])(implicit verify: GroupByLike[F, F1]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1] =
-        new Subselect[F, Repr, Source, Subsource, Head, Tail](selection, table, whereExpr, self.groupByExprs ++ expr1, havingExpr, orderByExprs, offset, limit) {
-         override type GroupByF = self.GroupByF with F1
-       }
-
-      def groupBy[F1, F2](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any])(implicit verify: GroupByLike[F, F1 with F2]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2] =
-        new Subselect[F, Repr, Source, Subsource, Head, Tail](selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2, havingExpr, orderByExprs, offset, limit) {
-         override type GroupByF = self.GroupByF with  F1 with F2
+    def groupBy[F1](expr1: Expr[F1, Source, Any])(implicit
+      verify: GroupByLike[F, F1]
+    ): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1] =
+      new Subselect[F, Repr, Source, Subsource, Head, Tail](
+        selection,
+        table,
+        whereExpr,
+        self.groupByExprs ++ expr1,
+        havingExpr,
+        orderByExprs,
+        offset,
+        limit
+      ) {
+        override type GroupByF = self.GroupByF with F1
       }
 
-      def groupBy[F1, F2, F3](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any])(implicit verify: GroupByLike[F, F1 with F2 with F3]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3] =
-        new Subselect[F, Repr, Source, Subsource, Head, Tail](selection, table, whereExpr,self.groupByExprs ++ expr1 ++ expr2 ++ expr3, havingExpr, orderByExprs, offset, limit) {
-         override type GroupByF =  self.GroupByF with F1 with F2 with F3
+    def groupBy[F1, F2](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any])(implicit
+      verify: GroupByLike[F, F1 with F2]
+    ): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2] =
+      new Subselect[F, Repr, Source, Subsource, Head, Tail](
+        selection,
+        table,
+        whereExpr,
+        self.groupByExprs ++ expr1 ++ expr2,
+        havingExpr,
+        orderByExprs,
+        offset,
+        limit
+      ) {
+        override type GroupByF = self.GroupByF with F1 with F2
       }
 
-      def groupBy[F1, F2, F3, F4](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any])(implicit verify: GroupByLike[F, F1 with F2 with F3 with F4]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3 with F4] =
-        new Subselect[F, Repr, Source, Subsource, Head, Tail](selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4, havingExpr, orderByExprs, offset, limit) {
-         override type GroupByF = self.GroupByF with F1 with F2 with F3 with F4
-      }
-      
-      def groupBy[F1, F2, F3, F4, F5](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any])(implicit verify: GroupByLike[F, F1 with F2 with F3 with F4 with F5]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3 with F4 with F5] =
-        new Subselect[F, Repr, Source, Subsource, Head, Tail](selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5, havingExpr, orderByExprs, offset, limit) {
-         override type GroupByF =  self.GroupByF with F1 with F2 with F3 with F4 with F5
-      }
-      
-      def groupBy[F1, F2, F3, F4, F5, F6](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any], expr6: Expr[F6, Source, Any])(implicit verify: GroupByLike[F, F1 with F2 with F3 with F4 with F5 with F6]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6] =
-        new Subselect[F, Repr, Source, Subsource, Head, Tail](selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6, havingExpr, orderByExprs, offset, limit) {
-         override type GroupByF =  self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6
+    def groupBy[F1, F2, F3](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any])(
+      implicit verify: GroupByLike[F, F1 with F2 with F3]
+    ): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3] =
+      new Subselect[F, Repr, Source, Subsource, Head, Tail](
+        selection,
+        table,
+        whereExpr,
+        self.groupByExprs ++ expr1 ++ expr2 ++ expr3,
+        havingExpr,
+        orderByExprs,
+        offset,
+        limit
+      ) {
+        override type GroupByF = self.GroupByF with F1 with F2 with F3
       }
 
-      //TODO add arities up to 22 if needed
-      def groupBy[F1, F2, F3, F4, F5, F6, F7](expr1: Expr[F1, Source, Any], expr2: Expr[F2, Source, Any], expr3: Expr[F3, Source, Any], expr4: Expr[F4, Source, Any], expr5: Expr[F5, Source, Any], expr6: Expr[F6, Source, Any], expr7: Expr[F7, Source, Any])(implicit verify: GroupByLike[F, F1 with F2 with F3 with F4 with F5 with F6 with F7]): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6 with F7] =
-        new Subselect[F, Repr, Source, Subsource, Head, Tail](selection, table, whereExpr, self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7, havingExpr, orderByExprs, offset, limit) {
-         override type GroupByF =  self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6 with F7
+    def groupBy[F1, F2, F3, F4](
+      expr1: Expr[F1, Source, Any],
+      expr2: Expr[F2, Source, Any],
+      expr3: Expr[F3, Source, Any],
+      expr4: Expr[F4, Source, Any]
+    )(implicit
+      verify: GroupByLike[F, F1 with F2 with F3 with F4]
+    ): Subselect.WithGroupByF[F, Repr, Source, Subsource, Head, Tail, self.GroupByF with F1 with F2 with F3 with F4] =
+      new Subselect[F, Repr, Source, Subsource, Head, Tail](
+        selection,
+        table,
+        whereExpr,
+        self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4,
+        havingExpr,
+        orderByExprs,
+        offset,
+        limit
+      ) {
+        override type GroupByF = self.GroupByF with F1 with F2 with F3 with F4
       }
-      //format: on
+
+    def groupBy[F1, F2, F3, F4, F5](
+      expr1: Expr[F1, Source, Any],
+      expr2: Expr[F2, Source, Any],
+      expr3: Expr[F3, Source, Any],
+      expr4: Expr[F4, Source, Any],
+      expr5: Expr[F5, Source, Any]
+    )(implicit verify: GroupByLike[F, F1 with F2 with F3 with F4 with F5]): Subselect.WithGroupByF[
+      F,
+      Repr,
+      Source,
+      Subsource,
+      Head,
+      Tail,
+      self.GroupByF with F1 with F2 with F3 with F4 with F5
+    ] =
+      new Subselect[F, Repr, Source, Subsource, Head, Tail](
+        selection,
+        table,
+        whereExpr,
+        self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5,
+        havingExpr,
+        orderByExprs,
+        offset,
+        limit
+      ) {
+        override type GroupByF = self.GroupByF with F1 with F2 with F3 with F4 with F5
+      }
+
+    def groupBy[F1, F2, F3, F4, F5, F6](
+      expr1: Expr[F1, Source, Any],
+      expr2: Expr[F2, Source, Any],
+      expr3: Expr[F3, Source, Any],
+      expr4: Expr[F4, Source, Any],
+      expr5: Expr[F5, Source, Any],
+      expr6: Expr[F6, Source, Any]
+    )(implicit verify: GroupByLike[F, F1 with F2 with F3 with F4 with F5 with F6]): Subselect.WithGroupByF[
+      F,
+      Repr,
+      Source,
+      Subsource,
+      Head,
+      Tail,
+      self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6
+    ] =
+      new Subselect[F, Repr, Source, Subsource, Head, Tail](
+        selection,
+        table,
+        whereExpr,
+        self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6,
+        havingExpr,
+        orderByExprs,
+        offset,
+        limit
+      ) {
+        override type GroupByF = self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6
+      }
+
+    // TODO add arities up to 22 if needed
+    def groupBy[F1, F2, F3, F4, F5, F6, F7](
+      expr1: Expr[F1, Source, Any],
+      expr2: Expr[F2, Source, Any],
+      expr3: Expr[F3, Source, Any],
+      expr4: Expr[F4, Source, Any],
+      expr5: Expr[F5, Source, Any],
+      expr6: Expr[F6, Source, Any],
+      expr7: Expr[F7, Source, Any]
+    )(implicit verify: GroupByLike[F, F1 with F2 with F3 with F4 with F5 with F6 with F7]): Subselect.WithGroupByF[
+      F,
+      Repr,
+      Source,
+      Subsource,
+      Head,
+      Tail,
+      self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6 with F7
+    ] =
+      new Subselect[F, Repr, Source, Subsource, Head, Tail](
+        selection,
+        table,
+        whereExpr,
+        self.groupByExprs ++ expr1 ++ expr2 ++ expr3 ++ expr4 ++ expr5 ++ expr6 ++ expr7,
+        havingExpr,
+        orderByExprs,
+        offset,
+        limit
+      ) {
+        override type GroupByF = self.GroupByF with F1 with F2 with F3 with F4 with F5 with F6 with F7
+      }
 
     def normalize(implicit
       instance: Normalizer[ResultType]

@@ -25,6 +25,7 @@ object Examples extends App with PostgresJdbcModule {
   val selectWithFunctions =
     select(age + 2, ConcatWs3(fName, " ", lName), Abs(-42.0))
       .from(users)
+      .where(age === 10)
       .limit(10)
       .offset(20)
       .orderBy(age.descending)
