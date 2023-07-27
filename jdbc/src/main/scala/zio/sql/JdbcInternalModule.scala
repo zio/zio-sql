@@ -27,6 +27,7 @@ trait JdbcInternalModule { self: Jdbc =>
         else
           try {
             val value = decoder
+            if (resultSet.wasNull()) return Right(null.asInstanceOf[A])
 
             value match {
               case Some(value) => Right(value)
