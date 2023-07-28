@@ -83,7 +83,6 @@ object TransactionSpec extends PostgresRunnableSpec with DbSchema {
     test("Transaction failed and no row was inserted updated or deleted") {
       val deleteQuery = deleteFrom(customers).where(verified === false)
       val id1         = UUID.randomUUID()
-      // val id2 = UUID.randomUUID()
 
       val c1          = Customer(
         id1,
@@ -110,11 +109,10 @@ object TransactionSpec extends PostgresRunnableSpec with DbSchema {
 
       val batchResult = for {
         deleted <- deleteQuery.run
-        // inserted <- insertStmt.run
         _       <- ZIO.fail(insertStmt.run).exit
         updated <- updateStmt.run
 
-      } yield deleted + updated // + inserted
+      } yield deleted + updated
 
       val result = (for {
         tx <- transact(batchResult)

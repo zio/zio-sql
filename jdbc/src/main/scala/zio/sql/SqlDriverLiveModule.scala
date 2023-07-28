@@ -45,7 +45,7 @@ trait SqlDriverLiveModule { self: Jdbc =>
       ZIO.attemptBlocking {
         val statement = conn.createStatement()
         delete.map(delete_ => statement.addBatch(renderDelete(delete_)))
-        statement.executeBatch().foldLeft(0) { case (acc, el) => acc + el }
+        statement.executeBatch().sum
       }.refineToOrDie[Exception]
 
     def update(update: Update[_]): IO[Exception, Int] =
@@ -65,7 +65,7 @@ trait SqlDriverLiveModule { self: Jdbc =>
       ZIO.attemptBlocking {
         val statement = conn.createStatement()
         update.map(update_ => statement.addBatch(renderUpdate(update_)))
-        statement.executeBatch().foldLeft(0) { case (acc, el) => acc + el }
+        statement.executeBatch().sum
       }.refineToOrDie[Exception]
 
     def read[A](read: Read[A]): Stream[Exception, A] =
