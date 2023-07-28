@@ -536,6 +536,21 @@ object CustomFunctionDefSpec extends PostgresRunnableSpec with DbSchema {
         r <- result.runCollect
       } yield assert(r)(hasSameElements(expected))
     },
+    test("to_ascii") {
+      val query = select(ToAscii("Karél")) from customers
+
+      val testResult = execute(query)
+
+      val assertion = testResult.runCollect.fold(
+        failure => assert(failure.getMessage)(equalTo("ERROR: encoding conversion from UTF8 to ASCII not supported")),
+        _ =>
+          assert(true)(
+            isFalse
+          ) // Conversion is only supported from LATIN1, LATIN2, LATIN9, and WIN1250 encodings. Our test DB encoding is UTF-8
+      )
+
+      assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
+    },
     test("to_timestamp") {
       val query      = select(ToTimestamp(1284352323L))
       val expected   = ZonedDateTime.of(2010, 9, 13, 4, 32, 3, 0, ZoneId.of(ZoneOffset.UTC.getId))
