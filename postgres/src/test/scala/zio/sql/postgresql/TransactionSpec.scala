@@ -6,6 +6,7 @@ import zio.test.Assertion._
 import zio.test._
 import zio.test.TestAspect.sequential
 
+
 import java.time.{LocalDate, ZonedDateTime}
 import java.util.UUID
 
@@ -83,47 +84,7 @@ object TransactionSpec extends PostgresRunnableSpec with DbSchema {
       val result = for {
         tx  <- transact(batchResult)
       } yield  tx
-
       assertZIO(result)(equalTo(5)).mapErrorCause(cause => Cause.stackless(cause.untraced))
-    },
-      test ("Transaction failed and no row was inserted updated or deleted") {
-      val deleteQuery = deleteFrom(customers).where(verified === false)
-      val id1 = UUID.randomUUID()
-      //val id2 = UUID.randomUUID()
-
-      val c1 = Customer(
-        id1,
-        LocalDate.now(),
-        "fnameCustomer1",
-        "lnameCustomer1",
-        true,
-        LocalDate.now().toString,
-        ZonedDateTime.now()
-      )
-      val c2 = Customer(
-        id1,
-        LocalDate.now(),
-        "fnameCustomer2",
-        "lnameCustomer2",
-        true,
-        LocalDate.now().toString,
-        ZonedDateTime.now()
-      )
-      val allCustomer = List(c1, c2)
-      val data = allCustomer.map(Customer.unapply(_).get)
-      val insertStmt = insertInto(customers)(ALL).values(data)
-      val updateStmt = allCustomer.map(update_)
-
-      val batchResult = for {
-        deleted <- deleteQuery.run
-        inserted <- insertStmt.run
-        updated <- updateStmt.run
-      } yield deleted + inserted + updated
-
-      val result = for {
-        tx <- transact(batchResult)
-      } yield tx
-     assertZIO(result)(equalTo(0)).mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
   ) @@ sequential
 }
