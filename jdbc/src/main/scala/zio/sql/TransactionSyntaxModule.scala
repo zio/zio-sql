@@ -19,12 +19,22 @@ trait TransactionSyntaxModule { self: Jdbc =>
       ZIO.serviceWithZIO(_.delete(self))
   }
 
+  implicit final class BatchDeleteSyntax[A: Schema](self: List[Delete[_]]) {
+    def run: ZIO[SqlTransaction, Exception, Int] =
+      ZIO.serviceWithZIO(_.delete(self))
+  }
+
   implicit final class InsertSyntax[A: Schema](self: Insert[_, A]) {
     def run: ZIO[SqlTransaction, Exception, Int] =
       ZIO.serviceWithZIO(_.insert(self))
   }
 
   implicit final class UpdatedSyntax(self: Update[_]) {
+    def run: ZIO[SqlTransaction, Exception, Int] =
+      ZIO.serviceWithZIO(_.update(self))
+  }
+
+  implicit final class BatchUpdatedSyntax(self: List[Update[_]]) {
     def run: ZIO[SqlTransaction, Exception, Int] =
       ZIO.serviceWithZIO(_.update(self))
   }

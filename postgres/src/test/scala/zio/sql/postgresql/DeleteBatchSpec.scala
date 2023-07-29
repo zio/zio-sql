@@ -23,7 +23,7 @@ object DeleteBatchSpec extends PostgresRunnableSpec with DbSchema {
 
       val assertion = for {
         r <- result
-      } yield assert(r)(equalTo(List(1)))
+      } yield assert(r)(equalTo(1))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
@@ -83,7 +83,7 @@ object DeleteBatchSpec extends PostgresRunnableSpec with DbSchema {
         _         <- insertResult
         customers <- selectResult
         deletes    = customers.toList.map(delete_)
-        result    <- executeBatchDelete(deletes).map(l => l.fold(0)((a, b) => a + b))
+        result    <- executeBatchDelete(deletes)
       } yield assert(result)(equalTo(expected))
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
