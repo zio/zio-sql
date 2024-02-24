@@ -217,7 +217,7 @@ lazy val oracle = project
       "org.testcontainers"       % "database-commons"               % testcontainersVersion      % Test,
       "org.testcontainers"       % "oracle-xe"                      % testcontainersVersion      % Test,
       "org.testcontainers"       % "jdbc"                           % testcontainersVersion      % Test,
-      "com.oracle.database.jdbc" % "ojdbc8"                         % "21.10.0.0"                % Test,
+      "com.oracle.database.jdbc" % "ojdbc8"                         % "21.13.0.0"                % Test,
       "com.dimafeng"            %% "testcontainers-scala-oracle-xe" % testcontainersScalaVersion % Test,
       "ch.qos.logback"           % "logback-classic"                % logbackVersion             % Test
     )
