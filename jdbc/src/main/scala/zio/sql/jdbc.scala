@@ -13,11 +13,11 @@ trait Jdbc extends Sql with JdbcInternalModule with SqlDriverLiveModule with Tra
   trait SqlDriver  {
     def delete(delete: Delete[_]): IO[Exception, Int]
 
-    def delete(delete: List[Delete[_]]): IO[Exception, List[Int]]
+    def delete(delete: List[Delete[_]]): IO[Exception, Int]
 
     def update(update: Update[_]): IO[Exception, Int]
 
-    def update(update: List[Update[_]]): IO[Exception, List[Int]]
+    def update(update: List[Update[_]]): IO[Exception, Int]
 
     def read[A](read: Read[A]): Stream[Exception, A]
 
@@ -35,7 +35,11 @@ trait Jdbc extends Sql with JdbcInternalModule with SqlDriverLiveModule with Tra
 
     def delete(delete: Delete[_]): IO[Exception, Int]
 
+    def delete(delete: List[Delete[_]]): IO[Exception, Int]
+
     def update(update: Update[_]): IO[Exception, Int]
+
+    def update(update: List[Update[_]]): IO[Exception, Int]
 
     def read[A](read: Read[A]): Stream[Exception, A]
 
@@ -65,7 +69,7 @@ trait Jdbc extends Sql with JdbcInternalModule with SqlDriverLiveModule with Tra
   def execute(delete: Delete[_]): ZIO[SqlDriver, Exception, Int] =
     ZIO.serviceWithZIO(_.delete(delete))
 
-  def executeBatchDelete(delete: List[Delete[_]]): ZIO[SqlDriver, Exception, List[Int]] =
+  def executeBatchDelete(delete: List[Delete[_]]): ZIO[SqlDriver, Exception, Int] =
     ZIO.serviceWithZIO(_.delete(delete))
 
   def execute[A: Schema](insert: Insert[_, A]): ZIO[SqlDriver, Exception, Int] =
@@ -74,7 +78,7 @@ trait Jdbc extends Sql with JdbcInternalModule with SqlDriverLiveModule with Tra
   def execute(update: Update[_]): ZIO[SqlDriver, Exception, Int] =
     ZIO.serviceWithZIO(_.update(update))
 
-  def executeBatchUpdate(update: List[Update[_]]): ZIO[SqlDriver, Exception, List[Int]] =
+  def executeBatchUpdate(update: List[Update[_]]): ZIO[SqlDriver, Exception, Int] =
     ZIO.serviceWithZIO(_.update(update))
 
   val transact: ZLayer[SqlDriver, Exception, SqlTransaction] =

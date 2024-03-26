@@ -76,7 +76,7 @@ object UpdateBatchSpec extends PostgresRunnableSpec with DbSchema {
       val assertion_ = for {
         x      <- result_
         updated = x.toList.map(update_)
-        result <- executeBatchUpdate(updated).map(l => l.reduce((a, b) => a + b))
+        result <- executeBatchUpdate(updated)
       } yield assert(result)(equalTo(5))
       assertion_.mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
