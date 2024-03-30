@@ -23,11 +23,11 @@ addCommandAlias("fmtOnce", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("fmt", "fmtOnce;fmtOnce")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
-val zioVersion                 = "2.0.15"
+val zioVersion                 = "2.0.21"
 val zioSchemaVersion           = "0.4.17"
 val testcontainersVersion      = "1.18.3"
-val testcontainersScalaVersion = "0.40.17"
-val logbackVersion             = "1.3.8"
+val testcontainersScalaVersion = "0.41.3"
+val logbackVersion             = "1.4.8"
 
 lazy val root = project
   .in(file("."))
@@ -175,7 +175,7 @@ lazy val jdbc_hikaricp = project
   .settings(buildInfoSettings("zio.sql.jdbc-hickaricp"))
   .settings(
     libraryDependencies ++= Seq(
-      "com.zaxxer"         % "HikariCP"                   % "4.0.3", // 5.x doesn't support Java 1.8
+      "com.zaxxer"         % "HikariCP"                   % "5.1.0", // 5.x doesn't support Java 1.8
       "dev.zio"           %% "zio-test"                   % zioVersion                 % Test,
       "dev.zio"           %% "zio-test-sbt"               % zioVersion                 % Test,
       "org.testcontainers" % "mysql"                      % testcontainersVersion      % Test,
@@ -198,7 +198,7 @@ lazy val mysql = project
       "org.testcontainers" % "database-commons"           % testcontainersVersion      % Test,
       "org.testcontainers" % "jdbc"                       % testcontainersVersion      % Test,
       "org.testcontainers" % "mysql"                      % testcontainersVersion      % Test,
-      "mysql"              % "mysql-connector-java"       % "8.0.32"                   % Test,
+      "mysql"              % "mysql-connector-java"       % "8.0.33"                   % Test,
       "com.dimafeng"      %% "testcontainers-scala-mysql" % testcontainersScalaVersion % Test,
       "ch.qos.logback"     % "logback-classic"            % logbackVersion             % Test
     )
@@ -217,7 +217,7 @@ lazy val oracle = project
       "org.testcontainers"       % "database-commons"               % testcontainersVersion      % Test,
       "org.testcontainers"       % "oracle-xe"                      % testcontainersVersion      % Test,
       "org.testcontainers"       % "jdbc"                           % testcontainersVersion      % Test,
-      "com.oracle.database.jdbc" % "ojdbc8"                         % "21.10.0.0"                % Test,
+      "com.oracle.database.jdbc" % "ojdbc8"                         % "23.2.0.0"                 % Test,
       "com.dimafeng"            %% "testcontainers-scala-oracle-xe" % testcontainersScalaVersion % Test,
       "ch.qos.logback"           % "logback-classic"                % logbackVersion             % Test
     )
