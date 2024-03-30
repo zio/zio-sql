@@ -34,7 +34,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        java: ['adopt@1.8', 'adopt@1.11']
+        java: ['adopt@1.11', 'adopt@1.17']
         scala: ['2.12.18', '2.13.10']
     steps:
       - name: Checkout current branch
