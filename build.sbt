@@ -179,7 +179,7 @@ lazy val jdbc_hikaricp = project
       "dev.zio"           %% "zio-test"                   % zioVersion                 % Test,
       "dev.zio"           %% "zio-test-sbt"               % zioVersion                 % Test,
       "org.testcontainers" % "mysql"                      % testcontainersVersion      % Test,
-      "mysql"              % "mysql-connector-java"       % "8.0.29"                   % Test,
+      "com.mysql"          % "mysql-connector-j"          % "8.3.0"                    % Test,
       "com.dimafeng"      %% "testcontainers-scala-mysql" % testcontainersScalaVersion % Test
     )
   )
@@ -198,7 +198,7 @@ lazy val mysql = project
       "org.testcontainers" % "database-commons"           % testcontainersVersion      % Test,
       "org.testcontainers" % "jdbc"                       % testcontainersVersion      % Test,
       "org.testcontainers" % "mysql"                      % testcontainersVersion      % Test,
-      "mysql"              % "mysql-connector-java"       % "8.0.33"                   % Test,
+      "com.mysql"          % "mysql-connector-j"          % "8.3.0"                    % Test,
       "com.dimafeng"      %% "testcontainers-scala-mysql" % testcontainersScalaVersion % Test,
       "ch.qos.logback"     % "logback-classic"            % logbackVersion             % Test
     )
