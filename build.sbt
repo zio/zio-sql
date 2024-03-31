@@ -155,7 +155,7 @@ lazy val jdbc = project
     libraryDependencies ++= Seq(
       "dev.zio"       %% "zio-test"                        % zioVersion                 % Test,
       "dev.zio"       %% "zio-test-sbt"                    % zioVersion                 % Test,
-      "org.postgresql" % "postgresql"                      % "42.7.2"                   % Test,
+      "org.postgresql" % "postgresql"                      % "42.7.3"                   % Test,
       "com.dimafeng"  %% "testcontainers-scala-postgresql" % testcontainersScalaVersion % Test
     )
   )
@@ -236,7 +236,7 @@ lazy val postgres = project
       "org.testcontainers" % "database-commons"                % testcontainersVersion      % Test,
       "org.testcontainers" % "postgresql"                      % testcontainersVersion      % Test,
       "org.testcontainers" % "jdbc"                            % testcontainersVersion      % Test,
-      "org.postgresql"     % "postgresql"                      % "42.7.2"                   % Compile,
+      "org.postgresql"     % "postgresql"                      % "42.7.3"                   % Compile,
       "com.dimafeng"      %% "testcontainers-scala-postgresql" % testcontainersScalaVersion % Test,
       "ch.qos.logback"     % "logback-classic"                 % logbackVersion             % Test
     )
