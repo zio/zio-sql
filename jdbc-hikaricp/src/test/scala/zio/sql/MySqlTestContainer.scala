@@ -7,7 +7,7 @@ import zio._
 final case class MySqlConfig(username: String, password: String, url: String)
 object MySqlTestContainer {
 
-  def mysql(imageName: String = "mysql"): ZIO[Scope, Throwable, MySQLContainer] =
+  def mysql(imageName: String = "mysql:8.2.0"): ZIO[Scope, Throwable, MySQLContainer] =
     ZIO.acquireRelease {
       ZIO.attemptBlocking {
         val c = new MySQLContainer(
