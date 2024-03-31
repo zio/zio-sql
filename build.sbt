@@ -179,7 +179,7 @@ lazy val jdbc_hikaricp = project
       "dev.zio"           %% "zio-test"                   % zioVersion                 % Test,
       "dev.zio"           %% "zio-test-sbt"               % zioVersion                 % Test,
       "org.testcontainers" % "mysql"                      % testcontainersVersion      % Test,
-      "com.mysql"          % "mysql-connector-j"          % "8.0.29"                   % Test,
+      "com.mysql"          % "mysql-connector-j"          % "8.3.0"                    % Test,
       "com.dimafeng"      %% "testcontainers-scala-mysql" % testcontainersScalaVersion % Test
     )
   )
