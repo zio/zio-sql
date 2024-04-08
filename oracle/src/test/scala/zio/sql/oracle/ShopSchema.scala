@@ -4,7 +4,7 @@ import java.math.BigDecimal
 import java.util.UUID
 import java.time._
 import zio.Chunk
-import zio.schema.DeriveSchema
+import zio.schema.{ DeriveSchema, Schema }
 import zio.sql.table._
 
 trait ShopSchema extends OracleSqlModule { self =>
@@ -13,7 +13,8 @@ trait ShopSchema extends OracleSqlModule { self =>
 
     case class Customers(id: UUID, dob: LocalDate, first_name: String, last_name: String, verified: Boolean)
 
-    implicit val customerSchema = DeriveSchema.gen[Customers]
+    implicit val customerSchema: Schema.CaseClass5[UUID, LocalDate, String, String, Boolean, Customers] =
+      DeriveSchema.gen[Customers]
 
     val customers = Table.defineTableSmart[Customers]
 
@@ -22,7 +23,7 @@ trait ShopSchema extends OracleSqlModule { self =>
   object Orders {
     case class Order(id: UUID, customerId: UUID, orderDate: LocalDate)
 
-    implicit val orderSchema = DeriveSchema.gen[Order]
+    implicit val orderSchema: Schema.CaseClass3[UUID, UUID, LocalDate, Order] = DeriveSchema.gen[Order]
 
     val orders = Table.defineTableSmart[Order]
 
@@ -31,7 +32,8 @@ trait ShopSchema extends OracleSqlModule { self =>
 
   object ProductPrices {
     case class ProductPrice(productId: UUID, effective: LocalDate, price: BigDecimal)
-    implicit val productPriceSchema = DeriveSchema.gen[ProductPrice]
+    implicit val productPriceSchema: Schema.CaseClass3[UUID, LocalDate, BigDecimal, ProductPrice] =
+      DeriveSchema.gen[ProductPrice]
 
     val productPrices = Table.defineTableSmart[ProductPrice]
 
@@ -41,7 +43,8 @@ trait ShopSchema extends OracleSqlModule { self =>
   object OrderDetailsSchema {
     case class OrderDetails(orderId: UUID, productId: UUID, quantity: Int, unitPrice: BigDecimal)
 
-    implicit val orderDetailsSchema = DeriveSchema.gen[OrderDetails]
+    implicit val orderDetailsSchema: Schema.CaseClass4[UUID, UUID, Int, BigDecimal, OrderDetails] =
+      DeriveSchema.gen[OrderDetails]
 
     val orderDetails = Table.defineTableSmart[OrderDetails]
 
@@ -73,7 +76,29 @@ trait ShopSchema extends OracleSqlModule { self =>
       zoneddatetime: ZonedDateTime
     )
 
-    implicit val alTypesSchema = DeriveSchema.gen[AllType]
+    implicit val alTypesSchema: Schema.CaseClass20[
+      UUID,
+      Chunk[Byte],
+      BigDecimal,
+      Boolean,
+      Char,
+      Double,
+      Float,
+      Instant,
+      Int,
+      Option[Int],
+      LocalDate,
+      LocalDateTime,
+      LocalTime,
+      Long,
+      OffsetDateTime,
+      OffsetTime,
+      Short,
+      String,
+      UUID,
+      ZonedDateTime,
+      AllType
+    ] = DeriveSchema.gen[AllType]
 
     val allTypes = Table.defineTableSmart[AllType]
 

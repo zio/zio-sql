@@ -5,7 +5,7 @@ import java.time.LocalDate
 import java.util.Properties
 
 import zio._
-import zio.schema.DeriveSchema
+import zio.schema.{ DeriveSchema, Schema }
 import zio.sql.{ ConnectionPool, ConnectionPoolConfig }
 import zio.sql.postgresql.PostgresJdbcModule
 import zio.sql.table._
@@ -71,7 +71,8 @@ object LiveExample extends ZIOAppDefault with PostgresJdbcModule {
 
     case class Customer(id: UUID, age: Int, dob: LocalDate, firstName: String, lastName: String)
 
-    implicit val customerSchema = DeriveSchema.gen[Customer]
+    implicit val customerSchema: Schema.CaseClass5[UUID, Int, LocalDate, String, String, Customer] =
+      DeriveSchema.gen[Customer]
 
     val customers = Table.defineTable[Customer]("customers")
 
