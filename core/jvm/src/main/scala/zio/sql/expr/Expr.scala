@@ -67,6 +67,11 @@ sealed trait Expr[-F, -A, +B] { self =>
   ): Expr[F with F2, A1, Boolean] =
     Expr.Relational(self, that, RelationalOp.LessThanEqual)
 
+  def soundsLike[F2, A1 <: A](that: Expr[F2, A1, String])(implicit
+    ev: B <:< String
+  ): Expr[F with F2, A1, Boolean] =
+    Expr.Relational(self, that, RelationalOp.MySqlExtensions.SoundsLike)
+
   def like[F2, A1 <: A](that: Expr[F2, A1, String])(implicit ev: B <:< String): Expr[F with F2, A1, Boolean] =
     Expr.Relational(self, that, RelationalOp.Like)
 

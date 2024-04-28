@@ -1,13 +1,16 @@
 package zio.sql.mysql
 
-import zio.test._
-import zio.test.Assertion._
+import zio.Chunk
 import zio.schema._
-import java.time.{ LocalDate, LocalTime, ZoneId }
-import java.time.format.DateTimeFormatter
 import zio.sql.Jdbc
-import java.util.UUID
+import zio.sql.expr.Expr.literal
 import zio.sql.table._
+import zio.test.Assertion._
+import zio.test._
+
+import java.time.format.DateTimeFormatter
+import java.time.{LocalDate, LocalTime, ZoneId}
+import java.util.UUID
 
 object CustomFunctionDefSpec extends MysqlRunnableSpec with Jdbc {
 
@@ -118,6 +121,22 @@ object CustomFunctionDefSpec extends MysqlRunnableSpec with Jdbc {
       val testResult = execute(query)
 
       assertZIO(testResult.runHead.some)(equalTo(expected))
+    },
+    test("sounds like") {
+      val query = select("Robert".soundsLike("Rupert"))
+
+      val testResult = execute(query)
+
+      assertZIO(testResult.runHead.some)(equalTo(true))
+    },
+    test("sounds like on column") {
+      val query = select(customerId).from(customers).where(fName.soundsLike(lName))
+
+      for {
+        result <- execute(query).runCollect
+      } yield assertTrue(
+        result == Chunk(UUID.fromString("d4f6c156-20ac-4d27-8ced-535bf4315ebc"))
+      )
     },
     test("current_date") {
       val query = select(CurrentDate)
