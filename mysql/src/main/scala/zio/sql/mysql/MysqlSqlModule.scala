@@ -1,13 +1,14 @@
 package zio.sql.mysql
 
-import java.time._
-import java.sql.ResultSet
-import java.util.UUID
-import zio.sql.Sql
-import zio.sql.select._
 import zio.sql.expr._
 import zio.sql.ops.Operator.RelationalOp
+import zio.sql.select._
 import zio.sql.typetag._
+import zio.sql.{ Features, Sql }
+
+import java.sql.ResultSet
+import java.time._
+import java.util.UUID
 
 trait MysqlSqlModule extends Sql { self =>
 
@@ -29,6 +30,12 @@ trait MysqlSqlModule extends Sql { self =>
     implicit class ExprOps[F1, A1, B](expr: Expr[F1, A1, B]) {
       def soundsLike[F2, A2 <: A1](that: Expr[F2, A2, B])(implicit ev: B <:< String): Expr[F1 with F2, A2, Boolean] =
         Expr.Relational(expr, that, RelationalOp.MySqlExtensions.SoundsLike)
+    }
+
+    implicit class LiteralOps[B](line: B)(implicit literal: B => Expr[Features.Literal, Any, B]) {
+      def soundsLike[F, A](that: Expr[F, A, B])(implicit
+        ev: B <:< String
+      ): Expr[Features.Literal with F, A, Boolean] = literal(line).soundsLike(that)
     }
   }
 

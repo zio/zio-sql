@@ -3,7 +3,6 @@ package zio.sql.mysql
 import zio.Chunk
 import zio.schema._
 import zio.sql.Jdbc
-import zio.sql.expr.Expr.literal
 import zio.sql.table._
 import zio.test.Assertion._
 import zio.test._
@@ -124,7 +123,21 @@ object CustomFunctionDefSpec extends MysqlRunnableSpec with Jdbc {
       assertZIO(testResult.runHead.some)(equalTo(expected))
     },
     test("sounds like") {
-      val query = select(literal("Robert").soundsLike("Rupert"))
+      val query = select("Robert".soundsLike("Rupert"))
+
+      val testResult = execute(query)
+
+      assertZIO(testResult.runHead.some)(equalTo(true))
+    },
+    test("sounds like don't match") {
+      val query = select("Grisha".soundsLike("Berezin"))
+
+      val testResult = execute(query)
+
+      assertZIO(testResult.runHead.some)(equalTo(false))
+    },
+    test("sounds like don't match inverse") {
+      val query = select("Grisha".soundsLike("Berezin").isNotTrue)
 
       val testResult = execute(query)
 
@@ -137,6 +150,21 @@ object CustomFunctionDefSpec extends MysqlRunnableSpec with Jdbc {
         result <- execute(query).runCollect
       } yield assertTrue(
         result == Chunk(UUID.fromString("d4f6c156-20ac-4d27-8ced-535bf4315ebc"))
+      )
+    },
+    test("sounds like on column inverse") {
+      val query = select(customerId).from(customers).where(fName.soundsLike(lName).isNotTrue)
+
+      for {
+        result <- execute(query).runCollect
+      } yield assertTrue(
+        result == Chunk(
+          UUID.fromString("60b01fc9-c902-4468-8d49-3c0f989def37"),
+          UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc"),
+          UUID.fromString("784426a5-b90a-4759-afbb-571b7a0ba35e"),
+          UUID.fromString("df8215a2-d5fd-4c6c-9984-801a1b3a2a0b"),
+          UUID.fromString("f76c9ace-be07-4bf3-bd4c-4a9c62882e64")
+        )
       )
     },
     test("current_date") {
