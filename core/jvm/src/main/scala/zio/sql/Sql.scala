@@ -54,6 +54,22 @@ trait Sql {
 
   def renderInsert[A: Schema](insert: Insert[_, A]): SqlStatement
 
+  implicit class readOps(read: Read[_]) {
+    def show: String = renderRead(read)
+  }
+
+  implicit class updateOps(update: Update[_]) {
+    def show: String = renderUpdate(update)
+  }
+
+  implicit class insertOps[A: Schema](insert: Insert[_, A]) {
+    def show: String = renderInsert(insert).query
+  }
+
+  implicit class deleteOps(delete: Delete[_]) {
+    def show: String = renderDelete(delete)
+  }
+
   // TODO don't know where to put it now
   implicit def convertOptionToSome[A](implicit op: Schema[Option[A]]): Schema[Some[A]] =
     op.transformOrFail[Some[A]](

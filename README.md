@@ -6,7 +6,7 @@
 
 ZIO SQL lets you write type-safe, type-inferred, and composable SQL queries in ordinary Scala, helping you prevent persistence bugs before they happen, and leverage your IDE to make writing SQL productive, safe, and fun.
 
-[![Development](https://img.shields.io/badge/Project%20Stage-Development-green.svg)](https://github.com/zio/zio/wiki/Project-Stages) ![CI Badge](https://github.com/zio/zio-sql/workflows/CI/badge.svg) [![Sonatype Releases](https://img.shields.io/nexus/r/https/oss.sonatype.org/dev.zio/zio-sql_2.13.svg?label=Sonatype%20Release)](https://oss.sonatype.org/content/repositories/releases/dev/zio/zio-sql_2.13/) [![Sonatype Snapshots](https://img.shields.io/nexus/s/https/oss.sonatype.org/dev.zio/zio-sql_2.13.svg?label=Sonatype%20Snapshot)](https://oss.sonatype.org/content/repositories/snapshots/dev/zio/zio-sql_2.13/) [![javadoc](https://javadoc.io/badge2/dev.zio/zio-sql-docs_2.13/javadoc.svg)](https://javadoc.io/doc/dev.zio/zio-sql-docs_2.13) [![ZIO SQL](https://img.shields.io/github/stars/zio/zio-sql?style=social)](https://github.com/zio/zio-sql)
+[![Development](https://img.shields.io/badge/Project%20Stage-Development-green.svg)](https://github.com/zio/zio/wiki/Project-Stages) ![CI Badge](https://github.com/zio/zio-sql/workflows/CI/badge.svg) [![Sonatype Snapshots](https://img.shields.io/nexus/s/https/oss.sonatype.org/dev.zio/zio-sql_2.13.svg?label=Sonatype%20Snapshot)](https://oss.sonatype.org/content/repositories/snapshots/dev/zio/zio-sql_2.13/) [![ZIO SQL](https://img.shields.io/github/stars/zio/zio-sql?style=social)](https://github.com/zio/zio-sql)
 
 ## Introduction
 
@@ -63,16 +63,16 @@ ZIO SQL is packaged into separate modules for different databases. Depending on 
 
 ```scala
 //PostgreSQL
-libraryDependencies += "dev.zio" %% "zio-sql-postgres" % "0.1.2" 
+libraryDependencies += "dev.zio" %% "zio-sql-postgres" % "<version>" 
 
 //MySQL
-libraryDependencies += "dev.zio" %% "zio-sql-mysql" % "0.1.2"
+libraryDependencies += "dev.zio" %% "zio-sql-mysql" % "<version>"
 
 //Oracle
-libraryDependencies += "dev.zio" %% "zio-sql-oracle" % "0.1.2"
+libraryDependencies += "dev.zio" %% "zio-sql-oracle" % "<version>"
 
 //SQL Server
-libraryDependencies += "dev.zio" %% "zio-sql-sqlserver" % "0.1.2"
+libraryDependencies += "dev.zio" %% "zio-sql-sqlserver" % "<version>"
 ```
 
 ## Imports and modules
