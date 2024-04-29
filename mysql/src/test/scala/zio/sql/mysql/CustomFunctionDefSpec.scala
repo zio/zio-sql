@@ -9,7 +9,7 @@ import zio.test.Assertion._
 import zio.test._
 
 import java.time.format.DateTimeFormatter
-import java.time.{LocalDate, LocalTime, ZoneId}
+import java.time.{ LocalDate, LocalTime, ZoneId }
 import java.util.UUID
 
 object CustomFunctionDefSpec extends MysqlRunnableSpec with Jdbc {

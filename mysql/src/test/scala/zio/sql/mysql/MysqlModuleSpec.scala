@@ -79,8 +79,6 @@ object MysqlModuleSpec extends MysqlRunnableSpec {
 
       val query = select(customerId, fName, lName, dob) from customers
 
-      println(renderRead(query))
-
       val expected =
         Seq(
           Customer(
@@ -112,6 +110,12 @@ object MysqlModuleSpec extends MysqlRunnableSpec {
             "Jose",
             "Wiggins",
             LocalDate.parse("1987-03-23")
+          ),
+          Customer(
+            UUID.fromString("d4f6c156-20ac-4d27-8ced-535bf4315ebc"),
+            "Robert",
+            "Rupert",
+            LocalDate.parse("1998-06-11")
           )
         )
 
@@ -182,6 +186,7 @@ object MysqlModuleSpec extends MysqlRunnableSpec {
           UUID.fromString("60b01fc9-c902-4468-8d49-3c0f989def37"),
           UUID.fromString("f76c9ace-be07-4bf3-bd4c-4a9c62882e64"),
           UUID.fromString("784426a5-b90a-4759-afbb-571b7a0ba35e"),
+          UUID.fromString("d4f6c156-20ac-4d27-8ced-535bf4315ebc"),
           UUID.fromString("df8215a2-d5fd-4c6c-9984-801a1b3a2a0b"),
           UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc")
         )
@@ -196,6 +201,7 @@ object MysqlModuleSpec extends MysqlRunnableSpec {
           UUID.fromString("60b01fc9-c902-4468-8d49-3c0f989def37"),
           UUID.fromString("f76c9ace-be07-4bf3-bd4c-4a9c62882e64"),
           UUID.fromString("784426a5-b90a-4759-afbb-571b7a0ba35e"),
+          UUID.fromString("d4f6c156-20ac-4d27-8ced-535bf4315ebc"),
           UUID.fromString("df8215a2-d5fd-4c6c-9984-801a1b3a2a0b"),
           UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc")
         )
@@ -211,7 +217,7 @@ object MysqlModuleSpec extends MysqlRunnableSpec {
 
       for {
         r <- execute(query).runCollect
-      } yield assertTrue(r.head == 5L)
+      } yield assertTrue(r.head == 6L)
     },
     test("Can select from joined tables (inner join)") {
       val query = select(fName, lName, orderDate) from (customers join orders).on(

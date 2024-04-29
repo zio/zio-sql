@@ -38,6 +38,7 @@ object CommonFunctionDefSpec extends MysqlRunnableSpec with Jdbc {
           "RonaldRonaldRussell",
           "TerrenceTerrenceNoel",
           "MilaMilaPaterso",
+          "RobertRobertRupert",
           "AlanaAlanaMurray",
           "JoseJoseWiggins"
         )
@@ -53,6 +54,7 @@ object CommonFunctionDefSpec extends MysqlRunnableSpec with Jdbc {
           "Person: Ronald Russell",
           "Person: Terrence Noel",
           "Person: Mila Paterso",
+          "Person: Robert Rupert",
           "Person: Alana Murray",
           "Person: Jose Wiggins"
         )
@@ -70,6 +72,7 @@ object CommonFunctionDefSpec extends MysqlRunnableSpec with Jdbc {
           "Name: Ronald and Surname: Russell",
           "Name: Terrence and Surname: Noel",
           "Name: Mila and Surname: Paterso",
+          "Name: Robert and Surname: Rupert",
           "Name: Alana and Surname: Murray",
           "Name: Jose and Surname: Wiggins"
         )
@@ -94,7 +97,7 @@ object CommonFunctionDefSpec extends MysqlRunnableSpec with Jdbc {
 
         val query = select(Concat(fName, lName) as "fullname") from customers
 
-        val expected = Seq("RonaldRussell", "TerrenceNoel", "MilaPaterso", "AlanaMurray", "JoseWiggins")
+        val expected = Seq("RonaldRussell", "TerrenceNoel", "MilaPaterso", "RobertRupert", "AlanaMurray", "JoseWiggins")
 
         val result = execute(query)
 

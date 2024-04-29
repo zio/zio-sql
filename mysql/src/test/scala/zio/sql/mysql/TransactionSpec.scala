@@ -31,7 +31,7 @@ object TransactionSpec extends MysqlRunnableSpec with Jdbc {
 
       val assertion =
         result
-          .map(count => assertTrue(count == 5))
+          .map(count => assertTrue(count == 6))
           .orDie
 
       assertion.mapErrorCause(cause => Cause.stackless(cause.untraced))
@@ -48,7 +48,7 @@ object TransactionSpec extends MysqlRunnableSpec with Jdbc {
         remainingCustomersCount <- execute(query).map(identity[UUID](_)).runCount
       } yield (allCustomersCount, remainingCustomersCount))
 
-      assertZIO(result)(equalTo((5L, 5L))).mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertZIO(result)(equalTo((6L, 6L))).mapErrorCause(cause => Cause.stackless(cause.untraced))
     },
     test("Transaction succeeded and deleted rows") {
       val query       = select(customerId) from customers
@@ -62,7 +62,7 @@ object TransactionSpec extends MysqlRunnableSpec with Jdbc {
         remainingCustomersCount <- execute(query).map(identity[UUID](_)).runCount
       } yield (allCustomersCount, remainingCustomersCount))
 
-      assertZIO(result)(equalTo((5L, 4L))).mapErrorCause(cause => Cause.stackless(cause.untraced))
+      assertZIO(result)(equalTo((6L, 5L))).mapErrorCause(cause => Cause.stackless(cause.untraced))
     }
   ) @@ sequential
 }

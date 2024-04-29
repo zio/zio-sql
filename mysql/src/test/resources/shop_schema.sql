@@ -49,7 +49,7 @@ values
     ('784426a5-b90a-4759-afbb-571b7a0ba35e', 'Mila', 'Paterso', true, '1990-11-16'),
     ('df8215a2-d5fd-4c6c-9984-801a1b3a2a0b', 'Alana', 'Murray', true, '1995-11-12'),
     ('636ae137-5b1a-4c8c-b11f-c47c624d9cdc', 'Jose', 'Wiggins', false, '1987-03-23'),
-    ('d4f6c156-20ac-4d27-8ced-535bf4315ebc', 'Robert', 'Rupert', false, '1998-06-11');
+    ('d4f6c156-20ac-4d27-8ced-535bf4315ebc', 'Robert', 'Rupert', true, '1998-06-11');
 
 insert into products
     (id, name, description, image_url)
