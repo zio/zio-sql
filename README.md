@@ -6,7 +6,7 @@
 
 ZIO SQL lets you write type-safe, type-inferred, and composable SQL queries in ordinary Scala, helping you prevent persistence bugs before they happen, and leverage your IDE to make writing SQL productive, safe, and fun.
 
-[![Development](https://img.shields.io/badge/Project%20Stage-Development-green.svg)](https://github.com/zio/zio/wiki/Project-Stages) ![CI Badge](https://github.com/zio/zio-sql/workflows/CI/badge.svg) [![Sonatype Snapshots](https://img.shields.io/nexus/s/https/oss.sonatype.org/dev.zio/zio-sql_2.13.svg?label=Sonatype%20Snapshot)](https://oss.sonatype.org/content/repositories/snapshots/dev/zio/zio-sql_2.13/) [![ZIO SQL](https://img.shields.io/github/stars/zio/zio-sql?style=social)](https://github.com/zio/zio-sql)
+[![Development](https://img.shields.io/badge/Project%20Stage-Development-green.svg)](https://github.com/zio/zio/wiki/Project-Stages) ![CI Badge](https://github.com/zio/zio-sql/workflows/CI/badge.svg) [![Sonatype Releases](https://img.shields.io/nexus/r/https/oss.sonatype.org/dev.zio/zio-sql_2.13.svg?label=Sonatype%20Release)](https://oss.sonatype.org/content/repositories/releases/dev/zio/zio-sql_2.13/) [![Sonatype Snapshots](https://img.shields.io/nexus/s/https/oss.sonatype.org/dev.zio/zio-sql_2.13.svg?label=Sonatype%20Snapshot)](https://oss.sonatype.org/content/repositories/snapshots/dev/zio/zio-sql_2.13/) [![javadoc](https://javadoc.io/badge2/dev.zio/zio-sql-docs_2.13/javadoc.svg)](https://javadoc.io/doc/dev.zio/zio-sql-docs_2.13) [![ZIO SQL](https://img.shields.io/github/stars/zio/zio-sql?style=social)](https://github.com/zio/zio-sql)
 
 ## Introduction
 
@@ -63,16 +63,16 @@ ZIO SQL is packaged into separate modules for different databases. Depending on 
 
 ```scala
 //PostgreSQL
-libraryDependencies += "dev.zio" %% "zio-sql-postgres" % "<version>" 
+libraryDependencies += "dev.zio" %% "zio-sql-postgres" % "0.1.2" 
 
 //MySQL
-libraryDependencies += "dev.zio" %% "zio-sql-mysql" % "<version>"
+libraryDependencies += "dev.zio" %% "zio-sql-mysql" % "0.1.2"
 
 //Oracle
-libraryDependencies += "dev.zio" %% "zio-sql-oracle" % "<version>"
+libraryDependencies += "dev.zio" %% "zio-sql-oracle" % "0.1.2"
 
 //SQL Server
-libraryDependencies += "dev.zio" %% "zio-sql-sqlserver" % "<version>"
+libraryDependencies += "dev.zio" %% "zio-sql-sqlserver" % "0.1.2"
 ```
 
 ## Imports and modules
@@ -225,7 +225,52 @@ TODO: details
 
 ## Printing queries
 
-TODO: details
+### Select
+
+```scala
+select(orderId, name)
+  .from(products.join(orders)
+  .on(productId === id))
+  .limit(5)
+  .offset(10)
+  .show
+// val res0: String = SELECT "order"."id", "products"."name" FROM "products" INNER JOIN "order" ON "order"."product_id" = "products"."id"  LIMIT 5 OFFSET 10
+```
+
+### Insert
+
+```scala
+def insertProduct(uuid: UUID) =
+  insertInto(products)(id, name, price)
+    .values((uuid, "Zionomicon", 10.5))
+    
+insertProduct(UUID.fromString("dd5a7ae7-de19-446a-87a4-576d79de5c83")).show
+// val res0: String = INSERT INTO "products" ("id", "name", "price") VALUES (?, ?, ?);
+```
+
+### Update
+
+```scala
+def updateProduct(uuid: UUID) =
+  update(products)
+    .set(name, "foo")
+    .set(price, price * 1.1)
+    .where(id === uuid)
+
+updateProduct(UUID.fromString("f1e69839-964f-44b7-b90d-bd5f51700540")).show
+// val res0: String = UPDATE "products" SET "name" = 'foo', "price" = "products"."price" * 1.1 WHERE "products"."id" = 'f1e69839-964f-44b7-b90d-bd5f51700540'
+```
+
+### Delete
+
+```scala
+def deleteProduct(uuid: UUID) =
+    deleteFrom(products)
+      .where(id === uuid)
+      
+deleteProduct(UUID.fromString("95625b37-e785-4b4f-86b1-69affaf5f848")).show
+// val res0: String = DELETE FROM "products" WHERE "products"."id" = '95625b37-e785-4b4f-86b1-69affaf5f848'
+```
 
 ## Running queries
 
