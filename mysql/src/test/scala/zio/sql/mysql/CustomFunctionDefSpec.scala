@@ -15,6 +15,7 @@ import java.util.UUID
 object CustomFunctionDefSpec extends MysqlRunnableSpec with Jdbc {
 
   import MysqlFunctionDef._
+  import MysqlSpecific._
 
   case class Customers(id: UUID, dob: LocalDate, first_name: String, last_name: String, verified: Boolean)
 
@@ -123,7 +124,7 @@ object CustomFunctionDefSpec extends MysqlRunnableSpec with Jdbc {
       assertZIO(testResult.runHead.some)(equalTo(expected))
     },
     test("sounds like") {
-      val query = select("Robert".soundsLike("Rupert"))
+      val query = select(literal("Robert").soundsLike("Rupert"))
 
       val testResult = execute(query)
 
