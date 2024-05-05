@@ -4,7 +4,7 @@ import zio.test._
 import zio.test.Assertion._
 import zio.schema._
 import zio.test.ZIOSpecDefault
-import zio.schema.DeriveSchema
+import zio.schema.{ DeriveSchema, Schema }
 import java.time.LocalDate
 import zio.sql.table._
 import zio.sql.select._
@@ -21,9 +21,9 @@ object TestBasicSelect {
 
     case class Users(user_id: String, dob: LocalDate, first_name: String, last_name: String)
 
-    implicit val localDateSchema =
+    implicit val localDateSchema: Schema[LocalDate]                                      =
       Schema.primitive[LocalDate](StandardType.LocalDateType)
-    implicit val userSchema      = DeriveSchema.gen[Users]
+    implicit val userSchema: Schema.CaseClass4[String, LocalDate, String, String, Users] = DeriveSchema.gen[Users]
 
     val userTable = Table.defineTable[Users]
 

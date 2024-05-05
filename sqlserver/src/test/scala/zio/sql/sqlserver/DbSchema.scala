@@ -3,7 +3,7 @@ package zio.sql.sqlserver
 import java.util.UUID
 import java.time._
 import java.math.BigDecimal
-import zio.schema.DeriveSchema
+import zio.schema.{ DeriveSchema, Schema }
 import zio.sql.table._
 import zio.sql.select._
 
@@ -21,7 +21,9 @@ trait DbSchema extends SqlServerSqlModule { self =>
       createdTimestamp: ZonedDateTime
     )
 
-    implicit val custommerSchema = DeriveSchema.gen[Customer]
+    implicit val custommerSchema
+      : Schema.CaseClass7[UUID, LocalDate, String, String, Boolean, String, ZonedDateTime, Customer] =
+      DeriveSchema.gen[Customer]
 
     val customers = Table.defineTableSmart[Customer]
 
@@ -32,7 +34,7 @@ trait DbSchema extends SqlServerSqlModule { self =>
 
     case class Orders(id: UUID, customerId: UUID, orderDate: LocalDate)
 
-    implicit val orderSchema = DeriveSchema.gen[Orders]
+    implicit val orderSchema: Schema.CaseClass3[UUID, UUID, LocalDate, Orders] = DeriveSchema.gen[Orders]
 
     val orders = Table.defineTableSmart[Orders]
 
@@ -40,7 +42,7 @@ trait DbSchema extends SqlServerSqlModule { self =>
 
     case class Products(id: UUID, name: String, description: String, imageUrl: String)
 
-    implicit val productSchema = DeriveSchema.gen[Products]
+    implicit val productSchema: Schema.CaseClass4[UUID, String, String, String, Products] = DeriveSchema.gen[Products]
 
     val products = Table.defineTableSmart[Products]
 
@@ -48,7 +50,8 @@ trait DbSchema extends SqlServerSqlModule { self =>
 
     case class OrderDetails(orderId: UUID, productId: UUID, quantity: Int, unitPrice: BigDecimal)
 
-    implicit val orderDetailsSchema = DeriveSchema.gen[OrderDetails]
+    implicit val orderDetailsSchema: Schema.CaseClass4[UUID, UUID, Int, BigDecimal, OrderDetails] =
+      DeriveSchema.gen[OrderDetails]
 
     val orderDetails = Table.defineTableSmart[OrderDetails]
 
