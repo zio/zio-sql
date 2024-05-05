@@ -4,7 +4,7 @@ import zio.test._
 import java.util.UUID
 import java.time.LocalDate
 import java.time.ZonedDateTime
-import zio.schema.DeriveSchema
+import zio.schema.{ DeriveSchema, Schema }
 import zio.sql.table._
 
 object DeleteSpec extends PostgresRunnableSpec {
@@ -19,7 +19,9 @@ object DeleteSpec extends PostgresRunnableSpec {
     createdTimestamp: ZonedDateTime
   )
 
-  implicit val custommerSchema = DeriveSchema.gen[Customers]
+  implicit val custommerSchema
+    : Schema.CaseClass7[UUID, LocalDate, String, String, Boolean, String, ZonedDateTime, Customers] =
+    DeriveSchema.gen[Customers]
 
   val customers = Table.defineTable[Customers]
 
