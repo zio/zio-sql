@@ -23,11 +23,11 @@ addCommandAlias("fmtOnce", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("fmt", "fmtOnce;fmtOnce")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
-val zioVersion                 = "2.0.21"
+val zioVersion                 = "2.0.22"
 val zioSchemaVersion           = "1.1.1"
 val testcontainersVersion      = "1.18.3"
 val testcontainersScalaVersion = "0.41.3"
-val logbackVersion             = "1.4.14"
+val logbackVersion             = "1.5.6"
 
 lazy val root = project
   .in(file("."))
