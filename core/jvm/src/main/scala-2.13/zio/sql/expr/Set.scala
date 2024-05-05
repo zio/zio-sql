@@ -2,7 +2,8 @@ package zio.sql.expr
 
 import zio.sql.typetag.TypeTag
 import zio.sql.Features
-import com.github.ghik.silencer.silent
+
+import scala.annotation.nowarn
 
 sealed trait Set[F, -A] {
   type Value
@@ -17,7 +18,7 @@ sealed trait Set[F, -A] {
 object Set {
   type Aux[F, -A, Value0] = Set[F, A] { type Value = Value0 }
 
-  @silent
+  @nowarn
   def apply[F: Features.IsSource, A, Value0: TypeTag](
     lhs0: Expr[F, A, Value0],
     rhs0: Expr[_, A, Value0]
