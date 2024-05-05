@@ -3,7 +3,7 @@ package zio.sql
 import java.util.UUID
 import java.time._
 import zio.sql.postgresql.PostgresJdbcModule
-import zio.schema.DeriveSchema
+import zio.schema.{ DeriveSchema, Schema }
 import zio.sql.expr.AggregationDef._
 import zio.sql.expr.FunctionDef._
 import zio.sql.table._
@@ -142,7 +142,7 @@ object Examples extends App with PostgresJdbcModule {
     firstName: String,
     lastName: String
   )
-  implicit val userSchema = DeriveSchema.gen[User]
+  implicit val userSchema: Schema.CaseClass5[UUID, Int, LocalDate, String, String, User] = DeriveSchema.gen[User]
 
   val dataSchema: User = User(UUID.randomUUID(), 22, LocalDate.ofYearDay(1990, 1), "Ronald", "Russel")
 
@@ -173,7 +173,7 @@ object Examples extends App with PostgresJdbcModule {
 
     case class Users(id: UUID, age: Int, dob: LocalDate, firstName: String, lastName: String)
 
-    implicit val userSchema = DeriveSchema.gen[Users]
+    implicit val userSchema: Schema.CaseClass5[UUID, Int, LocalDate, String, String, Users] = DeriveSchema.gen[Users]
 
     val users = Table.defineTable[Users]
 
@@ -184,7 +184,7 @@ object Examples extends App with PostgresJdbcModule {
 
     case class Orders(id: java.util.UUID, userId: java.util.UUID, orderDate: LocalDate)
 
-    implicit val orderSchema = DeriveSchema.gen[Orders]
+    implicit val orderSchema: Schema.CaseClass3[UUID, UUID, LocalDate, Orders] = DeriveSchema.gen[Orders]
 
     val orders = Table.defineTable[Orders]
 
@@ -194,7 +194,8 @@ object Examples extends App with PostgresJdbcModule {
   object OrderDetails {
     case class OrderDetail(orderId: java.util.UUID, productId: Int, quantity: Double, unitPrice: Double)
 
-    implicit val orderDetailSchema = DeriveSchema.gen[OrderDetail]
+    implicit val orderDetailSchema: Schema.CaseClass4[java.util.UUID, Int, Double, Double, OrderDetail] =
+      DeriveSchema.gen[OrderDetail]
 
     val orderDetails = Table.defineTable[OrderDetail]
 
