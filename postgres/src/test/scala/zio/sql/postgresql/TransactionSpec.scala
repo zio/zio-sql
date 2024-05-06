@@ -51,7 +51,7 @@ object TransactionSpec extends PostgresRunnableSpec with DbSchema {
         LocalDate.now(),
         "fnameCustomer1",
         "lnameCustomer1",
-        true,
+        verified = true,
         LocalDate.now().toString,
         ZonedDateTime.now()
       )
@@ -60,7 +60,7 @@ object TransactionSpec extends PostgresRunnableSpec with DbSchema {
         LocalDate.now(),
         "fnameCustomer2",
         "lnameCustomer2",
-        true,
+        verified = true,
         LocalDate.now().toString,
         ZonedDateTime.now()
       )
@@ -89,7 +89,7 @@ object TransactionSpec extends PostgresRunnableSpec with DbSchema {
         LocalDate.now(),
         "fnameCustomer1",
         "lnameCustomer1",
-        true,
+        verified = true,
         LocalDate.now().toString,
         ZonedDateTime.now()
       )
@@ -98,7 +98,7 @@ object TransactionSpec extends PostgresRunnableSpec with DbSchema {
         LocalDate.now(),
         "fnameCustomer2",
         "lnameCustomer2",
-        true,
+        verified = true,
         LocalDate.now().toString,
         ZonedDateTime.now()
       )

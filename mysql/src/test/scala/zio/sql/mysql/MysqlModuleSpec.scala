@@ -16,7 +16,8 @@ object MysqlModuleSpec extends MysqlRunnableSpec {
 
   case class Customers(id: UUID, dob: LocalDate, first_name: String, last_name: String, verified: Boolean)
 
-  implicit val customerSchema = DeriveSchema.gen[Customers]
+  implicit val customerSchema: Schema.CaseClass5[UUID, LocalDate, String, String, Boolean, Customers] =
+    DeriveSchema.gen[Customers]
 
   val customers = Table.defineTable[Customers]
 
@@ -24,14 +25,16 @@ object MysqlModuleSpec extends MysqlRunnableSpec {
 
   case class Orders(id: UUID, customer_id: UUID, order_date: LocalDate, deleted_at: Option[LocalDateTime])
 
-  implicit val orderSchema = DeriveSchema.gen[Orders]
+  implicit val orderSchema: Schema.CaseClass4[UUID, UUID, LocalDate, Option[LocalDateTime], Orders] =
+    DeriveSchema.gen[Orders]
 
   val orders = Table.defineTable[Orders]
 
   val (orderId, fkCustomerId, orderDate, deletedAt) = orders.columns
 
   case class ProductPrice(productId: UUID, effective: LocalDate, price: BigDecimal)
-  implicit val productPriceSchema = DeriveSchema.gen[ProductPrice]
+  implicit val productPriceSchema: Schema.CaseClass3[UUID, LocalDate, BigDecimal, ProductPrice] =
+    DeriveSchema.gen[ProductPrice]
 
   val productPrices = Table.defineTableSmart[ProductPrice]
 
@@ -39,7 +42,8 @@ object MysqlModuleSpec extends MysqlRunnableSpec {
 
   case class OrderDetails(orderId: UUID, productId: UUID, quantity: Int, unitPrice: BigDecimal)
 
-  implicit val orderDetailsSchema = DeriveSchema.gen[OrderDetails]
+  implicit val orderDetailsSchema: Schema.CaseClass4[UUID, UUID, Int, BigDecimal, OrderDetails] =
+    DeriveSchema.gen[OrderDetails]
 
   val orderDetails = Table.defineTableSmart[OrderDetails]
 
@@ -136,7 +140,7 @@ object MysqlModuleSpec extends MysqlRunnableSpec {
             UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc"),
             "Jose",
             "Wiggins",
-            false,
+            verified = false,
             LocalDate.parse("1987-03-23")
           )
         )
@@ -282,8 +286,8 @@ object MysqlModuleSpec extends MysqlRunnableSpec {
         )
 
       val rows = List(
-        CustomerRow(UUID.randomUUID(), LocalDate.ofYearDay(2001, 8), "Peter", "Parker", true),
-        CustomerRow(UUID.randomUUID(), LocalDate.ofYearDay(1980, 2), "Stephen", "Strange", false)
+        CustomerRow(UUID.randomUUID(), LocalDate.ofYearDay(2001, 8), "Peter", "Parker", verified = true),
+        CustomerRow(UUID.randomUUID(), LocalDate.ofYearDay(1980, 2), "Stephen", "Strange", verified = false)
       )
 
       val command = insertInto(customers)(

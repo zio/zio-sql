@@ -39,10 +39,10 @@ sealed trait Read[+Out] { self =>
     }
 
   def union[Out1 >: Out](that: Read.Aux[ResultType, Out1]): Read.Aux[ResultType, Out1] =
-    Read.Union[ResultType, Out1](self, that, true)
+    Read.Union[ResultType, Out1](self, that, distinct = true)
 
   def unionAll[Out1 >: Out](that: Read.Aux[ResultType, Out1]): Read.Aux[ResultType, Out1] =
-    Read.Union[ResultType, Out1](self, that, false)
+    Read.Union[ResultType, Out1](self, that, distinct = false)
 }
 
 object Read {
