@@ -44,7 +44,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
           UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc"),
           "Jose",
           "Wiggins",
-          false,
+          verified = false,
           LocalDate.parse("1987-03-23")
         )
       )
@@ -675,8 +675,8 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
     test("Can insert rows") {
 
       val rows = List(
-        CustomerRow(UUID.randomUUID(), "Peter", "Parker", true, LocalDate.ofYearDay(2001, 8)),
-        CustomerRow(UUID.randomUUID(), "Stephen", "Strange", false, LocalDate.ofYearDay(1980, 2))
+        CustomerRow(UUID.randomUUID(), "Peter", "Parker", verified = true, LocalDate.ofYearDay(2001, 8)),
+        CustomerRow(UUID.randomUUID(), "Stephen", "Strange", verified = false, LocalDate.ofYearDay(1980, 2))
       )
 
       val command = insertInto(customers)(

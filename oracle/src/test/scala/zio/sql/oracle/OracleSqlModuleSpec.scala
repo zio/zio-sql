@@ -137,8 +137,8 @@ object OracleSqlModuleSpec extends OracleRunnableSpec with ShopSchema {
     test("Can insert rows") {
 
       val rows = List(
-        Customers.Customers(UUID.randomUUID(), LocalDate.ofYearDay(2001, 8), "Peter", "Parker", true),
-        Customers.Customers(UUID.randomUUID(), LocalDate.ofYearDay(1980, 2), "Stephen", "Strange", false)
+        Customers.Customers(UUID.randomUUID(), LocalDate.ofYearDay(2001, 8), "Peter", "Parker", verified = true),
+        Customers.Customers(UUID.randomUUID(), LocalDate.ofYearDay(1980, 2), "Stephen", "Strange", verified = false)
       )
 
       val command = insertInto(customers)(

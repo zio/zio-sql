@@ -436,7 +436,7 @@ object CustomFunctionDefSpec extends PostgresRunnableSpec with DbSchema {
             UUID.fromString("60b01fc9-c902-4468-8d49-3c0f989def37"),
             "Ronald",
             "Russell",
-            true,
+            verified = true,
             LocalDate.parse("1983-01-05")
           )
         )

@@ -140,7 +140,7 @@ object MysqlModuleSpec extends MysqlRunnableSpec {
             UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc"),
             "Jose",
             "Wiggins",
-            false,
+            verified = false,
             LocalDate.parse("1987-03-23")
           )
         )
@@ -286,8 +286,8 @@ object MysqlModuleSpec extends MysqlRunnableSpec {
         )
 
       val rows = List(
-        CustomerRow(UUID.randomUUID(), LocalDate.ofYearDay(2001, 8), "Peter", "Parker", true),
-        CustomerRow(UUID.randomUUID(), LocalDate.ofYearDay(1980, 2), "Stephen", "Strange", false)
+        CustomerRow(UUID.randomUUID(), LocalDate.ofYearDay(2001, 8), "Peter", "Parker", verified = true),
+        CustomerRow(UUID.randomUUID(), LocalDate.ofYearDay(1980, 2), "Stephen", "Strange", verified = false)
       )
 
       val command = insertInto(customers)(
