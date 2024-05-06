@@ -22,7 +22,7 @@ object InsertBatchSpec extends PostgresRunnableSpec with DbSchema {
         LocalDate.now(),
         "fnameCustomer1",
         "lnameCustomer1",
-        true,
+        verified = true,
         LocalDate.now().toString,
         ZonedDateTime.now()
       )
@@ -31,7 +31,7 @@ object InsertBatchSpec extends PostgresRunnableSpec with DbSchema {
         LocalDate.now(),
         "fnameCustomer2",
         "lnameCustomer2",
-        true,
+        verified = true,
         LocalDate.now().toString,
         ZonedDateTime.now()
       )
@@ -40,7 +40,7 @@ object InsertBatchSpec extends PostgresRunnableSpec with DbSchema {
         LocalDate.now(),
         "fnameCustomer3",
         "lnameCustomer3",
-        true,
+        verified = true,
         LocalDate.now().toString,
         ZonedDateTime.now()
       )
@@ -49,7 +49,7 @@ object InsertBatchSpec extends PostgresRunnableSpec with DbSchema {
         LocalDate.now(),
         "fnameCustomer4",
         "lnameCustomer4",
-        false,
+        verified = false,
         LocalDate.now().toString,
         ZonedDateTime.now()
       )

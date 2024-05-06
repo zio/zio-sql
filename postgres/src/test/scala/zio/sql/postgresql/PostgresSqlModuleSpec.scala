@@ -32,7 +32,7 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
           UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc"),
           "Jose",
           "Wiggins",
-          false,
+          verified = false,
           LocalDate.parse("1987-03-23")
         )
       )
@@ -450,7 +450,15 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
       val created = ZonedDateTime.now()
 
       val data =
-        CustomerRow(UUID.randomUUID(), "Jaro", "Regec", true, LocalDate.ofYearDay(1990, 1), created.toString, created)
+        CustomerRow(
+          UUID.randomUUID(),
+          "Jaro",
+          "Regec",
+          verified = true,
+          LocalDate.ofYearDay(1990, 1),
+          created.toString,
+          created
+        )
 
       implicit val customerRowSchema =
         Schema.CaseClass7[UUID, String, String, Boolean, LocalDate, String, ZonedDateTime, CustomerRow](
@@ -647,7 +655,6 @@ object PostgresSqlModuleSpec extends PostgresRunnableSpec with DbSchema {
     test("in joined tables, columns of the same name from different table are treated as different columns") {
       import Cities._
       import Ordering._
-      import Expr._
 
       /**
        *          SELECT ms.name, c.name, COUNT(ml.id) as line_count
