@@ -9,10 +9,9 @@ import BuildInfoKeys._
 import scalafix.sbt.ScalafixPlugin.autoImport.scalafixSemanticdb
 
 object BuildHelper {
-  val SilencerVersion = "1.17.13"
-  val Scala212        = "2.12.18"
-  val Scala213        = "2.13.13"
-  val ScalaDotty      = "3.3.0"
+  val Scala212   = "2.12.18"
+  val Scala213   = "2.13.12"
+  val ScalaDotty = "3.3.0"
 
   def buildInfoSettings(packageName: String) =
     Seq(
@@ -150,17 +149,6 @@ object BuildHelper {
     crossScalaVersions       := Seq(Scala213, Scala212),
     ThisBuild / scalaVersion := Scala213,
     scalacOptions            := stdOptions ++ extraOptions(scalaVersion.value, optimize = !isSnapshot.value),
-    libraryDependencies ++= {
-      if (scalaVersion.value == ScalaDotty)
-        Seq(
-          "com.github.ghik"                 % s"silencer-lib_2.13.10" % SilencerVersion % Provided
-        )
-      else
-        Seq(
-          ("com.github.ghik"                % "silencer-lib"          % SilencerVersion % Provided).cross(CrossVersion.full),
-          compilerPlugin(("com.github.ghik" % "silencer-plugin"       % SilencerVersion).cross(CrossVersion.full))
-        )
-    },
     resolvers ++= Resolver.sonatypeOssRepos("snapshots"),
     Test / parallelExecution := true,
     incOptions ~= (_.withLogRecompileOnMacro(false)),
