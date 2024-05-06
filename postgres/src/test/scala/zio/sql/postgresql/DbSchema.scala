@@ -2,7 +2,7 @@ package zio.sql.postgresql
 
 import java.time.{ LocalDate, ZonedDateTime }
 import java.util.UUID
-import zio.schema.DeriveSchema
+import zio.schema.{ DeriveSchema, Schema }
 import java.math.BigDecimal
 import zio.sql.table._
 import zio.sql.select._
@@ -14,18 +14,19 @@ trait DbSchema extends PostgresJdbcModule { self =>
     case class MetroSystem(id: Int, cityId: Int, name: String, dailyRidership: Int)
     case class MetroLine(id: Int, systemId: Int, name: String, stationCount: Int, trackType: Int)
 
-    implicit val citySchema = DeriveSchema.gen[City]
+    implicit val citySchema: Schema.CaseClass5[Int, String, Int, Float, Option[String], City] = DeriveSchema.gen[City]
 
     val city                                       = Table.defineTable[City]
     val (cityId, cityName, population, area, link) = city.columns
 
-    implicit val metroSystemSchema = DeriveSchema.gen[MetroSystem]
+    implicit val metroSystemSchema: Schema.CaseClass4[Int, Int, String, Int, MetroSystem] =
+      DeriveSchema.gen[MetroSystem]
 
     val metroSystem = Table.defineTable[MetroSystem]
 
     val (metroSystemId, cityIdFk, metroSystemName, dailyRidership) = metroSystem.columns
 
-    implicit val metroLineSchema = DeriveSchema.gen[MetroLine]
+    implicit val metroLineSchema: Schema.CaseClass5[Int, Int, String, Int, Int, MetroLine] = DeriveSchema.gen[MetroLine]
 
     val metroLine = Table.defineTable[MetroLine]
 
@@ -64,7 +65,9 @@ trait DbSchema extends PostgresJdbcModule { self =>
       createdTimestamp: ZonedDateTime
     )
 
-    implicit val custommerSchema = DeriveSchema.gen[Customer]
+    implicit val custommerSchema
+      : Schema.CaseClass7[UUID, LocalDate, String, String, Boolean, String, ZonedDateTime, Customer] =
+      DeriveSchema.gen[Customer]
 
     val customers = Table.defineTableSmart[Customer]
 
@@ -77,7 +80,7 @@ trait DbSchema extends PostgresJdbcModule { self =>
   object OrdersSchema {
     case class Orders(id: UUID, customerId: UUID, orderDate: LocalDate)
 
-    implicit val orderSchema = DeriveSchema.gen[Orders]
+    implicit val orderSchema: Schema.CaseClass3[UUID, UUID, LocalDate, Orders] = DeriveSchema.gen[Orders]
 
     val orders = Table.defineTableSmart[Orders]
 
@@ -87,7 +90,7 @@ trait DbSchema extends PostgresJdbcModule { self =>
   object ProductSchema {
     case class Products(id: UUID, name: String, description: String, imageUrl: String)
 
-    implicit val productSchema = DeriveSchema.gen[Products]
+    implicit val productSchema: Schema.CaseClass4[UUID, String, String, String, Products] = DeriveSchema.gen[Products]
 
     val products = Table.defineTableSmart[Products]
 
@@ -96,7 +99,8 @@ trait DbSchema extends PostgresJdbcModule { self =>
 
   object ProductPrices {
     case class ProductPrice(productId: UUID, effective: LocalDate, price: BigDecimal)
-    implicit val productPriceSchema = DeriveSchema.gen[ProductPrice]
+    implicit val productPriceSchema: Schema.CaseClass3[UUID, LocalDate, BigDecimal, ProductPrice] =
+      DeriveSchema.gen[ProductPrice]
 
     val productPrices = Table.defineTableSmart[ProductPrice]
 
@@ -106,7 +110,8 @@ trait DbSchema extends PostgresJdbcModule { self =>
   object OrderDetailsSchema {
     case class OrderDetails(orderId: UUID, productId: UUID, quantity: Int, unitPrice: BigDecimal)
 
-    implicit val orderDetailsSchema = DeriveSchema.gen[OrderDetails]
+    implicit val orderDetailsSchema: Schema.CaseClass4[UUID, UUID, Int, BigDecimal, OrderDetails] =
+      DeriveSchema.gen[OrderDetails]
 
     val orderDetails = Table.defineTableSmart[OrderDetails]
 
@@ -116,7 +121,8 @@ trait DbSchema extends PostgresJdbcModule { self =>
   object PersonsSchema {
     case class Persons(id: UUID, name: Option[String], birthDate: Option[LocalDate])
 
-    implicit val personsSchema = DeriveSchema.gen[Persons]
+    implicit val personsSchema: Schema.CaseClass3[UUID, Option[String], Option[LocalDate], Persons] =
+      DeriveSchema.gen[Persons]
 
     val persons = Table.defineTableSmart[Persons]
 
@@ -127,7 +133,7 @@ trait DbSchema extends PostgresJdbcModule { self =>
 
     case class Movies(id: Int, rating: Option[Int])
 
-    implicit val moviesSchema = DeriveSchema.gen[Movies]
+    implicit val moviesSchema: Schema.CaseClass2[Int, Option[Int], Movies] = DeriveSchema.gen[Movies]
 
     val movies = Table.defineTableSmart[Movies]
 

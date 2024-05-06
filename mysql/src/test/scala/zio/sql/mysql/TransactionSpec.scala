@@ -15,7 +15,8 @@ object TransactionSpec extends MysqlRunnableSpec with Jdbc {
 
   case class Customers(id: UUID, dob: LocalDate, first_name: String, last_name: String, verified: Boolean)
 
-  implicit val customerSchema = DeriveSchema.gen[Customers]
+  implicit val customerSchema: Schema.CaseClass5[UUID, LocalDate, String, String, Boolean, Customers] =
+    DeriveSchema.gen[Customers]
 
   val customers = Table.defineTable[Customers]
 
