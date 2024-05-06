@@ -106,7 +106,7 @@ trait JdbcInternalModule { self: Jdbc =>
       case TDialectSpecific(t) => t.decode(columnIndex, resultSet)
       case t @ Nullable()      =>
         val _ = nonNull
-        extractColumn(columnIndex, resultSet, t.typeTag, false).map(Option(_))
+        extractColumn(columnIndex, resultSet, t.typeTag, nonNull = false).map(Option(_))
       case TNone               => Right(None)
     }
   }

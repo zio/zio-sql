@@ -5,7 +5,7 @@ import java.time._
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 import zio._
-import zio.schema.DeriveSchema
+import zio.schema.{ DeriveSchema, Schema }
 import zio.test._
 import zio.test.Assertion._
 import zio.test.TestAspect.{ retries, samples, sequential, shrinks }
@@ -27,7 +27,8 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
     dateOfBirth: LocalDate
   )
 
-  implicit val customerRow = DeriveSchema.gen[CustomerRow]
+  implicit val customerRow: Schema.CaseClass5[UUID, String, String, Boolean, LocalDate, CustomerRow] =
+    DeriveSchema.gen[CustomerRow]
 
   private def customerSelectJoseAssertion[F](
     condition: Expr[F, customers.TableType, Boolean]
@@ -43,7 +44,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
           UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc"),
           "Jose",
           "Wiggins",
-          false,
+          verified = false,
           LocalDate.parse("1987-03-23")
         )
       )
@@ -674,8 +675,8 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
     test("Can insert rows") {
 
       val rows = List(
-        CustomerRow(UUID.randomUUID(), "Peter", "Parker", true, LocalDate.ofYearDay(2001, 8)),
-        CustomerRow(UUID.randomUUID(), "Stephen", "Strange", false, LocalDate.ofYearDay(1980, 2))
+        CustomerRow(UUID.randomUUID(), "Peter", "Parker", verified = true, LocalDate.ofYearDay(2001, 8)),
+        CustomerRow(UUID.randomUUID(), "Stephen", "Strange", verified = false, LocalDate.ofYearDay(1980, 2))
       )
 
       val command = insertInto(customers)(
@@ -954,7 +955,8 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
   object CustomerSchema {
     case class Customers(id: UUID, firstName: String, lastName: String, verified: Boolean, dob: LocalDate)
 
-    implicit val customerSchema = DeriveSchema.gen[Customers]
+    implicit val customerSchema: Schema.CaseClass5[UUID, String, String, Boolean, LocalDate, Customers] =
+      DeriveSchema.gen[Customers]
 
     val customers = Table.defineTable[Customers]
 
@@ -965,7 +967,7 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
   object OrderSchema {
     case class Orders(id: UUID, customerId: UUID, orderDate: LocalDate)
 
-    implicit val orderSchema = DeriveSchema.gen[Orders]
+    implicit val orderSchema: Schema.CaseClass3[UUID, UUID, LocalDate, Orders] = DeriveSchema.gen[Orders]
 
     val orders = Table.defineTable[Orders]
 
@@ -975,7 +977,8 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
   object ProductSchema {
     case class ProductPrices(productId: UUID, effective: OffsetDateTime, price: BigDecimal)
 
-    implicit val productPricesSchema = DeriveSchema.gen[ProductPrices]
+    implicit val productPricesSchema: Schema.CaseClass3[UUID, OffsetDateTime, BigDecimal, ProductPrices] =
+      DeriveSchema.gen[ProductPrices]
 
     val productPrices = Table.defineTable[ProductPrices]
 
@@ -985,7 +988,8 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
   object OrderDetails {
     case class OrderDetails(orderId: UUID, productId: UUID, quantity: Int, unitPrice: BigDecimal)
 
-    implicit val orderDetailsSchema = DeriveSchema.gen[OrderDetails]
+    implicit val orderDetailsSchema: Schema.CaseClass4[UUID, UUID, Int, BigDecimal, OrderDetails] =
+      DeriveSchema.gen[OrderDetails]
 
     val orderDetails = Table.defineTable[OrderDetails]
 
@@ -1036,7 +1040,29 @@ object SqlServerModuleSpec extends SqlServerRunnableSpec {
       zoneddatetime: ZonedDateTime
     )
 
-    implicit val alTypesSchema = DeriveSchema.gen[AllType]
+    implicit val alTypesSchema: Schema.CaseClass20[
+      UUID,
+      Chunk[Byte],
+      java.math.BigDecimal,
+      Boolean,
+      Char,
+      Double,
+      Float,
+      Instant,
+      Int,
+      Option[Int],
+      LocalDate,
+      LocalDateTime,
+      LocalTime,
+      Long,
+      OffsetDateTime,
+      OffsetTime,
+      Short,
+      String,
+      UUID,
+      ZonedDateTime,
+      AllType
+    ] = DeriveSchema.gen[AllType]
 
     val allTypes = Table.defineTableSmart[AllType]
 

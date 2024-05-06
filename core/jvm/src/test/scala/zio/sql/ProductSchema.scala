@@ -30,10 +30,11 @@ object ProductSchema {
     deleted: Boolean
   )
 
-  implicit val localDateSchema =
+  implicit val localDateSchema: Schema[LocalDate] =
     Schema.primitive[LocalDate](StandardType.LocalDateType)
 
-  implicit val productsSchema = DeriveSchema.gen[Product]
+  implicit val productsSchema: Schema.CaseClass6[String, LocalDate, String, Int, Int, Boolean, Product] =
+    DeriveSchema.gen[Product]
 
   val productTable = Table.defineTable[Product]
 
