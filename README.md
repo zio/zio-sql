@@ -225,7 +225,52 @@ TODO: details
 
 ## Printing queries
 
-TODO: details
+### Select
+
+```scala
+select(orderId, name)
+  .from(products.join(orders)
+  .on(productId === id))
+  .limit(5)
+  .offset(10)
+  .show
+// val res0: String = SELECT "order"."id", "products"."name" FROM "products" INNER JOIN "order" ON "order"."product_id" = "products"."id"  LIMIT 5 OFFSET 10
+```
+
+### Insert
+
+```scala
+def insertProduct(uuid: UUID) =
+  insertInto(products)(id, name, price)
+    .values((uuid, "Zionomicon", 10.5))
+    
+insertProduct(UUID.fromString("dd5a7ae7-de19-446a-87a4-576d79de5c83")).show
+// val res0: String = INSERT INTO "products" ("id", "name", "price") VALUES (?, ?, ?);
+```
+
+### Update
+
+```scala
+def updateProduct(uuid: UUID) =
+  update(products)
+    .set(name, "foo")
+    .set(price, price * 1.1)
+    .where(id === uuid)
+
+updateProduct(UUID.fromString("f1e69839-964f-44b7-b90d-bd5f51700540")).show
+// val res0: String = UPDATE "products" SET "name" = 'foo', "price" = "products"."price" * 1.1 WHERE "products"."id" = 'f1e69839-964f-44b7-b90d-bd5f51700540'
+```
+
+### Delete
+
+```scala
+def deleteProduct(uuid: UUID) =
+    deleteFrom(products)
+      .where(id === uuid)
+      
+deleteProduct(UUID.fromString("95625b37-e785-4b4f-86b1-69affaf5f848")).show
+// val res0: String = DELETE FROM "products" WHERE "products"."id" = '95625b37-e785-4b4f-86b1-69affaf5f848'
+```
 
 ## Running queries
 
