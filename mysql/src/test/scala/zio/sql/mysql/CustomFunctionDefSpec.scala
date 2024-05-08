@@ -1,17 +1,20 @@
 package zio.sql.mysql
 
-import zio.test._
-import zio.test.Assertion._
+import zio.Chunk
 import zio.schema._
-import java.time.{ LocalDate, LocalTime, ZoneId }
-import java.time.format.DateTimeFormatter
 import zio.sql.Jdbc
-import java.util.UUID
 import zio.sql.table._
+import zio.test.Assertion._
+import zio.test._
+
+import java.time.format.DateTimeFormatter
+import java.time.{ LocalDate, LocalTime, ZoneId }
+import java.util.UUID
 
 object CustomFunctionDefSpec extends MysqlRunnableSpec with Jdbc {
 
   import MysqlFunctionDef._
+  import MysqlSpecific._
 
   case class Customers(id: UUID, dob: LocalDate, first_name: String, last_name: String, verified: Boolean)
 
@@ -119,6 +122,51 @@ object CustomFunctionDefSpec extends MysqlRunnableSpec with Jdbc {
       val testResult = execute(query)
 
       assertZIO(testResult.runHead.some)(equalTo(expected))
+    },
+    test("sounds like") {
+      val query = select("Robert".soundsLike("Rupert"))
+
+      val testResult = execute(query)
+
+      assertZIO(testResult.runHead.some)(equalTo(true))
+    },
+    test("sounds like don't match") {
+      val query = select("Grisha".soundsLike("Berezin"))
+
+      val testResult = execute(query)
+
+      assertZIO(testResult.runHead.some)(equalTo(false))
+    },
+    test("sounds like don't match inverse") {
+      val query = select("Grisha".soundsLike("Berezin").isNotTrue)
+
+      val testResult = execute(query)
+
+      assertZIO(testResult.runHead.some)(equalTo(true))
+    },
+    test("sounds like on column") {
+      val query = select(customerId).from(customers).where(fName.soundsLike(lName))
+
+      for {
+        result <- execute(query).runCollect
+      } yield assertTrue(
+        result == Chunk(UUID.fromString("d4f6c156-20ac-4d27-8ced-535bf4315ebc"))
+      )
+    },
+    test("sounds like on column inverse") {
+      val query = select(customerId).from(customers).where(fName.soundsLike(lName).isNotTrue)
+
+      for {
+        result <- execute(query).runCollect
+      } yield assertTrue(
+        result == Chunk(
+          UUID.fromString("60b01fc9-c902-4468-8d49-3c0f989def37"),
+          UUID.fromString("636ae137-5b1a-4c8c-b11f-c47c624d9cdc"),
+          UUID.fromString("784426a5-b90a-4759-afbb-571b7a0ba35e"),
+          UUID.fromString("df8215a2-d5fd-4c6c-9984-801a1b3a2a0b"),
+          UUID.fromString("f76c9ace-be07-4bf3-bd4c-4a9c62882e64")
+        )
+      )
     },
     test("current_date") {
       val query = select(CurrentDate)

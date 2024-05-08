@@ -52,7 +52,6 @@ object Operator {
     final case class OrBit[A: IsIntegral]()  extends BinaryOp[A] {
       def isIntegral: IsIntegral[A] = implicitly[IsIntegral[A]]
       override val symbol: String   = "|"
-
     }
   }
 
@@ -96,6 +95,12 @@ object Operator {
     }
     case object Like             extends RelationalOp {
       override val symbol: String = "like"
+    }
+
+    object MySqlExtensions {
+      case object SoundsLike extends RelationalOp {
+        override val symbol: String = "sounds like"
+      }
     }
   }
 
