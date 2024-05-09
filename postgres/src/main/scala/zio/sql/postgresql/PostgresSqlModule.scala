@@ -280,6 +280,7 @@ trait PostgresSqlModule extends Sql { self =>
     val StartsWith                  = FunctionDef[(String, String), Boolean](FunctionName("starts_with"))
     val StatementTimestamp          = FunctionDef[Any, ZonedDateTime](FunctionName("statement_timestamp"))
     val TimeOfDay                   = FunctionDef[Any, String](FunctionName("timeofday"))
+    val ToAscii                     = FunctionDef[String, String](FunctionName("to_ascii"))
     val ToTimestamp                 = FunctionDef[Long, ZonedDateTime](FunctionName("to_timestamp"))
     val TransactionTimestamp        = FunctionDef[Any, ZonedDateTime](FunctionName("transaction_timestamp"))
     val Translate                   = FunctionDef[(String, String, String), String](FunctionName("translate"))
