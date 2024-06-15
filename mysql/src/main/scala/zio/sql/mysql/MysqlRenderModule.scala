@@ -412,7 +412,7 @@ trait MysqlRenderModule extends MysqlSqlModule { self =>
           render(
             lit.value.asInstanceOf[Chunk[Byte]].map("""\%02X""" format _).mkString("x'", "", "'")
           ) // todo fix `cast` infers correctly but map doesn't work for some reason
-        case tt @ TChar           =>
+        case tt @ TChar =>
           render("'", tt.cast(lit.value), "'") // todo is this the same as a string? fix escaping
         case tt @ TInstant        =>
           render("TIMESTAMP '", tt.cast(lit.value), "'")
@@ -448,7 +448,7 @@ trait MysqlRenderModule extends MysqlSqlModule { self =>
           render(lit.value)
         case TString              =>
           render("'", lit.value, "'") // todo fix escaping
-        case _                    =>
+        case _ =>
           render(lit.value) // todo fix add TypeTag.Nullable[_] =>
       }
     }
